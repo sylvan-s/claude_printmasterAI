@@ -1,0 +1,79 @@
+{
+  "configKey": "general_print_fallback",
+  "configVersion": "SC-GEN-1.0",
+  "domain": "General fine art prints — all traditions and periods",
+  "coveragePeriod": "Any period",
+  "escalateTo": null,
+  "contextNote": "This is the fallback configuration used when the Attribution Triage Agent cannot route to a more specific specialist. Apply broad art historical knowledge across all print traditions. Prioritise identifying the tradition and period over specific artist attribution. Be conservative with attribution confidence scores.",
+  "primaryDatabaseSources": [
+    {
+      "name": "Artnet Price Database",
+      "url": "https://www.artnet.com",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search: artnet [artist name] [technique] print. Broad auction records across all traditions.",
+      "nativeScriptSupported": false,
+      "priority": 1
+    },
+    {
+      "name": "British Museum Collection Online",
+      "url": "https://www.britishmuseum.org/collection",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search: site:britishmuseum.org/collection [subject description] [technique] print.",
+      "nativeScriptSupported": true,
+      "priority": 2
+    },
+    {
+      "name": "Roseberys London — Past Auction Records",
+      "url": "https://www.roseberys.co.uk/results",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search: site:roseberys.co.uk [technique OR subject keywords].",
+      "nativeScriptSupported": false,
+      "priority": 3
+    },
+    {
+      "name": "Google Arts & Culture",
+      "url": "https://artsandculture.google.com",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search: site:artsandculture.google.com [subject description] [technique].",
+      "nativeScriptSupported": false,
+      "priority": 4
+    }
+  ],
+  "catalogueRaisonne": [
+    {
+      "title": "General museum online databases",
+      "coverageNote": "Use BM, MFA Boston, Rijksmuseum, and Met online collections as accessible reference points.",
+      "onlineAccessible": true,
+      "humanReferenceRequired": false
+    }
+  ],
+  "criticalAuthenticationMarkers": [
+    {
+      "marker": "Printing technique consistency",
+      "authenticIndicator": "Visual evidence of technique (plate marks, ink texture, woodblock grain) matches claimed tradition",
+      "reprintIndicator": "Photomechanical reproduction indicators (halftone dots, CMYK registration) present"
+    },
+    {
+      "marker": "Paper type appropriateness",
+      "authenticIndicator": "Paper type consistent with claimed period and tradition",
+      "reprintIndicator": "Paper clearly anachronistic for claimed date"
+    },
+    {
+      "marker": "Edition markings",
+      "authenticIndicator": "Edition numbering and signature type appropriate for tradition and period",
+      "reprintIndicator": "Edition markings inconsistent with claimed tradition conventions"
+    }
+  ],
+  "knownForgeriesAndFacsimiles": [
+    {
+      "category": "Photomechanical reproductions sold as originals",
+      "distinguishingFeatures": ["Halftone dot screen", "Uniform ink coverage", "No plate impression"],
+      "valuationImpact": "Minimal commercial value as artworks"
+    }
+  ],
+  "valuationSensitivities": [
+    { "factor": "Artist identification confidence", "impact": "Unattributed works command significantly lower values than attributed ones" },
+    { "factor": "Condition", "impact": "Apply conservative 20-50% penalties for any visible defects" },
+    { "factor": "Edition type", "impact": "Earlier impressions and smaller editions command premiums" }
+  ]
+}

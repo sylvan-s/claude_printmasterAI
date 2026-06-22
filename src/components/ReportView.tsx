@@ -1,5 +1,6 @@
 import React from "react";
-import { PrintAnalysisReport } from "../types";
+import { PrintAnalysisReport, ASAAttributionResult, LegacyAttributionResult } from "../types";
+import { resolveMethodLabel } from "../utils/resolveMethodLabel";
 import { 
   User, 
   Award, 
@@ -62,65 +63,108 @@ interface EvidenceCropProps {
 }
 
 function EvidenceCrop({ imageUrl, box_2d, label }: EvidenceCropProps) {
-  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
   const [error, setError] = React.useState(false);
-  const [isLoaded, setIsLoaded] = React.useState(false);
+  const [thumbDataUrl, setThumbDataUrl] = React.useState<string | null>(null);
+  const [zoomDataUrl, setZoomDataUrl] = React.useState<string | null>(null);
+  const [hovered, setHovered] = React.useState(false);
+  const [tooltipRect, setTooltipRect] = React.useState<DOMRect | null>(null);
 
   React.useEffect(() => {
     if (!imageUrl || !box_2d || box_2d.length !== 4) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
 
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    img.style.imageOrientation = "from-image";
     img.onload = () => {
+      // Bake EXIF rotation into a full-size canvas first
+      img.style.position = "absolute";
+      img.style.visibility = "hidden";
+      document.body.appendChild(img);
+      const full = document.createElement("canvas");
+      full.width = img.naturalWidth;
+      full.height = img.naturalHeight;
+      const fctx = full.getContext("2d")!;
+      fctx.imageSmoothingEnabled = true;
+      fctx.imageSmoothingQuality = "high";
+      fctx.drawImage(img, 0, 0);
+      document.body.removeChild(img);
+
       const [ymin, xmin, ymax, xmax] = box_2d;
-      
-      // Calculate coordinates in pixels
-      const x = (xmin / 1000) * img.width;
-      const y = (ymin / 1000) * img.height;
-      const w = ((xmax - xmin) / 1000) * img.width;
-      const h = ((ymax - ymin) / 1000) * img.height;
+      const sx = (xmin / 1000) * full.width;
+      const sy = (ymin / 1000) * full.height;
+      const sw = Math.max(1, ((xmax - xmin) / 1000) * full.width);
+      const sh = Math.max(1, ((ymax - ymin) / 1000) * full.height);
 
-      // Ensure cropped dimensions are valid and positive
-      const cropW = Math.max(1, w);
-      const cropH = Math.max(1, h);
-      
-      canvas.width = cropW;
-      canvas.height = cropH;
+      const crop = (outW: number, outH: number) => {
+        const c = document.createElement("canvas");
+        c.width = outW; c.height = outH;
+        const ctx = c.getContext("2d")!;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(full, sx, sy, sw, sh, 0, 0, outW, outH);
+        return c.toDataURL("image/jpeg", 0.92);
+      };
 
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(img, x, y, cropW, cropH, 0, 0, cropW, cropH);
-      setIsLoaded(true);
+      setThumbDataUrl(crop(sw, sh));
+      setZoomDataUrl(crop(Math.round(sw * 3), Math.round(sh * 3)));
     };
-    img.onerror = () => {
-      setError(true);
-    };
+    img.onerror = () => setError(true);
     img.src = imageUrl;
   }, [imageUrl, box_2d]);
 
+  const handleMouseEnter = () => {
+    if (containerRef.current) {
+      setTooltipRect(containerRef.current.getBoundingClientRect());
+    }
+    setHovered(true);
+  };
+
   if (error) {
     return (
-      <div className="w-full h-full min-h-[140px] flex items-center justify-center bg-stone-50 border border-stone-200 rounded text-[10px] font-mono text-rosebery-muted">
-        Failed to load scan evidence
+      <div className="w-full h-full flex items-center justify-center bg-stone-50 text-[10px] font-mono text-rosebery-muted">
+        Failed to load
       </div>
     );
   }
 
   return (
-    <div className="relative w-full aspect-square bg-[#FAF9F6] border border-rosebery-border rounded-sm overflow-hidden flex items-center justify-center shadow-gallery-soft group">
-      {!isLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center bg-stone-50 text-[10px] font-mono text-rosebery-muted animate-pulse">
-          Loading evidence...
+    <div
+      ref={containerRef}
+      className="relative w-full h-full cursor-zoom-in"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {!thumbDataUrl ? (
+        <div className="w-full h-full flex items-center justify-center bg-stone-50 text-[10px] font-mono text-rosebery-muted animate-pulse">
+          Loading...
+        </div>
+      ) : (
+        <img
+          src={thumbDataUrl}
+          alt={label}
+          className="w-full h-full object-contain"
+        />
+      )}
+
+      {/* Zoom tooltip: fixed position to the right of the evidence box */}
+      {hovered && zoomDataUrl && tooltipRect && (
+        <div
+          className="fixed z-[9999] pointer-events-none"
+          style={{
+            left: tooltipRect.right + 12,
+            top: tooltipRect.top,
+          }}
+        >
+          <div className="bg-white border-2 border-rosebery-primary rounded-lg shadow-2xl overflow-hidden w-[340px]">
+            <div className="bg-rosebery-primary px-3 py-1.5">
+              <span className="text-[9px] font-mono text-white uppercase tracking-widest font-bold truncate block">
+                🔍 {label}
+              </span>
+            </div>
+            <img src={zoomDataUrl} alt={label} className="block w-full h-auto object-contain" />
+          </div>
         </div>
       )}
-      <canvas 
-        ref={canvasRef} 
-        className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${isLoaded ? "opacity-100" : "opacity-0"}`} 
-      />
     </div>
   );
 }
@@ -825,12 +869,7 @@ export default function ReportView({
                   
                   {(report.modelUsed || report.promptVersion) && (
                     <div className="text-[11px] font-mono text-rosebery-muted pl-1">
-                      Appraisal Method: <span className="text-rosebery-charcoal font-semibold">{(() => {
-                        const approach = report.promptVersion || "standard";
-                        const formattedApproach = approach.charAt(0).toUpperCase() + approach.slice(1);
-                        const model = report.modelUsed || "gemini-2.5-flash";
-                        return `${formattedApproach} - ${model}`;
-                      })()}</span>
+                      Appraisal Method: <span className="text-rosebery-charcoal font-semibold">{resolveMethodLabel(report.promptVersion || "standard", report.modelUsed || "")}</span>
                     </div>
                   )}
                 </div>
@@ -1004,9 +1043,6 @@ export default function ReportView({
 
           {/* Valuation Panel */}
           {renderValuationPanel()}
-
-          {/* Archival care recommendations */}
-          {renderConservatorRecommendations()}
         </>
       )}
 
@@ -1193,38 +1229,53 @@ export default function ReportView({
                   {/* Dimensions & Margins Tab */}
                   {activeObsTab === "dimensions" && (
                     <div className="space-y-4 animate-fadeIn">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
-                          <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Printed Area (Plate size)</span>
-                          <span className="text-sm font-bold text-rosebery-charcoal font-mono">
-                            {report.stage1Result.dimensions.printedImageMM.width && report.stage1Result.dimensions.printedImageMM.height
-                              ? `${report.stage1Result.dimensions.printedImageMM.width} × ${report.stage1Result.dimensions.printedImageMM.height} mm`
-                              : "N/A"}
-                          </span>
-                        </div>
-                        <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
-                          <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Full Sheet Size</span>
-                          <span className="text-sm font-bold text-rosebery-charcoal font-mono">
-                            {report.stage1Result.dimensions.fullSheetMM.width && report.stage1Result.dimensions.fullSheetMM.height
-                              ? `${report.stage1Result.dimensions.fullSheetMM.width} × ${report.stage1Result.dimensions.fullSheetMM.height} mm`
-                              : "N/A"}
-                          </span>
-                        </div>
-                        <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
-                          <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Sheet Margin Integrity</span>
-                          <span className="font-bold text-rosebery-charcoal uppercase">{report.stage1Result.dimensions.marginCondition || "Unknown"}</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-stone-50 border border-rosebery-border p-4 rounded space-y-1.5">
-                        <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block">Dimensions Source Specimen</span>
-                        <p className="text-xs text-rosebery-muted leading-relaxed">
-                          Visual extraction scale source: <span className="font-mono font-semibold text-rosebery-charcoal">{report.stage1Result.dimensions.sourceImage}</span>. 
-                          {report.stage1Result.dimensions.sourceImage.includes("SCALE_SCAN") 
-                            ? " Estimated mathematically using the user-provided coin diameter next to the print boundary." 
-                            : " Scaled programmatically based on standard catalogue ratios."}
-                        </p>
-                      </div>
+                      {(() => {
+                        const dims = report.stage1Result.dimensions;
+                        const hasPlate = dims.printedImageMM?.width && dims.printedImageMM?.height;
+                        const hasSheet = dims.fullSheetMM?.width && dims.fullSheetMM?.height;
+                        const hasScale = dims.sourceImage?.includes("SCALE_SCAN");
+                        const hasNotes = report.inferredDimensions && report.inferredDimensions.trim().length > 0;
+                        if (!hasPlate && !hasSheet && !hasScale && !hasNotes) {
+                          return (
+                            <div className="bg-stone-50 border border-rosebery-border p-6 rounded text-center space-y-1.5">
+                              <span className="text-[10px] font-mono text-rosebery-muted uppercase tracking-wider block">Dimensions Assessment</span>
+                              <p className="text-sm font-serif italic text-rosebery-charcoal">No dimensions registered</p>
+                              <p className="text-xs text-rosebery-muted">No scaled photograph or dimension notes were provided with this submission.</p>
+                            </div>
+                          );
+                        }
+                        return (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
+                                <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Printed Area (Plate size)</span>
+                                <span className="text-sm font-bold text-rosebery-charcoal font-mono">
+                                  {hasPlate ? `${dims.printedImageMM.width} × ${dims.printedImageMM.height} mm` : "No dimensions registered"}
+                                </span>
+                              </div>
+                              <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
+                                <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Full Sheet Size</span>
+                                <span className="text-sm font-bold text-rosebery-charcoal font-mono">
+                                  {hasSheet ? `${dims.fullSheetMM.width} × ${dims.fullSheetMM.height} mm` : "No dimensions registered"}
+                                </span>
+                              </div>
+                              <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
+                                <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Sheet Margin Integrity</span>
+                                <span className="font-bold text-rosebery-charcoal uppercase">{dims.marginCondition || "Unknown"}</span>
+                              </div>
+                            </div>
+                            <div className="bg-stone-50 border border-rosebery-border p-4 rounded space-y-1.5">
+                              <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block">Dimensions Source Specimen</span>
+                              <p className="text-xs text-rosebery-muted leading-relaxed">
+                                Visual extraction scale source: <span className="font-mono font-semibold text-rosebery-charcoal">{dims.sourceImage}</span>.
+                                {hasScale
+                                  ? " Estimated mathematically using the user-provided coin diameter next to the print boundary."
+                                  : " Scaled programmatically based on standard catalogue ratios."}
+                              </p>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   )}
 
@@ -1315,6 +1366,41 @@ export default function ReportView({
                   {/* Inscriptions & Stamps Tab */}
                   {activeObsTab === "inscriptions" && (
                     <div className="space-y-6 animate-fadeIn">
+                      {/* Title Inscriptions */}
+                      <div className="space-y-3">
+                        <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-bold block border-b border-rosebery-border pb-1">TITLE INSCRIPTIONS & TEXT EVIDENCE</span>
+                        {report.stage1Result.titleInscriptions && report.stage1Result.titleInscriptions.length > 0 ? (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {report.stage1Result.titleInscriptions.map((ti, idx) => (
+                              <div key={idx} className="bg-stone-50 border border-rosebery-border p-3.5 rounded flex gap-4 shadow-xs">
+                                {ti.box_2d && ti.box_2d.length === 4 && imageUrl && (
+                                  <div className="w-32 h-32 shrink-0 rounded overflow-hidden border border-rosebery-border bg-white flex items-center justify-center">
+                                    <EvidenceCrop imageUrl={imageUrl} box_2d={ti.box_2d} label="Title inscription" />
+                                  </div>
+                                )}
+                                <div className="space-y-1 flex-1 text-xs">
+                                  <div className="flex justify-between items-start gap-1">
+                                    <span className="font-bold text-rosebery-charcoal uppercase text-[10px]">{ti.classification?.replace(/_/g, " ") || "Title Inscription"}</span>
+                                    <span className="bg-white border border-rosebery-border px-1 py-0.5 rounded font-mono text-[9px] text-rosebery-primary font-bold">
+                                      {typeof ti.titleConfidence === "number"
+                                        ? `${(ti.titleConfidence <= 1 ? ti.titleConfidence * 100 : ti.titleConfidence).toFixed(0)}% confidence`
+                                        : ti.titleConfidence}
+                                    </span>
+                                  </div>
+                                  <p className="text-[11px] font-serif italic text-rosebery-primary">"{ti.transcription}"</p>
+                                  <p className="text-[10px] text-rosebery-muted">Medium: <strong>{ti.medium}</strong> | Location: <strong>{ti.location}</strong></p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="bg-stone-50 border border-rosebery-border p-4 rounded flex flex-col items-center justify-center space-y-1 text-center min-h-[72px]">
+                            <span className="text-sm font-serif italic text-rosebery-charcoal">No title registered</span>
+                            <span className="text-[10px] font-mono text-rosebery-muted">No title inscriptions, cartouches, or legible title text detected in the scan.</span>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Signatures */}
                       <div className="space-y-3">
                         <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-bold block border-b border-rosebery-border pb-1">SIGNATURE INSCRIBED SPECIMENS</span>
@@ -1323,7 +1409,7 @@ export default function ReportView({
                             {report.stage1Result.signatures.map((sig, idx) => (
                               <div key={idx} className="bg-stone-50 border border-rosebery-border p-3.5 rounded flex gap-4 shadow-xs">
                                 {sig.box_2d && sig.box_2d.length === 4 && imageUrl && (
-                                  <div className="w-16 h-16 shrink-0 rounded overflow-hidden border border-rosebery-border bg-white flex items-center justify-center">
+                                  <div className="w-32 h-32 shrink-0 rounded overflow-hidden border border-rosebery-border bg-white flex items-center justify-center">
                                     <EvidenceCrop imageUrl={imageUrl} box_2d={sig.box_2d} label={sig.type} />
                                   </div>
                                 )}
@@ -1352,7 +1438,7 @@ export default function ReportView({
                             {report.stage1Result.editionInfo.map((ed, idx) => (
                               <div key={idx} className="bg-stone-50 border border-rosebery-border p-3.5 rounded flex gap-4 shadow-xs">
                                 {ed.box_2d && ed.box_2d.length === 4 && imageUrl && (
-                                  <div className="w-16 h-16 shrink-0 rounded overflow-hidden border border-rosebery-border bg-white flex items-center justify-center">
+                                  <div className="w-32 h-32 shrink-0 rounded overflow-hidden border border-rosebery-border bg-white flex items-center justify-center">
                                     <EvidenceCrop imageUrl={imageUrl} box_2d={ed.box_2d} label={ed.type} />
                                   </div>
                                 )}
@@ -1379,7 +1465,7 @@ export default function ReportView({
                             {report.stage1Result.stampsAndLabels.map((st, idx) => (
                               <div key={idx} className="bg-stone-50 border border-rosebery-border p-3.5 rounded flex gap-4 shadow-xs">
                                 {st.box_2d && st.box_2d.length === 4 && imageUrl && (
-                                  <div className="w-16 h-16 shrink-0 rounded overflow-hidden border border-rosebery-border bg-white flex items-center justify-center">
+                                  <div className="w-32 h-32 shrink-0 rounded overflow-hidden border border-rosebery-border bg-white flex items-center justify-center">
                                     <EvidenceCrop imageUrl={imageUrl} box_2d={st.box_2d} label={st.type} />
                                   </div>
                                 )}
@@ -1430,7 +1516,7 @@ export default function ReportView({
                           {report.stage1Result.condition.defects.map((def, idx) => (
                             <div key={idx} className="bg-stone-50 border border-rosebery-border p-3.5 rounded flex gap-4 shadow-xs">
                               {def.box_2d && def.box_2d.length === 4 && imageUrl && (
-                                <div className="w-16 h-16 shrink-0 rounded overflow-hidden border border-rosebery-border bg-white flex items-center justify-center">
+                                <div className="w-32 h-32 shrink-0 rounded overflow-hidden border border-rosebery-border bg-white flex items-center justify-center">
                                   <EvidenceCrop imageUrl={imageUrl} box_2d={def.box_2d} label={def.type} />
                                 </div>
                               )}
@@ -1523,100 +1609,278 @@ export default function ReportView({
                   <p className="font-serif italic text-rosebery-muted">"{report.artworkTitle}" by {report.likelyArtist}</p>
                   <p className="text-[11px] text-rosebery-muted mt-1">Creation Period: <strong>{report.creationPeriod}</strong></p>
                 </div>
+
+                {/* Top 3 Artist Candidates Table */}
+                {report.stage2aResult?.candidateArtists && report.stage2aResult.candidateArtists.length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-bold block">TOP ARTIST CANDIDATES</span>
+                    <table className="w-full text-xs border border-rosebery-border rounded overflow-hidden">
+                      <thead>
+                        <tr className="bg-rosebery-primary text-white">
+                          <th className="text-left px-3 py-2 font-mono text-[10px] uppercase tracking-wider">Rank</th>
+                          <th className="text-left px-3 py-2 font-mono text-[10px] uppercase tracking-wider">Artist</th>
+                          <th className="text-right px-3 py-2 font-mono text-[10px] uppercase tracking-wider">Probability</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {report.stage2aResult.candidateArtists.slice(0, 3).map((c, i) => (
+                          <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-stone-50"}>
+                            <td className="px-3 py-2 font-mono font-bold text-rosebery-primary">#{c.rank}</td>
+                            <td className="px-3 py-2 font-serif text-rosebery-charcoal">{c.artistName}</td>
+                            <td className="px-3 py-2 text-right font-bold font-mono text-rosebery-primary">
+                              {(c.candidateProbability * 100).toFixed(0)}%
+                              <div className="w-full bg-[#E8E2D7] h-1 rounded-full mt-1 overflow-hidden">
+                                <div className="bg-rosebery-primary h-full" style={{ width: `${c.candidateProbability * 100}%` }} />
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Top 3 Title Candidates from titleInscriptions */}
+                {report.stage1Result?.titleInscriptions && (report.stage1Result.titleInscriptions as any[]).length > 0 && (
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-bold block">TOP TITLE CANDIDATES (FROM INSCRIPTIONS)</span>
+                    <table className="w-full text-xs border border-rosebery-border rounded overflow-hidden">
+                      <thead>
+                        <tr className="bg-rosebery-primary text-white">
+                          <th className="text-left px-3 py-2 font-mono text-[10px] uppercase tracking-wider">#</th>
+                          <th className="text-left px-3 py-2 font-mono text-[10px] uppercase tracking-wider">Title Transcription</th>
+                          <th className="text-left px-3 py-2 font-mono text-[10px] uppercase tracking-wider">Location</th>
+                          <th className="text-right px-3 py-2 font-mono text-[10px] uppercase tracking-wider">Confidence</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(report.stage1Result.titleInscriptions as any[]).slice(0, 3).map((t: any, i: number) => (
+                          <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-stone-50"}>
+                            <td className="px-3 py-2 font-mono font-bold text-rosebery-primary">#{i + 1}</td>
+                            <td className="px-3 py-2 font-serif italic text-rosebery-charcoal">"{t.transcription}"</td>
+                            <td className="px-3 py-2 text-rosebery-muted text-[10px]">{t.location}</td>
+                            <td className="px-3 py-2 text-right font-bold font-mono text-rosebery-primary">
+                              {typeof t.titleConfidence === "number" ? `${(t.titleConfidence * 100).toFixed(0)}%` : t.titleConfidence}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               {/* Right Column: Catalogue Raisonné & References */}
               <div className="bg-stone-50 border border-rosebery-border p-5 rounded space-y-4 shadow-xs">
                 <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-bold block border-b border-rosebery-border pb-1.5">CATALOGUE RAISONNÉ REFERENCES</span>
-                {report.stage2Result?.catalogueRaisonneMatch?.matched ? (
-                  <div className="space-y-2">
-                    <div className="bg-emerald-50 border border-emerald-100 p-2.5 rounded text-emerald-950 flex items-start gap-2 text-xs">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <div>
-                        <strong>Verified Match Found:</strong>
-                        <p className="font-serif italic text-emerald-900 mt-0.5">{report.stage2Result.catalogueRaisonneMatch.referenceName}</p>
+                {(() => {
+                  const s2 = report.stage2Result;
+                  if (!s2) return null;
+                  if (s2.schemaVersion === "ASA-1.0") {
+                    const asaS2 = s2 as ASAAttributionResult;
+                    const cr = asaS2.catalogueRaisonne;
+                    const ac = asaS2.attributionConclusion;
+                    return (
+                      <div className="space-y-3">
+                        {cr.referenceFound ? (
+                          <div className="space-y-2">
+                            <div className="bg-emerald-50 border border-emerald-100 p-2.5 rounded text-emerald-950 flex items-start gap-2 text-xs">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                              <div>
+                                <strong>Verified Match Found:</strong>
+                                <p className="font-serif italic text-emerald-900 mt-0.5">{cr.catalogueName} {cr.plateOrCatalogueNumber}</p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-rosebery-muted leading-relaxed">{cr.catalogueEditionInfo}</p>
+                          </div>
+                        ) : (
+                          <div className="bg-amber-50 border border-amber-100 p-2.5 rounded text-amber-950 flex items-start gap-2 text-xs">
+                            <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                              <strong>Catalogue Reference Scan:</strong>
+                              <p className="mt-0.5">No direct catalogue raisonné reference resolved from specialist research.</p>
+                            </div>
+                          </div>
+                        )}
+                        {/* Artist period/style context */}
+                        <div className="border-t border-rosebery-border pt-3 space-y-2">
+                          <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-bold block">ARTIST PERIOD & STYLISTIC CONTEXT</span>
+                          {ac.dateOrPeriod && (
+                            <p className="text-xs text-rosebery-muted leading-relaxed">
+                              <strong className="text-rosebery-charcoal">Working Period:</strong> {ac.dateOrPeriod}
+                            </p>
+                          )}
+                          {ac.technique && (
+                            <p className="text-xs text-rosebery-muted leading-relaxed">
+                              <strong className="text-rosebery-charcoal">Identified Technique:</strong> {ac.technique}
+                            </p>
+                          )}
+                          {ac.confirmedSeriesName && (
+                            <p className="text-xs text-rosebery-muted leading-relaxed">
+                              <strong className="text-rosebery-charcoal">Series:</strong> {ac.confirmedSeriesName}
+                            </p>
+                          )}
+                          {asaS2.valuationRelevantFindings?.rarityFactors?.length > 0 && (
+                            <div>
+                              <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider block mb-1">Rarity Factors:</span>
+                              <ul className="space-y-0.5">
+                                {asaS2.valuationRelevantFindings.rarityFactors.map((f, i) => (
+                                  <li key={i} className="text-xs text-rosebery-muted flex items-start gap-1.5">
+                                    <span className="text-rosebery-primary shrink-0">•</span>{f}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {ac.attributionEvidenceChain?.length > 0 && (
+                            <div>
+                              <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider block mb-1">Attribution Evidence:</span>
+                              <ul className="space-y-0.5">
+                                {ac.attributionEvidenceChain.slice(0, 4).map((e, i) => (
+                                  <li key={i} className="text-xs text-rosebery-muted flex items-start gap-1.5">
+                                    <span className="text-emerald-600 shrink-0">✓</span>{e}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-xs text-rosebery-muted leading-relaxed">
-                      {report.stage2Result.catalogueRaisonneMatch.notes}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="bg-amber-50 border border-amber-100 p-2.5 rounded text-amber-950 flex items-start gap-2 text-xs">
-                      <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                      <div>
-                        <strong>Catalogue Reference Scan:</strong>
-                        <p className="mt-0.5">No direct matching index number resolved from the standard catalogue raisonné.</p>
+                    );
+                  }
+                  // Legacy 3-stage result
+                  const legacyS2 = s2 as LegacyAttributionResult;
+                  return legacyS2.catalogueRaisonneMatch?.matched ? (
+                    <div className="space-y-2">
+                      <div className="bg-emerald-50 border border-emerald-100 p-2.5 rounded text-emerald-950 flex items-start gap-2 text-xs">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Verified Match Found:</strong>
+                          <p className="font-serif italic text-emerald-900 mt-0.5">{legacyS2.catalogueRaisonneMatch!.referenceName}</p>
+                        </div>
                       </div>
+                      <p className="text-xs text-rosebery-muted leading-relaxed">{legacyS2.catalogueRaisonneMatch!.notes}</p>
                     </div>
-                    <p className="text-xs text-rosebery-muted leading-relaxed">
-                      {report.stage2Result?.catalogueRaisonneMatch?.notes || "Cross-referenced artist print bibliographies (including Artnet and named auction catalogues) for style patterns, edition layout, and margins."}
-                    </p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="bg-amber-50 border border-amber-100 p-2.5 rounded text-amber-950 flex items-start gap-2 text-xs">
+                        <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Catalogue Reference Scan:</strong>
+                          <p className="mt-0.5">No direct matching index number resolved from the standard catalogue raisonné.</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-rosebery-muted leading-relaxed">
+                        {legacyS2.catalogueRaisonneMatch?.notes || "Cross-referenced artist print bibliographies for style patterns, edition layout, and margins."}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>
 
-          {/* Editions & Reprint Verification Card */}
-          {report.stage2Result && (
-            <div className="bg-white border border-rosebery-border rounded-xl p-6 shadow-gallery-soft space-y-6 animate-fadeIn">
-              <div className="border-b border-rosebery-border pb-3.5">
-                <span className="text-xs font-mono tracking-[0.2em] text-rosebery-primary uppercase block mb-1 font-bold">
-                  STAGE 2 — EDITIONS & REPRINT VERIFICATION
-                </span>
-                <h3 className="text-xl md:text-2xl font-serif text-rosebery-charcoal font-semibold">
-                  Known Editions & Reprint Analysis
-                </h3>
-              </div>
+          {/* Composition & Historical Context — moved from Valuation tab */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
+            <div className="bg-white border border-rosebery-border rounded-xl p-6 shadow-gallery-soft">
+              <span className="text-xs font-mono tracking-[0.2em] text-rosebery-primary uppercase flex items-center gap-2 mb-3.5 font-bold">
+                <Info className="w-4 h-4" />
+                COMPOSITION & ICONOGRAPHY NOTES
+              </span>
+              {isEditing ? (
+                <textarea
+                  value={editVisualDescription}
+                  onChange={(e) => setEditVisualDescription(e.target.value)}
+                  rows={6}
+                  className="w-full bg-rosebery-sage border border-rosebery-sage-border focus:border-rosebery-primary focus:ring-1 focus:ring-rosebery-primary/20 rounded-sm p-3 text-xs text-rosebery-text-normal focus:outline-none leading-relaxed"
+                  placeholder="Visual composition notes..."
+                />
+              ) : (
+                <p className="text-xs text-rosebery-muted leading-relaxed">{report.visualDescription}</p>
+              )}
+            </div>
+            <div className="bg-white border border-rosebery-border rounded-xl p-6 shadow-gallery-soft">
+              <span className="text-xs font-mono tracking-[0.2em] text-rosebery-primary uppercase flex items-center gap-2 mb-3.5 font-bold">
+                <Compass className="w-4 h-4" />
+                HISTORICAL SIGNIFICANCE & BACKGROUND
+              </span>
+              {isEditing ? (
+                <textarea
+                  value={editHistoricalContext}
+                  onChange={(e) => setEditHistoricalContext(e.target.value)}
+                  rows={6}
+                  className="w-full bg-rosebery-sage border border-rosebery-sage-border focus:border-rosebery-primary focus:ring-1 focus:ring-rosebery-primary/20 rounded-sm p-3 text-xs text-rosebery-text-normal focus:outline-none leading-relaxed"
+                  placeholder="Historical context notes..."
+                />
+              ) : (
+                <p className="text-xs text-rosebery-muted leading-relaxed">{report.historicalContext}</p>
+              )}
+            </div>
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Editions Information */}
-                <div className="bg-stone-50 border border-rosebery-border p-5 rounded space-y-2 shadow-xs">
-                  <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-bold block border-b border-rosebery-border pb-1.5">
-                    KNOWN EDITIONS & PRINT RUNS
+          {/* Editions & Reprint Verification Card — only shown for legacy 3-stage results */}
+          {(() => {
+            const s2raw = report.stage2Result;
+            if (!s2raw || s2raw.schemaVersion === "ASA-1.0") return null;
+            const s2 = s2raw as LegacyAttributionResult;
+            return (
+              <div className="bg-white border border-rosebery-border rounded-xl p-6 shadow-gallery-soft space-y-6 animate-fadeIn">
+                <div className="border-b border-rosebery-border pb-3.5">
+                  <span className="text-xs font-mono tracking-[0.2em] text-rosebery-primary uppercase block mb-1 font-bold">
+                    STAGE 2 — EDITIONS & REPRINT VERIFICATION
                   </span>
-                  <p className="text-xs text-rosebery-muted leading-relaxed whitespace-pre-line font-sans">
-                    {report.stage2Result.editionsInformation}
-                  </p>
+                  <h3 className="text-xl md:text-2xl font-serif text-rosebery-charcoal font-semibold">
+                    Known Editions & Reprint Analysis
+                  </h3>
                 </div>
 
-                {/* Reprint Safety & Posthumous Check */}
-                <div className="space-y-4">
-                  <div className={`p-4 rounded border text-xs space-y-1.5 ${
-                    report.stage2Result.isPosthumousReprint
-                      ? "bg-rose-50 border-rose-100 text-rose-950"
-                      : "bg-emerald-50 border-emerald-100 text-emerald-950"
-                  }`}>
-                    <span className="font-bold font-mono text-[10px] uppercase block tracking-wider">
-                      {report.stage2Result.isPosthumousReprint ? "⚠️ Posthumous Reprint Flagged" : "✓ Lifetime Printing Assessed"}
-                    </span>
-                    <p className="leading-relaxed">
-                      {report.stage2Result.isPosthumousReprint
-                        ? "Later restrikes or posthumous reprints of this print design are documented. Additional verification of paper watermarks and ink quality is recommended."
-                        : "There are no major posthumous edition restrikes documented for this print design that conflict with lifetime impressions."}
-                    </p>
-                    {report.stage2Result.posthumousReprintDetails && (
-                      <p className="text-[11px] font-semibold mt-1">
-                        Details: {report.stage2Result.posthumousReprintDetails}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Edition Synthesis Evidence */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Editions Information */}
                   <div className="bg-stone-50 border border-rosebery-border p-5 rounded space-y-2 shadow-xs">
                     <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-bold block border-b border-rosebery-border pb-1.5">
-                      EDITION EVIDENCE SYNTHESIS
+                      KNOWN EDITIONS & PRINT RUNS
                     </span>
-                    <p className="text-xs text-rosebery-muted leading-relaxed font-sans">
-                      {report.stage2Result.editionSynthesisEvidence}
+                    <p className="text-xs text-rosebery-muted leading-relaxed whitespace-pre-line font-sans">
+                      {s2.editionsInformation}
                     </p>
+                  </div>
+
+                  {/* Reprint Safety & Posthumous Check */}
+                  <div className="space-y-4">
+                    <div className={`p-4 rounded border text-xs space-y-1.5 ${
+                      s2.isPosthumousReprint
+                        ? "bg-rose-50 border-rose-100 text-rose-950"
+                        : "bg-emerald-50 border-emerald-100 text-emerald-950"
+                    }`}>
+                      <span className="font-bold font-mono text-[10px] uppercase block tracking-wider">
+                        {s2.isPosthumousReprint ? "⚠️ Posthumous Reprint Flagged" : "✓ Lifetime Printing Assessed"}
+                      </span>
+                      <p className="leading-relaxed">
+                        {s2.isPosthumousReprint
+                          ? "Later restrikes or posthumous reprints of this print design are documented. Additional verification of paper watermarks and ink quality is recommended."
+                          : "There are no major posthumous edition restrikes documented for this print design that conflict with lifetime impressions."}
+                      </p>
+                      {s2.posthumousReprintDetails && (
+                        <p className="text-[11px] font-semibold mt-1">
+                          Details: {s2.posthumousReprintDetails}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Edition Synthesis Evidence */}
+                    <div className="bg-stone-50 border border-rosebery-border p-5 rounded space-y-2 shadow-xs">
+                      <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-bold block border-b border-rosebery-border pb-1.5">
+                        EDITION EVIDENCE SYNTHESIS
+                      </span>
+                      <p className="text-xs text-rosebery-muted leading-relaxed font-sans">
+                        {s2.editionSynthesisEvidence}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </>
       )}
 
@@ -1706,95 +1970,6 @@ export default function ReportView({
             </div>
           )}
 
-          {/* Technical Printmaking Detail Block */}
-          <div className="bg-white border border-rosebery-border rounded-xl p-6 shadow-gallery-soft animate-fadeIn">
-            <span className="text-xs font-mono tracking-[0.2em] text-rosebery-primary uppercase flex items-center gap-2 mb-5 border-b border-rosebery-border pb-3 font-bold">
-              <Layers className="w-4 h-4 text-rosebery-primary" />
-              IDENTIFIED PRINT ARCHIVAL TECHNIQUES
-            </span>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {report.techniques.map((tech, index) => (
-                <div key={index} className="bg-stone-50 border border-rosebery-border p-5 rounded-lg flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-center mb-2.5">
-                      <h4 className="font-serif font-semibold text-rosebery-charcoal text-md tracking-wide">{tech.technique}</h4>
-                      <span className="text-[10px] font-mono bg-white text-rosebery-primary border border-rosebery-border px-2 py-1 rounded font-bold">
-                        {tech.confidence}% matched
-                      </span>
-                    </div>
-                    <p className="text-xs text-rosebery-muted mb-4 italic leading-relaxed">
-                      {tech.description}
-                    </p>
-                  </div>
-
-                  <div className="border-t border-rosebery-border pt-3">
-                    <span className="text-[9px] font-mono text-rosebery-primary uppercase tracking-widest block mb-1.5 font-bold">
-                      CORROBORATIVE EVIDENCE IN PHOTO
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {tech.evidenceIdentified.map((ev, evIdx) => (
-                        <span 
-                          key={evIdx} 
-                          className="text-[10px] bg-rosebery-cream-bg border border-rosebery-border text-rosebery-charcoal px-2 py-0.5 rounded"
-                        >
-                          ✓ {ev}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Visual & Historical Context Panels */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
-            {/* Visual Description */}
-            <div className="bg-white border border-rosebery-border rounded-xl p-6 shadow-gallery-soft">
-              <span className="text-xs font-mono tracking-[0.2em] text-rosebery-primary uppercase flex items-center gap-2 mb-3.5 font-bold">
-                <Info className="w-4 h-4" />
-                COMPOSITION & ICONOGRAPHY NOTES
-              </span>
-              {isEditing ? (
-                <textarea
-                  value={editVisualDescription}
-                  onChange={(e) => setEditVisualDescription(e.target.value)}
-                  rows={6}
-                  className="w-full bg-rosebery-sage border border-rosebery-sage-border focus:border-rosebery-primary focus:ring-1 focus:ring-rosebery-primary/20 rounded-sm p-3 text-xs text-rosebery-text-normal focus:outline-none leading-relaxed"
-                  placeholder="Visual composition notes..."
-                />
-              ) : (
-                <p className="text-xs text-rosebery-muted leading-relaxed">
-                  {report.visualDescription}
-                </p>
-              )}
-            </div>
-
-            {/* Historical Context */}
-            <div className="bg-white border border-rosebery-border rounded-xl p-6 shadow-gallery-soft">
-              <span className="text-xs font-mono tracking-[0.2em] text-rosebery-primary uppercase flex items-center gap-2 mb-3.5 font-bold">
-                <Compass className="w-4 h-4" />
-                HISTORICAL SIGNIFICANCE & BACKGROUND
-              </span>
-              {isEditing ? (
-                <textarea
-                  value={editHistoricalContext}
-                  onChange={(e) => setEditHistoricalContext(e.target.value)}
-                  rows={6}
-                  className="w-full bg-rosebery-sage border border-rosebery-sage-border focus:border-rosebery-primary focus:ring-1 focus:ring-rosebery-primary/20 rounded-sm p-3 text-xs text-rosebery-text-normal focus:outline-none leading-relaxed"
-                  placeholder="Historical context notes..."
-                />
-              ) : (
-                <p className="text-xs text-rosebery-muted leading-relaxed">
-                  {report.historicalContext}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Archival care recommendations */}
-          {renderConservatorRecommendations()}
         </>
       )}
 
@@ -1948,12 +2123,7 @@ export default function ReportView({
             </span>
             {(report.modelUsed || report.promptVersion) && (
               <span className="text-[9px] font-mono text-rosebery-muted block mt-1">
-                Appraisal Method: <span className="text-rosebery-charcoal font-semibold">{(() => {
-                  const approach = report.promptVersion || "standard";
-                  const formattedApproach = approach.charAt(0).toUpperCase() + approach.slice(1);
-                  const model = report.modelUsed || "gemini-2.5-flash";
-                  return `${formattedApproach} - ${model}`;
-                })()}</span>
+                Appraisal Method: <span className="text-rosebery-charcoal font-semibold">{resolveMethodLabel(report.promptVersion || "standard", report.modelUsed || "")}</span>
               </span>
             )}
           </div>

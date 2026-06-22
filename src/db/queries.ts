@@ -637,50 +637,36 @@ export async function deleteUserData(userId: string, deleteType: "data-only" | "
 }
 
 // Appraisal Methods
+const APPRAISAL_METHOD_COLUMNS = `
+  id, name, description,
+  model_name              AS "modelName",
+  temperature,
+  prompt_key              AS "promptKey",
+  prompt_text             AS "promptText",
+  image_quality           AS "imageQuality",
+  include_auxiliary_scans AS "includeAuxiliaryScans",
+  provider,
+  stage1_model            AS "stage1Model",
+  stage2_model            AS "stage2Model",
+  stage2a_model           AS "stage2aModel",
+  stage2b_model           AS "stage2bModel",
+  stage3_model            AS "stage3Model"
+`;
+
 export async function getAppraisalMethods() {
-  const query = `
-    SELECT 
-      id, 
-      name, 
-      description, 
-      model_name AS "modelName", 
-      temperature, 
-      prompt_key AS "promptKey", 
-      prompt_text AS "promptText", 
-      image_quality AS "imageQuality", 
-      include_auxiliary_scans AS "includeAuxiliaryScans", 
-      provider
-    FROM appraisal_methods
-    ORDER BY created_at ASC;
-  `;
-  const res = await pool.query(query);
+  const res = await pool.query(`SELECT ${APPRAISAL_METHOD_COLUMNS} FROM appraisal_methods ORDER BY created_at ASC`);
   return res.rows;
 }
 
 export async function getAppraisalMethodById(id: string) {
-  const query = `
-    SELECT 
-      id, 
-      name, 
-      description, 
-      model_name AS "modelName", 
-      temperature, 
-      prompt_key AS "promptKey", 
-      prompt_text AS "promptText", 
-      image_quality AS "imageQuality", 
-      include_auxiliary_scans AS "includeAuxiliaryScans", 
-      provider
-    FROM appraisal_methods
-    WHERE id = $1;
-  `;
-  const res = await pool.query(query, [id]);
+  const res = await pool.query(`SELECT ${APPRAISAL_METHOD_COLUMNS} FROM appraisal_methods WHERE id = $1`, [id]);
   return res.rows[0] || null;
 }
 
 export async function saveAppraisalMethod(config: any) {
   const query = `
-    INSERT INTO appraisal_methods (id, name, description, model_name, temperature, prompt_key, prompt_text, image_quality, include_auxiliary_scans, provider)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    INSERT INTO appraisal_methods (id, name, description, model_name, temperature, prompt_key, prompt_text, image_quality, include_auxiliary_scans, provider, stage1_model, stage2_model, stage2a_model, stage2b_model, stage3_model)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
     ON CONFLICT (id) DO UPDATE SET
       name = EXCLUDED.name,
       description = EXCLUDED.description,
@@ -690,18 +676,13 @@ export async function saveAppraisalMethod(config: any) {
       prompt_text = EXCLUDED.prompt_text,
       image_quality = EXCLUDED.image_quality,
       include_auxiliary_scans = EXCLUDED.include_auxiliary_scans,
-      provider = EXCLUDED.provider
-    RETURNING 
-      id, 
-      name, 
-      description, 
-      model_name AS "modelName", 
-      temperature, 
-      prompt_key AS "promptKey", 
-      prompt_text AS "promptText", 
-      image_quality AS "imageQuality", 
-      include_auxiliary_scans AS "includeAuxiliaryScans", 
-      provider;
+      provider = EXCLUDED.provider,
+      stage1_model = EXCLUDED.stage1_model,
+      stage2_model = EXCLUDED.stage2_model,
+      stage2a_model = EXCLUDED.stage2a_model,
+      stage2b_model = EXCLUDED.stage2b_model,
+      stage3_model = EXCLUDED.stage3_model
+    RETURNING ${APPRAISAL_METHOD_COLUMNS};
   `;
   const res = await pool.query(query, [
     config.id,
@@ -713,7 +694,12 @@ export async function saveAppraisalMethod(config: any) {
     config.promptText || null,
     config.imageQuality || 'original',
     config.includeAuxiliaryScans ?? true,
-    config.provider || 'gemini'
+    config.provider || 'gemini',
+    config.stage1Model || null,
+    config.stage2Model || null,
+    config.stage2aModel || null,
+    config.stage2bModel || null,
+    config.stage3Model || null,
   ]);
   return res.rows[0];
 }

@@ -44,7 +44,14 @@ export interface PrintAnalysisReport {
   modelUsed?: string;
   promptVersion?: string;
   stage1Result?: VisualExtractionResult;
+  stage2aResult?: TriageResult;
   stage2Result?: AttributionResearchResult;
+  pipelineMeta?: {
+    specialistConfigUsed: string;
+    humanEscalationRequired: boolean;
+    physicalExaminationRequired: boolean;
+    overallAttributionConfidence: number;
+  };
 }
 
 export interface VisualEvidenceHighlight {
@@ -231,6 +238,16 @@ export interface VisualExtractionResult {
     scaleScan: boolean;
   };
   imageAuthenticity: ImageAuthenticity;
+  titleInscriptions?: Array<{
+    id: string;
+    transcription: string;
+    classification: string;
+    location: string;
+    medium: string;
+    sourceImage: string;
+    box_2d?: number[];
+    titleConfidence: number | string;
+  }>;
   signatures: SignaturesItem[];
   editionInfo: EditionInfoItem[];
   editionInfoAbsent: boolean;
@@ -249,20 +266,128 @@ export interface VisualExtractionResult {
   provisionalOutput: boolean;
 }
 
-export interface AttributionResearchResult {
-  likelyArtist: string;
-  artistConfidence: number;
-  artworkTitle: string;
-  titleConfidence: number;
-  creationPeriod: string;
-  catalogueRaisonneMatch: {
+// 3-stage legacy attribution result. schemaVersion is absent in existing DB records.
+export interface LegacyAttributionResult {
+  schemaVersion?: undefined;
+  likelyArtist?: string;
+  artistConfidence?: number;
+  artworkTitle?: string;
+  titleConfidence?: number;
+  creationPeriod?: string;
+  catalogueRaisonneMatch?: {
     matched: boolean;
     referenceName: string | null;
     notes: string | null;
   };
-  editionsInformation: string;
-  isPosthumousReprint: boolean;
-  posthumousReprintDetails: string | null;
-  editionSynthesisEvidence: string;
+  editionsInformation?: string;
+  isPosthumousReprint?: boolean;
+  posthumousReprintDetails?: string | null;
+  editionSynthesisEvidence?: string;
+}
+
+// 4-stage Specialist Attribution Agent (ASA-1.0) result.
+export interface ASAAttributionResult {
+  schemaVersion: "ASA-1.0";
+  specialistConfigUsed: string;
+  attributionConclusion: {
+    attributedArtist: string | null;
+    attributedArtistNative: string | null;
+    attributionLevel: 'definitive' | 'probable' | 'possible' | 'school_of' | 'tradition_only' | 'unattributed';
+    attributionConfidence: number;
+    attributionEvidenceChain: string[];
+    attributionCounterEvidence: string[];
+    workTitle: string | null;
+    workTitleNative: string | null;
+    dateOrPeriod: string | null;
+    technique: string | null;
+    confirmedSeriesName: string | null;
+  };
+  catalogueRaisonne: {
+    referenceFound: boolean;
+    catalogueName: string | null;
+    plateOrCatalogueNumber: string | null;
+    catalogueEditionInfo: string | null;
+    humanReferenceRequired: boolean;
+  };
+  reprintForgeryAssessment: {
+    reprintForgeryRisk: 'LOW' | 'MEDIUM' | 'HIGH' | 'UNASSESSABLE';
+    physicalExaminationRecommended: boolean;
+  };
+  seriesAndEditionIdentification: {
+    seriesConfirmed: boolean;
+    seriesName: string | null;
+    editionType: 'first' | 'later' | 'reprint' | 'posthumous' | 'unknown';
+    editionNotes: string | null;
+  };
+  valuationRelevantFindings: {
+    impressionPeriod: string | null;
+    conditionNotes: string | null;
+    rarityFactors: string[];
+    discountFactors: string[];
+    keyValueDrivers: string[];
+  };
+  researchConfidenceSummary: {
+    overallAttributionConfidence: number;
+    humanEscalationRequired: boolean;
+    humanEscalationReason: string | null;
+    physicalExaminationRequired: boolean;
+  };
+  unresolvedQuestions: Array<{
+    question: string;
+    whyUnresolved: string;
+    resolutionAction: string;
+    confidenceImpact: 'CRITICAL' | 'SIGNIFICANT' | 'MODERATE' | 'MINOR';
+  }>;
+}
+
+// Discriminated on schemaVersion: undefined → legacy 3-stage, "ASA-1.0" → 4-stage specialist.
+export type AttributionResearchResult = LegacyAttributionResult | ASAAttributionResult;
+
+export interface TriageResult {
+  schemaVersion: string;
+  triageTimestamp: string;
+  inputValidation: {
+    inputValidationError: boolean;
+    lowSourceConfidence: boolean;
+    veaExtractionConfidence: number;
+    provisionalOutput: boolean;
+  };
+  traditionIdentification: {
+    primaryTradition: string;
+    traditionConfidence: number;
+    supportingEvidence: string[];
+    contradictingEvidence: string[];
+  };
+  periodEstimation: {
+    estimatedPeriodRange: string;
+    periodConfidence: number;
+  };
+  candidateArtists: Array<{
+    rank: number;
+    artistName: string;
+    candidateProbability: number;
+    supportingEvidence: string[];
+    contradictingEvidence: string[];
+  }>;
+  riskFlags: {
+    forgeryRisk: boolean;
+    reprintRisk: boolean;
+    editionComplexityRisk: boolean;
+    misattributionRisk: boolean;
+    authenticationBodyExists: boolean;
+    physicalExaminationRequired: boolean;
+  };
+  routingDecision: {
+    tier: 1 | 2 | 3;
+    specialistConfig: string;
+    routingRationale: string;
+    humanEscalationRequired: boolean;
+    humanEscalationReason: string | null;
+    alternativeConfig: string;
+  };
+  triageConfidenceSummary: {
+    overallTriageConfidence: number;
+    criticalUnresolved: string[];
+  };
 }
 

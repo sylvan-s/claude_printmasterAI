@@ -37,6 +37,8 @@ import {
   setItemDatabaseDB,
   migrateGuestToUserDB
 } from "./utils/db";
+import { resolveMethodLabel } from "./utils/resolveMethodLabel";
+import { cropImageCanvas } from "./utils/cropImageCanvas";
 
 // Helper: Generate a small compressed JPEG thumbnail image (max 300x300) for history items to prevent LocalStorage QuotaExceededError
 const generateThumbnail = (fileOrBase64: File | string, maxWidth = 300, maxHeight = 300): Promise<string> => {
@@ -149,42 +151,6 @@ const resizeImageIfNeeded = async (
   });
 };
 
-const cropImageCanvas = (
-  base64Data: string, 
-  box_2d: number[]
-): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const [ymin, xmin, ymax, xmax] = box_2d;
-      
-      const x = (xmin / 1000) * img.width;
-      const y = (ymin / 1000) * img.height;
-      const w = ((xmax - xmin) / 1000) * img.width;
-      const h = ((ymax - ymin) / 1000) * img.height;
-
-      const canvas = document.createElement("canvas");
-      const cropW = Math.max(1, w);
-      const cropH = Math.max(1, h);
-      
-      canvas.width = cropW;
-      canvas.height = cropH;
-
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-        ctx.drawImage(img, x, y, cropW, cropH, 0, 0, cropW, cropH);
-        resolve(canvas.toDataURL("image/jpeg", 0.85));
-      } else {
-        reject(new Error("Failed to get 2D canvas context."));
-      }
-    };
-    img.onerror = () => reject(new Error("Failed to load source image for crop."));
-    img.src = base64Data;
-  });
-};
-
 export default function App() {
   // Navigation / Workspace States
   const [activeTab, setActiveTab] = useState<"sandbox" | "batch" | "history" | "settings" | "admin">("sandbox");
@@ -214,6 +180,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Core Data Output States
   const [analysisResult, setAnalysisResult] = useState<PrintAnalysisReport | null>(null);
@@ -246,6 +213,8 @@ export default function App() {
 
   // Multi-catalogue States
   const [catalogs, setCatalogs] = useState<CatalogMetadata[]>([]);
+  const catalogsRef = useRef<CatalogMetadata[]>([]);
+  catalogsRef.current = catalogs;
   const [activeCatalogId, setActiveCatalogId] = useState<string>("default");
   const [targetOption, setTargetOption] = useState<"current" | "new">("current");
   const [newCatalogName, setNewCatalogName] = useState("");
@@ -538,6 +507,37 @@ export default function App() {
     }
 
     return finalId;
+  };
+
+  // Find an existing catalogue whose name matches the method label, or create one.
+  const findOrCreateMethodCatalog = async (methodLabel: string): Promise<string> => {
+    const current = catalogsRef.current;
+    const existing = current.find(c => c.name === methodLabel);
+    if (existing) return existing.id;
+
+    const newId = generateUniqueCatalogId(current, currentUser);
+    const newCatalog: CatalogMetadata = {
+      id: newId,
+      name: methodLabel,
+      timestamp: new Date().toISOString(),
+    };
+    const updatedCatalogs = [...current, newCatalog];
+    setCatalogs(updatedCatalogs);
+    await setCatalogsListDB(updatedCatalogs);
+    await setCatalogItemsDB(newId, []);
+
+    if (currentUser) {
+      try {
+        await fetch("/api/user/catalog-list", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-User-Header": currentUser },
+          body: JSON.stringify({ catalogs: updatedCatalogs, activeCatalogId }),
+        });
+      } catch (err) {
+        console.error("Failed to sync new method catalogue to server:", err);
+      }
+    }
+    return newId;
   };
 
   const handleRenameCatalog = async (oldId: string, newId: string, newName: string) => {
@@ -864,6 +864,10 @@ export default function App() {
     setLoadingProgress(5);
     setLoadingStep("Preparing image for digitized transmission...");
 
+    const abort = new AbortController();
+    abortControllerRef.current = abort;
+    const signal = abort.signal;
+
     try {
       // Step simulated progress cycles
       const interval = setInterval(() => {
@@ -944,7 +948,8 @@ export default function App() {
       const detectRes = await fetch("/api/detect-artworks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64Data, mimeType: selectedFile.type })
+        body: JSON.stringify({ imageBase64: base64Data, mimeType: selectedFile.type }),
+        signal,
       });
       if (!detectRes.ok) {
         const errData = await detectRes.json().catch(() => ({}));
@@ -976,6 +981,7 @@ export default function App() {
               currency,
               method: appraisalMethod
             }),
+            signal,
           });
           if (!analyzeRes.ok) {
             const errData = await analyzeRes.json().catch(() => ({}));
@@ -1020,6 +1026,7 @@ export default function App() {
             currency,
             method: appraisalMethod
           }),
+          signal,
         });
         if (!analyzeRes.ok) {
           const errData = await analyzeRes.json().catch(() => ({}));
@@ -1057,6 +1064,16 @@ export default function App() {
       clearInterval(interval);
       clearInterval(progressTextTimer);
 
+      // Auto-assign items to a per-method catalogue
+      if (splitItems.length > 0) {
+        const methodLabel = resolveMethodLabel(
+          splitItems[0].report.promptVersion || "standard",
+          splitItems[0].report.modelUsed || ""
+        );
+        const methodCatalogId = await findOrCreateMethodCatalog(methodLabel);
+        splitItems.forEach(item => { item.catalogue_id = methodCatalogId; });
+      }
+
       const newHistory = [...splitItems, ...catalogHistory];
       await updateHistory(newHistory);
 
@@ -1073,13 +1090,23 @@ export default function App() {
       }, 300);
 
     } catch (err: any) {
-      console.error(err);
-      setError(
-        err.message || 
-        "The analysis connection timed out. Please check if your GEMINI_API_KEY is configured in Settings > Secrets."
-      );
+      if (err.name === "AbortError") {
+        setLoadingStep("Analysis stopped.");
+      } else {
+        console.error(err);
+        setError(
+          err.message ||
+          "The analysis connection timed out. Please check if your GEMINI_API_KEY is configured in Settings > Secrets."
+        );
+      }
       setIsLoading(false);
+    } finally {
+      abortControllerRef.current = null;
     }
+  };
+
+  const handleStopAnalysis = () => {
+    abortControllerRef.current?.abort();
   };
 
   const handleHistoryDragStart = (e: React.DragEvent, index: number) => {
@@ -1610,6 +1637,12 @@ export default function App() {
                 <span className="text-[11px] font-mono text-rosebery-muted block">
                   {loadingProgress}% Analytically Computed
                 </span>
+                <button
+                  onClick={handleStopAnalysis}
+                  className="mt-2 px-4 py-1.5 text-xs font-mono uppercase tracking-wider text-rosebery-muted border border-rosebery-border rounded hover:border-rosebery-primary hover:text-rosebery-primary transition-colors"
+                >
+                  Stop Analysis
+                </button>
               </div>
             )}
 

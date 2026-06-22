@@ -3,6 +3,7 @@ import { Download, Mail, Trash2, Folder, Hash, FileText, Check, Loader2, GripVer
 import { AnalysisHistoryItem, PrintAnalysisReport, CatalogMetadata } from "../types";
 import HistorySidebar from "./HistorySidebar";
 import LotCreatorModal from "./LotCreatorModal";
+import { resolveMethodLabel } from "../utils/resolveMethodLabel";
 
 interface CatalogListViewProps {
   isHistoryLoading: boolean;
@@ -202,9 +203,7 @@ export default function CatalogListView({
 
   const uniqueModels = React.useMemo(() => {
     const models = new Set<string>();
-    // Pre-populate with known system methods so they are always available for selection
-    models.add("Gemini 3-Stage Pipeline");
-    models.add("Claude 3-Stage Pipeline");
+    // Pre-populate all known method names so they always appear in the filter
     models.add("Gemini Standard");
     models.add("Gemini Pro (2.5)");
     models.add("Gemini Pro (Stable)");
@@ -217,27 +216,15 @@ export default function CatalogListView({
     models.add("Gemini (No Aux Scans)");
     models.add("Claude Sonnet (4.6)");
     models.add("Claude Opus (4.8)");
+    models.add("Gemini 3-Stage Pipeline");
+    models.add("Claude 3-Stage Pipeline");
+    models.add("Claude 4-Stage Pipeline");
+    models.add("Gemini 4-Stage Pipeline");
 
     catalogHistory.forEach(item => {
       const approach = item.report.promptVersion || "standard";
       const model = item.report.modelUsed || "gemini-2.5-flash";
-      
-      let methodStr = `${approach.charAt(0).toUpperCase() + approach.slice(1)} - ${model}`;
-      if (approach === "3stage" || model.includes("3-Stage")) {
-        if (model.toLowerCase().includes("claude") || model.toLowerCase().includes("anthropic")) {
-          methodStr = "Claude 3-Stage Pipeline";
-        } else {
-          methodStr = "Gemini 3-Stage Pipeline";
-        }
-      } else {
-        if (model === "gemini-3.5-flash" && approach === "standard") methodStr = "Gemini Standard";
-        else if (model === "gemini-2.5-pro" && approach === "standard") methodStr = "Gemini Pro (2.5)";
-        else if (model === "gemini-pro-latest" && approach === "standard") methodStr = "Gemini Pro (Stable)";
-        else if (model === "gemini-3.1-pro-preview" && approach === "standard") methodStr = "Gemini 3.1 Pro (Preview)";
-        else if (model === "claude-sonnet-4-6" && approach === "standard") methodStr = "Claude Sonnet (4.6)";
-        else if (model === "claude-opus-4-8" && approach === "standard") methodStr = "Claude Opus (4.8)";
-      }
-      models.add(methodStr);
+      models.add(resolveMethodLabel(approach, model));
     });
     return Array.from(models);
   }, [catalogHistory]);
@@ -273,24 +260,7 @@ export default function CatalogListView({
       if (filterAppraisalMethod !== "all") {
         const approach = item.report.promptVersion || "standard";
         const model = item.report.modelUsed || "gemini-2.5-flash";
-        
-        let itemMethod = `${approach.charAt(0).toUpperCase() + approach.slice(1)} - ${model}`;
-        if (approach === "3stage" || model.includes("3-Stage")) {
-          if (model.toLowerCase().includes("claude") || model.toLowerCase().includes("anthropic")) {
-            itemMethod = "Claude 3-Stage Pipeline";
-          } else {
-            itemMethod = "Gemini 3-Stage Pipeline";
-          }
-        } else {
-          if (model === "gemini-3.5-flash" && approach === "standard") itemMethod = "Gemini Standard";
-          else if (model === "gemini-2.5-pro" && approach === "standard") itemMethod = "Gemini Pro (2.5)";
-          else if (model === "gemini-pro-latest" && approach === "standard") itemMethod = "Gemini Pro (Stable)";
-          else if (model === "gemini-3.1-pro-preview" && approach === "standard") itemMethod = "Gemini 3.1 Pro (Preview)";
-          else if (model === "claude-sonnet-4-6" && approach === "standard") itemMethod = "Claude Sonnet (4.6)";
-          else if (model === "claude-opus-4-8" && approach === "standard") itemMethod = "Claude Opus (4.8)";
-        }
-        
-        if (itemMethod !== filterAppraisalMethod) return false;
+        if (resolveMethodLabel(approach, model) !== filterAppraisalMethod) return false;
       }
       
       return true;

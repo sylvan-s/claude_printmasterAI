@@ -13,7 +13,7 @@ import { STANDARD_PROMPT_TEMPLATE, SIMPLIFIED_PROMPT_TEMPLATE, STRICT_PROMPT_TEM
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const USER_RECORDS_DIR = path.join(DATA_DIR, "user_records");
@@ -334,11 +334,18 @@ app.post("/api/detect-artworks", async (req, res) => {
       },
       {
         text: `Analyze this image scan. Determine if it contains multiple distinct artwork pieces, fine art prints, or paintings (e.g. a collage, multiple separate print sheets scanned or photographed together on a single background or scanner bed).
-        
-If the image contains multiple distinct artworks, identify the bounding box for each individual artwork.
-If the image contains only a single artwork, return containsMultipleArtworks as false and provide a single bounding box for the entire image: [0, 0, 1000, 1000] representing the whole scan.
 
-Coordinates MUST be normalized to a 0 to 1000 scale, formatted as [ymin, xmin, ymax, xmax] relative to the overall image height and width.`,
+RULES FOR MULTIPLE ARTWORKS:
+- Draw a TIGHT bounding box around each individual artwork, hugging its outer edges closely.
+- Each bounding box must enclose exactly ONE artwork — boxes must NOT overlap each other and must NOT contain more than one artwork.
+- Do NOT include neighbouring artworks inside another artwork's box.
+- If artworks are side by side, the right edge of the left box and the left edge of the right box should be at the gap between them.
+- If artworks are stacked vertically, the bottom edge of the upper box and the top edge of the lower box should be at the gap between them.
+
+RULES FOR SINGLE ARTWORK:
+- If the image contains only a single artwork, return containsMultipleArtworks as false and a single bounding box [0, 0, 1000, 1000].
+
+Coordinates MUST be normalized to a 0–1000 scale, formatted as [ymin, xmin, ymax, xmax] relative to the overall image height and width.`,
       },
     ];
 
@@ -406,6 +413,88 @@ Coordinates MUST be normalized to a 0 to 1000 scale, formatted as [ymin, xmin, y
     }
 
     const detection = JSON.parse(textOutput.trim());
+
+    // Post-process: if multiple artworks detected but any box spans >85% of the
+    // full image in both axes, Gemini gave us a containing box rather than a tight
+    // one.  Remove such boxes — the remaining boxes are the real artworks.
+    if (detection.containsMultipleArtworks && Array.isArray(detection.artworks) && detection.artworks.length > 1) {
+      const filtered = detection.artworks.filter((art: any) => {
+        const [ymin, xmin, ymax, xmax] = art.box_2d;
+        const wFrac = (xmax - xmin) / 1000;
+        const hFrac = (ymax - ymin) / 1000;
+        // Drop any box that covers almost the entire image in both dimensions
+        return !(wFrac > 0.85 && hFrac > 0.85);
+      });
+      if (filtered.length >= 2) {
+        detection.artworks = filtered;
+      }
+      // If boxes overlap significantly, try to partition them by splitting at midpoints
+      // Sort artworks left-to-right by xmin
+      detection.artworks.sort((a: any, b: any) => a.box_2d[1] - b.box_2d[1]);
+      for (let i = 0; i < detection.artworks.length - 1; i++) {
+        const cur = detection.artworks[i];
+        const next = detection.artworks[i + 1];
+        const [, , , curXmax] = cur.box_2d;
+        const [, nextXmin] = next.box_2d;
+        if (curXmax > nextXmin) {
+          // Overlap on x-axis — split at the midpoint between the two xmins
+          const splitX = Math.round((cur.box_2d[1] + next.box_2d[1] + cur.box_2d[3] + next.box_2d[3]) / 4);
+          cur.box_2d[3] = splitX;   // curXmax = splitX
+          next.box_2d[1] = splitX;  // nextXmin = splitX
+        }
+      }
+      // Also fix vertical overlaps
+      detection.artworks.sort((a: any, b: any) => a.box_2d[0] - b.box_2d[0]);
+      for (let i = 0; i < detection.artworks.length - 1; i++) {
+        const cur = detection.artworks[i];
+        const next = detection.artworks[i + 1];
+        const curYmax = cur.box_2d[2];
+        const nextYmin = next.box_2d[0];
+        if (curYmax > nextYmin) {
+          const splitY = Math.round((cur.box_2d[0] + next.box_2d[0] + cur.box_2d[2] + next.box_2d[2]) / 4);
+          cur.box_2d[2] = splitY;
+          next.box_2d[0] = splitY;
+        }
+      }
+    }
+
+    // Add padding to each crop (20 units = 2% on 0–1000 scale) so tight Gemini
+    // boxes don't clip artwork edges.  Clamp to image bounds and shrink neighbours
+    // to avoid overlap at the shared boundary.
+    const PAD = 40;
+    if (Array.isArray(detection.artworks)) {
+      detection.artworks = detection.artworks.map((art: any) => {
+        let [ymin, xmin, ymax, xmax] = art.box_2d;
+        ymin = Math.max(0, ymin - PAD);
+        xmin = Math.max(0, xmin - PAD);
+        ymax = Math.min(1000, ymax + PAD);
+        xmax = Math.min(1000, xmax + PAD);
+        return { ...art, box_2d: [ymin, xmin, ymax, xmax] };
+      });
+      // Re-resolve overlaps introduced by padding — split at the midpoint gap
+      if (detection.artworks.length > 1) {
+        detection.artworks.sort((a: any, b: any) => a.box_2d[1] - b.box_2d[1]);
+        for (let i = 0; i < detection.artworks.length - 1; i++) {
+          const cur = detection.artworks[i]; const next = detection.artworks[i + 1];
+          if (cur.box_2d[3] > next.box_2d[1]) {
+            const mid = Math.round((cur.box_2d[3] + next.box_2d[1]) / 2);
+            cur.box_2d[3] = mid; next.box_2d[1] = mid;
+          }
+        }
+        detection.artworks.sort((a: any, b: any) => a.box_2d[0] - b.box_2d[0]);
+        for (let i = 0; i < detection.artworks.length - 1; i++) {
+          const cur = detection.artworks[i]; const next = detection.artworks[i + 1];
+          if (cur.box_2d[2] > next.box_2d[0]) {
+            const mid = Math.round((cur.box_2d[2] + next.box_2d[0]) / 2);
+            cur.box_2d[2] = mid; next.box_2d[0] = mid;
+          }
+        }
+      }
+    }
+
+    const detectionJson = JSON.stringify(detection, null, 2);
+    console.log("Detection result:", detectionJson);
+    try { fs.writeFileSync("/tmp/last-detection.json", detectionJson); } catch (_) {}
     return res.json(detection);
   } catch (error: any) {
     console.error("Gemini artwork detection failed:", error);
@@ -802,8 +891,8 @@ async function setupServer() {
     console.log("Upserting default appraisal methods into database...");
     for (const config of appraiserConfigs) {
       await client.query(`
-        INSERT INTO appraisal_methods (id, name, description, model_name, temperature, prompt_key, prompt_text, image_quality, include_auxiliary_scans, provider)
-        VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9)
+        INSERT INTO appraisal_methods (id, name, description, model_name, temperature, prompt_key, prompt_text, image_quality, include_auxiliary_scans, provider, stage1_model, stage2_model, stage2a_model, stage2b_model, stage3_model)
+        VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           description = EXCLUDED.description,
@@ -812,7 +901,12 @@ async function setupServer() {
           prompt_key = EXCLUDED.prompt_key,
           image_quality = EXCLUDED.image_quality,
           include_auxiliary_scans = EXCLUDED.include_auxiliary_scans,
-          provider = EXCLUDED.provider;
+          provider = EXCLUDED.provider,
+          stage1_model = EXCLUDED.stage1_model,
+          stage2_model = EXCLUDED.stage2_model,
+          stage2a_model = EXCLUDED.stage2a_model,
+          stage2b_model = EXCLUDED.stage2b_model,
+          stage3_model = EXCLUDED.stage3_model;
       `, [
         config.id,
         config.name,
@@ -822,7 +916,12 @@ async function setupServer() {
         config.promptKey,
         config.imageQuality,
         config.includeAuxiliaryScans,
-        config.provider || 'gemini'
+        config.provider || 'gemini',
+        config.stage1Model || null,
+        config.stage2Model || null,
+        config.stage2aModel || null,
+        config.stage2bModel || null,
+        config.stage3Model || null,
       ]);
     }
     console.log("✓ Default appraisal methods synchronized.");
