@@ -91,13 +91,26 @@ function getCurrencySymbol(code: string): string {
 
 function parseCleanJson(text: string): any {
   let clean = text.trim();
+
+  // Strip markdown code fences
   if (clean.startsWith("```")) {
     const lines = clean.split("\n");
     const start = lines[0].startsWith("```") ? 1 : 0;
     const end = lines[lines.length - 1] === "```" ? lines.length - 1 : lines.length;
     clean = lines.slice(start, end).join("\n").trim();
   }
-  return JSON.parse(clean);
+
+  // Try direct parse first
+  try { return JSON.parse(clean); } catch {}
+
+  // Extract first {...} block from prose-wrapped output
+  const firstBrace = clean.indexOf("{");
+  const lastBrace = clean.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    return JSON.parse(clean.slice(firstBrace, lastBrace + 1));
+  }
+
+  throw new SyntaxError("No valid JSON object found in response");
 }
 
 function loadSpecialistConfig(configKey: string): object {
@@ -435,7 +448,10 @@ export class ThreeStageAppraiser implements AppraisalMethod {
         model: modelName,
         max_tokens: 8192,
         system: systemInstruction,
-        messages: [{ role: "user", content: userText }],
+        messages: [{
+          role: "user",
+          content: userText + "\n\n⚠️ CRITICAL: Your entire response must be a single valid JSON object matching the OUTPUT SCHEMA above. Do not write any prose, explanation, or text outside the JSON object. Start your response with { and end with }.",
+        }],
         tools: [{ type: "web_search_20250305", name: "web_search" }],
       }),
     });
@@ -528,9 +544,13 @@ export class ThreeStageAppraiser implements AppraisalMethod {
   private async runStage2aTriage(
     vea: VisualExtractionResult,
     stage2aModel: string,
-    ai: GoogleGenAI
+    ai: GoogleGenAI,
+    userNotes?: string
   ): Promise<TriageResult> {
-    const userText = `Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and route to the correct specialist config.\n\n${JSON.stringify(vea, null, 2)}`;
+    const notesBlock = userNotes?.trim()
+      ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for tradition identification and artist candidates):\n"${userNotes.trim()}"\n\n`
+      : "";
+    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and route to the correct specialist config.\n\n${JSON.stringify(vea, null, 2)}`;
     if (isClaude(stage2aModel)) {
       return this.callClaude(stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ type: "text", text: userText }], "report_attribution_triage", "Report the structured attribution triage and routing decision.", TRIAGE_SCHEMA);
     } else {
@@ -542,12 +562,16 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     vea: VisualExtractionResult,
     triage: TriageResult,
     stage2bModel: string,
-    ai: GoogleGenAI
+    ai: GoogleGenAI,
+    userNotes?: string
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
     const asaSystemPrompt = injectSpecialistConfig(ATTRIBUTION_RESEARCH_SYSTEM_PROMPT, specialistConfig);
-    const userText = `TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage, null, 2)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(vea, null, 2)}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
+    const notesBlock = userNotes?.trim()
+      ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for attribution and title identification):\n"${userNotes.trim()}"\n\n`
+      : "";
+    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage, null, 2)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(vea, null, 2)}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
     if (isClaude(stage2bModel)) {
@@ -612,9 +636,9 @@ export class ThreeStageAppraiser implements AppraisalMethod {
 
     if (this.config.stage2aModel) {
       // 4-stage: Triage → Specialist
-      triageResult = await this.runStage2aTriage(vea, this.config.stage2aModel, ai);
+      triageResult = await this.runStage2aTriage(vea, this.config.stage2aModel, ai, input.userNotes);
       const stage2bModel = this.config.stage2bModel || this.config.stage2aModel;
-      attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai);
+      attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes);
     } else {
       // 3-stage: direct attribution research
       const stage2Model = this.config.stage2Model || defaultModel;
