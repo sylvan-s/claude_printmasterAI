@@ -126,7 +126,7 @@ app.post("/api/analyze-print", async (req, res) => {
       scaleBase64,
       scaleMimeType,
       currency = "USD",
-      method = "gemini-3stage"
+      method = "claude-4stage-fast"
     } = req.body;
 
     const resolvedImage = resolveImageInput(imageBase64, mimeType);

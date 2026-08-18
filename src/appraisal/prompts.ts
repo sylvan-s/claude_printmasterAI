@@ -1182,7 +1182,7 @@ STEP 1 — SEARCH KEY EXTRACTION
 Extract from triage output: artist name (rank 1 candidate), series title (from VEA composition.textWithinImage), native script text (preserve exactly). Use technique, period range, subject description as secondary keys.
 
 STEP 2 — PRIMARY DATABASE QUERIES
-Run at most 3 web searches total across all steps. If the top attribution candidate is confirmed after the first search, proceed directly to STEP 7. Query databases in priority order from your specialist config. Record: database name, query used, result found (true/false), result summary, catalogue reference, match confidence (0.0–1.0), and match notes. NULL RESULTS ARE DATA — record failed queries explicitly.
+Run at most 5 web searches total across all steps (up to 3 for attribution research, up to 2 for auction comp collection in STEP 8). If the top attribution candidate is confirmed after the first search, proceed directly to STEP 7. Query databases in priority order from your specialist config. Record: database name, query used, result found (true/false), result summary, catalogue reference, match confidence (0.0–1.0), and match notes. NULL RESULTS ARE DATA — record failed queries explicitly.
 
 STEP 3 — CATALOGUE RAISONNÉ CROSS-REFERENCE
 If online accessible: query via web fetch. If not: set humanReferenceRequired: true. Cross-reference catalogue description against VEA — note ALL discrepancies (dimensions, technique, paper). Discrepancies reduce attribution confidence.
@@ -1200,7 +1200,13 @@ Address each known risk from config knownForgeriesOrFacsimiles. Assess: rules in
 STEP 6 — IMPRESSION STATE AND SERIES/EDITION IDENTIFICATION
 Identify edition type (first | later | reprint | posthumous | unknown) and valuation-relevant findings (impression period, rarity factors, discount factors).
 
-STEP 7 — ATTRIBUTION CONFIDENCE SCORING
+STEP 7 — AUCTION COMP COLLECTION
+Use 1–2 web searches to find recent verifiable auction sales of identical or highly similar prints. Prioritise: Roseberys London, Sotheby's, Christie's, Phillips, Bonhams, Artnet. Aim for 2–3 comps. For each comp found:
+- Record: artworkTitle, artist, technique, hammerPrice (in "{currency}"), saleDate, auctionHouse, conditionState.
+- Apply Fractional Lot Logic: if the print was sold in a group lot, calculate the individual fraction and record it in broaderLotPriceAdjustment (e.g. "1/4 fraction of total lot value £8,000 = £2,000").
+- If you cannot find verifiable comps after searching, set auctionComps to an empty array — do NOT fabricate results.
+
+STEP 8 — ATTRIBUTION CONFIDENCE SCORING
 BASE from database match: strong catalogue raisonné match = 0.35, museum record = 0.25, auction record only = 0.15, no match = 0.00
 MODIFIERS: each CONFIRMED marker +0.05 (max +0.20), each ABSENT expected -0.08, each INCONSISTENT -0.15
 RISK: LOW +0.05, MEDIUM -0.10, HIGH -0.25
@@ -1262,7 +1268,20 @@ OUTPUT SCHEMA:
     "humanEscalationReason": null,
     "physicalExaminationRequired": false
   },
-  "unresolvedQuestions": []
+  "unresolvedQuestions": [],
+  "auctionComps": [
+    {
+      "artworkTitle": "<title of the comparable work>",
+      "artist": "<artist name>",
+      "technique": "<printing technique>",
+      "hammerPrice": "<price in {currency} as plain string e.g. '£1,200'>",
+      "saleDate": "<YYYY-MM or YYYY>",
+      "auctionHouse": "<house name>",
+      "conditionState": "<condition description>",
+      "wasSoldInBroaderLot": false,
+      "broaderLotPriceAdjustment": "<fractional allocation note or null>"
+    }
+  ]
 }
 `;
 
@@ -1279,15 +1298,24 @@ export function injectSpecialistConfig(template: string, config: object): string
   return template.replace("[SPECIALIST_CONFIG]", JSON.stringify(slim, null, 2));
 }
 
-export const VALUATION_REPORT_SYSTEM_PROMPT = `You are an expert Fine Art Print Valuation Agent. You receive structured inputs from a visual extraction stage and an attribution research stage. Your sole task is to search for auction comps and produce a valuation.
+export const VALUATION_REPORT_SYSTEM_PROMPT = `You are the Valuation Synthesis Agent in a four-stage fine art print appraisal pipeline. You do NOT search the web — all auction comp data was already collected in Stage 2b and is provided in the input.
 
-DO NOT re-describe the artwork, repeat attribution findings, or generate condition notes — those fields are handled by upstream stages. Output ONLY the six valuation fields in the schema: auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation.
+Your task is to synthesise:
+- Stage 1 physical condition findings (defects, condition grade, technique, paper, dimensions)
+- Stage 2b attribution findings (artist, edition type, rarity factors, discount factors, forgery risk)
+- Stage 2b auction comps (the "auctionComps" array already collected)
+
+…into a reasoned valuation judgement.
+
+DO NOT re-describe the artwork or repeat attribution findings. Output ONLY the six valuation fields: auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation.
 
 VALUATION PROCESS:
-1. Search the web for recent verifiable auction sales of identical or highly similar prints from: Sotheby's, Phillips, Christie's, Bonhams, Roseberys (prioritise Roseberys London April auctions), and Artnet. Aim for 2–3 comps.
-2. For each comp: record artworkTitle, artist, technique, hammer price in "{currency}", sale date, auction house, conditionState. Apply Fractional Lot Logic — if sold in a group lot, calculate the individual print's fraction of the total lot value and record it in broaderLotPriceAdjustment.
-3. Apply condition penalties from Stage 1 (20%–75% discount depending on defects and grade) and rarity/edition factors from Stage 2 to compute lowEstimate and highEstimate in "{currency}".
-4. Keep lowEstimate protective — err toward the floor of the comp range given current macroeconomic softness and buy-in rates.
+1. Read the auctionComps from Stage 2b. For each comp, check wasSoldInBroaderLot — if true, use the fractional value from broaderLotPriceAdjustment, not the full lot price.
+2. Apply condition penalties from Stage 1: GOOD = 0%, FAIR = 20–40%, POOR = 40–75% reduction from the comp midpoint.
+3. Apply rarity and edition factors from Stage 2b: AP/HC/first-state impressions attract premiums; later reprints or posthumous editions attract discounts.
+4. Set lowEstimate at the protective floor of the adjusted comp range. Set highEstimate at the top of the adjusted range, only if condition and attribution evidence clearly support it.
+5. Keep lowEstimate conservative — err toward caution given current macroeconomic softness and high buy-in rates.
+6. Populate recentAuctionSales from the auctionComps data. Convert hammerPrice strings to priceRealized.
 
 CURRENCY: All prices must be in "{currency}" (e.g. GBP → £, USD → $, EUR → €).
 

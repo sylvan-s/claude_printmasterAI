@@ -170,7 +170,7 @@ export default function App() {
 
   const [currency, setCurrency] = useState<"USD" | "GBP" | "EUR">("USD");
   const [appraisalMethods, setAppraisalMethods] = useState<any[]>([]);
-  const [appraisalMethod, setAppraisalMethod] = useState<string>("gemini-3stage");
+  const [appraisalMethod, setAppraisalMethod] = useState<string>("claude-4stage-fast");
   const [userNotes, setUserNotes] = useState("");
   const [provenanceNotes, setProvenanceNotes] = useState("");
   const [conditionNotes, setConditionNotes] = useState("");
@@ -1095,8 +1095,9 @@ export default function App() {
       } else {
         console.error(err);
         setError(
-          err.message ||
-          "The analysis connection timed out. Please check if your GEMINI_API_KEY is configured in Settings > Secrets."
+          err.message && err.message !== "Failed to fetch"
+            ? err.message
+            : "The analysis timed out or the server is unreachable. The 4-stage pipeline can take 3–4 minutes — if this keeps happening, try a faster appraisal method."
         );
       }
       setIsLoading(false);

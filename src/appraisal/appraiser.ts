@@ -123,17 +123,41 @@ function parseCleanJson(text: string): any {
   // Strip unary + from numeric values (e.g. +0.05 → 0.05) — Haiku emits these
   const stripUnaryPlus = (s: string) => s.replace(/:\s*\+(\d)/g, ": $1");
 
-  // Try direct parse first
-  try { return JSON.parse(clean); } catch {}
-  try { return JSON.parse(stripUnaryPlus(clean)); } catch {}
+  // Repair unescaped apostrophes/single-quotes inside JSON string values.
+  // Only targets apostrophes that appear between two double-quote delimiters,
+  // i.e. inside a string value, and are not already escaped.
+  const fixApostrophes = (s: string) => {
+    // Replace ' with \' only when inside a double-quoted JSON string
+    return s.replace(/"(?:[^"\\]|\\.)*"/g, (match) =>
+      match.replace(/(?<!\\)'/g, "\\'")
+    );
+  };
 
-  // Extract first {...} block from prose-wrapped output
+  // Repair trailing commas before } or ] — common model mistake
+  const fixTrailingCommas = (s: string) => s.replace(/,(\s*[}\]])/g, "$1");
+
+  const repairs = [
+    (s: string) => s,
+    stripUnaryPlus,
+    fixApostrophes,
+    fixTrailingCommas,
+    (s: string) => fixApostrophes(stripUnaryPlus(s)),
+    (s: string) => fixTrailingCommas(fixApostrophes(stripUnaryPlus(s))),
+  ];
+
+  // Try direct parse with each repair
+  for (const repair of repairs) {
+    try { return JSON.parse(repair(clean)); } catch {}
+  }
+
+  // Extract first {...} block from prose-wrapped output and retry repairs
   const firstBrace = clean.indexOf("{");
   const lastBrace = clean.lastIndexOf("}");
   if (firstBrace !== -1 && lastBrace > firstBrace) {
     const block = clean.slice(firstBrace, lastBrace + 1);
-    try { return JSON.parse(block); } catch {}
-    return JSON.parse(stripUnaryPlus(block));
+    for (const repair of repairs) {
+      try { return JSON.parse(repair(block)); } catch {}
+    }
   }
 
   throw new SyntaxError("No valid JSON object found in response");
@@ -586,20 +610,129 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
 
   // ---- Stage 1b — Gemini Visual Search ----------------------------------------
 
+  // Uses Google Custom Search API (image search) to retrieve a direct image URL for a
+  // known artist + title hypothesis. Falls back gracefully when keys are absent.
+  // Fetch a reference thumbnail via the Wikimedia API using artist + title as search terms.
+  // Returns base64-encoded image data ready for visual similarity scoring, or null if not found.
+  private async fetchReferenceImageViaWikimedia(
+    artist: string,
+    title: string | null
+  ): Promise<{ base64: string; mimeType: string; sourceUrl: string } | null> {
+    const WIKIMEDIA_UA = "PrintMasterAI/1.0 (https://github.com/printmaster-ai; sylvansitkey07@gmail.com) node-fetch/3";
+    const fullQuery = [artist, title].filter(Boolean).join(" ");
+
+    try {
+      // Strategy 1: Wikipedia article for the artist — get the lead image thumbnail
+      // This reliably returns a representative work image for all major artists
+      const wikiArtistParams = new URLSearchParams({
+        action: "query",
+        titles: artist,
+        prop: "pageimages",
+        pithumbsize: "500",
+        piprop: "thumbnail|name",
+        format: "json",
+        origin: "*",
+      });
+      const wikiArtistRes = await fetch(
+        `https://en.wikipedia.org/w/api.php?${wikiArtistParams}`,
+        { headers: { "User-Agent": WIKIMEDIA_UA }, signal: AbortSignal.timeout(8000) }
+      );
+      let wikiArtistThumbUrl: string | null = null;
+      if (wikiArtistRes.ok) {
+        const wikiData: any = await wikiArtistRes.json();
+        const pages = Object.values(wikiData?.query?.pages || {}) as any[];
+        wikiArtistThumbUrl = pages[0]?.thumbnail?.source || null;
+        if (wikiArtistThumbUrl) console.log(`[Stage 1b] Wikipedia artist thumb: ${wikiArtistThumbUrl}`);
+      }
+
+      // Strategy 2: search Commons full-text (all namespaces) for artist + title
+      const commonsSearchParams = new URLSearchParams({
+        action: "query",
+        list: "search",
+        srsearch: fullQuery,
+        srlimit: "5",
+        format: "json",
+        origin: "*",
+      });
+      const searchRes = await fetch(
+        `https://commons.wikimedia.org/w/api.php?${commonsSearchParams}`,
+        { headers: { "User-Agent": WIKIMEDIA_UA }, signal: AbortSignal.timeout(8000) }
+      );
+      let commonsThumbUrl: string | null = null;
+      if (searchRes.ok) {
+        const searchData: any = await searchRes.json();
+        const results: any[] = searchData?.query?.search || [];
+        // Find the first result that is a file
+        const fileResult = results.find((r: any) => r.title?.startsWith("File:"));
+        if (fileResult) {
+          const thumbParams = new URLSearchParams({
+            action: "query",
+            titles: fileResult.title,
+            prop: "imageinfo",
+            iiprop: "url",
+            iiurlwidth: "500",
+            format: "json",
+            origin: "*",
+          });
+          const thumbRes = await fetch(
+            `https://commons.wikimedia.org/w/api.php?${thumbParams}`,
+            { headers: { "User-Agent": WIKIMEDIA_UA }, signal: AbortSignal.timeout(8000) }
+          );
+          if (thumbRes.ok) {
+            const thumbData: any = await thumbRes.json();
+            const pages = Object.values(thumbData?.query?.pages || {}) as any[];
+            commonsThumbUrl = pages[0]?.imageinfo?.[0]?.url || null;
+            if (commonsThumbUrl) console.log(`[Stage 1b] Wikimedia Commons thumb: ${commonsThumbUrl}`);
+          }
+        }
+      }
+
+      // Prefer Commons (specific work match) over Wikipedia artist page
+      const finalUrl = commonsThumbUrl || wikiArtistThumbUrl;
+      if (!finalUrl) {
+        console.log(`[Stage 1b] Wikimedia: no image found for "${fullQuery}"`);
+        return null;
+      }
+
+      console.log(`[Stage 1b] Wikimedia thumbnail: ${finalUrl}`);
+      const fetched = await this.fetchImageAsBase64(finalUrl);
+      if (!fetched) {
+        console.warn(`[Stage 1b] Wikimedia thumbnail fetch failed`);
+        return null;
+      }
+      return { ...fetched, sourceUrl: finalUrl };
+    } catch (err: any) {
+      console.warn(`[Stage 1b] Wikimedia lookup error: ${err.message}`);
+      return null;
+    }
+  }
+
   protected async fetchImageAsBase64(url: string): Promise<{ base64: string; mimeType: string } | null> {
     try {
       const response = await fetch(url, {
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; PrintAppraisalBot/1.0)" },
-        signal: AbortSignal.timeout(8000),
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Referer": new URL(url).origin + "/",
+        },
+        signal: AbortSignal.timeout(10000),
       });
-      if (!response.ok) return null;
+      if (!response.ok) {
+        console.warn(`[Stage 1b] Image fetch failed: HTTP ${response.status} from ${url}`);
+        return null;
+      }
       const contentType = response.headers.get("content-type") || "image/jpeg";
       const mimeType = contentType.split(";")[0].trim();
-      if (!mimeType.startsWith("image/")) return null;
+      if (!mimeType.startsWith("image/")) {
+        console.warn(`[Stage 1b] Image fetch returned non-image content-type: ${mimeType}`);
+        return null;
+      }
       const arrayBuffer = await response.arrayBuffer();
       const base64 = Buffer.from(arrayBuffer).toString("base64");
       return { base64, mimeType };
-    } catch {
+    } catch (err: any) {
+      console.warn(`[Stage 1b] Image fetch error: ${err.message}`);
       return null;
     }
   }
@@ -683,6 +816,12 @@ Prioritise evidence in this order:
 
 Search across: Artnet, MutualArt, Catawiki, Christie's, Sotheby's, Bonhams, British Museum, V&A, Met, MoMA, Invaluable.
 
+CRITICAL — after identifying the artist and title, you MUST use Google Search to find a direct image URL of this specific artwork. Follow these steps:
+1. Search for "[artist name] [artwork title] print" on artnet.com, bonhams.com, christies.com, sothebys.com, invaluable.com, or pinterest.com
+2. From the search results, find a page that shows an image of this specific work
+3. Extract the direct .jpg, .jpeg, .png, or .webp image URL from that page — this is the URL of the image file itself, not the page URL
+4. Set this as bestImageUrl — do NOT set it to null if you found a matching image
+
 Return a single JSON object:
 {
   "bestMatch": {
@@ -692,7 +831,7 @@ Return a single JSON object:
     "period": "e.g. 1960s or null",
     "confidence": "HIGH / MEDIUM / LOW",
     "reasoning": "Why this is the best match — cite specific visual evidence",
-    "bestImageUrl": "direct URL to a matching image of this work (prefer auction house or museum image), or null",
+    "bestImageUrl": "direct image file URL ending in .jpg, .jpeg, .png, or .webp — must be the URL of the image file itself, NOT a webpage or homepage URL. Example: https://www.bonhams.com/lots/123/images/main.jpg — required if you found a match, null only if no image file URL was found",
     "sourceUrl": "URL of the page where the match was found"
   },
   "webEntities": ["key identifying terms found"],
@@ -701,7 +840,7 @@ Return a single JSON object:
   "visuallySimilarUrls": []
 }
 
-If no confident match is found, set artist and title to null and confidence to LOW. Include only real URLs you retrieved.`;
+If no confident match is found, set artist and title to null and confidence to LOW. Include only real URLs you retrieved from search results.`;
 
     try {
       const response = await ai.models.generateContent({
@@ -729,28 +868,43 @@ If no confident match is found, set artist and title to null and confidence to L
 
       const best = parsed.bestMatch || {};
       console.log(`[Stage 1b] Best match: ${best.artist} — "${best.title}" (${best.confidence})`);
-      console.log(`[Stage 1b] Best image URL: ${best.bestImageUrl || "none"}`);
+      console.log(`[Stage 1b] Gemini image URL: ${best.bestImageUrl || "none"}`);
 
-      // Fetch the best match image and score visual similarity
+      // Fetch a reference image via Wikimedia for visual similarity scoring.
+      // Wikimedia is bot-friendly, no auth needed, and covers all major artists in this collection.
       let matchBase64: string | null = null;
       let matchMimeType: string | null = null;
       let similarityScore: number | null = null;
       let similarityRationale: string | null = null;
 
-      if (best.bestImageUrl) {
-        console.log("[Stage 1b] Fetching best match image for similarity scoring...");
-        const fetched = await this.fetchImageAsBase64(best.bestImageUrl);
-        if (fetched) {
-          matchBase64 = fetched.base64;
-          matchMimeType = fetched.mimeType;
-          const label = `${best.artist || "Unknown"} — "${best.title || "Untitled"}"`;
-          const sim = await this.scoreVisualSimilarity(ai, cleanBase64, mimeType, matchBase64, matchMimeType, label);
-          similarityScore = sim.score;
-          similarityRationale = sim.rationale;
-          console.log(`[Stage 1b] Visual similarity score: ${similarityScore} — ${similarityRationale}`);
-        } else {
-          console.warn("[Stage 1b] Could not fetch best match image — similarity scoring skipped");
+      if (best.artist && best.confidence !== "LOW") {
+        const wikimedia = await this.fetchReferenceImageViaWikimedia(best.artist, best.title);
+        if (wikimedia) {
+          matchBase64 = wikimedia.base64;
+          matchMimeType = wikimedia.mimeType;
         }
+      }
+
+      // Fall back to Gemini's suggested URL if Wikimedia found nothing and URL looks like an image file
+      if (!matchBase64 && best.bestImageUrl) {
+        const isImageUrl = /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(best.bestImageUrl);
+        if (isImageUrl) {
+          console.log("[Stage 1b] Wikimedia found nothing — trying Gemini's suggested image URL");
+          const fetched = await this.fetchImageAsBase64(best.bestImageUrl);
+          if (fetched) { matchBase64 = fetched.base64; matchMimeType = fetched.mimeType; }
+        } else {
+          console.log(`[Stage 1b] Gemini URL rejected (not a direct image file): ${best.bestImageUrl}`);
+        }
+      }
+
+      if (matchBase64 && matchMimeType) {
+        const label = `${best.artist || "Unknown"} — "${best.title || "Untitled"}"`;
+        const sim = await this.scoreVisualSimilarity(ai, cleanBase64, mimeType, matchBase64, matchMimeType, label);
+        similarityScore = sim.score;
+        similarityRationale = sim.rationale;
+        console.log(`[Stage 1b] Visual similarity score: ${similarityScore} — ${similarityRationale}`);
+      } else {
+        console.warn("[Stage 1b] Could not fetch reference image — similarity scoring skipped");
       }
 
       return {
@@ -923,7 +1077,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
     if (isClaude(stage2bModel)) {
-      return this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText);
+      return this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192);
     } else {
       return this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
     }
@@ -954,10 +1108,14 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     userNotes?: string
   ): Promise<Partial<PrintAnalysisReport>> {
     const systemInstruction = resolveCustomPrompt(VALUATION_REPORT_SYSTEM_PROMPT, currency, userNotes);
-    const userText = `Search for recent auction comps and produce a valuation for the following print.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea, null, 2)}\n\nSTAGE 2 ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity factors):\n${JSON.stringify(attr, null, 2)}\n\n⚠️ CRITICAL: Output ONLY the valuation fields listed in the schema — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT re-describe the artwork or repeat attribution findings. Start your response with { and end with }.`;
+    const auctionComps = (attr as any).auctionComps;
+    const compsNote = Array.isArray(auctionComps) && auctionComps.length > 0
+      ? `\n\nAUCTION COMPS (collected during Stage 2b research — use these for valuation):\n${JSON.stringify(auctionComps, null, 2)}`
+      : "\n\nAUCTION COMPS: None found during Stage 2b research — base valuation on condition and rarity factors alone.";
+    const userText = `Synthesise a valuation for the following print from Stage 1 and Stage 2b findings.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea, null, 2)}\n\nSTAGE 2b ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity/discount factors, forgery risk):\n${JSON.stringify(attr, null, 2)}${compsNote}\n\n⚠️ CRITICAL: Output ONLY the valuation fields — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT search the web. Do NOT re-describe the artwork. Start your response with { and end with }.`;
     if (isClaude(stage3Model)) {
-      console.log(`[4-Stage] Stage 3 using web search for auction comps — model: ${stage3Model}`);
-      return this.callClaudeWithWebSearch(stage3Model, systemInstruction, userText, 16000);
+      console.log(`[4-Stage] Stage 3 pure reasoning (no web search) — model: ${stage3Model}`);
+      return this.callClaude(stage3Model, systemInstruction, [{ type: "text", text: userText }], "report_valuation", "Report the structured print valuation synthesised from Stage 1 condition and Stage 2b findings.", STAGE3_VALUATION_ONLY_SCHEMA);
     } else {
       return this.callGemini(ai, stage3Model, systemInstruction, [{ text: userText }], STAGE3_VALUATION_ONLY_SCHEMA, this.config.temperature || 0.15, true);
     }
@@ -973,12 +1131,40 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     valuation: Partial<PrintAnalysisReport>,
     currency: string
   ): PrintAnalysisReport {
-    // Repair stringified JSON fields some models return
+    // Repair auctionEstimate — models sometimes return a raw string instead of an object
     if (typeof (valuation as any).auctionEstimate === "string") {
-      try { (valuation as any).auctionEstimate = JSON.parse((valuation as any).auctionEstimate); } catch {}
+      const raw: string = (valuation as any).auctionEstimate;
+      // Try JSON parse first (stringified object)
+      let parsed = false;
+      try { (valuation as any).auctionEstimate = JSON.parse(raw); parsed = true; } catch {}
+      if (!parsed) {
+        // Only extract numbers if the string looks like a simple price range e.g. "£400–£800"
+        // For longer prose strings (explanations, caveats), store as valuationContext with no estimate
+        const isSimpleRange = /^[\$£€]?\s*[\d,]+\s*[-–—to]+\s*[\$£€]?\s*[\d,]+/.test(raw.trim());
+        const cur = raw.includes("£") ? "GBP" : raw.includes("€") ? "EUR" : "USD";
+        if (isSimpleRange) {
+          const nums = raw.match(/[\d,]+/g)?.map(n => parseInt(n.replace(/,/g, ""), 10)).filter(Boolean) || [];
+          (valuation as any).auctionEstimate = {
+            lowEstimate: nums[0] || 0,
+            highEstimate: nums[1] || nums[0] || 0,
+            currency: cur,
+            formattedEstimate: raw,
+            valuationContext: "",
+          };
+        } else {
+          // Prose explanation — preserve as valuationContext, no numeric estimate
+          (valuation as any).auctionEstimate = {
+            lowEstimate: 0,
+            highEstimate: 0,
+            currency: cur,
+            formattedEstimate: "Insufficient data",
+            valuationContext: raw,
+          };
+        }
+      }
     }
     const est = (valuation as any).auctionEstimate;
-    if (est) {
+    if (est && typeof est === "object") {
       const toInt = (v: any) => typeof v === "string" ? parseInt(v.replace(/[^0-9]/g, ""), 10) || 0 : (v || 0);
       est.lowEstimate = toInt(est.lowEstimate);
       est.highEstimate = toInt(est.highEstimate);
@@ -1335,7 +1521,7 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
   {
     id: "claude-4stage-fast",
     name: "Claude 4-Stage Fast (Haiku Triage)",
-    description: "Opus for vision (S1), Haiku for triage (S2a), Sonnet for specialist search (S2b), Sonnet for valuation (S3). Faster and cheaper than standard 4-stage.",
+    description: "Opus for vision (S1), Haiku for triage (S2a), Sonnet for specialist search (S2b), Haiku for valuation (S3). Faster and cheaper than standard 4-stage.",
     modelName: "claude-opus-4-8",
     temperature: 0.1,
     promptKey: "standard",
@@ -1345,7 +1531,7 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     stage1Model: "claude-opus-4-8",
     stage2aModel: "claude-haiku-4-5",
     stage2bModel: "claude-sonnet-4-6",
-    stage3Model: "claude-sonnet-4-6",
+    stage3Model: "claude-haiku-4-5",
     enableVisualSearch: true,
   },
   {

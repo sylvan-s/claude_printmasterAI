@@ -517,12 +517,31 @@ export const SPECIALIST_ATTRIBUTION_SCHEMA = {
         },
         required: ["question", "resolutionAction", "confidenceImpact"]
       }
+    },
+    auctionComps: {
+      type: Type.ARRAY,
+      description: "2–3 verified auction comps collected during Stage 2b research. Empty array if none found.",
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          artworkTitle: { type: Type.STRING },
+          artist: { type: Type.STRING },
+          technique: { type: Type.STRING },
+          hammerPrice: { type: Type.STRING },
+          saleDate: { type: Type.STRING },
+          auctionHouse: { type: Type.STRING },
+          conditionState: { type: Type.STRING },
+          wasSoldInBroaderLot: { type: Type.BOOLEAN },
+          broaderLotPriceAdjustment: { type: Type.STRING }
+        },
+        required: ["artworkTitle", "artist", "technique", "hammerPrice", "saleDate", "auctionHouse", "conditionState", "wasSoldInBroaderLot", "broaderLotPriceAdjustment"]
+      }
     }
   },
   required: [
     "schemaVersion", "specialistConfigUsed", "attributionConclusion", "catalogueRaisonne",
     "reprintForgeryAssessment", "seriesAndEditionIdentification", "valuationRelevantFindings",
-    "researchConfidenceSummary", "unresolvedQuestions"
+    "researchConfidenceSummary", "unresolvedQuestions", "auctionComps"
   ]
 };
 

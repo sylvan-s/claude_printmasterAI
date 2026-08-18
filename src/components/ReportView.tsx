@@ -230,6 +230,19 @@ export default function ReportView({
   const safeEst = (r: typeof report) => (r.auctionEstimate as any) || {};
   const safeCond = (r: typeof report) => (r.conditionNotes as any) || {};
 
+  // Set document title to "AI Appraisal Outputs" during print
+  React.useEffect(() => {
+    const originalTitle = document.title;
+    const onBefore = () => { document.title = "AI Appraisal Outputs"; };
+    const onAfter = () => { document.title = originalTitle; };
+    window.addEventListener("beforeprint", onBefore);
+    window.addEventListener("afterprint", onAfter);
+    return () => {
+      window.removeEventListener("beforeprint", onBefore);
+      window.removeEventListener("afterprint", onAfter);
+    };
+  }, []);
+
   // Sync edit states when report changes
   React.useEffect(() => {
     const est = safeEst(report);
@@ -307,7 +320,7 @@ export default function ReportView({
         editionSizeAndPrintNumber: editEditionSize || undefined,
         modelUsed: finalModel,
         auctionEstimate: {
-          ...report.auctionEstimate,
+          ...(typeof report.auctionEstimate === "object" && report.auctionEstimate !== null ? report.auctionEstimate : { currency: baseCurrency }),
           lowEstimate: editLowEstimate,
           highEstimate: editHighEstimate,
           valuationContext: editValuationContext,
@@ -366,7 +379,11 @@ export default function ReportView({
   };
 
   const formatAndConvertPriceRealized = (priceStr: string, targetCurrency: string) => {
-    if (!priceStr) return priceStr;
+    if (!priceStr) return "—";
+    // If the string contains non-numeric text beyond a currency marker, return it as-is
+    // to avoid mangling values like "Not specified" or "estimate 200-250 USD"
+    const looksLikePrice = /^[\$£€]?\s*[\d,]+|[\d,]+\s*(USD|GBP|EUR)$/i.test(priceStr.trim());
+    if (!looksLikePrice) return priceStr;
     
     // Find all currency figures in the string using regex, e.g. "$12,000" or "£10,000" or "€55,200"
     // and replace them with converted figures in-place!
@@ -1050,6 +1067,37 @@ export default function ReportView({
 
           {/* Valuation Panel */}
           {renderValuationPanel()}
+
+          {/* Benchmark Comps — compact summary view */}
+          {report.recentAuctionSales && report.recentAuctionSales.length > 0 && (
+            <div className="bg-white border border-rosebery-border rounded-xl p-6 shadow-gallery-soft space-y-3 animate-fadeIn">
+              <div className="flex items-center justify-between border-b border-rosebery-border pb-3">
+                <span className="text-xs font-mono tracking-[0.2em] text-rosebery-primary uppercase flex items-center gap-2 font-bold">
+                  <Coins className="w-4 h-4 text-rosebery-primary" />
+                  RECENT BENCHMARK SALES
+                </span>
+                <button
+                  onClick={() => setActiveStageTab("stage3")}
+                  className="text-[10px] font-mono text-rosebery-primary underline underline-offset-2 hover:text-rosebery-charcoal transition-colors"
+                >
+                  View full detail →
+                </button>
+              </div>
+              <div className="divide-y divide-rosebery-border">
+                {report.recentAuctionSales.map((sale, sIdx) => (
+                  <div key={sIdx} className="flex items-center justify-between py-2.5 gap-4">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-serif font-semibold text-rosebery-charcoal truncate">{sale.artworkTitle}</p>
+                      <p className="text-[11px] text-rosebery-muted">{sale.auctionHouse} · {sale.saleDate}</p>
+                    </div>
+                    <span className="text-sm font-mono font-bold text-rosebery-primary whitespace-nowrap">
+                      {formatAndConvertPriceRealized(sale.priceRealized, currency)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -1919,13 +1967,17 @@ export default function ReportView({
                       <div className="flex justify-between items-start gap-2">
                         <h5 className="font-serif font-semibold text-rosebery-charcoal text-sm line-clamp-1">{sale.artworkTitle}</h5>
                         <span className="text-xs font-mono font-bold text-rosebery-primary bg-white px-2 py-0.5 rounded border border-rosebery-border shrink-0">
-                          {formatAndConvertPriceRealized(sale.priceRealized, currency)}
+                          {formatAndConvertPriceRealized(sale.priceRealized, currency) || "—"}
                         </span>
                       </div>
                       <p className="text-[11px] text-rosebery-muted">{sale.artist} • <span className="italic font-serif">{sale.technique}</span></p>
                     </div>
                     
                     <div className="border-t border-rosebery-border pt-2.5 space-y-1 text-xs">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-rosebery-muted font-mono">PRICE REALIZED</span>
+                        <span className="text-rosebery-charcoal font-bold">{formatAndConvertPriceRealized(sale.priceRealized, currency) || "—"}</span>
+                      </div>
                       <div className="flex justify-between text-[11px]">
                         <span className="text-rosebery-muted font-mono">AUCTION HOUSE</span>
                         <span className="text-rosebery-charcoal font-semibold">{sale.auctionHouse}</span>
@@ -1989,7 +2041,7 @@ export default function ReportView({
               ESTABLISHED fine art register
             </span>
             <h1 className="text-3xl font-serif font-black tracking-widest text-rosebery-primary uppercase">
-              Appraisal Certificate
+              AI Appraisal Report
             </h1>
             <p className="text-[10px] font-mono text-rosebery-muted uppercase tracking-[0.25em] mt-1">
               PrintMasterAI Secure Archival Authentication
@@ -2119,6 +2171,41 @@ export default function ReportView({
               </div>
             )}
           </div>
+        </div>
+
+        {/* Comparable Auction Sales */}
+        {report.recentAuctionSales && report.recentAuctionSales.length > 0 && (
+          <div className="mt-8 pt-6 border-t border-rosebery-border">
+            <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-3">
+              Comparable Auction Sales (Benchmark Records)
+            </span>
+            <div className="space-y-2">
+              {report.recentAuctionSales.map((sale, idx) => (
+                <div key={idx} className="flex justify-between items-start text-[10px] border-b border-dashed border-rosebery-border pb-2 gap-4">
+                  <div className="flex-1">
+                    <span className="font-serif font-semibold text-rosebery-charcoal">{sale.artworkTitle}</span>
+                    <span className="text-rosebery-muted ml-1">— {sale.artist}</span>
+                    {sale.technique && <span className="text-rosebery-muted italic ml-1">({sale.technique})</span>}
+                  </div>
+                  <div className="text-right shrink-0 space-y-0.5">
+                    <span className="font-bold text-rosebery-primary block">{formatAndConvertPriceRealized(sale.priceRealized, currency) || "—"}</span>
+                    <span className="text-rosebery-muted font-mono block">{sale.auctionHouse} • {sale.saleDate}</span>
+                    {sale.wasSoldInBroaderLot && sale.broaderLotPriceAdjustment && (
+                      <span className="text-rosebery-muted block">Lot fraction: {formatAndConvertPriceRealized(sale.broaderLotPriceAdjustment, currency)}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* AI Disclaimer */}
+        <div className="mt-6 pt-4 border-t-2 border-dashed border-amber-400 bg-amber-50 rounded p-4">
+          <p className="text-[10px] font-mono text-amber-800 uppercase tracking-wider font-bold mb-1">⚠ Important Disclaimer — AI Generated Content</p>
+          <p className="text-[10px] font-sans text-amber-900 leading-relaxed">
+            The contents of this appraisal were generated through artificial intelligence and must be treated with caution. AI attribution, condition assessment, and valuation outputs are probabilistic and may contain errors. This document does not constitute a professional appraisal, guarantee of authenticity, or investment advice. All findings should be independently verified by a qualified fine art expert or auction specialist before any commercial or legal reliance is placed upon them.
+          </p>
         </div>
 
         {/* Certificate Footer */}
