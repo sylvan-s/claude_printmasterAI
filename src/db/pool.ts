@@ -87,11 +87,13 @@ export async function initDatabase() {
 
     await client.query(`
       ALTER TABLE appraisal_methods
-      ADD COLUMN IF NOT EXISTS stage1_model  TEXT,
-      ADD COLUMN IF NOT EXISTS stage2_model  TEXT,
-      ADD COLUMN IF NOT EXISTS stage2a_model TEXT,
-      ADD COLUMN IF NOT EXISTS stage2b_model TEXT,
-      ADD COLUMN IF NOT EXISTS stage3_model  TEXT;
+      ADD COLUMN IF NOT EXISTS stage1_model        TEXT,
+      ADD COLUMN IF NOT EXISTS stage2_model        TEXT,
+      ADD COLUMN IF NOT EXISTS stage2a_model       TEXT,
+      ADD COLUMN IF NOT EXISTS stage2b_model       TEXT,
+      ADD COLUMN IF NOT EXISTS stage3_model        TEXT,
+      ADD COLUMN IF NOT EXISTS stage1b_model       TEXT,
+      ADD COLUMN IF NOT EXISTS enable_visual_search BOOLEAN NOT NULL DEFAULT true;
     `);
 
     await client.query(`

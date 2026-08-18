@@ -23,6 +23,7 @@ import {
   SPECIALIST_ATTRIBUTION_SCHEMA,
   FINAL_REPORT_RESPONSE_SCHEMA,
   FINAL_REPORT_CLAUDE_SCHEMA,
+  STAGE3_VALUATION_ONLY_SCHEMA,
 } from "./schemas";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
@@ -34,6 +35,23 @@ const SPECIALIST_CONFIGS_DIR = join(__dirname_esm, "specialist_configs");
 // ---------------------------------------------------------------------------
 // Public interfaces
 // ---------------------------------------------------------------------------
+
+export interface VisualSearchResult {
+  webEntities: string[];
+  matchedUrls: string[];
+  visuallySimilarUrls: string[];
+  pagesWithMatchingImages: string[];
+  // Stage 1b enriched fields
+  bestMatchArtist?: string | null;
+  bestMatchTitle?: string | null;
+  bestMatchImageUrl?: string | null;
+  bestMatchImageBase64?: string | null;
+  bestMatchImageMimeType?: string | null;
+  visualSimilarityScore?: number | null;   // 0.0–1.0
+  visualSimilarityRationale?: string | null;
+  matchConfidence?: "HIGH" | "MEDIUM" | "LOW" | null;
+  hypothesisWarning: string;
+}
 
 export interface AppraisalInput {
   imageBase64: string;
@@ -68,6 +86,8 @@ export interface AppraisalMethodConfig {
   includeAuxiliaryScans: boolean;
   provider?: "gemini" | "anthropic";
   stage1Model?: string;
+  stage1bModel?: string;       // model for Stage 1b visual search (FourStageAppraiser only)
+  enableVisualSearch?: boolean; // set false to skip Stage 1b entirely (default: true)
   stage2aModel?: string;
   stage2bModel?: string;
   stage2Model?: string;
@@ -100,14 +120,20 @@ function parseCleanJson(text: string): any {
     clean = lines.slice(start, end).join("\n").trim();
   }
 
+  // Strip unary + from numeric values (e.g. +0.05 → 0.05) — Haiku emits these
+  const stripUnaryPlus = (s: string) => s.replace(/:\s*\+(\d)/g, ": $1");
+
   // Try direct parse first
   try { return JSON.parse(clean); } catch {}
+  try { return JSON.parse(stripUnaryPlus(clean)); } catch {}
 
   // Extract first {...} block from prose-wrapped output
   const firstBrace = clean.indexOf("{");
   const lastBrace = clean.lastIndexOf("}");
   if (firstBrace !== -1 && lastBrace > firstBrace) {
-    return JSON.parse(clean.slice(firstBrace, lastBrace + 1));
+    const block = clean.slice(firstBrace, lastBrace + 1);
+    try { return JSON.parse(block); } catch {}
+    return JSON.parse(stripUnaryPlus(block));
   }
 
   throw new SyntaxError("No valid JSON object found in response");
@@ -328,10 +354,18 @@ const GEMINI_SAFETY_SETTINGS = [
 ];
 
 // ---------------------------------------------------------------------------
-// ThreeStageAppraiser — 3-stage and 4-stage pipelines
+// Default model for Stage 1b visual search
 // ---------------------------------------------------------------------------
 
-export class ThreeStageAppraiser implements AppraisalMethod {
+const DEFAULT_STAGE1B_MODEL = "gemini-3.7-flash";
+const HYPOTHESIS_WARNING =
+  "⚠️ HYPOTHESIS ONLY — Stage 1b reverse image search result. Must be verified against VEA visual evidence (signatures, inscriptions, technique) before use in attribution. Do not treat as confirmed attribution.";
+
+// ---------------------------------------------------------------------------
+// MultiStageAppraiser — base class with shared callers and stage runners
+// ---------------------------------------------------------------------------
+
+abstract class MultiStageAppraiser implements AppraisalMethod {
   public id: string;
   public name: string;
   public description: string;
@@ -346,7 +380,7 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     if (aiClient) this.aiClient = aiClient;
   }
 
-  private getClient(): GoogleGenAI {
+  protected getClient(): GoogleGenAI {
     if (!this.aiClient) {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) throw new Error("GEMINI_API_KEY environment variable is not defined.");
@@ -357,7 +391,7 @@ export class ThreeStageAppraiser implements AppraisalMethod {
 
   // ---- Low-level API callers ------------------------------------------------
 
-  private async callGemini(
+  protected async callGemini(
     ai: GoogleGenAI,
     modelName: string,
     systemInstruction: string,
@@ -393,7 +427,7 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     }
   }
 
-  private async callClaude(
+  protected async callClaude(
     modelName: string,
     systemInstruction: string,
     contentBlocks: any[],
@@ -428,15 +462,16 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     return toolUseBlock.input;
   }
 
-  private async callClaudeWithWebSearch(
+  protected async callClaudeWithWebSearch(
     modelName: string,
     systemInstruction: string,
-    userText: string
+    userText: string,
+    maxTokens: number = 8192
   ): Promise<any> {
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
     if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const makeRequest = async () => fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
@@ -446,15 +481,20 @@ export class ThreeStageAppraiser implements AppraisalMethod {
       },
       body: JSON.stringify({
         model: modelName,
-        max_tokens: 8192,
+        max_tokens: maxTokens,
         system: systemInstruction,
-        messages: [{
-          role: "user",
-          content: userText + "\n\n⚠️ CRITICAL: Your entire response must be a single valid JSON object matching the OUTPUT SCHEMA above. Do not write any prose, explanation, or text outside the JSON object. Start your response with { and end with }.",
-        }],
+        messages: [{ role: "user", content: userText }],
         tools: [{ type: "web_search_20250305", name: "web_search" }],
       }),
     });
+
+    let response = await makeRequest();
+    // Retry once on transient 5xx (e.g. Cloudflare 520)
+    if (response.status >= 500) {
+      console.warn(`[Claude web-search] Transient ${response.status} — retrying in 5s`);
+      await new Promise(r => setTimeout(r, 5000));
+      response = await makeRequest();
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -467,22 +507,309 @@ export class ThreeStageAppraiser implements AppraisalMethod {
       throw new Error("Claude (web-search) hit max_tokens limit — response was truncated. Try a simpler query or increase max_tokens.");
     }
 
+    // If Claude stopped naturally (end_turn) with no tool calls, parse the text directly
     const textBlocks = data.content?.filter((b: any) => b.type === "text") || [];
-    if (!textBlocks.length) throw new Error("Claude (web-search) returned no text blocks.");
+    const hasToolUse = data.content?.some((b: any) => b.type === "tool_use");
 
-    const lastText = textBlocks[textBlocks.length - 1].text as string;
-    console.log("[4-Stage] ASA raw response (first 300):", lastText?.slice(0, 300));
+    if (!hasToolUse && data.stop_reason === "end_turn") {
+      // No web searches were made — parse directly
+      const lastText = textBlocks[textBlocks.length - 1]?.text as string;
+      console.log("[4-Stage] web-search raw response (first 500):", lastText?.slice(0, 500));
+      console.log("[4-Stage] web-search raw response (last 300):", lastText?.slice(-300));
+      try { return parseCleanJson(lastText); } catch (err: any) {
+        throw new Error(`Failed to parse web-search JSON output: ${err.message}`);
+      }
+    }
+
+    // Web searches were performed — send a finalise turn requesting JSON only
+    // Build conversation history including all search results
+    const messages: any[] = [
+      { role: "user", content: userText },
+      { role: "assistant", content: data.content },
+    ];
+
+    // Add tool results for every web_search tool_use block
+    const toolResults = (data.content || [])
+      .filter((b: any) => b.type === "tool_use")
+      .map((b: any) => ({ type: "tool_result", tool_use_id: b.id, content: "Search complete." }));
+
+    if (toolResults.length > 0) {
+      messages.push({ role: "user", content: toolResults });
+    }
+
+    // Finalise turn: no more tools, JSON only
+    messages.push({
+      role: "user",
+      content: "Now output your final answer as a single valid JSON object only. No prose, no markdown, no explanation. Start with { and end with }.",
+    });
+
+    const finalResponse = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey!,
+        "anthropic-version": "2023-06-01",
+        "anthropic-beta": "web-search-2025-03-05",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: modelName,
+        max_tokens: maxTokens,
+        system: systemInstruction,
+        messages,
+        tool_choice: { type: "none" },
+        tools: [{ type: "web_search_20250305", name: "web_search" }],
+      }),
+    });
+
+    if (!finalResponse.ok) {
+      const errorText = await finalResponse.text();
+      throw new Error(`Claude web-search finalise request failed: ${finalResponse.status}: ${errorText}`);
+    }
+
+    const finalData = await finalResponse.json();
+    const finalTextBlocks = finalData.content?.filter((b: any) => b.type === "text") || [];
+    if (!finalTextBlocks.length) throw new Error("Claude (web-search finalise) returned no text blocks.");
+
+    const lastText = finalTextBlocks[finalTextBlocks.length - 1].text as string;
+    console.log("[4-Stage] web-search raw response (first 500):", lastText?.slice(0, 500));
+    console.log("[4-Stage] web-search raw response (last 300):", lastText?.slice(-300));
     try {
-      return parseCleanJson(lastText);
+      const parsed = parseCleanJson(lastText);
+      console.log("[4-Stage] web-search parsed JSON keys:", Object.keys(parsed));
+      console.log("[4-Stage] recentAuctionSales:", JSON.stringify(parsed.recentAuctionSales || parsed.attributionConclusion?.recentAuctionSales || "MISSING"));
+      return parsed;
     } catch (err: any) {
-      console.error("[4-Stage] Failed to parse ASA JSON. Raw text:", lastText);
+      console.error("[4-Stage] Failed to parse web-search JSON. Full raw text:", lastText);
       throw new Error(`Failed to parse ASA JSON output: ${err.message}`);
     }
   }
 
+  // ---- Stage 1b — Gemini Visual Search ----------------------------------------
+
+  protected async fetchImageAsBase64(url: string): Promise<{ base64: string; mimeType: string } | null> {
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; PrintAppraisalBot/1.0)" },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) return null;
+      const contentType = response.headers.get("content-type") || "image/jpeg";
+      const mimeType = contentType.split(";")[0].trim();
+      if (!mimeType.startsWith("image/")) return null;
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString("base64");
+      return { base64, mimeType };
+    } catch {
+      return null;
+    }
+  }
+
+  protected async scoreVisualSimilarity(
+    ai: GoogleGenAI,
+    inputBase64: string,
+    inputMimeType: string,
+    matchBase64: string,
+    matchMimeType: string,
+    candidateLabel: string
+  ): Promise<{ score: number; rationale: string }> {
+    const prompt = `You are a fine art visual similarity expert. Compare these two images — the first is the submitted artwork, the second is a candidate match found via reverse image search (${candidateLabel}).
+
+Score their visual similarity from 0.0 to 1.0 using this scale:
+  1.0 — Identical work, same impression, indistinguishable
+  0.9 — Same work, minor photographic differences (angle, lighting)
+  0.8 — Very likely same work or direct variant (same series, different state)
+  0.7 — Strong visual match — same artist, same period, highly similar composition
+  0.6 — Probable match — similar style and technique, plausible same artist
+  0.5 — Possible match — shared tradition and technique but significant differences
+  0.3 — Weak match — similar tradition only
+  0.0 — No meaningful visual similarity
+
+Focus on: composition, subject matter, colour palette, technique markers (line quality, ink texture), and signature/inscription placement.
+
+Return ONLY a JSON object:
+{
+  "visualSimilarityScore": 0.0,
+  "rationale": "One sentence explaining the score."
+}`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: this.config.stage1bModel || DEFAULT_STAGE1B_MODEL,
+        contents: {
+          parts: [
+            { inlineData: { data: inputBase64, mimeType: inputMimeType } },
+            { inlineData: { data: matchBase64, mimeType: matchMimeType } },
+            { text: prompt },
+          ],
+        },
+        config: { responseMimeType: "application/json", temperature: 0.05 },
+      });
+      const parsed = parseCleanJson(response.text || "{}");
+      return {
+        score: typeof parsed.visualSimilarityScore === "number" ? parsed.visualSimilarityScore : 0,
+        rationale: parsed.rationale || "",
+      };
+    } catch {
+      return { score: 0, rationale: "Visual similarity scoring failed." };
+    }
+  }
+
+  protected async runStage1bVisionSearch(imageBase64: string, mimeType: string = "image/jpeg"): Promise<VisualSearchResult> {
+    const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
+    const EMPTY: VisualSearchResult = {
+      webEntities: [], matchedUrls: [], visuallySimilarUrls: [], pagesWithMatchingImages: [],
+      hypothesisWarning: HYPOTHESIS_WARNING,
+    };
+
+    const geminiKey = process.env.GEMINI_API_KEY;
+    if (!geminiKey) {
+      console.warn("[Stage 1b] GEMINI_API_KEY not set — skipping visual search.");
+      return EMPTY;
+    }
+
+    const t = Date.now();
+    console.log(`[Timing] Stage 1b (Gemini Visual Search) starting — model: ${stage1bModel}`);
+
+    const ai = new GoogleGenAI({ apiKey: geminiKey });
+    const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+
+    const searchPrompt = `You are a fine art reverse image search assistant. Examine this print carefully and use Google Search to identify the single most likely artist and artwork.
+
+Prioritise evidence in this order:
+1. Legible text in the image — signatures, title inscriptions, edition numbers, publisher stamps
+2. Distinctive compositional elements unique to a known artist
+3. Technique markers (etching, woodblock, lithograph characteristics)
+4. Subject matter and visual style
+
+Search across: Artnet, MutualArt, Catawiki, Christie's, Sotheby's, Bonhams, British Museum, V&A, Met, MoMA, Invaluable.
+
+Return a single JSON object:
+{
+  "bestMatch": {
+    "artist": "artist name or null",
+    "title": "artwork title or null",
+    "technique": "e.g. lithograph, etching, woodblock",
+    "period": "e.g. 1960s or null",
+    "confidence": "HIGH / MEDIUM / LOW",
+    "reasoning": "Why this is the best match — cite specific visual evidence",
+    "bestImageUrl": "direct URL to a matching image of this work (prefer auction house or museum image), or null",
+    "sourceUrl": "URL of the page where the match was found"
+  },
+  "webEntities": ["key identifying terms found"],
+  "pagesWithMatchingImages": ["up to 5 relevant page URLs"],
+  "matchedUrls": [],
+  "visuallySimilarUrls": []
+}
+
+If no confident match is found, set artist and title to null and confidence to LOW. Include only real URLs you retrieved.`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: stage1bModel,
+        contents: {
+          parts: [
+            { inlineData: { data: cleanBase64, mimeType: mimeType || "image/jpeg" } },
+            { text: searchPrompt },
+          ],
+        },
+        config: { tools: [{ googleSearch: {} }], temperature: 0.1 },
+      });
+
+      const text = response.text || "";
+      console.log(`[Timing] Stage 1b (search) done — ${((Date.now() - t) / 1000).toFixed(1)}s`);
+      console.log(`[Stage 1b] Raw response (first 400): ${text.slice(0, 400)}`);
+
+      let parsed: any;
+      try {
+        parsed = parseCleanJson(text);
+      } catch {
+        console.warn("[Stage 1b] Could not parse JSON from Gemini — returning empty result");
+        return EMPTY;
+      }
+
+      const best = parsed.bestMatch || {};
+      console.log(`[Stage 1b] Best match: ${best.artist} — "${best.title}" (${best.confidence})`);
+      console.log(`[Stage 1b] Best image URL: ${best.bestImageUrl || "none"}`);
+
+      // Fetch the best match image and score visual similarity
+      let matchBase64: string | null = null;
+      let matchMimeType: string | null = null;
+      let similarityScore: number | null = null;
+      let similarityRationale: string | null = null;
+
+      if (best.bestImageUrl) {
+        console.log("[Stage 1b] Fetching best match image for similarity scoring...");
+        const fetched = await this.fetchImageAsBase64(best.bestImageUrl);
+        if (fetched) {
+          matchBase64 = fetched.base64;
+          matchMimeType = fetched.mimeType;
+          const label = `${best.artist || "Unknown"} — "${best.title || "Untitled"}"`;
+          const sim = await this.scoreVisualSimilarity(ai, cleanBase64, mimeType, matchBase64, matchMimeType, label);
+          similarityScore = sim.score;
+          similarityRationale = sim.rationale;
+          console.log(`[Stage 1b] Visual similarity score: ${similarityScore} — ${similarityRationale}`);
+        } else {
+          console.warn("[Stage 1b] Could not fetch best match image — similarity scoring skipped");
+        }
+      }
+
+      return {
+        webEntities: parsed.webEntities || [],
+        matchedUrls: parsed.matchedUrls || [],
+        visuallySimilarUrls: parsed.visuallySimilarUrls || [],
+        pagesWithMatchingImages: parsed.pagesWithMatchingImages || [],
+        bestMatchArtist: best.artist || null,
+        bestMatchTitle: best.title || null,
+        bestMatchImageUrl: best.bestImageUrl || null,
+        bestMatchImageBase64: matchBase64,
+        bestMatchImageMimeType: matchMimeType,
+        visualSimilarityScore: similarityScore,
+        visualSimilarityRationale: similarityRationale,
+        matchConfidence: best.confidence || null,
+        hypothesisWarning: HYPOTHESIS_WARNING,
+      };
+    } catch (err: any) {
+      console.warn(`[Stage 1b] Gemini visual search failed — skipping: ${err.message}`);
+      return EMPTY;
+    }
+  }
+
+  // ---- Helpers ---------------------------------------------------------------
+
+  protected projectVeaForAttribution(vea: VisualExtractionResult) {
+    return {
+      signatures: vea.signatures,
+      titleInscriptions: vea.titleInscriptions,
+      editionInfo: vea.editionInfo,
+      printingTechniques: vea.printingTechniques,
+      plateMark: {
+        present: vea.plateMark?.present,
+        clarity: vea.plateMark?.clarity,
+        observationNotes: vea.plateMark?.observationNotes,
+      },
+      composition: vea.composition,
+      inkAndColour: {
+        coloursPresent: vea.inkAndColour?.coloursPresent,
+        colourMode: vea.inkAndColour?.colourMode,
+      },
+      paper: {
+        surfaceType: vea.paper?.surfaceType,
+        watermarkVisible: vea.paper?.watermarkVisible,
+        watermarkDescription: vea.paper?.watermarkDescription,
+      },
+      dimensions: {
+        printedImageMM: vea.dimensions?.printedImageMM,
+        fullSheetMM: vea.dimensions?.fullSheetMM,
+      },
+      stampsAndLabels: vea.stampsAndLabels,
+      overallExtractionConfidence: vea.overallExtractionConfidence,
+      lowConfidenceFlags: vea.lowConfidenceFlags,
+    };
+  }
+
   // ---- Stage methods --------------------------------------------------------
 
-  private async runStage1VEA(
+  protected async runStage1VEA(
     input: AppraisalInput,
     stage1Model: string,
     ai: GoogleGenAI
@@ -508,7 +835,7 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     }
   }
 
-  private buildHaltReport(vea: VisualExtractionResult, currency: string): PrintAnalysisReport {
+  protected buildHaltReport(vea: VisualExtractionResult, currency: string): PrintAnalysisReport {
     const sym = getCurrencySymbol(currency);
     const haltReason = vea.imageAuthenticity.haltReason || "Digital/printed reproduction detected.";
     return {
@@ -541,7 +868,7 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     };
   }
 
-  private async runStage2aTriage(
+  protected async runStage2aTriage(
     vea: VisualExtractionResult,
     stage2aModel: string,
     ai: GoogleGenAI,
@@ -550,7 +877,8 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     const notesBlock = userNotes?.trim()
       ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for tradition identification and artist candidates):\n"${userNotes.trim()}"\n\n`
       : "";
-    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and route to the correct specialist config.\n\n${JSON.stringify(vea, null, 2)}`;
+    const veaSlim = this.projectVeaForAttribution(vea);
+    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and route to the correct specialist config.\n\n${JSON.stringify(veaSlim, null, 2)}`;
     if (isClaude(stage2aModel)) {
       return this.callClaude(stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ type: "text", text: userText }], "report_attribution_triage", "Report the structured attribution triage and routing decision.", TRIAGE_SCHEMA);
     } else {
@@ -558,12 +886,13 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     }
   }
 
-  private async runStage2bSpecialist(
+  protected async runStage2bSpecialist(
     vea: VisualExtractionResult,
     triage: TriageResult,
     stage2bModel: string,
     ai: GoogleGenAI,
-    userNotes?: string
+    userNotes?: string,
+    visualSearch?: VisualSearchResult
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
@@ -571,7 +900,26 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     const notesBlock = userNotes?.trim()
       ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for attribution and title identification):\n"${userNotes.trim()}"\n\n`
       : "";
-    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage, null, 2)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(vea, null, 2)}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
+    const veaSlim = this.projectVeaForAttribution(vea);
+
+    const vs = visualSearch;
+    const hasMatch = vs?.bestMatchArtist || vs?.bestMatchTitle;
+    const hasPages = vs && (vs.webEntities.length > 0 || vs.pagesWithMatchingImages.length > 0);
+    const visualSearchBlock = (hasMatch || hasPages)
+      ? `\n\n${vs?.hypothesisWarning || ""}
+
+STAGE 1b VISUAL SEARCH RESULT (Gemini ${this.config.stage1bModel || DEFAULT_STAGE1B_MODEL} reverse image search):
+  Best match artist : ${vs?.bestMatchArtist || "No match found"}
+  Best match title  : ${vs?.bestMatchTitle || "No match found"}
+  Confidence        : ${vs?.matchConfidence || "N/A"}
+  Visual similarity : ${vs?.visualSimilarityScore != null ? `${(vs.visualSimilarityScore * 100).toFixed(0)}% — ${vs.visualSimilarityRationale}` : "Not scored (image not retrieved)"}
+  Best image URL    : ${vs?.bestMatchImageUrl || "None"}
+  Other pages       : ${vs?.pagesWithMatchingImages?.slice(0, 5).join(", ") || "None"}
+
+INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against VEA signatures, title inscriptions, and technique before accepting. If the visual similarity score is below 0.6 or confidence is LOW, treat with high scepticism.\n`
+      : "";
+
+    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage, null, 2)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(veaSlim, null, 2)}${visualSearchBlock}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
     if (isClaude(stage2bModel)) {
@@ -581,7 +929,7 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     }
   }
 
-  private async runStage2Attribution(
+  protected async runStage2Attribution(
     vea: VisualExtractionResult,
     stage2Model: string,
     ai: GoogleGenAI,
@@ -597,79 +945,220 @@ export class ThreeStageAppraiser implements AppraisalMethod {
     }
   }
 
-  private async runStage3Valuation(
+  protected async runStage3Valuation(
     vea: VisualExtractionResult,
     attr: AttributionResearchResult,
     stage3Model: string,
     ai: GoogleGenAI,
     currency: string,
     userNotes?: string
-  ): Promise<PrintAnalysisReport> {
+  ): Promise<Partial<PrintAnalysisReport>> {
     const systemInstruction = resolveCustomPrompt(VALUATION_REPORT_SYSTEM_PROMPT, currency, userNotes);
-    const userText = `Synthesize these two structured inputs to generate the final appraisal report.\n\nSTAGE 1 VISUAL EXTRACTION RESULTS:\n${JSON.stringify(vea, null, 2)}\n\nSTAGE 2 ATTRIBUTION & MARKET RESEARCH RESULTS:\n${JSON.stringify(attr, null, 2)}`;
+    const userText = `Search for recent auction comps and produce a valuation for the following print.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea, null, 2)}\n\nSTAGE 2 ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity factors):\n${JSON.stringify(attr, null, 2)}\n\n⚠️ CRITICAL: Output ONLY the valuation fields listed in the schema — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT re-describe the artwork or repeat attribution findings. Start your response with { and end with }.`;
     if (isClaude(stage3Model)) {
-      return this.callClaude(stage3Model, systemInstruction, [{ type: "text", text: userText }], "report_print_analysis", "Report the final structured art print analysis and appraisal details.", FINAL_REPORT_RESPONSE_SCHEMA);
+      console.log(`[4-Stage] Stage 3 using web search for auction comps — model: ${stage3Model}`);
+      return this.callClaudeWithWebSearch(stage3Model, systemInstruction, userText, 16000);
     } else {
-      return this.callGemini(ai, stage3Model, systemInstruction, [{ text: userText }], FINAL_REPORT_RESPONSE_SCHEMA, this.config.temperature || 0.15, true);
+      return this.callGemini(ai, stage3Model, systemInstruction, [{ text: userText }], STAGE3_VALUATION_ONLY_SCHEMA, this.config.temperature || 0.15, true);
     }
   }
 
-  // ---- Orchestrator --------------------------------------------------------
+  abstract appraise(input: AppraisalInput): Promise<PrintAnalysisReport>;
 
+  // ---- Shared report assembly -----------------------------------------------
+
+  protected assembleReport(
+    vea: VisualExtractionResult,
+    attr: AttributionResearchResult,
+    valuation: Partial<PrintAnalysisReport>,
+    currency: string
+  ): PrintAnalysisReport {
+    // Repair stringified JSON fields some models return
+    if (typeof (valuation as any).auctionEstimate === "string") {
+      try { (valuation as any).auctionEstimate = JSON.parse((valuation as any).auctionEstimate); } catch {}
+    }
+    const est = (valuation as any).auctionEstimate;
+    if (est) {
+      const toInt = (v: any) => typeof v === "string" ? parseInt(v.replace(/[^0-9]/g, ""), 10) || 0 : (v || 0);
+      est.lowEstimate = toInt(est.lowEstimate);
+      est.highEstimate = toInt(est.highEstimate);
+    }
+
+    const asa = attr as any;
+    const likelyArtist = asa.attributionConclusion?.attributedArtist || asa.likelyArtist || "Unknown Printmaker";
+    const artistConfidence = Math.round((asa.attributionConclusion?.attributionConfidence ?? (asa.artistConfidence ?? 0)) * (asa.attributionConclusion ? 100 : 1));
+    const artworkTitle = asa.attributionConclusion?.workTitle || asa.artworkTitle || "[Untitled]";
+    const titleConfidence = asa.titleConfidence ?? 50;
+    const creationPeriod = asa.attributionConclusion?.dateOrPeriod || asa.creationPeriod || "Unknown";
+
+    const technique = asa.attributionConclusion?.technique || vea.printingTechniques?.[0]?.technique || "Unknown";
+    const techniqueConfidence = vea.printingTechniques?.[0]?.techniqueConfidence ?? 50;
+    const techniques = [{
+      technique,
+      confidence: techniqueConfidence,
+      evidenceIdentified: vea.printingTechniques?.[0]?.visualEvidence || [],
+      description: `${technique} identified from visual extraction.`,
+    }];
+
+    const conditionNotes = {
+      overallGrade: (vea.condition?.overallGrade as any) || "Good",
+      issuesDetected: vea.condition?.defects?.map((d: any) => `${d.type} (${d.severity})`) || [],
+      signatureStatus: vea.signatures?.[0]
+        ? `${vea.signatures[0].type} — "${vea.signatures[0].transcription}" (${vea.signatures[0].medium})`
+        : "No signature detected",
+      mattingAndMargins: vea.plateMark?.observationNotes || "",
+      analysisDetails: vea.condition?.restorationNotes || `Overall condition: ${vea.condition?.overallGrade || "N/A"}.`,
+    };
+
+    const visualDescription = [
+      vea.composition?.subjectMatter,
+      vea.composition?.visualStyle,
+      vea.inkAndColour?.coloursPresent?.length ? `Colours: ${vea.inkAndColour.coloursPresent.join(", ")}.` : null,
+    ].filter(Boolean).join(" ") || "Visual description not available.";
+
+    const historicalContext = asa.attributionConclusion
+      ? `${likelyArtist} — ${creationPeriod}. ${asa.attributionConclusion.attributionEvidenceChain?.join(" ") || ""}`
+      : asa.historicalContext || "";
+
+    const signatureAnalysis = vea.signatures?.map((s: any) =>
+      `${s.type}: "${s.transcription}" — ${s.authenticityNotes}`
+    ).join(". ") || "No signature scan provided.";
+
+    const damageAnalysis = vea.condition?.defects?.map((d: any) =>
+      `${d.category} / ${d.type} — ${d.severity}${d.affectsImageArea ? " (affects image area)" : ""}`
+    ).join(". ") || "No significant damage detected.";
+
+    const inferredDimensions = vea.dimensions?.sourceImage !== "unavailable"
+      ? `Plate: ${vea.dimensions?.printedImageMM?.width ?? "?"}×${vea.dimensions?.printedImageMM?.height ?? "?"}mm, Sheet: ${vea.dimensions?.fullSheetMM?.width ?? "?"}×${vea.dimensions?.fullSheetMM?.height ?? "?"}mm`
+      : "Dimensions not available — no scale scan provided.";
+
+    const editionRaw = (valuation as any).editionSizeAndPrintNumber;
+
+    return {
+      likelyArtist,
+      artistConfidence,
+      artworkTitle,
+      titleConfidence,
+      creationPeriod,
+      techniques,
+      auctionEstimate: (valuation as any).auctionEstimate || { lowEstimate: 0, highEstimate: 0, currency, formattedEstimate: "Speculative", valuationContext: "" },
+      conditionNotes,
+      visualDescription,
+      historicalContext,
+      nextSteps: (valuation as any).nextSteps || [],
+      isLikelyReproductionOrPoster: (valuation as any).isLikelyReproductionOrPoster ?? false,
+      reproductionExplanation: (valuation as any).reproductionExplanation || "",
+      recentAuctionSales: (valuation as any).recentAuctionSales || [],
+      inferredDimensions,
+      signatureAnalysis,
+      damageAnalysis,
+      editionSizeAndPrintNumber: editionRaw && typeof editionRaw === "object"
+        ? Object.values(editionRaw).filter(Boolean).join(", ")
+        : (editionRaw || ""),
+      visualEvidenceHighlights: vea.visualEvidenceHighlights || [],
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// ThreeStageAppraiser — VEA → Attribution Research → Valuation
+// ---------------------------------------------------------------------------
+
+export class ThreeStageAppraiser extends MultiStageAppraiser {
   public async appraise(input: AppraisalInput): Promise<PrintAnalysisReport> {
     const ai = this.getClient();
     const currency = input.currency || "USD";
     const defaultModel = this.config.modelName;
     const stage1Model = this.config.stage1Model || defaultModel;
+    const stage2Model = this.config.stage2Model || defaultModel;
     const stage3Model = this.config.stage3Model || defaultModel;
 
-    // Stage 1 — Visual Extraction
+    const t0 = Date.now();
+    console.log(`[Timing] Stage 1 (VEA) starting — model: ${stage1Model}`);
     const vea = await this.runStage1VEA(input, stage1Model, ai);
+    console.log(`[Timing] Stage 1 (VEA) done — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
     if (vea.imageAuthenticity?.haltRecommended) {
       return this.buildHaltReport(vea, currency);
     }
 
-    // Stage 2 — Attribution (3-stage path or 4-stage path)
-    let attr: AttributionResearchResult;
-    let triageResult: TriageResult | undefined;
+    const t2 = Date.now();
+    console.log(`[Timing] Stage 2 (Attribution) starting — model: ${stage2Model}`);
+    const attr = await this.runStage2Attribution(vea, stage2Model, ai, currency, input.userNotes);
+    console.log(`[Timing] Stage 2 (Attribution) done — ${((Date.now() - t2) / 1000).toFixed(1)}s`);
 
-    if (this.config.stage2aModel) {
-      // 4-stage: Triage → Specialist
-      triageResult = await this.runStage2aTriage(vea, this.config.stage2aModel, ai, input.userNotes);
-      const stage2bModel = this.config.stage2bModel || this.config.stage2aModel;
-      attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes);
-    } else {
-      // 3-stage: direct attribution research
-      const stage2Model = this.config.stage2Model || defaultModel;
-      attr = await this.runStage2Attribution(vea, stage2Model, ai, currency, input.userNotes);
+    const t3 = Date.now();
+    console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
+    const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes);
+    console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
+    console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+
+    const report = this.assembleReport(vea, attr, valuation, currency);
+    report.stage1Result = vea;
+    report.stage2Result = attr;
+    report.modelUsed = `3-Stage [S1: ${stage1Model} | S2: ${stage2Model} | S3: ${stage3Model}]`;
+    report.promptVersion = "3stage";
+    return report;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FourStageAppraiser — VEA (+ optional Visual Search) → Triage → Specialist → Valuation
+// ---------------------------------------------------------------------------
+
+export class FourStageAppraiser extends MultiStageAppraiser {
+  public async appraise(input: AppraisalInput): Promise<PrintAnalysisReport> {
+    const ai = this.getClient();
+    const currency = input.currency || "USD";
+    const defaultModel = this.config.modelName;
+    const stage1Model = this.config.stage1Model || defaultModel;
+    const stage2aModel = this.config.stage2aModel!;
+    const stage2bModel = this.config.stage2bModel || stage2aModel;
+    const stage3Model = this.config.stage3Model || defaultModel;
+    const runVisualSearch = this.config.enableVisualSearch !== false;
+
+    const t0 = Date.now();
+    console.log(`[Timing] Stage 1 (VEA) starting — model: ${stage1Model}`);
+    const vea = await this.runStage1VEA(input, stage1Model, ai);
+    console.log(`[Timing] Stage 1 (VEA) done — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+
+    if (vea.imageAuthenticity?.haltRecommended) {
+      return this.buildHaltReport(vea, currency);
     }
 
-    // Stage 3 — Valuation
-    const finalReport = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes);
+    // Stage 1b (visual search) + Stage 2a (triage) run in parallel
+    const [visualSearch, triageResult] = await Promise.all([
+      runVisualSearch
+        ? this.runStage1bVisionSearch(input.imageBase64, input.mimeType)
+        : Promise.resolve(undefined),
+      (async () => {
+        const t2a = Date.now();
+        console.log(`[Timing] Stage 2a (Triage) starting — model: ${stage2aModel}`);
+        const r = await this.runStage2aTriage(vea, stage2aModel, ai, input.userNotes);
+        console.log(`[Timing] Stage 2a (Triage) done — ${((Date.now() - t2a) / 1000).toFixed(1)}s`);
+        return r;
+      })(),
+    ]);
 
-    // Defensively repair stringified JSON fields some models return
-    if (typeof finalReport.conditionNotes === "string") {
-      try { (finalReport as any).conditionNotes = JSON.parse(finalReport.conditionNotes as any); } catch {}
-    }
-    if (typeof finalReport.auctionEstimate === "string") {
-      try { (finalReport as any).auctionEstimate = JSON.parse(finalReport.auctionEstimate as any); } catch {}
-    }
+    const t2b = Date.now();
+    console.log(`[Timing] Stage 2b (Specialist) starting — model: ${stage2bModel}`);
+    const attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined);
+    console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
 
-    // Attach stage outputs and pipeline metadata
-    finalReport.stage1Result = vea;
-    finalReport.stage2Result = attr;
+    const t3 = Date.now();
+    console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
+    const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes);
+    console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
+    console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
-    if (triageResult) {
-      finalReport.stage2aResult = triageResult;
-      finalReport.modelUsed = `4-Stage [S1: ${stage1Model} | S2a: ${this.config.stage2aModel} | S2b: ${this.config.stage2bModel || this.config.stage2aModel} | S3: ${stage3Model}]`;
-      finalReport.promptVersion = "4stage";
-    } else {
-      finalReport.modelUsed = `3-Stage [S1: ${stage1Model} | S2: ${this.config.stage2Model || defaultModel} | S3: ${stage3Model}]`;
-      finalReport.promptVersion = "3stage";
-    }
-
-    return finalReport;
+    const report = this.assembleReport(vea, attr, valuation, currency);
+    report.stage1Result = vea;
+    report.stage2Result = attr;
+    report.stage2aResult = triageResult;
+    const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
+    report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${stage3Model}]`;
+    report.promptVersion = "4stage";
+    return report;
   }
 }
 
@@ -841,6 +1330,23 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     stage2aModel: "claude-sonnet-4-6",
     stage2bModel: "claude-sonnet-4-6",
     stage3Model: "claude-sonnet-4-6",
+    enableVisualSearch: true,
+  },
+  {
+    id: "claude-4stage-fast",
+    name: "Claude 4-Stage Fast (Haiku Triage)",
+    description: "Opus for vision (S1), Haiku for triage (S2a), Sonnet for specialist search (S2b), Sonnet for valuation (S3). Faster and cheaper than standard 4-stage.",
+    modelName: "claude-opus-4-8",
+    temperature: 0.1,
+    promptKey: "standard",
+    imageQuality: "original",
+    includeAuxiliaryScans: true,
+    provider: "anthropic",
+    stage1Model: "claude-opus-4-8",
+    stage2aModel: "claude-haiku-4-5",
+    stage2bModel: "claude-sonnet-4-6",
+    stage3Model: "claude-sonnet-4-6",
+    enableVisualSearch: true,
   },
   {
     id: "gemini-4stage",
@@ -855,6 +1361,7 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     stage2aModel: "gemini-3.1-pro-preview",
     stage2bModel: "gemini-3.1-pro-preview",
     stage3Model: "gemini-2.5-pro",
+    enableVisualSearch: true,
   },
 ];
 
@@ -864,7 +1371,9 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
 
 export const appraiserRegistry: Record<string, AppraisalMethod> = appraiserConfigs.reduce(
   (registry, config) => {
-    if (config.stage1Model || config.stage2aModel) {
+    if (config.stage2aModel) {
+      registry[config.id] = new FourStageAppraiser(config);
+    } else if (config.stage1Model || config.stage2Model) {
       registry[config.id] = new ThreeStageAppraiser(config);
     } else if (config.provider === "anthropic") {
       registry[config.id] = new ConfigurableClaudeAppraiser(config);
@@ -879,9 +1388,8 @@ export const appraiserRegistry: Record<string, AppraisalMethod> = appraiserConfi
 export function getAppraiser(methodName: string = "gemini-standard", aiClient?: GoogleGenAI): AppraisalMethod {
   const appraiser = appraiserRegistry[methodName];
   if (!appraiser) throw new Error(`Unknown appraisal method: ${methodName}`);
-  if (appraiser instanceof ThreeStageAppraiser) {
-    return new ThreeStageAppraiser(appraiser.config, aiClient);
-  }
+  if (appraiser instanceof FourStageAppraiser) return new FourStageAppraiser(appraiser.config, aiClient);
+  if (appraiser instanceof ThreeStageAppraiser) return new ThreeStageAppraiser(appraiser.config, aiClient);
   if (aiClient && !(appraiser instanceof ConfigurableClaudeAppraiser)) {
     return new ConfigurableGeminiAppraiser(appraiser.config, aiClient);
   }
@@ -889,7 +1397,8 @@ export function getAppraiser(methodName: string = "gemini-standard", aiClient?: 
 }
 
 export function getAppraiserFromConfig(config: AppraisalMethodConfig, aiClient?: GoogleGenAI): AppraisalMethod {
-  if (config.stage1Model || config.stage2aModel) return new ThreeStageAppraiser(config, aiClient);
+  if (config.stage2aModel) return new FourStageAppraiser(config, aiClient);
+  if (config.stage1Model || config.stage2Model) return new ThreeStageAppraiser(config, aiClient);
   if (config.provider === "anthropic") return new ConfigurableClaudeAppraiser(config);
   return new ConfigurableGeminiAppraiser(config, aiClient);
 }

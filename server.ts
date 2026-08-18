@@ -746,12 +746,7 @@ app.post("/api/user/catalog-list", async (req, res) => {
           await db.renameCatalogue(clientCat.id, clientCat.name);
         }
       } else {
-        const query = `
-          INSERT INTO catalogues (id, user_id, name, created_at)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
-        `;
-        await pool.query(query, [clientCat.id, user.id, clientCat.name, clientCat.timestamp || new Date()]);
+        await db.upsertCatalogueById(clientCat.id, user.id, clientCat.name, clientCat.timestamp ? new Date(clientCat.timestamp) : undefined);
       }
     }
 
@@ -773,7 +768,7 @@ app.get("/api/user/catalog", async (req, res) => {
     }
 
     const user = await resolveUser(username);
-    const catalog = await db.getCatalogueItems(id);
+    const catalog = await db.getCatalogueItems(id, user.id);
     return res.json(catalog);
   } catch (err: any) {
     console.error("Failed to load user catalog:", err);
@@ -891,8 +886,8 @@ async function setupServer() {
     console.log("Upserting default appraisal methods into database...");
     for (const config of appraiserConfigs) {
       await client.query(`
-        INSERT INTO appraisal_methods (id, name, description, model_name, temperature, prompt_key, prompt_text, image_quality, include_auxiliary_scans, provider, stage1_model, stage2_model, stage2a_model, stage2b_model, stage3_model)
-        VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14)
+        INSERT INTO appraisal_methods (id, name, description, model_name, temperature, prompt_key, prompt_text, image_quality, include_auxiliary_scans, provider, stage1_model, stage1b_model, stage2_model, stage2a_model, stage2b_model, stage3_model, enable_visual_search)
+        VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           description = EXCLUDED.description,
@@ -903,10 +898,12 @@ async function setupServer() {
           include_auxiliary_scans = EXCLUDED.include_auxiliary_scans,
           provider = EXCLUDED.provider,
           stage1_model = EXCLUDED.stage1_model,
+          stage1b_model = EXCLUDED.stage1b_model,
           stage2_model = EXCLUDED.stage2_model,
           stage2a_model = EXCLUDED.stage2a_model,
           stage2b_model = EXCLUDED.stage2b_model,
-          stage3_model = EXCLUDED.stage3_model;
+          stage3_model = EXCLUDED.stage3_model,
+          enable_visual_search = EXCLUDED.enable_visual_search;
       `, [
         config.id,
         config.name,
@@ -918,10 +915,12 @@ async function setupServer() {
         config.includeAuxiliaryScans,
         config.provider || 'gemini',
         config.stage1Model || null,
+        (config as any).stage1bModel || null,
         config.stage2Model || null,
         config.stage2aModel || null,
         config.stage2bModel || null,
         config.stage3Model || null,
+        (config as any).enableVisualSearch ?? true,
       ]);
     }
     console.log("✓ Default appraisal methods synchronized.");
