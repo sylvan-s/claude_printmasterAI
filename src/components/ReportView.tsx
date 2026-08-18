@@ -227,8 +227,13 @@ export default function ReportView({
   const [editSignatureAnalysis, setEditSignatureAnalysis] = React.useState("");
   const [editDamageAnalysis, setEditDamageAnalysis] = React.useState("");
 
+  const safeEst = (r: typeof report) => (r.auctionEstimate as any) || {};
+  const safeCond = (r: typeof report) => (r.conditionNotes as any) || {};
+
   // Sync edit states when report changes
   React.useEffect(() => {
+    const est = safeEst(report);
+    const cond = safeCond(report);
     setEditTitle(report.artworkTitle);
     setEditArtist(report.likelyArtist);
     setEditPeriod(report.creationPeriod);
@@ -237,13 +242,13 @@ export default function ReportView({
     setEditIsReproduction(report.isLikelyReproductionOrPoster);
     setEditReproductionExplanation(report.reproductionExplanation);
     setEditEditionSize(report.editionSizeAndPrintNumber || "");
-    setEditLowEstimate(report.auctionEstimate.lowEstimate);
-    setEditHighEstimate(report.auctionEstimate.highEstimate);
-    setEditValuationContext(report.auctionEstimate.valuationContext);
-    setEditOverallGrade(report.conditionNotes.overallGrade);
-    setEditSignatureStatus(report.conditionNotes.signatureStatus);
-    setEditMattingAndMargins(report.conditionNotes.mattingAndMargins);
-    setEditAnalysisDetails(report.conditionNotes.analysisDetails);
+    setEditLowEstimate(est.lowEstimate || 0);
+    setEditHighEstimate(est.highEstimate || 0);
+    setEditValuationContext(est.valuationContext || "");
+    setEditOverallGrade(cond.overallGrade || "Good");
+    setEditSignatureStatus(cond.signatureStatus || "");
+    setEditMattingAndMargins(cond.mattingAndMargins || "");
+    setEditAnalysisDetails(cond.analysisDetails || "");
     setEditVisualDescription(report.visualDescription);
     setEditHistoricalContext(report.historicalContext);
     setEditInferredDimensions(report.inferredDimensions || "");
@@ -252,6 +257,8 @@ export default function ReportView({
   }, [report]);
 
   const handleCancel = () => {
+    const est = safeEst(report);
+    const cond = safeCond(report);
     setEditTitle(report.artworkTitle);
     setEditArtist(report.likelyArtist);
     setEditPeriod(report.creationPeriod);
@@ -260,13 +267,13 @@ export default function ReportView({
     setEditIsReproduction(report.isLikelyReproductionOrPoster);
     setEditReproductionExplanation(report.reproductionExplanation);
     setEditEditionSize(report.editionSizeAndPrintNumber || "");
-    setEditLowEstimate(report.auctionEstimate.lowEstimate);
-    setEditHighEstimate(report.auctionEstimate.highEstimate);
-    setEditValuationContext(report.auctionEstimate.valuationContext);
-    setEditOverallGrade(report.conditionNotes.overallGrade);
-    setEditSignatureStatus(report.conditionNotes.signatureStatus);
-    setEditMattingAndMargins(report.conditionNotes.mattingAndMargins);
-    setEditAnalysisDetails(report.conditionNotes.analysisDetails);
+    setEditLowEstimate(est.lowEstimate || 0);
+    setEditHighEstimate(est.highEstimate || 0);
+    setEditValuationContext(est.valuationContext || "");
+    setEditOverallGrade(cond.overallGrade || "Good");
+    setEditSignatureStatus(cond.signatureStatus || "");
+    setEditMattingAndMargins(cond.mattingAndMargins || "");
+    setEditAnalysisDetails(cond.analysisDetails || "");
     setEditVisualDescription(report.visualDescription);
     setEditHistoricalContext(report.historicalContext);
     setEditInferredDimensions(report.inferredDimensions || "");
@@ -277,7 +284,7 @@ export default function ReportView({
 
   const handleSave = () => {
     if (onUpdateReport) {
-      const baseCurrency = report.auctionEstimate.currency || "USD";
+      const baseCurrency = safeEst(report).currency || "USD";
       
       let finalModel = report.modelUsed || "gemini-2.5-flash";
       const editedIndex = finalModel.indexOf(" (Edited by");
@@ -455,7 +462,7 @@ export default function ReportView({
             <div className="space-y-3 my-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[9px] font-mono text-rosebery-muted uppercase">Low ({report.auctionEstimate.currency})</label>
+                  <label className="text-[9px] font-mono text-rosebery-muted uppercase">Low ({safeEst(report).currency || "USD"})</label>
                   <input
                     type="number"
                     value={editLowEstimate}
@@ -464,7 +471,7 @@ export default function ReportView({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] font-mono text-rosebery-muted uppercase">High ({report.auctionEstimate.currency})</label>
+                  <label className="text-[9px] font-mono text-rosebery-muted uppercase">High ({safeEst(report).currency || "USD"})</label>
                   <input
                     type="number"
                     value={editHighEstimate}
@@ -477,9 +484,9 @@ export default function ReportView({
           ) : (
             <div className="my-5">
               <span className="text-2xl md:text-3xl font-serif font-bold tracking-wide text-rosebery-primary block">
-                {report.auctionEstimate.lowEstimate === 0 
-                  ? "speculative value" 
-                  : `${getCurrencySymbol(currency)}${convertValue(report.auctionEstimate.lowEstimate, report.auctionEstimate.currency, currency).toLocaleString()} - ${getCurrencySymbol(currency)}${convertValue(report.auctionEstimate.highEstimate, report.auctionEstimate.currency, currency).toLocaleString()} ${currency}`}
+                {(safeEst(report).lowEstimate || 0) === 0
+                  ? "speculative value"
+                  : `${getCurrencySymbol(currency)}${convertValue(safeEst(report).lowEstimate, safeEst(report).currency || "USD", currency).toLocaleString()} - ${getCurrencySymbol(currency)}${convertValue(safeEst(report).highEstimate, safeEst(report).currency || "USD", currency).toLocaleString()} ${currency}`}
               </span>
               <p className="text-xs font-mono text-rosebery-primary font-semibold mt-2.5">
                 ESTIMATED IN GLOBAL CURRENCY MARKET ({currency})
@@ -500,7 +507,7 @@ export default function ReportView({
             />
           ) : (
             <p className="text-xs text-rosebery-muted leading-relaxed">
-              {report.auctionEstimate.valuationContext}
+              {safeEst(report).valuationContext || ""}
             </p>
           )}
         </div>
@@ -529,8 +536,8 @@ export default function ReportView({
                   <option value="Poor">Poor</option>
                 </select>
               ) : (
-                <span className={`inline-flex items-center px-3 py-1 rounded border text-xs font-bold uppercase tracking-wider ${getGradeStyle(report.conditionNotes.overallGrade)}`}>
-                  ★ {report.conditionNotes.overallGrade} Grade
+                <span className={`inline-flex items-center px-3 py-1 rounded border text-xs font-bold uppercase tracking-wider ${getGradeStyle(safeCond(report).overallGrade)}`}>
+                  ★ {safeCond(report).overallGrade || "N/A"} Grade
                 </span>
               )}
             </div>
@@ -546,7 +553,7 @@ export default function ReportView({
                 />
               ) : (
                 <span className="text-xs font-semibold text-rosebery-charcoal block">
-                  {report.conditionNotes.signatureStatus}
+                  {safeCond(report).signatureStatus || ""}
                 </span>
               )}
             </div>
@@ -555,14 +562,14 @@ export default function ReportView({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <span className="text-[10px] font-mono tracking-widest text-rosebery-primary uppercase block mb-2.5 font-bold">VISIBLE SURFACE IRREGULARITIES</span>
-              {report.conditionNotes.issuesDetected.length === 0 || (report.conditionNotes.issuesDetected.length === 1 && report.conditionNotes.issuesDetected[0].toLowerCase().includes("no obvious")) ? (
+              {(safeCond(report).issuesDetected || []).length === 0 || ((safeCond(report).issuesDetected || []).length === 1 && safeCond(report).issuesDetected[0].toLowerCase().includes("no obvious")) ? (
                 <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 p-3 rounded">
                   <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
                   No high-risk environmental stains or tears observed in photography.
                 </div>
               ) : (
                 <ul className="space-y-1.5">
-                  {report.conditionNotes.issuesDetected.map((issue, idx) => (
+                  {(safeCond(report).issuesDetected || []).map((issue: string, idx: number) => (
                     <li key={idx} className="flex items-start gap-2 text-xs text-rosebery-muted">
                       <span className="text-rosebery-primary font-bold mt-0.5 shrink-0">•</span>
                       <span>{issue}</span>
@@ -585,7 +592,7 @@ export default function ReportView({
                   />
                 ) : (
                   <p className="text-xs text-rosebery-muted leading-relaxed">
-                    {report.conditionNotes.mattingAndMargins}
+                    {safeCond(report).mattingAndMargins || ""}
                   </p>
                 )}
               </div>
@@ -602,7 +609,7 @@ export default function ReportView({
                   />
                 ) : (
                   <p className="text-xs text-rosebery-muted leading-relaxed">
-                    {report.conditionNotes.analysisDetails}
+                    {safeCond(report).analysisDetails || ""}
                   </p>
                 )}
               </div>
@@ -1033,7 +1040,7 @@ export default function ReportView({
                     />
                   ) : (
                     <p className="text-xs text-rosebery-charcoal font-serif italic leading-relaxed">
-                      {report.editionSizeAndPrintNumber}
+                      {typeof report.editionSizeAndPrintNumber === "object" ? Object.values(report.editionSizeAndPrintNumber as any).filter(Boolean).join(", ") : report.editionSizeAndPrintNumber}
                     </p>
                   )}
                 </div>
@@ -2031,7 +2038,7 @@ export default function ReportView({
                 </div>
                 <div>
                   <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-0.5">EDITION SIZE / NO.</span>
-                  <p className="text-xs font-serif italic text-rosebery-charcoal">{report.editionSizeAndPrintNumber || "N/A"}</p>
+                  <p className="text-xs font-serif italic text-rosebery-charcoal">{typeof report.editionSizeAndPrintNumber === "object" ? Object.values(report.editionSizeAndPrintNumber as any).filter(Boolean).join(", ") : (report.editionSizeAndPrintNumber || "N/A")}</p>
                 </div>
               </div>
             </div>
@@ -2042,21 +2049,21 @@ export default function ReportView({
             <div>
               <span className="text-[10px] font-mono text-rosebery-muted uppercase tracking-widest block mb-1">Preservation Grade</span>
               <span className="text-sm font-bold text-rosebery-primary uppercase tracking-wider">
-                ★ {report.conditionNotes.overallGrade} Grade
+                ★ {safeCond(report).overallGrade || "N/A"} Grade
               </span>
             </div>
             <div>
               <span className="text-[10px] font-mono text-rosebery-muted uppercase tracking-widest block mb-1">Archival Technique</span>
               <span className="text-sm font-bold text-rosebery-charcoal">
-                {report.techniques[0]?.technique || "N/A"}
+                {(report.techniques || [])[0]?.technique || "N/A"}
               </span>
             </div>
             <div>
               <span className="text-[10px] font-mono text-rosebery-muted uppercase tracking-widest block mb-1">Auction Value Estimate</span>
               <span className="text-sm font-serif font-bold text-rosebery-primary">
-                {report.auctionEstimate.lowEstimate === 0 
-                  ? "Speculative" 
-                  : `${getCurrencySymbol(report.auctionEstimate.currency)}${report.auctionEstimate.lowEstimate.toLocaleString()} - ${getCurrencySymbol(report.auctionEstimate.currency)}${report.auctionEstimate.highEstimate.toLocaleString()} ${report.auctionEstimate.currency}`}
+                {(safeEst(report).lowEstimate || 0) === 0
+                  ? "Speculative"
+                  : `${getCurrencySymbol(safeEst(report).currency)}${safeEst(report).lowEstimate.toLocaleString()} - ${getCurrencySymbol(safeEst(report).currency)}${safeEst(report).highEstimate.toLocaleString()} ${safeEst(report).currency}`}
               </span>
             </div>
           </div>
@@ -2080,7 +2087,7 @@ export default function ReportView({
             <div>
               <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-1">Condition & Conservation Recapitulation</span>
               <p className="text-xs text-rosebery-text-normal leading-relaxed text-justify">
-                {report.conditionNotes.analysisDetails || "No conservation anomalies logged."}
+                {safeCond(report).analysisDetails || "No conservation anomalies logged."}
               </p>
             </div>
 

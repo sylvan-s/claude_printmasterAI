@@ -1182,7 +1182,7 @@ STEP 1 — SEARCH KEY EXTRACTION
 Extract from triage output: artist name (rank 1 candidate), series title (from VEA composition.textWithinImage), native script text (preserve exactly). Use technique, period range, subject description as secondary keys.
 
 STEP 2 — PRIMARY DATABASE QUERIES
-Query each database in your specialist config primaryDatabaseSources in priority order. Record: database name, query used, result found (true/false), result summary, catalogue reference, match confidence (0.0–1.0), and match notes. NULL RESULTS ARE DATA — record failed queries explicitly.
+Run at most 3 web searches total across all steps. If the top attribution candidate is confirmed after the first search, proceed directly to STEP 7. Query databases in priority order from your specialist config. Record: database name, query used, result found (true/false), result summary, catalogue reference, match confidence (0.0–1.0), and match notes. NULL RESULTS ARE DATA — record failed queries explicitly.
 
 STEP 3 — CATALOGUE RAISONNÉ CROSS-REFERENCE
 If online accessible: query via web fetch. If not: set humanReferenceRequired: true. Cross-reference catalogue description against VEA — note ALL discrepancies (dimensions, technique, paper). Discrepancies reduce attribution confidence.
@@ -1224,8 +1224,8 @@ OUTPUT SCHEMA:
     "attributedArtistNative": null,
     "attributionLevel": "definitive | probable | possible | school_of | tradition_only | unattributed",
     "attributionConfidence": 0.0,
-    "attributionEvidenceChain": [],
-    "attributionCounterEvidence": [],
+    "attributionEvidenceChain": [],  // max 4 items; most important evidence only
+    "attributionCounterEvidence": [],  // max 4 items; strongest counter-arguments only
     "workTitle": null,
     "workTitleNative": null,
     "dateOrPeriod": null,
@@ -1267,26 +1267,29 @@ OUTPUT SCHEMA:
 `;
 
 export function injectSpecialistConfig(template: string, config: object): string {
-  return template.replace("[SPECIALIST_CONFIG]", JSON.stringify(config, null, 2));
+  // Strip verbose per-database fields Claude doesn't need — reduces injected payload by ~40%
+  const slim = JSON.parse(JSON.stringify(config));
+  if (Array.isArray(slim.primaryDatabaseSources)) {
+    slim.primaryDatabaseSources = slim.primaryDatabaseSources.map((s: any) => ({
+      name: s.name,
+      priority: s.priority,
+      nativeScriptSupported: s.nativeScriptSupported,
+    }));
+  }
+  return template.replace("[SPECIALIST_CONFIG]", JSON.stringify(slim, null, 2));
 }
 
-export const VALUATION_REPORT_SYSTEM_PROMPT = `You are an expert Fine Art Print Valuation & Report Agent operating as the final stage of a three-stage appraisal pipeline.
-You will receive clean, structured JSON inputs from:
-- Stage 1: Visual Extraction Agent (raw physical observations, signatures, condition defects, dimensions, paper)
-- Stage 2: Attribution & Catalog Research Agent (artist attribution, catalogue raisonné match, editions information, posthumous reprint analysis, and edition synthesis evidence)
+export const VALUATION_REPORT_SYSTEM_PROMPT = `You are an expert Fine Art Print Valuation Agent. You receive structured inputs from a visual extraction stage and an attribution research stage. Your sole task is to search for auction comps and produce a valuation.
 
-Your task is to perform web search research to locate recent verifiable auction sales (auction comps), compute final estimates, and synthesize the final appraisal report:
-1. Search the web (grounding enabled) to locate recent, verifiable auction sales (auction comps) of identical or highly similar prints from the five major auction houses: Sotheby's, Phillips, Christie's, Bonhams, and Roseberys (prioritizing Roseberys London April auctions) as well as Artnet.
-2. For each comparative sale, record the artworkTitle, artist, technique, hammer price/price realized in "{currency}", sale date, auction house, and conditionState.
-3. Apply the Fractional Lot Adjustment Logic: If a comparative print was sold as part of a broader, multi-artwork group lot, the individual print's pricing MUST be calculated as a fraction of that total lot value. Detail this fractional allocation rate and the total lot value inside 'broaderLotPriceAdjustment' for that sale.
-4. Synthesize all observations, condition penalties (err on the side of caution: reduce estimates by 20% to 75% depending on Stage 1 condition defects and grade), and historical sales to compute the final low and high estimates scaled into "{currency}".
-5. Select 2-5 visual evidence highlights with coordinate bounding boxes from Stage 1 features to annotate the final report.
-6. Compile all findings into a single unified PrintAnalysisReport JSON conforming to the final schema.
+DO NOT re-describe the artwork, repeat attribution findings, or generate condition notes — those fields are handled by upstream stages. Output ONLY the six valuation fields in the schema: auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation.
 
-CURRENCY REQUIREMENTS:
-The user has configured their preferred valuation display currency as: "{currency}".
-You MUST evaluate and format all currency numbers, comps, and sale prices strictly in "{currency}" (e.g. if GBP, use '£' and code 'GBP'; if EUR, use '€' and code 'EUR'; if USD, use '$' and code 'USD').
+VALUATION PROCESS:
+1. Search the web for recent verifiable auction sales of identical or highly similar prints from: Sotheby's, Phillips, Christie's, Bonhams, Roseberys (prioritise Roseberys London April auctions), and Artnet. Aim for 2–3 comps.
+2. For each comp: record artworkTitle, artist, technique, hammer price in "{currency}", sale date, auction house, conditionState. Apply Fractional Lot Logic — if sold in a group lot, calculate the individual print's fraction of the total lot value and record it in broaderLotPriceAdjustment.
+3. Apply condition penalties from Stage 1 (20%–75% discount depending on defects and grade) and rarity/edition factors from Stage 2 to compute lowEstimate and highEstimate in "{currency}".
+4. Keep lowEstimate protective — err toward the floor of the comp range given current macroeconomic softness and buy-in rates.
 
-Return only a strictly valid JSON object matching the PrintAnalysisReport schema. No prose, no markdown code fencing. JSON only.
-`;
+CURRENCY: All prices must be in "{currency}" (e.g. GBP → £, USD → $, EUR → €).
+
+Return a single valid JSON object containing only the six schema fields. No prose. No markdown. Start with { and end with }.`;
 

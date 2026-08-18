@@ -21,22 +21,6 @@
       "searchInstructions": "Search: site:britishmuseum.org/collection [subject description] [technique] print.",
       "nativeScriptSupported": true,
       "priority": 2
-    },
-    {
-      "name": "Roseberys London — Past Auction Records",
-      "url": "https://www.roseberys.co.uk/results",
-      "queryMethod": "web_search",
-      "searchInstructions": "Search: site:roseberys.co.uk [technique OR subject keywords].",
-      "nativeScriptSupported": false,
-      "priority": 3
-    },
-    {
-      "name": "Google Arts & Culture",
-      "url": "https://artsandculture.google.com",
-      "queryMethod": "web_search",
-      "searchInstructions": "Search: site:artsandculture.google.com [subject description] [technique].",
-      "nativeScriptSupported": false,
-      "priority": 4
     }
   ],
   "catalogueRaisonne": [

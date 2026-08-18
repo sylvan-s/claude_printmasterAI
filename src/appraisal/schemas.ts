@@ -573,8 +573,8 @@ export const FINAL_REPORT_RESPONSE_SCHEMA = {
       },
       required: ["overallGrade", "issuesDetected", "signatureStatus", "mattingAndMargins", "analysisDetails"]
     },
-    visualDescription: { type: Type.STRING, description: "Description of the visual content, subjects represented, colors, style, composition, and emotional expression." },
-    historicalContext: { type: Type.STRING, description: "Historical background of the print work and its context in art history." },
+    visualDescription: { type: Type.STRING, description: "Composition and iconography notes restricted to stylistic features, motifs, or formal qualities that directly support attribution to an artist or link to a specific period within an artist's stylistic development. Do not describe the image generally — focus only on what is evidentially relevant to attribution." },
+    historicalContext: { type: Type.STRING, description: "Historical context focused on the artist's period of activity, the print tradition or movement this work belongs to, and how the specific stylistic features connect to known phases of the artist's output." },
     nextSteps: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Custom recommendations for conservation, appraisal, or handling." },
     isLikelyReproductionOrPoster: { type: Type.BOOLEAN, description: "Set to true if there are high indicators of a mechanical reproduction rather than an authentic hand-pulled limited-edition print." },
     reproductionExplanation: { type: Type.STRING, description: "Provide details on why this is or isn't suspected of being a mechanical reproduction." },
@@ -627,3 +627,46 @@ export const FINAL_REPORT_RESPONSE_SCHEMA = {
 // Pre-translated version for Anthropic tool input_schema (standard JSON Schema, types lowercased).
 // Eliminates the 220-line inline duplication in ConfigurableClaudeAppraiser.
 export const FINAL_REPORT_CLAUDE_SCHEMA = translateSchemaToStandardJsonSchema(FINAL_REPORT_RESPONSE_SCHEMA);
+
+// Slim schema for Stage 3 web-search call — valuation fields only.
+// All other PrintAnalysisReport fields are passed through from Stage 1/2b and merged in the orchestrator.
+export const STAGE3_VALUATION_ONLY_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    auctionEstimate: {
+      type: Type.OBJECT,
+      properties: {
+        lowEstimate: { type: Type.INTEGER, description: "Low-end estimated auction value as a plain integer with NO currency symbol or commas, e.g. 1200 not '$1,200'." },
+        highEstimate: { type: Type.INTEGER, description: "High-end estimated auction value as a plain integer with NO currency symbol or commas, e.g. 2800 not '$2,800'." },
+        currency: { type: Type.STRING, description: "Currency code only, e.g. 'USD', 'GBP', 'EUR'. No symbols." },
+        formattedEstimate: { type: Type.STRING, description: "Human-readable price range using the currency code only, NOT the symbol, e.g. '1200 - 2800 USD'. The UI adds the symbol — do not include it here." },
+        valuationContext: { type: Type.STRING, description: "Explanation of the valuation rationale, condition penalties applied, and how comps informed the estimate." }
+      },
+      required: ["lowEstimate", "highEstimate", "currency", "formattedEstimate", "valuationContext"]
+    },
+    recentAuctionSales: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          artworkTitle: { type: Type.STRING },
+          artist: { type: Type.STRING },
+          technique: { type: Type.STRING },
+          saleDate: { type: Type.STRING },
+          priceRealized: { type: Type.STRING },
+          auctionHouse: { type: Type.STRING },
+          conditionState: { type: Type.STRING },
+          wasSoldInBroaderLot: { type: Type.BOOLEAN },
+          broaderLotPriceAdjustment: { type: Type.STRING }
+        },
+        required: ["artworkTitle", "artist", "technique", "saleDate", "priceRealized", "auctionHouse", "conditionState", "wasSoldInBroaderLot", "broaderLotPriceAdjustment"]
+      },
+      description: "2–3 recent verifiable auction comps for the same or similar prints."
+    },
+    nextSteps: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Recommendations for conservation, further authentication, or sale strategy." },
+    editionSizeAndPrintNumber: { type: Type.STRING, description: "Final synthesized edition and print number assessment." },
+    isLikelyReproductionOrPoster: { type: Type.BOOLEAN, description: "True if evidence points to a mechanical reproduction." },
+    reproductionExplanation: { type: Type.STRING, description: "Reasoning behind the reproduction assessment." }
+  },
+  required: ["auctionEstimate", "recentAuctionSales", "nextSteps", "editionSizeAndPrintNumber", "isLikelyReproductionOrPoster", "reproductionExplanation"]
+};
