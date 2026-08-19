@@ -25,11 +25,13 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@sparticuz/chromium": "^149.0.0",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/pg": "^8.20.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
+    "puppeteer": "^25.8.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

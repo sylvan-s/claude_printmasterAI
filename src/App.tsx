@@ -326,6 +326,23 @@ export default function App() {
     loadHistory();
   }, []);
 
+  // Expose a global function for Puppeteer PDF batch export to call directly
+  useEffect(() => {
+    (window as any).__pdfExportLoad = async (itemId: string, username: string) => {
+      const res = await fetch("/api/user/items", { headers: { "X-User-Header": username } });
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+      const items = await res.json();
+      const target = items.find((i: any) => i.id === itemId);
+      if (!target) throw new Error(`Item ${itemId} not found`);
+      const reportData = target.report ?? target;
+      setCurrentUser(username);
+      setAnalysisResult(reportData);
+      setPreviewUrl(target.imageUrl || reportData.imageUrl || null);
+      setActiveTab("sandbox");
+      return true;
+    };
+  }, []);
+
   // Fetch registered appraisal methods from backend on mount
   useEffect(() => {
     const fetchMethods = async () => {
