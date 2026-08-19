@@ -1435,7 +1435,7 @@ export default function App() {
       {/* Visual background framing texture */}
       <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[radial-gradient(#4C0B2A_1.5px,transparent_1.5px)] [background-size:20px_20px]" />
 
-      <header className="border-b border-[#3E0A22] bg-rosebery-primary relative z-10 shadow-lg pb-4.5">
+      <header className="border-b border-[#3E0A22] bg-rosebery-primary relative z-10 shadow-lg pb-4.5 print:hidden">
         <div className="max-w-6xl mx-auto px-6 pt-5 md:pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-center sm:text-left flex items-center gap-3.5">
             <div className="bg-[#C0AA84] text-rosebery-primary p-2.5 rounded-sm shadow-gallery-deep">
@@ -1493,7 +1493,7 @@ export default function App() {
         </div>
 
         {/* Second Line: Main Navigation Tabs */}
-        <div className="max-w-6xl mx-auto px-6 mt-4 flex justify-end animate-fadeIn">
+        <div className="max-w-6xl mx-auto px-6 mt-4 flex justify-end animate-fadeIn print:hidden">
           <div className="flex bg-[#3D0821] p-1 rounded-sm border border-[#5A1033] w-full sm:w-auto">
             <button
               onClick={() => setActiveTab("sandbox")}
@@ -1652,7 +1652,7 @@ export default function App() {
               <div className="space-y-6">
                 
                 {/* Reset workspace control bar */}
-                <div className="flex justify-between items-center bg-rosebery-card border border-rosebery-border rounded-sm px-5 py-3 shadow-xs">
+                <div className="flex justify-between items-center bg-rosebery-card border border-rosebery-border rounded-sm px-5 py-3 shadow-xs print:hidden">
                   <div className="flex items-center gap-2.5">
                     <span className="flex h-2.5 w-2.5 relative">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rosebery-primary opacity-75"></span>

@@ -230,16 +230,16 @@ export default function ReportView({
   const safeEst = (r: typeof report) => (r.auctionEstimate as any) || {};
   const safeCond = (r: typeof report) => (r.conditionNotes as any) || {};
 
-  // Set document title to "AI Appraisal Outputs" during print
+  // Set document title to "AI Appraisal Outputs" while the print dialog is open
   React.useEffect(() => {
     const originalTitle = document.title;
     const onBefore = () => { document.title = "AI Appraisal Outputs"; };
-    const onAfter = () => { document.title = originalTitle; };
+    const onAfter  = () => { document.title = originalTitle; };
     window.addEventListener("beforeprint", onBefore);
-    window.addEventListener("afterprint", onAfter);
+    window.addEventListener("afterprint",  onAfter);
     return () => {
       window.removeEventListener("beforeprint", onBefore);
-      window.removeEventListener("afterprint", onAfter);
+      window.removeEventListener("afterprint",  onAfter);
     };
   }, []);
 
@@ -681,7 +681,8 @@ export default function ReportView({
   );
 
   return (
-    <div id="art-report-view" className="space-y-8 animate-fadeIn text-rosebery-text-normal">
+    <>
+    <div id="art-report-view" className="space-y-8 animate-fadeIn text-rosebery-text-normal print:hidden">
       {/* Sleek Curation Bar */}
       <div className="flex justify-between items-center bg-rosebery-card border border-rosebery-border rounded-sm px-5 py-3 shadow-xs">
         <div className="flex items-center gap-2">
@@ -2032,202 +2033,304 @@ export default function ReportView({
         </>
       )}
 
-      {/* Hidden Certificate Print View */}
-      <div className="hidden print:flex bg-white text-rosebery-charcoal font-sans p-8 border-8 border-double border-[#C0AA84] rounded-sm max-w-4xl mx-auto my-4 min-h-[297mm] relative flex-col justify-between certificate-print-container">
-        <div>
-          {/* Certificate Header */}
-          <div className="text-center border-b-2 border-rosebery-primary pb-6 mb-8">
-            <span className="text-[10px] font-mono tracking-[0.3em] text-rosebery-primary uppercase font-bold block mb-1">
-              ESTABLISHED fine art register
-            </span>
-            <h1 className="text-3xl font-serif font-black tracking-widest text-rosebery-primary uppercase">
-              AI Appraisal Report
-            </h1>
-            <p className="text-[10px] font-mono text-rosebery-muted uppercase tracking-[0.25em] mt-1">
-              PrintMasterAI Secure Archival Authentication
-            </p>
-          </div>
+    </div>{/* end #art-report-view */}
 
-          {/* Certificate Content Grid */}
-          <div className="grid grid-cols-3 gap-8 items-start mb-8">
-            {/* Image Thumbnail */}
-            <div className="col-span-1">
-              {imageUrl ? (
-                <div className="border border-rosebery-border p-2 bg-stone-50 shadow-gallery-soft rounded-sm">
-                  <img 
-                    src={imageUrl} 
-                    alt={report.artworkTitle}
-                    className="w-full h-auto object-contain rounded-sm max-h-[200px]"
-                  />
-                </div>
-              ) : (
-                <div className="border border-rosebery-border p-6 bg-stone-50 text-center text-[10px] font-mono text-rosebery-muted">
-                  No Image Available
-                </div>
-              )}
-            </div>
+      {/* ── Print Report — outside screen div, shown only in @media print ── */}
+      <div className="hidden print:block certificate-print-container" style={{
+        fontFamily: "'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif",
+        color: "#1C1115",
+        background: "#FDFBF8",
+        boxSizing: "border-box",
+        width: "100%",
+      }}>
 
-            {/* Core Artwork Metadata */}
-            <div className="col-span-2 space-y-4">
-              <div>
-                <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-0.5">ARTWORK TITLE</span>
-                <h2 className="text-2xl font-serif text-rosebery-charcoal font-bold tracking-wide leading-tight">
-                  {report.artworkTitle}
-                </h2>
+        {/* ── Two-column: image + physical record ── */}
+        <div className="print-no-break" style={{ display: "grid", gridTemplateColumns: "36% 1fr", gap: "18px", marginBottom: "14px", borderTop: "3px solid #C0AA84", paddingTop: "12px" }}>
+          {/* Image */}
+          <div>
+            {imageUrl ? (
+              <img
+                src={imageUrl}
+                alt={report.artworkTitle}
+                style={{ width: "100%", height: "auto", maxHeight: "240px", objectFit: "contain", display: "block", border: "1px solid #E8E2D7", background: "#FAF8F5" }}
+              />
+            ) : (
+              <div style={{ border: "1px solid #E8E2D7", background: "#FAF8F5", height: "160px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "#7A6C71" }}>No image provided</span>
               </div>
-
-              <div>
-                <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-0.5">ATTRIBUTED ARTIST</span>
-                <p className="text-md font-sans font-bold text-rosebery-primary">
-                  {report.likelyArtist} <span className="text-xs font-normal text-rosebery-muted">({report.artistConfidence}% Attribution Probability)</span>
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-0.5">CREATION PERIOD</span>
-                  <p className="text-xs font-mono font-semibold text-rosebery-charcoal">{report.creationPeriod}</p>
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-0.5">EDITION SIZE / NO.</span>
-                  <p className="text-xs font-serif italic text-rosebery-charcoal">{typeof report.editionSizeAndPrintNumber === "object" ? Object.values(report.editionSizeAndPrintNumber as any).filter(Boolean).join(", ") : (report.editionSizeAndPrintNumber || "N/A")}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Key Appraisal Metrics Grid */}
-          <div className="grid grid-cols-3 gap-4 border-y border-rosebery-border py-6 mb-8 text-center bg-rosebery-cream-bg">
-            <div>
-              <span className="text-[10px] font-mono text-rosebery-muted uppercase tracking-widest block mb-1">Preservation Grade</span>
-              <span className="text-sm font-bold text-rosebery-primary uppercase tracking-wider">
-                ★ {safeCond(report).overallGrade || "N/A"} Grade
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] font-mono text-rosebery-muted uppercase tracking-widest block mb-1">Archival Technique</span>
-              <span className="text-sm font-bold text-rosebery-charcoal">
-                {(report.techniques || [])[0]?.technique || "N/A"}
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] font-mono text-rosebery-muted uppercase tracking-widest block mb-1">Auction Value Estimate</span>
-              <span className="text-sm font-serif font-bold text-rosebery-primary">
-                {(safeEst(report).lowEstimate || 0) === 0
-                  ? "Speculative"
-                  : `${getCurrencySymbol(safeEst(report).currency)}${safeEst(report).lowEstimate.toLocaleString()} - ${getCurrencySymbol(safeEst(report).currency)}${safeEst(report).highEstimate.toLocaleString()} ${safeEst(report).currency}`}
-              </span>
-            </div>
-          </div>
-
-          {/* Descriptive Content Blocks */}
-          <div className="space-y-6">
-            <div>
-              <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-1">Composition & Iconography Notes</span>
-              <p className="text-xs text-rosebery-text-normal leading-relaxed text-justify">
-                {report.visualDescription}
-              </p>
-            </div>
-
-            <div>
-              <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-1">Historical Significance</span>
-              <p className="text-xs text-rosebery-text-normal leading-relaxed text-justify">
-                {report.historicalContext}
-              </p>
-            </div>
-
-            <div>
-              <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-1">Condition & Conservation Recapitulation</span>
-              <p className="text-xs text-rosebery-text-normal leading-relaxed text-justify">
-                {safeCond(report).analysisDetails || "No conservation anomalies logged."}
-              </p>
-            </div>
-
-            {report.visualEvidenceHighlights && report.visualEvidenceHighlights.length > 0 && imageUrl && (
-              <div className="pt-2 border-t border-rosebery-border">
-                <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-2.5">Zoomed Visual Evidence Scans</span>
-                <div className="grid grid-cols-4 gap-4">
-                  {signaturePreview && (
-                    <div className="border border-rosebery-border p-2 bg-stone-50 rounded-sm flex flex-col space-y-2">
-                      <div className="relative w-full aspect-square bg-[#FAF9F6] border border-rosebery-border rounded-sm overflow-hidden flex items-center justify-center shadow-gallery-soft">
-                        <img src={signaturePreview} alt="Signature zoom" className="max-w-full max-h-full object-contain" />
-                      </div>
-                      <div className="text-[9px] leading-tight">
-                        <span className="font-bold text-rosebery-charcoal block">✒️ Signature Closeup</span>
-                        <span className="text-rosebery-muted block mt-0.5">Uploaded auxiliary signature closeup.</span>
-                      </div>
-                    </div>
-                  )}
-                  {report.visualEvidenceHighlights.map((highlight, idx) => (
-                    <div key={idx} className="border border-rosebery-border p-2 bg-stone-50 rounded-sm flex flex-col space-y-2">
-                      <EvidenceCrop imageUrl={imageUrl} box_2d={highlight.box_2d} label={highlight.label} />
-                      <div className="text-[9px] leading-tight">
-                        <span className="font-bold text-rosebery-charcoal block">🔍 {highlight.label}</span>
-                        <span className="text-rosebery-muted block mt-0.5">{highlight.observation}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            )}
+            {signaturePreview && (
+              <div style={{ marginTop: "8px" }}>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.15em", color: "#7A6C71", display: "block", marginBottom: "4px" }}>Signature detail</span>
+                <img src={signaturePreview} alt="Signature" style={{ width: "100%", maxHeight: "80px", objectFit: "contain", border: "1px solid #E8E2D7", background: "#FAF8F5" }} />
               </div>
             )}
           </div>
+
+          {/* Physical record */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+            {/* Title + artist as compact header row */}
+            <div style={{ marginBottom: "8px" }}>
+              <h1 style={{
+                fontFamily: "'Cormorant Garamond', 'Palatino Linotype', Palatino, Georgia, serif",
+                fontSize: "22px", fontWeight: 500, lineHeight: 1.15,
+                color: "#1C1115", letterSpacing: "0.01em", margin: "0 0 3px",
+              }}>
+                {report.artworkTitle}
+              </h1>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "13px", fontStyle: "italic", color: "#4C0B2A", fontWeight: 500 }}>
+                  {report.likelyArtist}
+                </span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", color: "#7A6C71" }}>
+                  {report.artistConfidence}% confidence
+                </span>
+              </div>
+            </div>
+            {/* Record table */}
+            {([
+              ["Period", report.creationPeriod],
+              ["Technique", (report.techniques || [])[0]?.technique || "—"],
+              ["Paper", report.stage1Result?.paper?.surfaceType?.replace(/_/g, " ") || "—"],
+              ["Mounting", report.stage1Result?.paper?.mountingStatus?.replace(/_/g, " ") || "—"],
+              ["Edition", typeof report.editionSizeAndPrintNumber === "object"
+                ? Object.values(report.editionSizeAndPrintNumber as any).filter(Boolean).join(", ")
+                : (report.editionSizeAndPrintNumber || "—")],
+              ["Condition", safeCond(report).overallGrade || "—"],
+            ] as [string, string][]).map(([label, value]) => (
+              <div key={label} style={{ display: "flex", borderBottom: "1px solid #E8E2D7", padding: "4px 0", gap: "12px", alignItems: "baseline" }}>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.13em", color: "#7A6C71", minWidth: "90px", flexShrink: 0 }}>
+                  {label}
+                </span>
+                <span style={{ fontSize: "10px", color: "#1C1115", fontWeight: 500, lineHeight: 1.4 }}>
+                  {value}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Comparable Auction Sales */}
-        {report.recentAuctionSales && report.recentAuctionSales.length > 0 && (
-          <div className="mt-8 pt-6 border-t border-rosebery-border">
-            <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block mb-3">
-              Comparable Auction Sales (Benchmark Records)
-            </span>
-            <div className="space-y-2">
-              {report.recentAuctionSales.map((sale, idx) => (
-                <div key={idx} className="flex justify-between items-start text-[10px] border-b border-dashed border-rosebery-border pb-2 gap-4">
-                  <div className="flex-1">
-                    <span className="font-serif font-semibold text-rosebery-charcoal">{sale.artworkTitle}</span>
-                    <span className="text-rosebery-muted ml-1">— {sale.artist}</span>
-                    {sale.technique && <span className="text-rosebery-muted italic ml-1">({sale.technique})</span>}
+        {/* ── Direct Observations ── */}
+        {(() => {
+          const sigs   = (report.stage1Result?.signatures   || []).filter((s: any) => s.box_2d?.length === 4);
+          const titles = (report.stage1Result?.titleInscriptions || []).filter((t: any) => t.box_2d?.length === 4);
+          const eds    = (report.stage1Result?.editionInfo   || []).filter((e: any) => e.box_2d?.length === 4);
+          const defects= (report.stage1Result?.condition?.defects || []).filter((d: any) => d.box_2d?.length === 4);
+          const hasSupp= signaturePreview || damagePreview || scalePreview;
+          const hasCrops = sigs.length || titles.length || eds.length || defects.length;
+          if (!hasSupp && !hasCrops) return null;
+
+          const labelStyle: React.CSSProperties = {
+            fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px",
+            textTransform: "uppercase", letterSpacing: "0.14em", color: "#7A6C71",
+            display: "block", marginTop: "4px", textAlign: "center",
+          };
+          const cropCardStyle: React.CSSProperties = {
+            display: "flex", flexDirection: "column", alignItems: "center",
+            background: "#FAF8F5", border: "1px solid #E8E2D7", padding: "6px",
+            breakInside: "avoid",
+          };
+
+          return (
+            <div className="print-no-break" style={{ marginBottom: "12px" }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.18em", color: "#7A6C71", display: "block", marginBottom: "8px", borderBottom: "1px solid #E8E2D7", paddingBottom: "3px" }}>
+                Direct Observations
+              </span>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: "8px" }}>
+
+                {/* Supplemental upload photos */}
+                {signaturePreview && (
+                  <div style={cropCardStyle}>
+                    <img src={signaturePreview} alt="Signature" style={{ width: "100%", height: "80px", objectFit: "contain", background: "#fff" }} />
+                    <span style={labelStyle}>Signature</span>
                   </div>
-                  <div className="text-right shrink-0 space-y-0.5">
-                    <span className="font-bold text-rosebery-primary block">{formatAndConvertPriceRealized(sale.priceRealized, currency) || "—"}</span>
-                    <span className="text-rosebery-muted font-mono block">{sale.auctionHouse} • {sale.saleDate}</span>
-                    {sale.wasSoldInBroaderLot && sale.broaderLotPriceAdjustment && (
-                      <span className="text-rosebery-muted block">Lot fraction: {formatAndConvertPriceRealized(sale.broaderLotPriceAdjustment, currency)}</span>
-                    )}
+                )}
+                {damagePreview && (
+                  <div style={cropCardStyle}>
+                    <img src={damagePreview} alt="Damage" style={{ width: "100%", height: "80px", objectFit: "contain", background: "#fff" }} />
+                    <span style={labelStyle}>Damage detail</span>
                   </div>
-                </div>
-              ))}
+                )}
+                {scalePreview && (
+                  <div style={cropCardStyle}>
+                    <img src={scalePreview} alt="Scale" style={{ width: "100%", height: "80px", objectFit: "contain", background: "#fff" }} />
+                    <span style={labelStyle}>Scale reference</span>
+                  </div>
+                )}
+
+                {/* Box-crop evidence from stage1 */}
+                {imageUrl && sigs.map((sig: any, i: number) => (
+                  <div key={`sig-${i}`} style={cropCardStyle}>
+                    <div style={{ width: "100%", height: "80px", overflow: "hidden", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <EvidenceCrop imageUrl={imageUrl} box_2d={sig.box_2d} label={sig.type} />
+                    </div>
+                    <span style={labelStyle}>{sig.type?.replace(/_/g, " ") || "Signature"}</span>
+                    {sig.transcription && <span style={{ ...labelStyle, fontStyle: "italic", color: "#4C0B2A" }}>"{sig.transcription}"</span>}
+                  </div>
+                ))}
+                {imageUrl && titles.map((ti: any, i: number) => (
+                  <div key={`ti-${i}`} style={cropCardStyle}>
+                    <div style={{ width: "100%", height: "80px", overflow: "hidden", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <EvidenceCrop imageUrl={imageUrl} box_2d={ti.box_2d} label="Title inscription" />
+                    </div>
+                    <span style={labelStyle}>Title inscription</span>
+                    {ti.transcription && <span style={{ ...labelStyle, fontStyle: "italic", color: "#4C0B2A" }}>"{ti.transcription}"</span>}
+                  </div>
+                ))}
+                {imageUrl && eds.map((ed: any, i: number) => (
+                  <div key={`ed-${i}`} style={cropCardStyle}>
+                    <div style={{ width: "100%", height: "80px", overflow: "hidden", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <EvidenceCrop imageUrl={imageUrl} box_2d={ed.box_2d} label={ed.type} />
+                    </div>
+                    <span style={labelStyle}>{ed.type?.replace(/_/g, " ") || "Edition"}</span>
+                    {ed.transcription && <span style={{ ...labelStyle, fontStyle: "italic", color: "#4C0B2A" }}>"{ed.transcription}"</span>}
+                  </div>
+                ))}
+                {imageUrl && defects.map((def: any, i: number) => (
+                  <div key={`def-${i}`} style={cropCardStyle}>
+                    <div style={{ width: "100%", height: "80px", overflow: "hidden", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <EvidenceCrop imageUrl={imageUrl} box_2d={def.box_2d} label={def.type} />
+                    </div>
+                    <span style={labelStyle}>{def.type?.replace(/_/g, " ") || "Defect"}</span>
+                  </div>
+                ))}
+
+              </div>
             </div>
+          );
+        })()}
+
+        {/* ── Valuation ── */}
+        {(safeEst(report).lowEstimate || 0) > 0 && (
+          <div className="print-no-break" style={{
+            background: "#FAF8F5", border: "1px solid #E8E2D7",
+            borderLeft: "3px solid #4C0B2A",
+            padding: "10px 14px", marginBottom: "12px",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.2em", color: "#7A6C71" }}>
+                Auction Estimate
+              </span>
+              <span style={{
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                fontSize: "20px", fontWeight: 600, color: "#4C0B2A",
+                letterSpacing: "0.02em",
+              }}>
+                {getCurrencySymbol(safeEst(report).currency)}{safeEst(report).lowEstimate?.toLocaleString()}
+                <span style={{ color: "#C0AA84", margin: "0 6px" }}>–</span>
+                {getCurrencySymbol(safeEst(report).currency)}{safeEst(report).highEstimate?.toLocaleString()}
+                {" "}
+                <span style={{ fontSize: "13px", fontWeight: 400, color: "#7A6C71" }}>{safeEst(report).currency}</span>
+              </span>
+            </div>
+            {safeEst(report).valuationContext && (
+              <p style={{ fontSize: "9.5px", color: "#3E3238", lineHeight: 1.55, margin: 0 }}>
+                {safeEst(report).valuationContext}
+              </p>
+            )}
           </div>
         )}
 
-        {/* AI Disclaimer */}
-        <div className="mt-6 pt-4 border-t-2 border-dashed border-amber-400 bg-amber-50 rounded p-4">
-          <p className="text-[10px] font-mono text-amber-800 uppercase tracking-wider font-bold mb-1">⚠ Important Disclaimer — AI Generated Content</p>
-          <p className="text-[10px] font-sans text-amber-900 leading-relaxed">
-            The contents of this appraisal were generated through artificial intelligence and must be treated with caution. AI attribution, condition assessment, and valuation outputs are probabilistic and may contain errors. This document does not constitute a professional appraisal, guarantee of authenticity, or investment advice. All findings should be independently verified by a qualified fine art expert or auction specialist before any commercial or legal reliance is placed upon them.
+        {/* ── Condition notes ── */}
+        {safeCond(report).analysisDetails && (
+          <div className="print-no-break" style={{ marginBottom: "12px" }}>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.18em", color: "#7A6C71", display: "block", marginBottom: "5px", borderBottom: "1px solid #E8E2D7", paddingBottom: "3px" }}>
+              Condition &amp; Conservation
+            </span>
+            <p style={{ fontSize: "9.5px", color: "#3E3238", lineHeight: 1.6, margin: 0 }}>
+              {safeCond(report).analysisDetails}
+            </p>
+          </div>
+        )}
+
+        {/* ── Comparable auction sales ── */}
+        {report.recentAuctionSales && report.recentAuctionSales.length > 0 && (
+          <div className="print-no-break" style={{ marginBottom: "12px" }}>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.18em", color: "#7A6C71", display: "block", marginBottom: "6px", borderBottom: "1px solid #E8E2D7", paddingBottom: "3px" }}>
+              Comparable Sales
+            </span>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5px" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #E8E2D7" }}>
+                  {["Work", "Artist", "Technique", "House", "Date", "Price"].map(h => (
+                    <th key={h} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", textTransform: "uppercase", letterSpacing: "0.12em", color: "#7A6C71", fontWeight: 500, textAlign: "left", padding: "3px 6px 3px 0" }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {report.recentAuctionSales.map((sale, idx) => (
+                  <tr key={idx} style={{ borderBottom: "1px solid #E8E2D7" }}>
+                    <td style={{ padding: "5px 6px 5px 0", color: "#1C1115", fontStyle: "italic", fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "10px", maxWidth: "160px" }}>
+                      {sale.artworkTitle}
+                      {sale.wasSoldInBroaderLot && <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7px", color: "#C0AA84", marginLeft: "4px", fontStyle: "normal" }}>lot</span>}
+                    </td>
+                    <td style={{ padding: "5px 6px 5px 0", color: "#3E3238" }}>{sale.artist}</td>
+                    <td style={{ padding: "5px 6px 5px 0", color: "#7A6C71" }}>{sale.technique}</td>
+                    <td style={{ padding: "5px 6px 5px 0", color: "#3E3238", whiteSpace: "nowrap" }}>{sale.auctionHouse}</td>
+                    <td style={{ padding: "5px 6px 5px 0", color: "#7A6C71", whiteSpace: "nowrap", fontFamily: "'JetBrains Mono', monospace", fontSize: "8.5px" }}>{sale.saleDate}</td>
+                    <td style={{ padding: "5px 0", color: "#4C0B2A", fontWeight: 600, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
+                      {formatAndConvertPriceRealized(sale.priceRealized, currency) || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* ── Historical context (if present) ── */}
+        {report.historicalContext && (
+          <div className="print-no-break" style={{ marginBottom: "12px" }}>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.18em", color: "#7A6C71", display: "block", marginBottom: "5px", borderBottom: "1px solid #E8E2D7", paddingBottom: "3px" }}>
+              Historical Context
+            </span>
+            <p style={{ fontSize: "9.5px", color: "#3E3238", lineHeight: 1.6, margin: 0 }}>
+              {report.historicalContext}
+            </p>
+          </div>
+        )}
+
+        {/* ── AI disclaimer ── */}
+        <div className="print-no-break" style={{
+          borderTop: "1px solid #E8E2D7", marginTop: "16px", paddingTop: "10px",
+          display: "flex", gap: "10px", alignItems: "flex-start",
+        }}>
+          <span style={{ fontSize: "11px", color: "#C0AA84", flexShrink: 0, lineHeight: 1 }}>⚠</span>
+          <p style={{ fontSize: "8.5px", color: "#7A6C71", lineHeight: 1.55, margin: 0 }}>
+            <strong style={{ color: "#3E3238", fontWeight: 600 }}>AI-generated content — treat with caution.</strong>{" "}
+            This report was produced by artificial intelligence. Attribution, condition assessment, and valuation outputs are probabilistic estimates and may contain errors. This document does not constitute a professional appraisal, guarantee of authenticity, or investment advice. All findings must be independently verified by a qualified fine art specialist before any commercial or legal reliance is placed upon them.
           </p>
         </div>
 
-        {/* Certificate Footer */}
-        <div className="mt-12 pt-8 border-t border-rosebery-border flex justify-between items-end">
-          <div className="space-y-1">
-            <span className="text-[9px] font-mono text-rosebery-muted uppercase tracking-wider block">secure verification hash</span>
-            <span className="text-[9px] font-mono text-rosebery-charcoal bg-rosebery-cream-bg px-2 py-1 border border-rosebery-border rounded-sm uppercase">
-              PM-CERT-{report.artworkTitle.substring(0,4).replace(/[^a-zA-Z]/g, "").toUpperCase()}-{Math.random().toString(36).substring(2,7).toUpperCase()}
+        {/* ── Footer ── */}
+        <div className="print-no-break" style={{
+          borderTop: "1px solid #C0AA84", marginTop: "14px", paddingTop: "8px",
+          display: "flex", justifyContent: "space-between", alignItems: "flex-end",
+        }}>
+          <div>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", textTransform: "uppercase", letterSpacing: "0.15em", color: "#7A6C71", display: "block" }}>
+              Reference
             </span>
-            {(report.modelUsed || report.promptVersion) && (
-              <span className="text-[9px] font-mono text-rosebery-muted block mt-1">
-                Appraisal Method: <span className="text-rosebery-charcoal font-semibold">{resolveMethodLabel(report.promptVersion || "standard", report.modelUsed || "")}</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8.5px", color: "#1C1115", letterSpacing: "0.08em" }}>
+              PM-{report.artworkTitle.substring(0, 4).replace(/[^a-zA-Z]/g, "").toUpperCase()}-{new Date().getFullYear()}
+            </span>
+            {report.modelUsed && (
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", color: "#7A6C71", display: "block", marginTop: "2px" }}>
+                {resolveMethodLabel(report.promptVersion || "standard", report.modelUsed)}
               </span>
             )}
           </div>
-
-          <div className="text-center space-y-1 w-48 border-t border-dashed border-[#6B5E62] pt-2">
-            <span className="text-[10px] font-sans text-rosebery-charcoal block">Authorized Curator Signature</span>
-            <span className="text-[9px] font-mono text-rosebery-muted block">Date: {new Date().toLocaleDateString()}</span>
+          <div style={{ textAlign: "right" }}>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "7.5px", textTransform: "uppercase", letterSpacing: "0.15em", color: "#7A6C71", display: "block" }}>
+              Curator signature
+            </span>
+            <div style={{ width: "120px", borderTop: "1px dashed #C0AA84", marginTop: "18px", marginLeft: "auto" }} />
           </div>
         </div>
+
       </div>
-    </div>
+    </>
   );
 }
