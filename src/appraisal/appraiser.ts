@@ -53,6 +53,13 @@ export interface VisualSearchResult {
   hypothesisWarning: string;
 }
 
+export interface AppraisalProgressEvent {
+  stage: string;       // e.g. "stage1", "stage1b", "stage2a", "stage2b", "stage3"
+  status: "start" | "done";
+  message: string;
+  percent: number;     // 0–95 (100 is reserved for post-pipeline completion)
+}
+
 export interface AppraisalInput {
   imageBase64: string;
   mimeType?: string;
@@ -64,6 +71,7 @@ export interface AppraisalInput {
   scaleBase64?: string;
   scaleMimeType?: string;
   currency?: string;
+  onProgress?: (event: AppraisalProgressEvent) => void;
 }
 
 export interface AppraisalMethod {
@@ -1303,16 +1311,22 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const stage3Model = this.config.stage3Model || defaultModel;
     const runVisualSearch = this.config.enableVisualSearch !== false;
 
+    const emit = input.onProgress ?? (() => {});
     const t0 = Date.now();
+
+    emit({ stage: "stage1", status: "start", message: "Extracting visual attributes — medium, technique, condition…", percent: 5 });
     console.log(`[Timing] Stage 1 (VEA) starting — model: ${stage1Model}`);
     const vea = await this.runStage1VEA(input, stage1Model, ai);
     console.log(`[Timing] Stage 1 (VEA) done — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+    emit({ stage: "stage1", status: "done", message: "Visual extraction complete", percent: 20 });
 
     if (vea.imageAuthenticity?.haltRecommended) {
       return this.buildHaltReport(vea, currency);
     }
 
     // Stage 1b (visual search) + Stage 2a (triage) run in parallel
+    emit({ stage: "stage1b", status: "start", message: "Searching global image databases for visual matches…", percent: 22 });
+    emit({ stage: "stage2a", status: "start", message: "Triaging attribution complexity and routing to specialist…", percent: 24 });
     const [visualSearch, triageResult] = await Promise.all([
       runVisualSearch
         ? this.runStage1bVisionSearch(input.imageBase64, input.mimeType)
@@ -1322,20 +1336,26 @@ export class FourStageAppraiser extends MultiStageAppraiser {
         console.log(`[Timing] Stage 2a (Triage) starting — model: ${stage2aModel}`);
         const r = await this.runStage2aTriage(vea, stage2aModel, ai, input.userNotes);
         console.log(`[Timing] Stage 2a (Triage) done — ${((Date.now() - t2a) / 1000).toFixed(1)}s`);
+        emit({ stage: "stage2a", status: "done", message: "Triage complete — specialist routing confirmed", percent: 40 });
         return r;
       })(),
     ]);
+    emit({ stage: "stage1b", status: "done", message: "Visual search complete", percent: 42 });
 
     const t2b = Date.now();
+    emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
     console.log(`[Timing] Stage 2b (Specialist) starting — model: ${stage2bModel}`);
     const attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined);
     console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
+    emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
 
     const t3 = Date.now();
+    emit({ stage: "stage3", status: "start", message: "Synthesising auction estimate and appraisal statement…", percent: 82 });
     console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
     const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes);
     console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+    emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });
 
     const report = this.assembleReport(vea, attr, valuation, currency);
     report.stage1Result = vea;

@@ -1092,7 +1092,7 @@ export default function ReportView({
                       <p className="text-[11px] text-rosebery-muted">{sale.auctionHouse} · {sale.saleDate}</p>
                     </div>
                     <span className="text-sm font-mono font-bold text-rosebery-primary whitespace-nowrap">
-                      {formatAndConvertPriceRealized(sale.priceRealized, currency)}
+                      {formatAndConvertPriceRealized(sale.priceRealized, currency) || (sale as any).hammerPrice || "—"}
                     </span>
                   </div>
                 ))}
@@ -2228,6 +2228,11 @@ export default function ReportView({
                 {safeEst(report).valuationContext}
               </p>
             )}
+            {(safeEst(report).basisNarrative || safeEst(report).estimateBasis || safeEst(report).basisSummary) && (
+              <p style={{ fontSize: "8.5px", color: "#3E3238", lineHeight: 1.55, marginTop: "6px", borderTop: "1px solid #E8E2D7", paddingTop: "6px", margin: "6px 0 0" }}>
+                {safeEst(report).basisNarrative || safeEst(report).estimateBasis || safeEst(report).basisSummary}
+              </p>
+            )}
           </div>
         )}
 
@@ -2271,7 +2276,7 @@ export default function ReportView({
                     <td style={{ padding: "5px 6px 5px 0", color: "#3E3238", whiteSpace: "nowrap" }}>{sale.auctionHouse}</td>
                     <td style={{ padding: "5px 6px 5px 0", color: "#7A6C71", whiteSpace: "nowrap", fontFamily: "'JetBrains Mono', monospace", fontSize: "8.5px" }}>{sale.saleDate}</td>
                     <td style={{ padding: "5px 0", color: "#4C0B2A", fontWeight: 600, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>
-                      {formatAndConvertPriceRealized(sale.priceRealized, currency) || "—"}
+                      {formatAndConvertPriceRealized(sale.priceRealized, currency) || (sale as any).hammerPrice || "—"}
                     </td>
                   </tr>
                 ))}

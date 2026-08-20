@@ -385,24 +385,32 @@ export default function App() {
     const updatedHistory = [...history];
     for (let i = 0; i < updatedHistory.length; i++) {
       const item = { ...updatedHistory[i] };
-      
+
       // 1. Main image
       if (item.imageUrl && item.imageUrl.startsWith("data:image/")) {
+        console.time(`[Upload] item[${i}] main image (${Math.round(item.imageUrl.length / 1024)}KB)`);
         item.imageUrl = await uploadImagePayload(item.imageUrl, username);
+        console.timeEnd(`[Upload] item[${i}] main image (${Math.round(item.imageUrl.length / 1024)}KB)`);
       }
       // 2. Signature image
       if (item.signatureImageUrl && item.signatureImageUrl.startsWith("data:image/")) {
+        console.time(`[Upload] item[${i}] signature image`);
         item.signatureImageUrl = await uploadImagePayload(item.signatureImageUrl, username);
+        console.timeEnd(`[Upload] item[${i}] signature image`);
       }
       // 3. Damage image
       if (item.damageImageUrl && item.damageImageUrl.startsWith("data:image/")) {
+        console.time(`[Upload] item[${i}] damage image`);
         item.damageImageUrl = await uploadImagePayload(item.damageImageUrl, username);
+        console.timeEnd(`[Upload] item[${i}] damage image`);
       }
       // 4. Scale image
       if (item.scaleImageUrl && item.scaleImageUrl.startsWith("data:image/")) {
+        console.time(`[Upload] item[${i}] scale image`);
         item.scaleImageUrl = await uploadImagePayload(item.scaleImageUrl, username);
+        console.timeEnd(`[Upload] item[${i}] scale image`);
       }
-      
+
       updatedHistory[i] = item;
     }
     return updatedHistory;
@@ -428,18 +436,29 @@ export default function App() {
     let resultHistory = newHistory;
     if (currentUser) {
       try {
-        const syncedHistory = await uploadNewScansToServer(newHistory, currentUser);
+        // Only upload images for new items — existing items already have server URLs
+        const newItemCount = newHistory.length - catalogHistory.length;
+        const newItems = newHistory.slice(0, Math.max(newItemCount, 1));
+        console.time("[Post-pipeline] uploadNewScansToServer");
+        const syncedNewItems = await uploadNewScansToServer(newItems, currentUser);
+        console.timeEnd("[Post-pipeline] uploadNewScansToServer");
+        const syncedHistory = [...syncedNewItems, ...newHistory.slice(syncedNewItems.length)];
         resultHistory = syncedHistory;
-        
-        const res = await fetch("/api/user/items", {
+
+        const itemsToUpsert = syncedNewItems;
+
+        console.time("[Post-pipeline] POST /api/user/items/upsert");
+        const res = await fetch("/api/user/items/upsert", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "X-User-Header": currentUser
           },
-          body: JSON.stringify({ items: syncedHistory })
+          body: JSON.stringify({ items: itemsToUpsert })
         });
-        
+        console.timeEnd("[Post-pipeline] POST /api/user/items/upsert");
+
+        console.time("[Post-pipeline] POST /api/user/catalog-list");
         await fetch("/api/user/catalog-list", {
           method: "POST",
           headers: {
@@ -448,6 +467,7 @@ export default function App() {
           },
           body: JSON.stringify({ catalogs: updatedCatalogs, activeCatalogId })
         });
+        console.timeEnd("[Post-pipeline] POST /api/user/catalog-list");
 
         if (res.ok) {
           setCatalogHistory(syncedHistory);
@@ -885,34 +905,25 @@ export default function App() {
     abortControllerRef.current = abort;
     const signal = abort.signal;
 
-    try {
-      // Step simulated progress cycles
-      const interval = setInterval(() => {
-        setLoadingProgress((prev) => {
-          if (prev >= 92) return prev;
-          if (prev < 20) return prev + 15;
-          if (prev < 50) return prev + 8;
-          return prev + 3;
-        });
-      }, 550);
+    // Declared before try so catch/finally can close them
+    const progressId = crypto.randomUUID();
+    const evtSource = new EventSource(`/api/progress/${progressId}`);
+    evtSource.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data) as { stage: string; status: string; message: string; percent: number };
+        setLoadingProgress(event.percent);
+        setLoadingStep(event.message);
+      } catch {}
+    };
+    // Fallback: slow nudge so the bar never looks frozen if SSE lags
+    const interval = setInterval(() => {
+      setLoadingProgress((prev) => {
+        if (prev >= 92) return prev;
+        return prev + 0.5;
+      });
+    }, 1000);
 
-      // Map progress text based on current values
-      const progressTextTimer = setInterval(() => {
-        setLoadingProgress((val) => {
-          if (val < 20) {
-            setLoadingStep("Calibrating optical details and surface color gamut...");
-          } else if (val < 45) {
-            setLoadingStep("Scanning global database of woodcut, litho, and screenprint matrices...");
-          } else if (val < 70) {
-            setLoadingStep("Probing for paper foxing, mat acid-burns, and signature status...");
-          } else if (val < 90) {
-            setLoadingStep("Cross-referencing global auction records for current speculation guides...");
-          } else {
-            setLoadingStep("Synthesizing final paper curator report statement...");
-          }
-          return val;
-        });
-      }, 900);
+    try {
 
       const selectedMethodConfig = appraisalMethods.find(m => m.id === appraisalMethod);
       const targetQuality = selectedMethodConfig?.imageQuality || "original";
@@ -996,7 +1007,8 @@ export default function App() {
               imageBase64: processedCroppedBase64,
               mimeType: "image/jpeg",
               currency,
-              method: appraisalMethod
+              method: appraisalMethod,
+              progressId,
             }),
             signal,
           });
@@ -1041,7 +1053,8 @@ export default function App() {
             scaleBase64,
             scaleMimeType,
             currency,
-            method: appraisalMethod
+            method: appraisalMethod,
+            progressId,
           }),
           signal,
         });
@@ -1079,7 +1092,7 @@ export default function App() {
       }
 
       clearInterval(interval);
-      clearInterval(progressTextTimer);
+      evtSource.close();
 
       // Auto-assign items to a per-method catalogue
       if (splitItems.length > 0) {
@@ -1087,12 +1100,16 @@ export default function App() {
           splitItems[0].report.promptVersion || "standard",
           splitItems[0].report.modelUsed || ""
         );
+        console.time("[Post-pipeline] findOrCreateMethodCatalog");
         const methodCatalogId = await findOrCreateMethodCatalog(methodLabel);
+        console.timeEnd("[Post-pipeline] findOrCreateMethodCatalog");
         splitItems.forEach(item => { item.catalogue_id = methodCatalogId; });
       }
 
       const newHistory = [...splitItems, ...catalogHistory];
+      console.time("[Post-pipeline] updateHistory (includes image uploads + DB save)");
       await updateHistory(newHistory);
+      console.timeEnd("[Post-pipeline] updateHistory (includes image uploads + DB save)");
 
       if (splitItems.length > 0) {
         setCurrentHistoryItemId(splitItems[0].id);
@@ -1107,6 +1124,8 @@ export default function App() {
       }, 300);
 
     } catch (err: any) {
+      evtSource.close();
+      clearInterval(interval);
       if (err.name === "AbortError") {
         setLoadingStep("Analysis stopped.");
       } else {

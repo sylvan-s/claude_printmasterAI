@@ -112,12 +112,30 @@ app.get("/api/appraisal-methods", async (req, res) => {
   }
 });
 
+// SSE progress stream — client opens this before POSTing /api/analyze-print
+const progressListeners = new Map<string, (event: string) => void>();
+
+app.get("/api/progress/:id", (req, res) => {
+  const { id } = req.params;
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const send = (data: string) => res.write(`data: ${data}\n\n`);
+  progressListeners.set(id, send);
+
+  req.on("close", () => {
+    progressListeners.delete(id);
+  });
+});
+
 // Art Print Photo Analysis Route
 app.post("/api/analyze-print", async (req, res) => {
   try {
-    const { 
-      imageBase64, 
-      mimeType, 
+    const {
+      imageBase64,
+      mimeType,
       userNotes,
       signatureBase64,
       signatureMimeType,
@@ -126,7 +144,8 @@ app.post("/api/analyze-print", async (req, res) => {
       scaleBase64,
       scaleMimeType,
       currency = "USD",
-      method = "claude-4stage-fast"
+      method = "claude-4stage-fast",
+      progressId,
     } = req.body;
 
     const resolvedImage = resolveImageInput(imageBase64, mimeType);
@@ -146,6 +165,13 @@ app.post("/api/analyze-print", async (req, res) => {
     const ai = getAiClient();
     const appraiser = getAppraiserFromConfig(methodConfig, ai);
 
+    const sseEmit = progressId ? progressListeners.get(progressId as string) : undefined;
+    const onProgress = sseEmit
+      ? (event: import("./src/appraisal/appraiser").AppraisalProgressEvent) => {
+          sseEmit(JSON.stringify(event));
+        }
+      : undefined;
+
     const reportData = await appraiser.appraise({
       imageBase64: resolvedImage.base64,
       mimeType: resolvedImage.mimeType,
@@ -156,8 +182,13 @@ app.post("/api/analyze-print", async (req, res) => {
       damageMimeType: resolvedDamage?.mimeType,
       scaleBase64: resolvedScale?.base64,
       scaleMimeType: resolvedScale?.mimeType,
-      currency
+      currency,
+      onProgress,
     });
+
+    if (sseEmit) {
+      sseEmit(JSON.stringify({ stage: "done", status: "done", message: "Certificate ready", percent: 95 }));
+    }
 
     return res.json(reportData);
   } catch (error: any) {
@@ -847,6 +878,25 @@ app.post("/api/user/items", async (req, res) => {
   } catch (err: any) {
     console.error("Failed to save user items:", err);
     return res.status(err.message.includes("Unauthorized") || err.message.includes("not found") ? 401 : 500).json({ error: err.message || "Failed to save items." });
+  }
+});
+
+// POST upsert a small batch of new/changed items without affecting the rest of the catalogue
+app.post("/api/user/items/upsert", async (req, res) => {
+  try {
+    const username = req.headers["x-user-header"];
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({ error: "Items must be a valid array." });
+    }
+
+    const user = await resolveUser(username);
+    await db.upsertNewItems(user.id, items);
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error("Failed to upsert items:", err);
+    return res.status(err.message.includes("Unauthorized") || err.message.includes("not found") ? 401 : 500).json({ error: err.message || "Failed to upsert items." });
   }
 });
 

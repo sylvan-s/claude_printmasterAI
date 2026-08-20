@@ -325,6 +325,123 @@ export async function saveUserItems(userId: string, items: AnalysisHistoryItem[]
   return saveItems(userId, items);
 }
 
+// Upsert a small set of items without touching the rest of the user's history.
+// Used after a new appraisal completes — avoids sending/processing the full catalogue.
+export async function upsertNewItems(userId: string, items: AnalysisHistoryItem[]) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    for (let idx = 0; idx < items.length; idx++) {
+      const item = items[idx];
+
+      // Resolve or create lot
+      let lotId: string | null = null;
+      if (item.lotNumber) {
+        const lotRes = await client.query(
+          `SELECT id FROM lots WHERE user_id = $1 AND name = $2 AND deleted_at IS NULL`,
+          [userId, item.lotNumber]
+        );
+        if (lotRes.rows.length > 0) {
+          lotId = lotRes.rows[0].id;
+          if (item.lotTitle) {
+            await client.query("UPDATE lots SET description = $1 WHERE id = $2", [item.lotTitle, lotId]);
+          }
+        } else {
+          const insertLotRes = await client.query(
+            `INSERT INTO lots (user_id, name, description) VALUES ($1, $2, $3) RETURNING id`,
+            [userId, item.lotNumber, item.lotTitle || null]
+          );
+          lotId = insertLotRes.rows[0].id;
+        }
+      }
+
+      // Resolve or create item row
+      let itemId = item.id;
+      if (!uuidRegex.test(itemId)) {
+        const uuidRes = await client.query("SELECT gen_random_uuid() AS uuid");
+        itemId = uuidRes.rows[0].uuid;
+        item.id = itemId;
+      }
+
+      const effectiveCatalogueId = item.catalogue_id && typeof item.catalogue_id === "string" ? item.catalogue_id : null;
+      const itemRes = await client.query(`SELECT id FROM items WHERE id = $1`, [itemId]);
+      if (itemRes.rows.length === 0) {
+        await client.query(
+          `INSERT INTO items (id, user_id, lot_id, catalogue_id) VALUES ($1, $2, $3, $4)`,
+          [itemId, userId, lotId, effectiveCatalogueId]
+        );
+      } else {
+        await client.query(
+          `UPDATE items SET lot_id = $1, catalogue_id = $2, deleted_at = NULL WHERE id = $3`,
+          [lotId, effectiveCatalogueId, itemId]
+        );
+      }
+
+      // Upsert primary image
+      const imgRes = await client.query(
+        `SELECT id FROM images WHERE item_id = $1 AND image_type = 'primary'`,
+        [itemId]
+      );
+      if (imgRes.rows.length === 0) {
+        await client.query(
+          `INSERT INTO images (user_id, item_id, storage_key, original_filename, image_type, description, position)
+           VALUES ($1, $2, $3, $4, 'primary', 'primary', $5)`,
+          [userId, itemId, item.imageUrl || "", item.imageFileName || null, idx]
+        );
+      } else {
+        await client.query(
+          `UPDATE images SET storage_key = $1, original_filename = $2
+           WHERE item_id = $3 AND image_type = 'primary'`,
+          [item.imageUrl || "", item.imageFileName || null, itemId]
+        );
+      }
+
+      // Upsert appraisal record
+      const modelName = item.report?.modelUsed || 'gemini-2.5-flash';
+      const reportContent = item.report ? JSON.stringify(item.report) : JSON.stringify({
+        techniques: [], artworkTitle: (item as any).title || 'Untitled',
+        likelyArtist: 'Unknown', conditionNotes: {}, creationPeriod: 'Unknown',
+        auctionEstimate: { min: 0, max: 0, formattedEstimate: '$0' },
+        titleConfidence: 0, artistConfidence: 0, modelUsed: 'gemini-2.5-flash',
+      });
+      const appRes = await client.query(`SELECT id FROM appraisals WHERE item_id = $1`, [itemId]);
+      if (appRes.rows.length === 0) {
+        await client.query(
+          `INSERT INTO appraisals (item_id, model_name, result, status, completed_at) VALUES ($1, $2, $3, 'complete', NOW())`,
+          [itemId, modelName, reportContent]
+        );
+      } else {
+        await client.query(
+          `UPDATE appraisals SET model_name = $1, result = $2, status = 'complete', completed_at = NOW() WHERE item_id = $3`,
+          [modelName, reportContent, itemId]
+        );
+      }
+
+      // Replace supplementary scans
+      await client.query(`DELETE FROM images WHERE item_id = $1 AND image_type = 'supplementary'`, [itemId]);
+      for (const [url, desc] of [[item.signatureImageUrl, 'signature'], [item.damageImageUrl, 'damage'], [item.scaleImageUrl, 'scale']] as [string | undefined, string][]) {
+        if (url) {
+          await client.query(
+            `INSERT INTO images (user_id, item_id, storage_key, image_type, description) VALUES ($1, $2, $3, 'supplementary', $4)`,
+            [userId, itemId, url, desc]
+          );
+        }
+      }
+    }
+
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    console.error("Failed to upsert new items:", err);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function saveCatalogueItems(userId: string, catalogueId: string, items: AnalysisHistoryItem[]) {
   return saveItems(userId, items, catalogueId);
 }
