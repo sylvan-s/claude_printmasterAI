@@ -25,7 +25,10 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 
-import { fetchAuctionLots, imageUrl, lotUrl, impliedPremiumRatio, UA, type RawLot } from "./api.js";
+import {
+  fetchAuctionLots, imageUrl, lotUrl, inferSalePremium, hammerOf, realisedOf, UA,
+  type RawLot, type PremiumInference,
+} from "./api.js";
 import { discoverAuctions, filterByKeyword, type AuctionRef } from "./discover.js";
 import { parseDescription, type ParsedLot } from "./parse.js";
 
@@ -74,11 +77,12 @@ const num = (v: string | number | null | undefined): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-function catalogueRow(lot: RawLot, p: ParsedLot, sale: AuctionRef | null) {
-  // rostrum_hammer is the TRUE hammer. hammer_price is premium-inclusive and can
-  // be stale on unsold lots — `sold` is the only authoritative flag.
-  const hammer = lot.sold ? lot.rostrum_hammer : null;
-  const realised = lot.sold ? num(lot.hammer_price) : null;
+function catalogueRow(lot: RawLot, p: ParsedLot, sale: AuctionRef | null, premium: PremiumInference) {
+  // hammerOf() prefers rostrum_hammer (recent sales) and otherwise backs the
+  // era's buyer's premium out of hammer_price (older sales). `sold` is the only
+  // authoritative flag — hammer_price can be stale on unsold lots.
+  const hammer = hammerOf(lot, premium.ratio);
+  const realised = realisedOf(lot);
   const dim = p.dimensions[0];
 
   return {
@@ -112,6 +116,9 @@ function catalogueRow(lot: RawLot, p: ParsedLot, sale: AuctionRef | null) {
     hammer,
     price_realised_inc_premium: realised,
     sold: lot.sold ? "sold" : "unsold",
+    // How `hammer` was obtained, so cross-era comparisons stay auditable.
+    hammer_basis: lot.rostrum_hammer ? "reported" : hammer ? "derived" : "",
+    premium_ratio_used: hammer && !lot.rostrum_hammer ? premium.ratio : "",
     // The number valuers actually want: performance against top estimate.
     ratio_to_high_est:
       hammer && lot.high_estimate ? +(hammer / lot.high_estimate).toFixed(3) : "",
@@ -124,7 +131,7 @@ function catalogueRow(lot: RawLot, p: ParsedLot, sale: AuctionRef | null) {
 }
 
 /** Benchmark record per issue #12. Facts only — raw catalogue prose is NOT retained. */
-function benchmarkRecord(lot: RawLot, p: ParsedLot, sale: AuctionRef | null) {
+function benchmarkRecord(lot: RawLot, p: ParsedLot, sale: AuctionRef | null, premium: PremiumInference) {
   const dims = p.dimensions;
   const pickDim = (k: string) => dims.find((d) => d.kind.includes(k));
   const fmt = (d?: { widthCm: number | null; heightCm: number | null }) =>
@@ -158,16 +165,19 @@ function benchmarkRecord(lot: RawLot, p: ParsedLot, sale: AuctionRef | null) {
       catalogueRefs: p.catalogueRefs,
     },
 
-    // LABEL — valuation outcome. hammer is rostrum_hammer, NOT premium-inclusive.
+    // LABEL — valuation outcome. hammerPrice is on a HAMMER basis (estimates are
+    // quoted against hammer); priceRealised includes buyer's premium.
     outcome: {
       currency: "GBP",
       estimateLow: lot.low_estimate,
       estimateHigh: lot.high_estimate,
       reserve: lot.reserve_price,
-      hammerPrice: lot.sold ? lot.rostrum_hammer : null,
-      priceRealisedIncPremium: lot.sold ? num(lot.hammer_price) : null,
+      hammerPrice: hammerOf(lot, premium.ratio),
+      priceRealisedIncPremium: realisedOf(lot),
       sold: Boolean(lot.sold),
       premiumInclusive: false,
+      hammerBasis: lot.rostrum_hammer ? "reported" : "derived",
+      premiumRatioUsed: lot.rostrum_hammer ? null : premium.ratio,
     },
 
     // Rights posture — ARR flags an artwork whose artist copyright is likely live.
@@ -236,22 +246,28 @@ async function main() {
 
     await writeFile(join(rawDir, `${sale.auctionId}.json`), JSON.stringify(lots, null, 2));
 
+    // Premium must be resolved per sale: the rate changed over time, and older
+    // sales report results only on a premium-inclusive basis.
+    const premium = inferSalePremium(lots);
+
     let live = 0;
+    let withHammer = 0;
     for (const lot of lots) {
       if (lot.withdrawn || !lot.published) continue;
       live++;
+      if (hammerOf(lot, premium.ratio) !== null) withHammer++;
       const parsed = parseDescription(lot.description || "");
-      csvRows.push(catalogueRow(lot, parsed, sale));
+      csvRows.push(catalogueRow(lot, parsed, sale, premium));
       if (args.benchmark && !parsed.isMultiWork) {
-        benchRecords.push(benchmarkRecord(lot, parsed, sale));
+        benchRecords.push(benchmarkRecord(lot, parsed, sale, premium));
       }
     }
 
-    const ratios = lots.map(impliedPremiumRatio).filter((r): r is number => r !== null);
-    const medianRatio = ratios.length
-      ? ratios.sort((a, b) => a - b)[Math.floor(ratios.length / 2)].toFixed(3)
-      : "n/a";
-    console.log(`${live} lots (premium ratio ~${medianRatio})`);
+    const flag = premium.method === "inferred" ? ` conf=${premium.confidence}` : "";
+    console.log(
+      `${String(live).padStart(3)} lots · ${String(withHammer).padStart(3)} with hammer · ` +
+      `premium ${premium.ratio} (${premium.method}${flag})`,
+    );
   }
 
   // 1. The Roseberys gift.

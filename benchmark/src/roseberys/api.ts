@@ -116,11 +116,95 @@ export function lotUrl(lot: RawLot): string {
   return `${BASE}/${lot.sef_link.replace(/^\/+/, "")}`;
 }
 
-/** Buyer's premium implied by the two price fields. ~1.312 for this house. */
+/** Buyer's premium implied by the two price fields on a single lot. */
 export function impliedPremiumRatio(lot: RawLot): number | null {
   const realised = lot.hammer_price ? Number(String(lot.hammer_price).replace(/,/g, "")) : null;
   if (!lot.sold || !lot.rostrum_hammer || !realised) return null;
   return realised / lot.rostrum_hammer;
+}
+
+export const realisedOf = (lot: RawLot): number | null => {
+  if (!lot.sold || !lot.hammer_price) return null;
+  const n = Number(String(lot.hammer_price).replace(/,/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : null;
+};
+
+/** Auction bid increments — hammer prices land on these, premium-inclusive ones don't. */
+function bidStep(v: number): number {
+  if (v < 200) return 10;
+  if (v < 500) return 20;
+  if (v < 1000) return 50;
+  if (v < 2000) return 100;
+  if (v < 5000) return 200;
+  if (v < 10000) return 500;
+  return 1000;
+}
+
+const landsOnIncrement = (v: number): boolean => {
+  const step = bidStep(v);
+  return Math.abs(v - Math.round(v / step) * step) <= 1;
+};
+
+/** Premium ratios Roseberys has charged: 20%/25%/26% + VAT, plus 1.0 (already net). */
+const CANDIDATE_RATIOS = [1.0, 1.2, 1.24, 1.25, 1.3, 1.312];
+
+export interface PremiumInference {
+  ratio: number;
+  method: "observed" | "inferred" | "default";
+  confidence: number;   // observed: 1. inferred: share of lots landing on a bid increment.
+  sampleSize: number;
+}
+
+/**
+ * Work out a sale's buyer's premium.
+ *
+ * `rostrum_hammer` (true hammer) is only populated on recent sales; older sales
+ * carry results in `hammer_price` alone, which is premium-INCLUSIVE. The rate has
+ * also changed over time (1.30 → 1.312), so it can't be hardcoded.
+ *
+ * Where both fields exist we read the ratio directly. Where only hammer_price
+ * exists we infer it: dividing by the correct premium lands values back on
+ * auction bid increments, dividing by the wrong one doesn't.
+ */
+export function inferSalePremium(lots: RawLot[]): PremiumInference {
+  const observed = lots.map(impliedPremiumRatio).filter((r): r is number => r !== null);
+  if (observed.length >= 5) {
+    observed.sort((a, b) => a - b);
+    const median = observed[Math.floor(observed.length / 2)];
+    return { ratio: +median.toFixed(4), method: "observed", confidence: 1, sampleSize: observed.length };
+  }
+
+  const realised = lots.map(realisedOf).filter((v): v is number => v !== null);
+  if (realised.length < 5) {
+    return { ratio: 1.312, method: "default", confidence: 0, sampleSize: realised.length };
+  }
+
+  let best = { ratio: 1.312, score: -1 };
+  for (const ratio of CANDIDATE_RATIOS) {
+    const hits = realised.filter((v) => landsOnIncrement(v / ratio)).length;
+    const score = hits / realised.length;
+    if (score > best.score) best = { ratio, score };
+  }
+  return {
+    ratio: best.ratio,
+    method: "inferred",
+    confidence: +best.score.toFixed(3),
+    sampleSize: realised.length,
+  };
+}
+
+/**
+ * True hammer price for a lot, in the era-correct basis.
+ * Prefers the explicit field; falls back to backing the premium out of realised.
+ */
+export function hammerOf(lot: RawLot, premiumRatio: number): number | null {
+  if (!lot.sold) return null;
+  if (lot.rostrum_hammer) return lot.rostrum_hammer;
+  const realised = realisedOf(lot);
+  if (!realised) return null;
+  const derived = realised / premiumRatio;
+  const step = bidStep(derived);
+  return Math.round(derived / step) * step;   // snap to the nearest bid increment
 }
 
 export { BASE, UA };
