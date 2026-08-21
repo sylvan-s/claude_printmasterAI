@@ -114,13 +114,25 @@ export async function fetchAuctionLots(auctionId: number, perPage = 500): Promis
   return [...new Map(out.map((l) => [l.id, l])).values()];
 }
 
-/** Sale date isn't in the API; it's in the sale-page <title> as "| DD-MM-YYYY". */
+/**
+ * Sale date isn't in the getLots API; it's on the sale page.
+ *
+ * Live-auction sale pages carry it in <title>: "... | DD-MM-YYYY".
+ * Online/Artsy sale pages have no date in <title> — the date instead appears in
+ * the body already in ISO form (yyyy-mm-dd). Try both; live-title first since
+ * it's the more specific, less ambiguous match.
+ */
 export async function fetchSaleDate(saleUrl: string): Promise<string | null> {
   const res = await fetch(saleUrl, { headers: { "User-Agent": UA } });
   if (!res.ok) return null;
   const html = await res.text();
-  const m = html.match(/<title>[^<]*\|\s*(\d{2})-(\d{2})-(\d{4})\s*<\/title>/);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : null;   // → ISO yyyy-mm-dd
+
+  const titleMatch = html.match(/<title>[^<]*\|\s*(\d{2})-(\d{2})-(\d{4})\s*<\/title>/);
+  if (titleMatch) return `${titleMatch[3]}-${titleMatch[2]}-${titleMatch[1]}`;
+
+  // Online sales: first ISO-form date within a reasonable auction-house range.
+  const isoMatches = [...html.matchAll(/\b(20[12]\d-\d{2}-\d{2})\b/g)].map((m) => m[1]);
+  return isoMatches[0] ?? null;
 }
 
 export function imageUrl(lot: RawLot): string | null {

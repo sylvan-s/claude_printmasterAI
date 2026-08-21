@@ -26,6 +26,7 @@ import { parseDescription, type ParsedLot } from "./parse.js";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_OUT = join(HERE, "..", "..", "data", "forum");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
 
 // Same column order as the Roseberys catalogue.csv, prefixed with source + date.
 const COLUMNS = [
@@ -36,8 +37,23 @@ const COLUMNS = [
   "artist_qualifier", "other_artists", "nationality", "life_dates",
   "dim_kind", "edition_note", "printer", "publisher", "catalogue_refs",
   "multi_work", "arr", "reserve", "hammer_basis", "premium_ratio_used",
-  "provenance", "lot_url", "image_url",
+  "provenance", "lot_url", "image_url", "is_print_medium",
 ];
+
+/**
+ * Some Forum sales nominally in "editions" also carry unique works — drawings,
+ * ceramics, sculpture (seen in auction_id 44: "Pencil on paper", "Glazed ceramic
+ * tile", "Polished bronze"). Flag rather than silently drop, so a downstream
+ * valuation merge can filter deliberately.
+ */
+const PRINT_MEDIUM = /print|litho|etch|screen|engrav|woodcut|aquatint|giclée|giclee|monotype|drypoint|linocut|the book/i;
+const NON_PRINT_MEDIUM = /pencil|charcoal|pastel|gouache|oil|watercolour|watercolor|ceramic|sculpture|bronze|glass\b|collage|photograph|drawing/i;
+
+function isPrintMedium(medium: string): boolean {
+  if (!medium) return true; // unknown — don't exclude on absence of data
+  if (PRINT_MEDIUM.test(medium)) return true;
+  return !NON_PRINT_MEDIUM.test(medium);
+}
 
 function parseArgs(argv: string[]) {
   const get = (f: string) => { const i = argv.indexOf(f); return i >= 0 ? argv[i + 1] : undefined; };
@@ -106,6 +122,7 @@ function row(lot: RawLot, p: ParsedLot, sale: AuctionRef, saleDate: string | nul
     provenance: p.provenance ?? "",
     lot_url: lotUrl(lot),
     image_url: imageUrl(lot) ?? "",
+    is_print_medium: isPrintMedium(p.medium ?? "") ? "yes" : "no",
   };
 }
 
@@ -158,6 +175,21 @@ async function main() {
       if (lot.withdrawn || !lot.published) continue;
       live++;
       if (isSold(lot)) sold++;
+    }
+
+    // Exclude sales that haven't happened yet, not lots that simply failed to sell.
+    // Two independent signals: an explicit future sale_date, or zero sold lots in
+    // a sale large enough that zero genuinely means "hasn't closed" rather than
+    // "everything passed" (a handful of small sales legitimately do poorly).
+    const isFuture = saleDate ? saleDate > TODAY_ISO : false;
+    const isUnclosed = live >= 20 && sold === 0;
+    if (isFuture || isUnclosed) {
+      console.log(`${String(live).padStart(3)} lots · SKIPPED — ${isFuture ? `future sale (${saleDate})` : "0 sold, looks unclosed"}`);
+      continue;
+    }
+
+    for (const lot of lots) {
+      if (lot.withdrawn || !lot.published) continue;
       rows.push(row(lot, parseDescription(lot.description || ""), sale, saleDate));
     }
     console.log(`${String(live).padStart(3)} lots · ${String(sold).padStart(3)} sold · ${saleDate ?? "date n/a"}`);
