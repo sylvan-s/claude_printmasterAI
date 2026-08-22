@@ -37,5 +37,8 @@ export interface SourceResult {
 
 export interface ArtistLookupResult {
   artist: string;
+  /** What was actually sent to each source, after stripping honorifics/post-
+   *  nominals (e.g. "Sir Terry Frost RA" -> "Terry Frost"). See relevance.ts. */
+  queriedAs: string;
   sources: SourceResult[];
 }

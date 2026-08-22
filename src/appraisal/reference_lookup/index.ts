@@ -9,10 +9,16 @@ import type { ArtistLookupResult } from "./types.js";
 import { lookupMet } from "./met.js";
 import { lookupMds } from "./mds.js";
 import { lookupRijksmuseum } from "./rijksmuseum.js";
+import { cleanArtistQuery } from "./relevance.js";
 
 export async function lookupArtistAcrossMuseums(artist: string): Promise<ArtistLookupResult> {
-  const sources = await Promise.all([lookupMet(artist), lookupRijksmuseum(artist), lookupMds(artist)]);
-  return { artist, sources };
+  const queriedAs = cleanArtistQuery(artist);
+  const sources = await Promise.all([
+    lookupMet(queriedAs),
+    lookupRijksmuseum(queriedAs),
+    lookupMds(queriedAs),
+  ]);
+  return { artist, queriedAs, sources };
 }
 
 export type { ArtistLookupResult, MuseumRecord, SourceResult, MuseumSource } from "./types.js";

@@ -17,3 +17,19 @@ export function matchesArtist(catalogued: string | null | undefined, queryArtist
   const surname = tokens[tokens.length - 1];
   return catalogued.toLowerCase().includes(surname);
 }
+
+const LEADING_HONORIFICS = /^(sir|dame|lord|lady|dr|mr|mrs|ms|miss|madame|monsieur|professor|prof)\.?\s+/i;
+// Trailing post-nominals: short all-caps tokens (RA, CBE, OM, RBA...), same
+// rule the project's own filename artist-parser already uses (CLAUDE.md).
+const TRAILING_POSTNOMINAL = /(\s+[A-Z]{1,4})+$/;
+
+/**
+ * Roseberys' own artist field is full of "Sir Terry Frost RA" / "Dame ..."
+ * style names — literal full-text search against Met/MDS breaks on these
+ * exactly like it did on "Madame Hassia" (which found zero results; "Hassia"
+ * alone found the artist, confirming the honorific was the problem, not an
+ * absence of holdings). Strip both before querying.
+ */
+export function cleanArtistQuery(name: string): string {
+  return name.replace(LEADING_HONORIFICS, "").replace(TRAILING_POSTNOMINAL, "").trim();
+}

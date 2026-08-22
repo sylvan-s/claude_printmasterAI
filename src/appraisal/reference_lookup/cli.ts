@@ -8,6 +8,9 @@ import { lookupArtistAcrossMuseums } from "./index.js";
 async function run(artist: string) {
   console.log(`\n${"=".repeat(70)}\n${artist}\n${"=".repeat(70)}`);
   const result = await lookupArtistAcrossMuseums(artist);
+  if (result.queriedAs !== result.artist) {
+    console.log(`(queried as "${result.queriedAs}" — honorifics/post-nominals stripped)`);
+  }
   for (const s of result.sources) {
     if (!s.ok) {
       console.log(`\n[${s.source}] FAILED: ${s.error}`);
