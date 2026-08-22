@@ -33,6 +33,11 @@ const MAX_OBJECTS = 25;
 const CONCURRENCY = 5;
 const EN_LANG_ID = "http://vocab.getty.edu/aat/300388277";
 const INSCRIPTION_TYPE_ID = "http://vocab.getty.edu/aat/300435414";
+// Confirmed by resolving the Getty AAT term directly (vocab.getty.edu/aat/300379097.json
+// -> _label "millimeters") — NOT centimeters, which this module assumed for a while
+// without checking. That assumption made every dimension look 10x too large (a print
+// portfolio cover read as 381 cm tall — 3.8 metres — when it's actually 38.1cm/mm=381).
+const MM_UNIT_ID = "http://vocab.getty.edu/aat/300379097";
 /** Defensive cap on any extracted field — a safety net, not the primary
  *  control (the classified_as filter above is what actually keeps
  *  curatorial essays out of `inscription`). */
@@ -59,6 +64,7 @@ interface LinkedArtObject {
   referred_to_by?: LangText[];
   dimension?: {
     value?: string;
+    unit?: { id?: string };
     classified_as?: { notation?: Notation[] }[];
   }[];
   produced_by?: {
@@ -86,7 +92,13 @@ function toRecord(obj: LinkedArtObject, queryArtist: string): MuseumRecord {
   const dimensions = (obj.dimension || [])
     .map((d) => {
       const label = pickNotation(d.classified_as?.[0]?.notation);
-      return d.value && label ? `${label}: ${d.value} cm` : null;
+      if (!d.value || !label) return null;
+      const raw = Number(d.value);
+      if (d.unit?.id === MM_UNIT_ID && Number.isFinite(raw)) {
+        return `${label}: ${(raw / 10).toFixed(1)} cm`;
+      }
+      // Unrecognized/missing unit — report as given rather than guess.
+      return `${label}: ${d.value}${d.unit?.id ? "" : " (unit unknown)"}`;
     })
     .filter((v): v is string => Boolean(v));
   const inscriptions = (obj.referred_to_by || [])
