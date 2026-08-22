@@ -5,13 +5,21 @@
  *     fetched objects client-side on `department`/`classification` instead.
  *   - No polite rate limiting is documented by the Met; we cap concurrency
  *     and object count to stay well under anything that would trigger one.
+ *   - A flat first-N sample breaks for prolific artists: "Picasso" returned
+ *     0 print records with a flat 25-object sample, even though the Met
+ *     genuinely has Picasso prints — the first 25 of 1,618 raw hits (Met's
+ *     own ranking, not ours) were all Modern & Contemporary Art paintings.
+ *     Fetch in batches and keep going until enough real print matches are
+ *     found or a hard ceiling is hit, instead of a single fixed-size slice.
  */
 import type { MuseumRecord, SourceResult } from "./types.js";
 import { matchesArtist } from "./relevance.js";
 
 const SEARCH_URL = "https://collectionapi.metmuseum.org/public/collection/v1/search";
 const OBJECT_URL = "https://collectionapi.metmuseum.org/public/collection/v1/objects";
-const MAX_OBJECTS = 25;
+const BATCH_SIZE = 25;
+const TARGET_MATCHES = 20; // stop early once we have this many genuine print matches
+const MAX_FETCHED = 150; // hard ceiling regardless — bounds worst-case latency
 const CONCURRENCY = 5;
 
 interface MetObject {
@@ -72,22 +80,32 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
+function isGenuinePrintMatch(o: MetObject, artist: string): boolean {
+  return (
+    (o.department === "Drawings and Prints" || (o.classification || "").includes("Print")) &&
+    matchesArtist(o.artistDisplayName, artist)
+  );
+}
+
 export async function lookupMet(artist: string): Promise<SourceResult> {
   try {
     const url = `${SEARCH_URL}?${new URLSearchParams({ q: artist })}`;
     const res = await fetch(url);
     if (!res.ok) return { source: "met", ok: false, error: `search HTTP ${res.status}`, records: [] };
     const data = (await res.json()) as { total: number; objectIDs: number[] | null };
-    const ids = (data.objectIDs || []).slice(0, MAX_OBJECTS);
+    const allIds = data.objectIDs || [];
 
-    const objects = await mapWithConcurrency(ids, CONCURRENCY, fetchObject);
-    const records = objects
-      .filter((o): o is MetObject => o !== null)
-      .filter((o) => o.department === "Drawings and Prints" || (o.classification || "").includes("Print"))
-      .filter((o) => matchesArtist(o.artistDisplayName, artist))
-      .map(toRecord);
+    const matches: MetObject[] = [];
+    for (let offset = 0; offset < allIds.length && offset < MAX_FETCHED; offset += BATCH_SIZE) {
+      const batch = allIds.slice(offset, offset + BATCH_SIZE);
+      const objects = await mapWithConcurrency(batch, CONCURRENCY, fetchObject);
+      for (const o of objects) {
+        if (o && isGenuinePrintMatch(o, artist)) matches.push(o);
+      }
+      if (matches.length >= TARGET_MATCHES) break;
+    }
 
-    return { source: "met", ok: true, records };
+    return { source: "met", ok: true, records: matches.map(toRecord) };
   } catch (err: any) {
     return { source: "met", ok: false, error: err.message, records: [] };
   }
