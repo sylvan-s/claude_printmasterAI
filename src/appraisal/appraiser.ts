@@ -560,71 +560,65 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
     if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
 
-    const makeRequest = async () => fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "web-search-2025-03-05",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: modelName,
-        max_tokens: maxTokens,
-        system: systemInstruction,
-        messages: [{ role: "user", content: userText }],
-        tools: [{ type: "web_search_20250305", name: "web_search" }, MultiStageAppraiser.MUSEUM_LOOKUP_TOOL],
-      }),
-    });
+    const tools = [{ type: "web_search_20250305", name: "web_search" }, MultiStageAppraiser.MUSEUM_LOOKUP_TOOL];
 
-    let response = await makeRequest();
-    // Retry once on transient 5xx (e.g. Cloudflare 520)
-    if (response.status >= 500) {
-      console.warn(`[Claude web-search] Transient ${response.status} — retrying in 5s`);
-      await new Promise(r => setTimeout(r, 5000));
-      response = await makeRequest();
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude web-search API request failed: ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
-
-    if (data.stop_reason === "max_tokens") {
-      throw new Error("Claude (web-search) hit max_tokens limit — response was truncated. Try a simpler query or increase max_tokens.");
-    }
-
-    // If Claude stopped naturally (end_turn) with no tool calls, parse the text directly
-    const textBlocks = data.content?.filter((b: any) => b.type === "text") || [];
-    const hasToolUse = data.content?.some((b: any) => b.type === "tool_use");
-
-    if (!hasToolUse && data.stop_reason === "end_turn") {
-      // No web searches were made — parse directly
-      const lastText = textBlocks[textBlocks.length - 1]?.text as string;
-      console.log("[4-Stage] web-search raw response (first 500):", lastText?.slice(0, 500));
-      console.log("[4-Stage] web-search raw response (last 300):", lastText?.slice(-300));
-      try { return parseCleanJson(lastText); } catch (err: any) {
-        throw new Error(`Failed to parse web-search JSON output: ${err.message}`);
+    const post = async (messages: any[], forceFinal: boolean) => {
+      const doRequest = () => fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey!,
+          "anthropic-version": "2023-06-01",
+          "anthropic-beta": "web-search-2025-03-05",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: modelName,
+          max_tokens: maxTokens,
+          system: systemInstruction,
+          messages,
+          tools,
+          ...(forceFinal ? { tool_choice: { type: "none" } } : {}),
+        }),
+      });
+      let response = await doRequest();
+      // Retry once on transient 5xx (e.g. Cloudflare 520)
+      if (response.status >= 500) {
+        console.warn(`[Claude web-search] Transient ${response.status} — retrying in 5s`);
+        await new Promise(r => setTimeout(r, 5000));
+        response = await doRequest();
       }
-    }
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Claude web-search API request failed: ${response.status}: ${errorText}`);
+      }
+      return response.json();
+    };
 
-    // Web searches were performed — send a finalise turn requesting JSON only
-    // Build conversation history including all search results
-    const messages: any[] = [
-      { role: "user", content: userText },
-      { role: "assistant", content: data.content },
-    ];
+    // Loop while Claude is still requesting client-executed tools (lookup_museum_collections).
+    // Crucially, tools stay AVAILABLE (not forced to none) between rounds — Anthropic's
+    // native web_search is server-executed, but if a client tool_use appears before a
+    // pending web_search resolves in the same turn, the search is left dangling (a
+    // server_tool_use block with no paired web_search_tool_result). Forcing tool_choice:
+    // none immediately after supplying the client tool_result — the previous behavior —
+    // orphans that pending search and the API rejects the next request outright. Letting
+    // the loop continue with tools still enabled lets Anthropic actually finish it.
+    const messages: any[] = [{ role: "user", content: userText }];
+    const MAX_ROUNDS = 4;
+    let data: any = null;
 
-    // Add tool results for every tool_use block. lookup_museum_collections is a
-    // real client-executed tool — actually run it and feed back real facts.
-    // web_search is executed server-side by Anthropic; "Search complete." is
-    // sufficient there (results are already in data.content).
-    const toolResults = await Promise.all(
-      (data.content || [])
-        .filter((b: any) => b.type === "tool_use")
-        .map(async (b: any) => {
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      data = await post(messages, false);
+
+      if (data.stop_reason === "max_tokens") {
+        throw new Error("Claude (web-search) hit max_tokens limit — response was truncated. Try a simpler query or increase max_tokens.");
+      }
+
+      const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use");
+      if (clientToolUses.length === 0) break; // done — either end_turn text, or only server-resolved web search
+
+      messages.push({ role: "assistant", content: data.content });
+      const toolResults = await Promise.all(
+        clientToolUses.map(async (b: any) => {
           if (b.name === "lookup_museum_collections") {
             const artist = typeof b.input?.artist === "string" ? b.input.artist : "";
             let content: string;
@@ -638,42 +632,33 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           }
           return { type: "tool_result", tool_use_id: b.id, content: "Search complete." };
         }),
-    );
-
-    if (toolResults.length > 0) {
+      );
       messages.push({ role: "user", content: toolResults });
     }
 
-    // Finalise turn: no more tools, JSON only
+    // If Claude stopped naturally (end_turn) with no pending tool calls, parse directly.
+    const hasToolUse = (data.content || []).some((b: any) => b.type === "tool_use");
+    if (!hasToolUse && data.stop_reason === "end_turn") {
+      const textBlocks = (data.content || []).filter((b: any) => b.type === "text");
+      const lastText = textBlocks[textBlocks.length - 1]?.text as string;
+      console.log("[4-Stage] web-search raw response (first 500):", lastText?.slice(0, 500));
+      console.log("[4-Stage] web-search raw response (last 300):", lastText?.slice(-300));
+      try { return parseCleanJson(lastText); } catch (err: any) {
+        throw new Error(`Failed to parse web-search JSON output: ${err.message}`);
+      }
+    }
+
+    // Either the round budget ran out, or the last turn ended on a resolved server tool
+    // (web_search) with no client action needed. Either way, finalise: keep tools defined
+    // (Anthropic requires consistent tool schemas across a conversation) but force no more
+    // calls, and ask for pure JSON.
+    messages.push({ role: "assistant", content: data.content });
     messages.push({
       role: "user",
       content: "Now output your final answer as a single valid JSON object only. No prose, no markdown, no explanation. Start with { and end with }.",
     });
 
-    const finalResponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey!,
-        "anthropic-version": "2023-06-01",
-        "anthropic-beta": "web-search-2025-03-05",
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: modelName,
-        max_tokens: maxTokens,
-        system: systemInstruction,
-        messages,
-        tool_choice: { type: "none" },
-        tools: [{ type: "web_search_20250305", name: "web_search" }, MultiStageAppraiser.MUSEUM_LOOKUP_TOOL],
-      }),
-    });
-
-    if (!finalResponse.ok) {
-      const errorText = await finalResponse.text();
-      throw new Error(`Claude web-search finalise request failed: ${finalResponse.status}: ${errorText}`);
-    }
-
-    const finalData = await finalResponse.json();
+    const finalData = await post(messages, true);
     const finalTextBlocks = finalData.content?.filter((b: any) => b.type === "text") || [];
     if (!finalTextBlocks.length) throw new Error("Claude (web-search finalise) returned no text blocks.");
 
