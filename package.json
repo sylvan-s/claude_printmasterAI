@@ -10,7 +10,8 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "bench:fetch": "tsx benchmark/src/roseberys/extract.ts",
-    "forum:fetch": "tsx benchmark/src/forum/extract.ts"
+    "forum:fetch": "tsx benchmark/src/forum/extract.ts",
+    "lookup:artist": "tsx src/appraisal/reference_lookup/cli.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
