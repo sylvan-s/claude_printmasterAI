@@ -63,7 +63,11 @@ function toRecord(rec: MdsRawRecord): MuseumRecord {
     collection: admin.data_source?.organisation || null,
     recordUrl: uid ? `https://museumdata.uk/objects/${uid}` : null,
     title: val(units, "title") || val(units, "brief description"),
-    description: val(units, "brief description"),
+    // Deliberately not populated — "brief description" isn't reliably brief
+    // (up to 431 chars observed, ~3% of records over 300) and this is
+    // curator-authored prose, not a fact. Same rule already applied to
+    // Rijksmuseum's referred_to_by field. Facts/figures only, per policy.
+    description: null,
     medium: val(units, "material"),
     dimensions: val(units, "dimension"),
     inscription: val(units, "inscription content"),

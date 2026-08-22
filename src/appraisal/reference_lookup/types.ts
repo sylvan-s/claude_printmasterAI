@@ -16,8 +16,11 @@ export interface MuseumRecord {
   collection: string | null;
   recordUrl: string | null;
   title: string | null;
-  /** Curatorial description text, where the source provides one. Extract facts from
-   *  this — don't reproduce it verbatim in agent output; see module header. */
+  /** Deliberately not populated with curatorial prose by any source (met.ts uses
+   *  short categorical fields only; rijksmuseum.ts and mds.ts both null this out —
+   *  see their module comments for the specific records that forced the call:
+   *  a 2,345-char curatorial essay from Rijksmuseum, a 431-char one from MDS).
+   *  Facts and figures only — no artwork descriptions, no images. */
   description: string | null;
   medium: string | null;
   dimensions: string | null;
