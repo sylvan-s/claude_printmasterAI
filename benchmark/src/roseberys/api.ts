@@ -11,6 +11,12 @@
 const BASE = "https://www.roseberys.co.uk";
 const LOTS_ENDPOINT = `${BASE}/index.php?option=com_bidding&format=json&task=commission.getLots`;
 
+// lot.image is relative to the S3 asset bucket the commerce backend (Dynamics 365
+// Business Central) actually serves images from — not BASE. Confirmed by inspecting
+// a live lot page's rendered <img src>; the old `${BASE}/${lot.image}` construction
+// 302-redirected to /404 for every lot.
+const ASSET_BASE = "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod";
+
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/120.0 Safari/537.36";
@@ -109,7 +115,7 @@ export async function fetchAuctionLots(
 }
 
 export function imageUrl(lot: RawLot): string | null {
-  return lot.image ? `${BASE}/${lot.image.replace(/^\/+/, "")}` : null;
+  return lot.image ? `${ASSET_BASE}/${lot.image.replace(/^\/+/, "")}` : null;
 }
 
 export function lotUrl(lot: RawLot): string {

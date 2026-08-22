@@ -15,6 +15,10 @@
  *   --department <kw> slug keyword to match (default "print"); use with --all-prints
  *   --benchmark       also emit benchmark lot records (facts only, no raw prose)
  *   --images          download lot images into the gitignored cache + checksums
+ *   --llm-fallback    Haiku re-extraction for lots regex genuinely fails on (missing
+ *                     artist/medium only — not leakRisks, which isn't a parsing
+ *                     problem). Needs ANTHROPIC_API_KEY. Also fills `condition`,
+ *                     which regex never attempts.
  *   --out <dir>       output root (default benchmark/data)
  *   --keep-raw        retain the raw API dump instead of deleting after extraction
  */
@@ -31,6 +35,7 @@ import {
 } from "./api.js";
 import { discoverAuctions, filterByKeyword, type AuctionRef } from "./discover.js";
 import { parseDescription, type ParsedLot } from "./parse.js";
+import { llmFallbackExtract } from "./llm_fallback.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_OUT = join(HERE, "..", "..", "data");
@@ -48,6 +53,7 @@ function parseArgs(argv: string[]) {
     department: get("--department") ?? "print",
     benchmark: argv.includes("--benchmark"),
     images: argv.includes("--images"),
+    llmFallback: argv.includes("--llm-fallback"),
     keepRaw: argv.includes("--keep-raw"),
     out: get("--out") ?? DEFAULT_OUT,
   };
@@ -125,6 +131,7 @@ function catalogueRow(lot: RawLot, p: ParsedLot, sale: AuctionRef | null, premiu
     ratio_to_low_est:
       hammer && lot.low_estimate ? +(hammer / lot.low_estimate).toFixed(3) : "",
     provenance: p.provenance ?? "",
+    condition: p.condition ?? "",
     lot_url: lotUrl(lot),
     image_url: imageUrl(lot) ?? "",
   };
@@ -153,6 +160,7 @@ function benchmarkRecord(lot: RawLot, p: ParsedLot, sale: AuctionRef | null, pre
       inscriptions: p.inscriptions,
       editionSize: p.editionSize,
       framed: p.framed,
+      condition: p.condition,
     },
 
     // LABEL — withheld in blind mode.
@@ -257,6 +265,22 @@ async function main() {
       live++;
       if (hammerOf(lot, premium.ratio) !== null) withHammer++;
       const parsed = parseDescription(lot.description || "");
+
+      // Targeted fallback: only for lots regex genuinely couldn't parse.
+      // leakRisks-flagged lots are NOT in scope — that's a redaction concern,
+      // not a parsing failure, and re-extraction can't fix it.
+      if (args.llmFallback && (!parsed.artist || !parsed.medium) && lot.description) {
+        try {
+          const fb = await llmFallbackExtract(lot.lot_number, lot.description);
+          if (!parsed.artist && fb.artist) parsed.artist = fb.artist;
+          if (!parsed.medium && fb.medium) parsed.medium = fb.medium;
+          parsed.condition = fb.condition;
+        } catch (err: any) {
+          console.warn(`  ! LOT ${lot.lot_number}: LLM fallback failed: ${err.message}`);
+        }
+        await new Promise((r) => setTimeout(r, 300)); // be a good guest
+      }
+
       csvRows.push(catalogueRow(lot, parsed, sale, premium));
       if (args.benchmark && !parsed.isMultiWork) {
         benchRecords.push(benchmarkRecord(lot, parsed, sale, premium));

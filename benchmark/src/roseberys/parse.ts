@@ -59,6 +59,8 @@ export interface ParsedLot {
   catalogueRefs: string[];
   framed: boolean;
   provenance: string | null;
+  /** Condition notes. Regex never populates this — filled only by the LLM fallback. */
+  condition: string | null;
   /** Lot contains more than one artwork — excluded from the benchmark. */
   isMultiWork: boolean;
   multiWorkReason: string | null;
@@ -272,6 +274,7 @@ export function parseDescription(html: string): ParsedLot {
     catalogueRefs: refs,
     framed: /\(framed\)/i.test(full),
     provenance,
+    condition: null,
     isMultiWork,
     multiWorkReason: reason,
     leakRisks,
