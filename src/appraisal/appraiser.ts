@@ -28,6 +28,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
 
 const __dirname_esm = dirname(fileURLToPath(import.meta.url));
 const SPECIALIST_CONFIGS_DIR = join(__dirname_esm, "specialist_configs");
@@ -494,6 +495,62 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     return toolUseBlock.input;
   }
 
+  // ---- Museum collection lookup tool (Stage 2b) --------------------------------
+
+  private static readonly MUSEUM_LOOKUP_TOOL = {
+    name: "lookup_museum_collections",
+    description:
+      "Search the Metropolitan Museum of Art, the Rijksmuseum, and the UK Museum " +
+      "Data Service (which aggregates many UK institutions) for catalogued works by " +
+      "a given artist. Returns real facts from actual museum records — title, medium, " +
+      "dimensions, inscription/edition text, date, holding institution — not search " +
+      "snippets to interpret. Text/metadata only, no images. Coverage varies hugely by " +
+      "artist: strong for historic/deceased artists, often empty for living or very " +
+      "recent ones — an empty result reflects institutional coverage, not evidence " +
+      "against the attribution. Use the artist's formal name; honorifics and " +
+      "post-nominal letters are stripped automatically, but misspellings and " +
+      "nicknames are not corrected.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        artist: {
+          type: "string" as const,
+          description: "The candidate artist's full formal name, e.g. \"Elizabeth Frink\".",
+        },
+      },
+      required: ["artist"],
+    },
+  };
+
+  /** Cap what reaches the model — real facts, not a dump of every field on every record. */
+  private formatMuseumLookupForClaude(result: ArtistLookupResult): string {
+    const MAX_RECORDS_PER_SOURCE = 12;
+    const lines: string[] = [`Museum lookup for "${result.artist}" (queried as "${result.queriedAs}"):`];
+
+    for (const s of result.sources) {
+      if (!s.ok) {
+        lines.push(`\n${s.source}: unavailable (${s.error})`);
+        continue;
+      }
+      lines.push(`\n${s.source}: ${s.records.length} record(s)${s.records.length === 0 ? " — no holdings found under this name" : ""}`);
+      for (const r of s.records.slice(0, MAX_RECORDS_PER_SOURCE)) {
+        const parts = [
+          r.title ? `"${r.title}"` : "(untitled)",
+          r.medium,
+          r.dimensions,
+          r.date,
+          r.collection,
+        ].filter(Boolean);
+        lines.push(`  - ${parts.join(" | ")}`);
+        if (r.inscription) lines.push(`    inscription: ${r.inscription}`);
+      }
+      if (s.records.length > MAX_RECORDS_PER_SOURCE) {
+        lines.push(`  … and ${s.records.length - MAX_RECORDS_PER_SOURCE} more`);
+      }
+    }
+    return lines.join("\n");
+  }
+
   protected async callClaudeWithWebSearch(
     modelName: string,
     systemInstruction: string,
@@ -516,7 +573,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         max_tokens: maxTokens,
         system: systemInstruction,
         messages: [{ role: "user", content: userText }],
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        tools: [{ type: "web_search_20250305", name: "web_search" }, MultiStageAppraiser.MUSEUM_LOOKUP_TOOL],
       }),
     });
 
@@ -560,10 +617,28 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       { role: "assistant", content: data.content },
     ];
 
-    // Add tool results for every web_search tool_use block
-    const toolResults = (data.content || [])
-      .filter((b: any) => b.type === "tool_use")
-      .map((b: any) => ({ type: "tool_result", tool_use_id: b.id, content: "Search complete." }));
+    // Add tool results for every tool_use block. lookup_museum_collections is a
+    // real client-executed tool — actually run it and feed back real facts.
+    // web_search is executed server-side by Anthropic; "Search complete." is
+    // sufficient there (results are already in data.content).
+    const toolResults = await Promise.all(
+      (data.content || [])
+        .filter((b: any) => b.type === "tool_use")
+        .map(async (b: any) => {
+          if (b.name === "lookup_museum_collections") {
+            const artist = typeof b.input?.artist === "string" ? b.input.artist : "";
+            let content: string;
+            try {
+              const result = await lookupArtistAcrossMuseums(artist);
+              content = this.formatMuseumLookupForClaude(result);
+            } catch (err: any) {
+              content = `Museum lookup failed: ${err.message}`;
+            }
+            return { type: "tool_result", tool_use_id: b.id, content };
+          }
+          return { type: "tool_result", tool_use_id: b.id, content: "Search complete." };
+        }),
+    );
 
     if (toolResults.length > 0) {
       messages.push({ role: "user", content: toolResults });
@@ -589,7 +664,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         system: systemInstruction,
         messages,
         tool_choice: { type: "none" },
-        tools: [{ type: "web_search_20250305", name: "web_search" }],
+        tools: [{ type: "web_search_20250305", name: "web_search" }, MultiStageAppraiser.MUSEUM_LOOKUP_TOOL],
       }),
     });
 
