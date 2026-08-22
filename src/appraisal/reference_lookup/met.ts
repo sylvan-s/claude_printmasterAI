@@ -7,6 +7,7 @@
  *     and object count to stay well under anything that would trigger one.
  */
 import type { MuseumRecord, SourceResult } from "./types.js";
+import { matchesArtist } from "./relevance.js";
 
 const SEARCH_URL = "https://collectionapi.metmuseum.org/public/collection/v1/search";
 const OBJECT_URL = "https://collectionapi.metmuseum.org/public/collection/v1/objects";
@@ -83,6 +84,7 @@ export async function lookupMet(artist: string): Promise<SourceResult> {
     const records = objects
       .filter((o): o is MetObject => o !== null)
       .filter((o) => o.department === "Drawings and Prints" || (o.classification || "").includes("Print"))
+      .filter((o) => matchesArtist(o.artistDisplayName, artist))
       .map(toRecord);
 
     return { source: "met", ok: true, records };

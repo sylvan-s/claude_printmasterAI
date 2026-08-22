@@ -8,6 +8,7 @@
  * "CC BY-NC"; treat as fact-extraction only, not for reproducing prose verbatim.
  */
 import type { MuseumRecord, SourceResult } from "./types.js";
+import { matchesArtist } from "./relevance.js";
 
 const TOKEN_URL = "https://museumdata.uk/get-api-token/get_api_token.php";
 const EXTRACT_URL = "https://mds-data-1.ciim.k-int.com/api/v1/extract";
@@ -91,19 +92,6 @@ async function fetchAllRecords(token: string): Promise<MdsRawRecord[]> {
     url = data.has_next ? data.next_url : null;
   }
   return records;
-}
-
-/** MDS's `q` param is a broad full-text search, not scoped to the maker field —
- *  confirmed live: querying "James McNeill Whistler" returned 612 records, of
- *  which only 305 actually had Whistler as the catalogued maker. The other
- *  half were by different printmakers (Fergusson, Sickert, Sparks...) whose
- *  records merely mention Whistler elsewhere. Filter to genuine "by this
- *  artist" matches via a surname check, since that's what the tool is for. */
-function matchesArtist(artistAsCatalogued: string | null, queryArtist: string): boolean {
-  if (!artistAsCatalogued) return false;
-  const tokens = queryArtist.toLowerCase().split(/\s+/).filter((t) => t.length > 1);
-  const surname = tokens[tokens.length - 1];
-  return artistAsCatalogued.toLowerCase().includes(surname);
 }
 
 export async function lookupMds(artist: string): Promise<SourceResult> {
