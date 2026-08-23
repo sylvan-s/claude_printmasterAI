@@ -3,6 +3,7 @@ import { Download, Mail, Trash2, Folder, Hash, FileText, Check, Loader2, GripVer
 import { AnalysisHistoryItem, PrintAnalysisReport, CatalogMetadata } from "../types";
 import HistorySidebar from "./HistorySidebar";
 import LotCreatorModal from "./LotCreatorModal";
+import { resolveMethodLabel } from "../utils/resolveMethodLabel";
 
 interface CatalogListViewProps {
   isHistoryLoading: boolean;
@@ -202,11 +203,28 @@ export default function CatalogListView({
 
   const uniqueModels = React.useMemo(() => {
     const models = new Set<string>();
+    // Pre-populate all known method names so they always appear in the filter
+    models.add("Gemini Standard");
+    models.add("Gemini Pro (2.5)");
+    models.add("Gemini Pro (Stable)");
+    models.add("Gemini 3.1 Pro (Preview)");
+    models.add("Gemini Creative");
+    models.add("Gemini Strict / Skeptic");
+    models.add("Gemini Simplified");
+    models.add("Gemini Low Resolution");
+    models.add("Gemini Medium Resolution");
+    models.add("Gemini (No Aux Scans)");
+    models.add("Claude Sonnet (4.6)");
+    models.add("Claude Opus (4.8)");
+    models.add("Gemini 3-Stage Pipeline");
+    models.add("Claude 3-Stage Pipeline");
+    models.add("Claude 4-Stage Pipeline");
+    models.add("Gemini 4-Stage Pipeline");
+
     catalogHistory.forEach(item => {
-      const approach = item.report.promptVersion || "standard";
-      const formattedApproach = approach.charAt(0).toUpperCase() + approach.slice(1);
-      const model = item.report.modelUsed || "gemini-2.5-flash";
-      models.add(`${formattedApproach} - ${model}`);
+      const approach = (item.report || {}).promptVersion || "standard";
+      const model = (item.report || {}).modelUsed || "gemini-2.5-flash";
+      models.add(resolveMethodLabel(approach, model));
     });
     return Array.from(models);
   }, [catalogHistory]);
@@ -240,11 +258,9 @@ export default function CatalogListView({
 
       // Appraisal Method Filter
       if (filterAppraisalMethod !== "all") {
-        const approach = item.report.promptVersion || "standard";
-        const formattedApproach = approach.charAt(0).toUpperCase() + approach.slice(1);
-        const model = item.report.modelUsed || "gemini-2.5-flash";
-        const itemMethod = `${formattedApproach} - ${model}`;
-        if (itemMethod !== filterAppraisalMethod) return false;
+        const approach = (item.report || {}).promptVersion || "standard";
+        const model = (item.report || {}).modelUsed || "gemini-2.5-flash";
+        if (resolveMethodLabel(approach, model) !== filterAppraisalMethod) return false;
       }
       
       return true;
@@ -259,9 +275,10 @@ export default function CatalogListView({
     let totalLow = 0;
     let totalHigh = 0;
     filteredHistory.forEach((item) => {
-      const originalCurrency = item.report.auctionEstimate.currency || "USD";
-      const low = item.report.auctionEstimate.lowEstimate || 0;
-      const high = item.report.auctionEstimate.highEstimate || 0;
+      const est = (item.report || {}).auctionEstimate || {};
+      const originalCurrency = (est as any).currency || "USD";
+      const low = (est as any).lowEstimate || 0;
+      const high = (est as any).highEstimate || 0;
       totalLow += convertValue(low, originalCurrency, currency);
       totalHigh += convertValue(high, originalCurrency, currency);
     });
@@ -352,11 +369,11 @@ export default function CatalogListView({
         rep.artworkTitle,
         rep.titleConfidence,
         rep.creationPeriod,
-        rep.conditionNotes.overallGrade,
-        rep.conditionNotes.signatureStatus,
-        rep.auctionEstimate.lowEstimate,
-        rep.auctionEstimate.highEstimate,
-        rep.auctionEstimate.currency,
+        (rep.conditionNotes as any)?.overallGrade || "",
+        (rep.conditionNotes as any)?.signatureStatus || "",
+        (rep.auctionEstimate as any)?.lowEstimate || 0,
+        (rep.auctionEstimate as any)?.highEstimate || 0,
+        (rep.auctionEstimate as any)?.currency || "USD",
         rep.inferredDimensions || "",
         rep.visualDescription,
         rep.historicalContext,
@@ -861,9 +878,9 @@ export default function CatalogListView({
                       selectedHistoryId === item.id || (!selectedHistoryId && filteredHistory[0].id === item.id);
                     const isCheckedForLot = selectedItemIds.includes(item.id);
 
-                    const originalCurrency = item.report.auctionEstimate.currency || "USD";
-                    const low = item.report.auctionEstimate.lowEstimate;
-                    const high = item.report.auctionEstimate.highEstimate;
+                    const originalCurrency = ((item.report || {}).auctionEstimate as any)?.currency || "USD";
+                    const low = ((item.report || {}).auctionEstimate as any)?.lowEstimate || 0;
+                    const high = ((item.report || {}).auctionEstimate as any)?.highEstimate || 0;
 
                     const conLow = convertValue(low, originalCurrency, currency);
                     const conHigh = convertValue(high, originalCurrency, currency);
@@ -912,32 +929,32 @@ export default function CatalogListView({
                         <td className="px-3 py-3 border-r border-rosebery-border min-w-0">
                           <div
                             className="truncate font-serif font-bold text-xs text-rosebery-charcoal"
-                            title={item.report.artworkTitle}
+                            title={(item.report || {}).artworkTitle}
                           >
-                            {item.report.artworkTitle}
+                            {(item.report || {}).artworkTitle}
                           </div>
                           <div
                             className="truncate text-[10.5px] italic text-rosebery-muted mt-0.5 font-serif"
-                            title={item.report.likelyArtist}
+                            title={(item.report || {}).likelyArtist}
                           >
-                            by {item.report.likelyArtist}
+                            by {(item.report || {}).likelyArtist}
                           </div>
                         </td>
 
                         {/* 4. Period cell */}
                         <td
                           className="px-3 py-3 border-r border-rosebery-border font-sans text-xs text-rosebery-muted truncate"
-                          title={item.report.creationPeriod}
+                          title={(item.report || {}).creationPeriod}
                         >
-                          {item.report.creationPeriod}
+                          {(item.report || {}).creationPeriod}
                         </td>
 
                         {/* 5. Technique cell */}
                         <td
                           className="px-3 py-3 border-r border-rosebery-border text-xs text-rosebery-muted truncate"
-                          title={item.report.techniques[0]?.technique}
+                          title={((item.report || {}).techniques || [])[0]?.technique}
                         >
-                          {item.report.techniques[0]?.technique || "N/A"}
+                          {((item.report || {}).techniques || [])[0]?.technique || "N/A"}
                         </td>
 
                         {/* 6. Lot cell */}
@@ -1019,10 +1036,10 @@ export default function CatalogListView({
                       Grade & Integrity
                     </span>
                     <span className="text-xs font-bold text-rosebery-charcoal block">
-                      ★ {activeItem.report.conditionNotes.overallGrade} Grade
+                      ★ {(activeItem.report.conditionNotes as any)?.overallGrade || "N/A"} Grade
                     </span>
                     <span className="text-[10px] text-rosebery-muted block mt-0.5 truncate">
-                      {activeItem.report.conditionNotes.signatureStatus}
+                      {(activeItem.report.conditionNotes as any)?.signatureStatus || ""}
                     </span>
                   </div>
                   <div className="bg-stone-50 border border-rosebery-border/70 p-3 rounded-xs">
@@ -1030,10 +1047,10 @@ export default function CatalogListView({
                       Deduced Technique
                     </span>
                     <span className="text-xs font-bold text-rosebery-charcoal block truncate">
-                      {activeItem.report.techniques[0]?.technique || "N/A"}
+                      {(activeItem.report.techniques || [])[0]?.technique || "N/A"}
                     </span>
                     <span className="text-[10px] text-rosebery-muted block mt-0.5">
-                      {activeItem.report.techniques[0]?.confidence || 0}% confidence match
+                      {(activeItem.report.techniques || [])[0]?.confidence || 0}% confidence match
                     </span>
                   </div>
                   <div className="bg-stone-50 border border-rosebery-border/70 p-3 rounded-xs">
@@ -1056,7 +1073,7 @@ export default function CatalogListView({
                         Edition Size & Print Numbering Status
                       </span>
                       <p className="text-[11.5px] italic text-rosebery-muted leading-relaxed font-serif">
-                        {activeItem.report.editionSizeAndPrintNumber}
+                        {typeof activeItem.report.editionSizeAndPrintNumber === "object" ? Object.values(activeItem.report.editionSizeAndPrintNumber as any).filter(Boolean).join(", ") : activeItem.report.editionSizeAndPrintNumber}
                       </p>
                     </div>
                   </div>
@@ -1237,7 +1254,7 @@ export default function CatalogListView({
                       {activeItem.report.editionSizeAndPrintNumber && (
                         <p className="text-[11.5px] text-rosebery-muted mt-1.5 text-center sm:text-left">
                           <span className="font-mono text-[9px] uppercase tracking-wider text-rosebery-primary font-bold">Edition Info:</span>{" "}
-                          <span className="italic font-serif">{activeItem.report.editionSizeAndPrintNumber}</span>
+                          <span className="italic font-serif">{typeof activeItem.report.editionSizeAndPrintNumber === "object" ? Object.values(activeItem.report.editionSizeAndPrintNumber as any).filter(Boolean).join(", ") : activeItem.report.editionSizeAndPrintNumber}</span>
                         </p>
                       )}
                     </div>
@@ -1264,16 +1281,16 @@ export default function CatalogListView({
                       Printing Technique
                     </span>
                     <h4 className="font-serif font-bold text-rosebery-charcoal text-xs leading-snug">
-                      {activeItem.report.techniques[0]?.technique || "Not Specified"}
+                      {(activeItem.report.techniques || [])[0]?.technique || "Not Specified"}
                     </h4>
-                    {activeItem.report.techniques[0]?.confidence !== undefined && (
+                    {(activeItem.report.techniques || [])[0]?.confidence !== undefined && (
                       <span className="text-[9px] font-mono text-emerald-800 bg-emerald-50 px-1.5 py-0.5 border border-emerald-100 rounded-sm inline-block mt-1.5">
-                        {activeItem.report.techniques[0].confidence}% Confidence
+                        {(activeItem.report.techniques || [])[0]!.confidence}% Confidence
                       </span>
                     )}
                   </div>
                   <p className="text-[11px] text-rosebery-muted leading-relaxed line-clamp-3 italic">
-                    {activeItem.report.techniques[0]?.description || "Detail not logged"}
+                    {(activeItem.report.techniques || [])[0]?.description || "Detail not logged"}
                   </p>
                 </div>
 
@@ -1286,27 +1303,27 @@ export default function CatalogListView({
                     <div className="flex flex-wrap items-center gap-1.5 mt-1">
                       <span
                         className={`text-[9px] uppercase font-mono font-bold px-1.5 py-0.5 rounded-sm border ${
-                          activeItem.report.conditionNotes.overallGrade === "Mint" ||
-                          activeItem.report.conditionNotes.overallGrade === "Excellent"
+                          (activeItem.report.conditionNotes as any)?.overallGrade === "Mint" ||
+                          (activeItem.report.conditionNotes as any)?.overallGrade === "Excellent"
                             ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                            : activeItem.report.conditionNotes.overallGrade === "Good"
+                            : (activeItem.report.conditionNotes as any)?.overallGrade === "Good"
                               ? "bg-amber-50 border-amber-200 text-amber-800"
                               : "bg-red-50 border-red-200 text-red-800"
                         }`}
                       >
-                        {activeItem.report.conditionNotes.overallGrade}
+                        {(activeItem.report.conditionNotes as any)?.overallGrade || "N/A"}
                       </span>
                       <span
                         className="text-[10px] text-rosebery-muted font-mono line-clamp-1"
-                        title={activeItem.report.conditionNotes.signatureStatus}
+                        title={(activeItem.report.conditionNotes as any)?.signatureStatus}
                       >
-                        • {activeItem.report.conditionNotes.signatureStatus}
+                        • {(activeItem.report.conditionNotes as any)?.signatureStatus || ""}
                       </span>
                     </div>
                   </div>
                   <p className="text-[11px] text-rosebery-muted leading-relaxed line-clamp-3">
-                    {activeItem.report.conditionNotes.analysisDetails ||
-                      activeItem.report.conditionNotes.mattingAndMargins}
+                    {(activeItem.report.conditionNotes as any)?.analysisDetails ||
+                      (activeItem.report.conditionNotes as any)?.mattingAndMargins || ""}
                   </p>
                 </div>
 
@@ -1317,9 +1334,9 @@ export default function CatalogListView({
                       Price Estimate
                     </span>
                     {(() => {
-                      const originalCurrency = activeItem.report.auctionEstimate.currency || "USD";
-                      const low = activeItem.report.auctionEstimate.lowEstimate;
-                      const high = activeItem.report.auctionEstimate.highEstimate;
+                      const originalCurrency = (activeItem.report.auctionEstimate as any)?.currency || "USD";
+                      const low = (activeItem.report.auctionEstimate as any)?.lowEstimate || 0;
+                      const high = (activeItem.report.auctionEstimate as any)?.highEstimate || 0;
 
                       const convertedLow = convertValue(low, originalCurrency, currency);
                       const convertedHigh = convertValue(high, originalCurrency, currency);
@@ -1339,7 +1356,7 @@ export default function CatalogListView({
                     })()}
                   </div>
                   <p className="text-[11px] text-rosebery-muted leading-relaxed line-clamp-3">
-                    {activeItem.report.auctionEstimate.valuationContext}
+                    {(activeItem.report.auctionEstimate as any)?.valuationContext || ""}
                   </p>
                 </div>
               </div>

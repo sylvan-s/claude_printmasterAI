@@ -8,7 +8,10 @@
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "bench:fetch": "tsx benchmark/src/roseberys/extract.ts",
+    "forum:fetch": "tsx benchmark/src/forum/extract.ts",
+    "lookup:artist": "tsx src/appraisal/reference_lookup/cli.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -16,6 +19,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "google-auth-library": "^11.0.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "pg": "^8.21.0",
@@ -24,11 +28,13 @@
     "vite": "^6.2.3"
   },
   "devDependencies": {
+    "@sparticuz/chromium": "^149.0.0",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/pg": "^8.20.0",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
+    "puppeteer": "^25.8.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

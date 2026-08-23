@@ -140,7 +140,7 @@ CREATE INDEX idx_catalogues_active          ON catalogues (user_id) WHERE delete
 -- ============================================================
 
 -- All appraisals for a lot (via its items)
-CREATE VIEW lot_appraisals AS
+CREATE VIEW lot_appraisals WITH (security_invoker = true) AS
 SELECT
     l.id            AS lot_id,
     l.name          AS lot_name,
@@ -158,7 +158,7 @@ JOIN appraisals a   ON a.item_id = it.id;
 
 
 -- Summary of a catalogue with lot and item counts
-CREATE VIEW catalogue_summary AS
+CREATE VIEW catalogue_summary WITH (security_invoker = true) AS
 SELECT
     c.id            AS catalogue_id,
     c.name          AS catalogue_name,
@@ -189,3 +189,17 @@ CREATE TABLE appraisal_methods (
     provider                TEXT NOT NULL DEFAULT 'gemini',
     created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+
+-- ============================================================
+--  ROW LEVEL SECURITY (RLS)
+-- ============================================================
+
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE catalogues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE images ENABLE ROW LEVEL SECURITY;
+ALTER TABLE appraisals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE appraisal_methods ENABLE ROW LEVEL SECURITY;
+

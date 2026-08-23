@@ -80,9 +80,20 @@ export async function initDatabase() {
     `);
 
     await client.query(`
-      UPDATE users 
-      SET role = 'admin' 
+      UPDATE users
+      SET role = 'admin'
       WHERE email = 'sylvan_sitkey@hotmail.com';
+    `);
+
+    await client.query(`
+      ALTER TABLE appraisal_methods
+      ADD COLUMN IF NOT EXISTS stage1_model        TEXT,
+      ADD COLUMN IF NOT EXISTS stage2_model        TEXT,
+      ADD COLUMN IF NOT EXISTS stage2a_model       TEXT,
+      ADD COLUMN IF NOT EXISTS stage2b_model       TEXT,
+      ADD COLUMN IF NOT EXISTS stage3_model        TEXT,
+      ADD COLUMN IF NOT EXISTS stage1b_model       TEXT,
+      ADD COLUMN IF NOT EXISTS enable_visual_search BOOLEAN NOT NULL DEFAULT true;
     `);
 
     await client.query(`
@@ -100,6 +111,23 @@ export async function initDatabase() {
           created_at              TIMESTAMPTZ NOT NULL DEFAULT now()
       );
     `);
+    
+    // Enable Row Level Security (RLS) on all tables and update views to security_invoker = true
+    console.log("Applying Row Level Security (RLS) configurations and securing views...");
+    await client.query(`
+      ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE catalogues ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE lots ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE items ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE images ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE appraisals ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE appraisal_methods ENABLE ROW LEVEL SECURITY;
+
+      -- Set security_invoker = true on views (supported on PG 15+)
+      ALTER VIEW lot_appraisals SET (security_invoker = true);
+      ALTER VIEW catalogue_summary SET (security_invoker = true);
+    `);
+
     console.log("✓ Schema migrations applied successfully.");
   } catch (err) {
     console.error("❌ Failed to initialize database schema:", err);

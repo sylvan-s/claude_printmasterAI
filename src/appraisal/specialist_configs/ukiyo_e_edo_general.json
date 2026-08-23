@@ -1,0 +1,109 @@
+{
+  "configKey": "ukiyo_e_edo_general",
+  "configVersion": "SC-UEG-1.0",
+  "domain": "Japanese woodblock prints — Edo period and Utagawa school",
+  "coveragePeriod": "Approximately 1600–1912 (Edo and early Meiji)",
+  "escalateTo": "hokusai | hiroshige | shin_hanga_general",
+  "contextNote": "Ukiyo-e were produced as commercial multiples. Artist attribution is therefore not about uniqueness but about identifying the correct design, publisher, and impression period. The key distinction is not WHETHER a print is by a named artist but WHICH impression and period it represents — value differentials between early Edo and later Meiji reprints can be 5-15x. All prints carry woodblock-printed artist signatures and publisher seals rather than hand signatures — absence of hand signature is normal.",
+  "primaryDatabaseSources": [
+    {
+      "name": "ukiyo-e.org",
+      "url": "https://ukiyo-e.org",
+      "queryMethod": "web_search",
+      "searchInstructions": "Use series title in kanji as primary query. Also try artist name in romaji. Aggregates BM, MFA Boston, Library of Congress, Rijksmuseum, Tokyo National Museum.",
+      "nativeScriptSupported": true,
+      "priority": 1
+    },
+    {
+      "name": "British Museum Collection Online",
+      "url": "https://www.britishmuseum.org/collection",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search: site:britishmuseum.org/collection [series title] [artist name]. BM holds one of largest ukiyo-e collections with Japanese title fields, publisher identification, censor seal dating.",
+      "nativeScriptSupported": true,
+      "priority": 2
+    },
+    {
+      "name": "Art Research Center Ritsumeikan University (ARC)",
+      "url": "https://www.dh-jac.net/db/nishikie/",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search by series title in kanji. Records include publisher seal identification and dating.",
+      "nativeScriptSupported": true,
+      "priority": 3
+    },
+    {
+      "name": "Museum of Fine Arts Boston",
+      "url": "https://collections.mfa.org",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search: site:collections.mfa.org [artist] [series title].",
+      "nativeScriptSupported": false,
+      "priority": 4
+    },
+    {
+      "name": "Roseberys London — Past Auction Records",
+      "url": "https://www.roseberys.co.uk/results",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search: site:roseberys.co.uk [artist name] OR [series title keywords].",
+      "nativeScriptSupported": false,
+      "priority": 5
+    }
+  ],
+  "catalogueRaisonne": [
+    {
+      "title": "Museum collection online records (BM, MFA, ARC)",
+      "coverageNote": "Function as accessible catalogue raisonné entries for most Edo period prints.",
+      "onlineAccessible": true,
+      "humanReferenceRequired": false
+    },
+    {
+      "title": "Ukiyo-e Taikei (Comprehensive Survey)",
+      "coverageNote": "Multi-volume Japanese survey. Physical reference only.",
+      "onlineAccessible": false,
+      "humanReferenceRequired": true
+    }
+  ],
+  "criticalAuthenticationMarkers": [
+    {
+      "marker": "Bokashi gradation quality",
+      "authenticIndicator": "Smooth, subtle gradation — no banding or hard edges",
+      "reprintIndicator": "Banded or mechanical-looking gradation; simplified or absent"
+    },
+    {
+      "marker": "Colour registration precision",
+      "authenticIndicator": "Natural 0.5–2mm misregistration consistent with hand printing",
+      "reprintIndicator": "Perfect mechanical registration (photomechanical) or excessive misregistration (worn blocks)"
+    },
+    {
+      "marker": "Ink saturation and pigment vibrancy",
+      "authenticIndicator": "Rich, saturated colour with clear differentiation",
+      "reprintIndicator": "Washed-out colour; bleed between areas; loss of fine line detail"
+    },
+    {
+      "marker": "Paper characteristics",
+      "authenticIndicator": "Irregular fibrous texture; slight thickness variation; warm cream/ivory tone",
+      "reprintIndicator": "Uniform machine-smooth texture; bright white tone"
+    },
+    {
+      "marker": "Censor seal presence and legibility",
+      "authenticIndicator": "Appropriate seal type for claimed period; clearly printed",
+      "reprintIndicator": "Absent where expected; blurred; wrong type for claimed period"
+    }
+  ],
+  "knownForgeriesAndFacsimiles": [
+    {
+      "category": "Meiji period block reprints",
+      "distinguishingFeatures": ["Worn block lines (thicker, less sharp)", "Often lacks original censor seals", "Machine-made paper more common in later Meiji", "Bokashi less refined"],
+      "valuationImpact": "Meiji reprint typically worth 10-20% of early Edo impression"
+    },
+    {
+      "category": "20th century photomechanical facsimiles",
+      "distinguishingFeatures": ["Halftone dot screen visible under magnification", "Perfectly uniform ink coverage", "Mechanical colour registration"],
+      "valuationImpact": "Minimal commercial value as artworks"
+    }
+  ],
+  "valuationSensitivities": [
+    { "factor": "Impression period", "impact": "Early Edo vs Meiji reprint: 5-15x differential" },
+    { "factor": "Trimmed margins", "impact": "20-40% discount" },
+    { "factor": "Colour freshness", "impact": "Light-struck/faded: 30-60% discount" },
+    { "factor": "Foxing and staining", "impact": "Heavy image foxing: 25-40% discount; marginal only: 5-15%" }
+  ]
+}

@@ -35,33 +35,34 @@
 }
 
 @media print {
-  /* Hide all screen elements during printing */
-  body * {
-    visibility: hidden;
-  }
-  
-  /* Show only the printable certificate container and its content */
-  .certificate-print-container,
-  .certificate-print-container * {
-    visibility: visible;
+  /* The screen UI has print:hidden via Tailwind.
+     The certificate is a sibling outside the screen div, shown via print:block. */
+
+  html, body {
+    background: #FDFBF8 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* Position certificate container to cover the page */
   .certificate-print-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    display: flex !important; /* Force flex display when printing */
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
-  /* Reset standard print dimensions */
+  .print-no-break {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-no-break-after {
+    break-after: avoid;
+    page-page-after: avoid;
+  }
+
   @page {
-    size: portrait;
-    margin: 1.2cm 1.5cm;
+    size: A4 portrait;
+    margin: 1.4cm 1.8cm;
   }
 }
 

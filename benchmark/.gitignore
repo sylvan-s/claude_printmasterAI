@@ -1,0 +1,16 @@
+# Extractor output is NOT committed pending written permission from Roseberys.
+# Everything here regenerates from source:  npm run bench:fetch -- --auction 665 --benchmark
+#
+# When permission is in hand, issue #12 calls for data/lots/*.json to be committed
+# (they hold derived FACTS, which are not copyrightable) while images stay out.
+data/
+
+# Never commit or redistribute Roseberys photographs. The image cache is a
+# disposable working copy, rebuildable from each record's imageRef.url.
+data/images/
+
+# Raw API dumps — transient re-derivation aid, not a corpus.
+data/raw/
+
+# Benchmark run outputs
+runs/

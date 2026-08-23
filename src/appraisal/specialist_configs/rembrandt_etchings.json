@@ -1,0 +1,113 @@
+{
+  "configKey": "rembrandt_etchings",
+  "configVersion": "SC-REM-1.0",
+  "domain": "Rembrandt etchings, drypoints and engravings",
+  "coveragePeriod": "1620s–1669 (lifetime); restrikes through 20th century",
+  "escalateTo": "old_master_intaglio",
+  "contextNote": "Rembrandt's print oeuvre is among the most documented and most frequently faked in Western art history. The catalogue raisonné (White and Boon 1969, refined by Hinterding) records approximately 290 accepted prints. The principal challenge is NOT identifying whether a work depicts a Rembrandt composition but whether a given impression is a lifetime impression, a contemporary impression from his circle, an 18th-19th century restrike, or a later facsimile. State identification is critical — early vs late state can be 10-100x value differential. No impression of significant value should proceed to auction without physical specialist examination.",
+  "primaryDatabaseSources": [
+    {
+      "name": "Rembrandt Database",
+      "url": "https://www.rembrandtdatabase.org",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search by Bartsch (B.), Hind (H.), or White/Boon (NH) number if known, or by subject keywords.",
+      "nativeScriptSupported": false,
+      "priority": 1
+    },
+    {
+      "name": "British Museum — Rembrandt prints collection",
+      "url": "https://www.britishmuseum.org/collection",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search: site:britishmuseum.org/collection rembrandt [subject keywords].",
+      "nativeScriptSupported": false,
+      "priority": 2
+    },
+    {
+      "name": "Rijksmuseum — Rembrandt collection",
+      "url": "https://www.rijksmuseum.nl/en/collection",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search: site:rijksmuseum.nl rembrandt [title keywords].",
+      "nativeScriptSupported": false,
+      "priority": 3
+    },
+    {
+      "name": "Roseberys London — Past Auction Records",
+      "url": "https://www.roseberys.co.uk/results",
+      "queryMethod": "web_search",
+      "searchInstructions": "Search: site:roseberys.co.uk rembrandt etching.",
+      "nativeScriptSupported": false,
+      "priority": 4
+    }
+  ],
+  "catalogueRaisonne": [
+    {
+      "title": "Rembrandt's Etchings: An Illustrated Critical Catalogue",
+      "author": "Christopher White and Karel Boon",
+      "publicationYear": 1969,
+      "coverageNote": "Standard working catalogue used by most auction houses. 290 accepted prints. B. and NH numbers.",
+      "onlineAccessible": false,
+      "humanReferenceRequired": true,
+      "numberingSystem": "B. / NH numbers"
+    },
+    {
+      "title": "The New Hollstein Dutch and Flemish Etchings — Rembrandt",
+      "author": "Erik Hinterding",
+      "publicationYear": 2013,
+      "coverageNote": "Most current scholarly catalogue incorporating watermark analysis. NH numbers increasingly standard.",
+      "onlineAccessible": false,
+      "humanReferenceRequired": true,
+      "numberingSystem": "NH numbers"
+    }
+  ],
+  "criticalAuthenticationMarkers": [
+    {
+      "marker": "Plate mark presence and dimensions",
+      "authenticIndicator": "Clean, well-defined plate mark. Dimensions match catalogue record.",
+      "reprintIndicator": "Absent plate mark = photomechanical. Dimensions inconsistent = different plate."
+    },
+    {
+      "marker": "Paper type and aged tone",
+      "authenticIndicator": "Laid paper with chain lines. Warm aged cream/ivory tone. 17th century watermarks.",
+      "reprintIndicator": "Machine-smooth paper (post-1850 restrike). Bright white or uniformly yellowed."
+    },
+    {
+      "marker": "Ink character and tone",
+      "authenticIndicator": "Warm brownish-black ink. Slight plate tone from hand-wiped surface.",
+      "reprintIndicator": "Cool blue-black more typical of later periods. Perfectly clean plate."
+    },
+    {
+      "marker": "Drypoint burr",
+      "authenticIndicator": "Rich velvety-edged dark lines in drypoint passages — early impression indicator.",
+      "reprintIndicator": "Clean thin lines in drypoint passages — worn or re-etched plate."
+    },
+    {
+      "marker": "Collector marks",
+      "authenticIndicator": "Recognized collector stamps from major historical collections (Lugt identifiable).",
+      "reprintIndicator": "Absence does not disprove authenticity but presence is strong positive signal."
+    }
+  ],
+  "knownForgeriesAndFacsimiles": [
+    {
+      "category": "18th century Basan edition restrikes",
+      "distinguishingFeatures": ["Heavy plate wear in line quality", "18th century French paper", "Cooler bluer ink than 17th century impressions", "Some reworked passages by other hands"],
+      "valuationImpact": "Fraction of lifetime impression value — typically 2-10%"
+    },
+    {
+      "category": "Facsimile etchings by later artists",
+      "distinguishingFeatures": ["Line quality differs subtly — typically more uniform", "Plate mark dimensions rarely match catalogue exactly", "Paper inconsistent with claimed period"],
+      "valuationImpact": "No value as Rembrandt works"
+    }
+  ],
+  "valuationSensitivities": [
+    { "factor": "Impression period", "impact": "Lifetime vs 18th century restrike vs 19th century restrike: approx 100:10:1" },
+    { "factor": "State identification", "impact": "Early vs late state: 5-50x differential for multi-state works" },
+    { "factor": "Provenance", "impact": "Major historical collection documentation: 15-30% premium" },
+    { "factor": "Condition", "impact": "Trimmed margins: 20-40%; tears/losses: 30-60%; foxing: 15-35%" }
+  ],
+  "humanEscalationTriggers": [
+    "Any lifetime impression claim requires physical specialist examination",
+    "State identification requires examination of drypoint burr and plate tone",
+    "Watermark identification requires transmitted light examination",
+    "Any impression estimated above £5,000 should be reviewed by Old Master prints specialist"
+  ]
+}

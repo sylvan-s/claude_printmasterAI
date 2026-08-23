@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "printmaster-dev",
+      "runtimeExecutable": "curl",
+      "runtimeArgs": ["-s", "http://localhost:3001/"],
+      "port": 3001
+    }
+  ]
+}

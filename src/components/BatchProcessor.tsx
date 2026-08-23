@@ -8,6 +8,8 @@ import {
   AlertCircle
 } from "lucide-react";
 import { PrintAnalysisReport, AnalysisHistoryItem, CatalogMetadata } from "../types";
+import { resolveMethodLabel } from "../utils/resolveMethodLabel";
+import { cropImageCanvas } from "../utils/cropImageCanvas";
 
 interface BatchProcessorProps {
   itemDatabase: AnalysisHistoryItem[];
@@ -124,6 +126,16 @@ export default function BatchProcessor({
   setAppraisalMethod,
   appraisalMethods,
 }: BatchProcessorProps) {
+  const BATCH_ALLOWED_IDS = new Set([
+    "claude-opus",
+    "gemini-3.1-pro",
+    "gemini-3stage",
+    "claude-3stage",
+    "claude-4stage",
+    "gemini-4stage",
+  ]);
+  const batchAppraisalMethods = appraisalMethods.filter(m => BATCH_ALLOWED_IDS.has(m.id));
+
   // Keep latest itemDatabase in a ref to avoid stale closures in long-running async loops
   const itemDatabaseRef = useRef(itemDatabase);
   itemDatabaseRef.current = itemDatabase;
@@ -147,20 +159,25 @@ export default function BatchProcessor({
 
   const currentFriendlyMethod = useMemo(() => {
     const selectedMethodConfig = appraisalMethods.find(m => m.id === appraisalMethod);
-    return selectedMethodConfig 
-      ? `${selectedMethodConfig.promptKey.charAt(0).toUpperCase() + selectedMethodConfig.promptKey.slice(1)} - ${selectedMethodConfig.modelName}`
-      : appraisalMethod;
+    return selectedMethodConfig ? selectedMethodConfig.name : appraisalMethod;
   }, [appraisalMethod, appraisalMethods]);
 
   const createBatchFileForHistoricalRow = (rowName: string, rowThumbnail: string, rowTimestamp: string): BatchFile => {
     const selectedMethodConfig = appraisalMethods.find(m => m.id === appraisalMethod);
-    const friendlyMethod = selectedMethodConfig 
-      ? `${selectedMethodConfig.promptKey.charAt(0).toUpperCase() + selectedMethodConfig.promptKey.slice(1)} - ${selectedMethodConfig.modelName}`
-      : appraisalMethod;
+    const friendlyMethod = selectedMethodConfig ? selectedMethodConfig.name : appraisalMethod;
 
     const originalItemsForGroup = itemDatabaseRef.current.filter(
       item => extractOriginalFilename(item.imageFileName).toLowerCase() === rowName.toLowerCase()
     );
+
+    // De-duplicate by imageFileName so each unique crop appears only once,
+    // regardless of how many methods have been applied to the same image.
+    const seenFileNames = new Set<string>();
+    const uniqueItems = originalItemsForGroup.filter(item => {
+      if (seenFileNames.has(item.imageFileName)) return false;
+      seenFileNames.add(item.imageFileName);
+      return true;
+    });
 
     return {
       id: crypto.randomUUID(),
@@ -170,7 +187,7 @@ export default function BatchProcessor({
       thumbnailUrl: rowThumbnail,
       timestamp: rowTimestamp,
       methodUsed: friendlyMethod,
-      artworks: originalItemsForGroup.map(item => {
+      artworks: uniqueItems.map(item => {
         const artworkIdx = item.imageFileName.indexOf("_Artwork_");
         const primaryIdx = item.imageFileName.indexOf("_Primary_Artwork");
         let label = "Primary Artwork";
@@ -224,10 +241,10 @@ export default function BatchProcessor({
             const matchesFile = dbName === currName || dbName.startsWith(currName + "_");
             if (!matchesFile) return false;
 
-            const approach = item.report.promptVersion || "standard";
-            const formattedApproach = approach.charAt(0).toUpperCase() + approach.slice(1);
-            const model = item.report.modelUsed || "gemini-2.5-flash";
-            const itemMethod = `${formattedApproach} - ${model}`;
+            const itemMethod = resolveMethodLabel(
+              item.report.promptVersion || "standard",
+              item.report.modelUsed || ""
+            );
 
             return itemMethod === currentFriendlyMethod;
           }
@@ -289,42 +306,6 @@ export default function BatchProcessor({
   };
 
   // Dynamic Crop Helper (via HTML5 Canvas)
-  const cropImageCanvas = (
-    base64Data: string, 
-    box_2d: number[]
-  ): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const [ymin, xmin, ymax, xmax] = box_2d;
-        
-        // Bounding box coordinates are normalized on a 0 to 1000 scale
-        const x = (xmin / 1000) * img.width;
-        const y = (ymin / 1000) * img.height;
-        const w = ((xmax - xmin) / 1000) * img.width;
-        const h = ((ymax - ymin) / 1000) * img.height;
-
-        const canvas = document.createElement("canvas");
-        const cropW = Math.max(1, w);
-        const cropH = Math.max(1, h);
-        
-        canvas.width = cropW;
-        canvas.height = cropH;
-
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = "high";
-          ctx.drawImage(img, x, y, cropW, cropH, 0, 0, cropW, cropH);
-          resolve(canvas.toDataURL("image/jpeg", 0.85));
-        } else {
-          reject(new Error("Failed to get 2D canvas context."));
-        }
-      };
-      img.onerror = () => reject(new Error("Failed to load source image for crop."));
-      img.src = base64Data;
-    });
-  };
 
   // Core Processing Orchestrator
   const startProcessing = async () => {
@@ -336,9 +317,6 @@ export default function BatchProcessor({
 
     try {
       const selectedMethodConfig = appraisalMethods.find(m => m.id === appraisalMethod);
-      const currentFriendlyMethod = selectedMethodConfig 
-        ? `${selectedMethodConfig.promptKey.charAt(0).toUpperCase() + selectedMethodConfig.promptKey.slice(1)} - ${selectedMethodConfig.modelName}`
-        : appraisalMethod;
 
       // Reset status/artworks to pending for selected files that don't match the current friendly method, or are already completed/failed
       let filesToUpdate = false;
@@ -413,10 +391,10 @@ export default function BatchProcessor({
           const matchesFile = dbName === currName || dbName.startsWith(currName + "_");
           if (!matchesFile) return false;
 
-          const approach = item.report.promptVersion || "standard";
-          const formattedApproach = approach.charAt(0).toUpperCase() + approach.slice(1);
-          const model = item.report.modelUsed || "gemini-2.5-flash";
-          const itemMethod = `${formattedApproach} - ${model}`;
+          const itemMethod = resolveMethodLabel(
+            item.report.promptVersion || "standard",
+            item.report.modelUsed || ""
+          );
 
           return itemMethod === currentFriendlyMethod;
         }
@@ -876,10 +854,22 @@ export default function BatchProcessor({
       const origName = extractOriginalFilename(item.imageFileName);
       const key = origName.toLowerCase();
       
-      const approach = item.report.promptVersion || "standard";
-      const formattedApproach = approach.charAt(0).toUpperCase() + approach.slice(1);
-      const model = item.report.modelUsed || "gemini-2.5-flash";
-      const methodStr = `${formattedApproach} - ${model}`;
+      const promptVersion = item.report?.promptVersion || "standard";
+      const modelUsed = item.report?.modelUsed || "gemini-2.5-flash";
+      
+      let methodStr = `${promptVersion.charAt(0).toUpperCase() + promptVersion.slice(1)} - ${modelUsed}`;
+      if (promptVersion === "3stage" || modelUsed.includes("3-Stage")) {
+        const config = appraisalMethods.find(m => {
+          if (modelUsed.toLowerCase().includes("claude") || modelUsed.toLowerCase().includes("anthropic")) {
+            return m.id === "claude-3stage";
+          }
+          return m.id === "gemini-3stage";
+        });
+        if (config) methodStr = config.name;
+      } else {
+        const config = appraisalMethods.find(m => m.promptKey === promptVersion && m.modelName === modelUsed);
+        if (config) methodStr = config.name;
+      }
 
       if (!groups[key]) {
         groups[key] = {
@@ -964,10 +954,22 @@ export default function BatchProcessor({
 
       // 1. First, populate from original (appraised) items in database
       g.originalItems.forEach(item => {
-        const approach = item.report.promptVersion || "standard";
-        const formattedApproach = approach.charAt(0).toUpperCase() + approach.slice(1);
-        const model = item.report.modelUsed || "gemini-2.5-flash";
-        const methodStr = `${formattedApproach} - ${model}`;
+        const promptVersion = item.report?.promptVersion || "standard";
+        const modelUsed = item.report?.modelUsed || "gemini-2.5-flash";
+        
+        let methodStr = `${promptVersion.charAt(0).toUpperCase() + promptVersion.slice(1)} - ${modelUsed}`;
+        if (promptVersion === "3stage" || modelUsed.includes("3-Stage")) {
+          const config = appraisalMethods.find(m => {
+            if (modelUsed.toLowerCase().includes("claude") || modelUsed.toLowerCase().includes("anthropic")) {
+              return m.id === "claude-3stage";
+            }
+            return m.id === "gemini-3stage";
+          });
+          if (config) methodStr = config.name;
+        } else {
+          const config = appraisalMethods.find(m => m.promptKey === promptVersion && m.modelName === modelUsed);
+          if (config) methodStr = config.name;
+        }
         methodMap[methodStr] = { status: "appraised" };
       });
 
@@ -1145,17 +1147,16 @@ export default function BatchProcessor({
                 className="w-full bg-white border border-rosebery-border focus:border-rosebery-primary focus:ring-1 focus:ring-rosebery-primary/20 rounded-sm p-2.5 text-xs text-rosebery-charcoal outline-hidden font-mono transition-all duration-200 cursor-pointer"
                 disabled={isProcessing}
               >
-                {appraisalMethods.map((method) => {
-                  const approach = method.promptKey.charAt(0).toUpperCase() + method.promptKey.slice(1);
+                {batchAppraisalMethods.map((method) => {
                   return (
                     <option key={method.id} value={method.id}>
-                      {approach} - {method.modelName}
+                      {method.name}
                     </option>
                   );
                 })}
               </select>
               {(() => {
-                const selectedMethod = appraisalMethods.find(m => m.id === appraisalMethod);
+                const selectedMethod = batchAppraisalMethods.find(m => m.id === appraisalMethod);
                 if (!selectedMethod) return null;
                 return (
                   <div className="text-[10px] font-mono text-rosebery-muted leading-relaxed border-t border-rosebery-border/40 pt-2 space-y-1">

@@ -13,7 +13,7 @@ import { STANDARD_PROMPT_TEMPLATE, SIMPLIFIED_PROMPT_TEMPLATE, STRICT_PROMPT_TEM
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const USER_RECORDS_DIR = path.join(DATA_DIR, "user_records");
@@ -112,12 +112,30 @@ app.get("/api/appraisal-methods", async (req, res) => {
   }
 });
 
+// SSE progress stream — client opens this before POSTing /api/analyze-print
+const progressListeners = new Map<string, (event: string) => void>();
+
+app.get("/api/progress/:id", (req, res) => {
+  const { id } = req.params;
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  const send = (data: string) => res.write(`data: ${data}\n\n`);
+  progressListeners.set(id, send);
+
+  req.on("close", () => {
+    progressListeners.delete(id);
+  });
+});
+
 // Art Print Photo Analysis Route
 app.post("/api/analyze-print", async (req, res) => {
   try {
-    const { 
-      imageBase64, 
-      mimeType, 
+    const {
+      imageBase64,
+      mimeType,
       userNotes,
       signatureBase64,
       signatureMimeType,
@@ -126,7 +144,8 @@ app.post("/api/analyze-print", async (req, res) => {
       scaleBase64,
       scaleMimeType,
       currency = "USD",
-      method = "gemini-standard"
+      method = "claude-4stage-fast",
+      progressId,
     } = req.body;
 
     const resolvedImage = resolveImageInput(imageBase64, mimeType);
@@ -146,6 +165,13 @@ app.post("/api/analyze-print", async (req, res) => {
     const ai = getAiClient();
     const appraiser = getAppraiserFromConfig(methodConfig, ai);
 
+    const sseEmit = progressId ? progressListeners.get(progressId as string) : undefined;
+    const onProgress = sseEmit
+      ? (event: import("./src/appraisal/appraiser").AppraisalProgressEvent) => {
+          sseEmit(JSON.stringify(event));
+        }
+      : undefined;
+
     const reportData = await appraiser.appraise({
       imageBase64: resolvedImage.base64,
       mimeType: resolvedImage.mimeType,
@@ -156,8 +182,13 @@ app.post("/api/analyze-print", async (req, res) => {
       damageMimeType: resolvedDamage?.mimeType,
       scaleBase64: resolvedScale?.base64,
       scaleMimeType: resolvedScale?.mimeType,
-      currency
+      currency,
+      onProgress,
     });
+
+    if (sseEmit) {
+      sseEmit(JSON.stringify({ stage: "done", status: "done", message: "Certificate ready", percent: 95 }));
+    }
 
     return res.json(reportData);
   } catch (error: any) {
@@ -334,11 +365,18 @@ app.post("/api/detect-artworks", async (req, res) => {
       },
       {
         text: `Analyze this image scan. Determine if it contains multiple distinct artwork pieces, fine art prints, or paintings (e.g. a collage, multiple separate print sheets scanned or photographed together on a single background or scanner bed).
-        
-If the image contains multiple distinct artworks, identify the bounding box for each individual artwork.
-If the image contains only a single artwork, return containsMultipleArtworks as false and provide a single bounding box for the entire image: [0, 0, 1000, 1000] representing the whole scan.
 
-Coordinates MUST be normalized to a 0 to 1000 scale, formatted as [ymin, xmin, ymax, xmax] relative to the overall image height and width.`,
+RULES FOR MULTIPLE ARTWORKS:
+- Draw a TIGHT bounding box around each individual artwork, hugging its outer edges closely.
+- Each bounding box must enclose exactly ONE artwork — boxes must NOT overlap each other and must NOT contain more than one artwork.
+- Do NOT include neighbouring artworks inside another artwork's box.
+- If artworks are side by side, the right edge of the left box and the left edge of the right box should be at the gap between them.
+- If artworks are stacked vertically, the bottom edge of the upper box and the top edge of the lower box should be at the gap between them.
+
+RULES FOR SINGLE ARTWORK:
+- If the image contains only a single artwork, return containsMultipleArtworks as false and a single bounding box [0, 0, 1000, 1000].
+
+Coordinates MUST be normalized to a 0–1000 scale, formatted as [ymin, xmin, ymax, xmax] relative to the overall image height and width.`,
       },
     ];
 
@@ -406,6 +444,88 @@ Coordinates MUST be normalized to a 0 to 1000 scale, formatted as [ymin, xmin, y
     }
 
     const detection = JSON.parse(textOutput.trim());
+
+    // Post-process: if multiple artworks detected but any box spans >85% of the
+    // full image in both axes, Gemini gave us a containing box rather than a tight
+    // one.  Remove such boxes — the remaining boxes are the real artworks.
+    if (detection.containsMultipleArtworks && Array.isArray(detection.artworks) && detection.artworks.length > 1) {
+      const filtered = detection.artworks.filter((art: any) => {
+        const [ymin, xmin, ymax, xmax] = art.box_2d;
+        const wFrac = (xmax - xmin) / 1000;
+        const hFrac = (ymax - ymin) / 1000;
+        // Drop any box that covers almost the entire image in both dimensions
+        return !(wFrac > 0.85 && hFrac > 0.85);
+      });
+      if (filtered.length >= 2) {
+        detection.artworks = filtered;
+      }
+      // If boxes overlap significantly, try to partition them by splitting at midpoints
+      // Sort artworks left-to-right by xmin
+      detection.artworks.sort((a: any, b: any) => a.box_2d[1] - b.box_2d[1]);
+      for (let i = 0; i < detection.artworks.length - 1; i++) {
+        const cur = detection.artworks[i];
+        const next = detection.artworks[i + 1];
+        const [, , , curXmax] = cur.box_2d;
+        const [, nextXmin] = next.box_2d;
+        if (curXmax > nextXmin) {
+          // Overlap on x-axis — split at the midpoint between the two xmins
+          const splitX = Math.round((cur.box_2d[1] + next.box_2d[1] + cur.box_2d[3] + next.box_2d[3]) / 4);
+          cur.box_2d[3] = splitX;   // curXmax = splitX
+          next.box_2d[1] = splitX;  // nextXmin = splitX
+        }
+      }
+      // Also fix vertical overlaps
+      detection.artworks.sort((a: any, b: any) => a.box_2d[0] - b.box_2d[0]);
+      for (let i = 0; i < detection.artworks.length - 1; i++) {
+        const cur = detection.artworks[i];
+        const next = detection.artworks[i + 1];
+        const curYmax = cur.box_2d[2];
+        const nextYmin = next.box_2d[0];
+        if (curYmax > nextYmin) {
+          const splitY = Math.round((cur.box_2d[0] + next.box_2d[0] + cur.box_2d[2] + next.box_2d[2]) / 4);
+          cur.box_2d[2] = splitY;
+          next.box_2d[0] = splitY;
+        }
+      }
+    }
+
+    // Add padding to each crop (20 units = 2% on 0–1000 scale) so tight Gemini
+    // boxes don't clip artwork edges.  Clamp to image bounds and shrink neighbours
+    // to avoid overlap at the shared boundary.
+    const PAD = 40;
+    if (Array.isArray(detection.artworks)) {
+      detection.artworks = detection.artworks.map((art: any) => {
+        let [ymin, xmin, ymax, xmax] = art.box_2d;
+        ymin = Math.max(0, ymin - PAD);
+        xmin = Math.max(0, xmin - PAD);
+        ymax = Math.min(1000, ymax + PAD);
+        xmax = Math.min(1000, xmax + PAD);
+        return { ...art, box_2d: [ymin, xmin, ymax, xmax] };
+      });
+      // Re-resolve overlaps introduced by padding — split at the midpoint gap
+      if (detection.artworks.length > 1) {
+        detection.artworks.sort((a: any, b: any) => a.box_2d[1] - b.box_2d[1]);
+        for (let i = 0; i < detection.artworks.length - 1; i++) {
+          const cur = detection.artworks[i]; const next = detection.artworks[i + 1];
+          if (cur.box_2d[3] > next.box_2d[1]) {
+            const mid = Math.round((cur.box_2d[3] + next.box_2d[1]) / 2);
+            cur.box_2d[3] = mid; next.box_2d[1] = mid;
+          }
+        }
+        detection.artworks.sort((a: any, b: any) => a.box_2d[0] - b.box_2d[0]);
+        for (let i = 0; i < detection.artworks.length - 1; i++) {
+          const cur = detection.artworks[i]; const next = detection.artworks[i + 1];
+          if (cur.box_2d[2] > next.box_2d[0]) {
+            const mid = Math.round((cur.box_2d[2] + next.box_2d[0]) / 2);
+            cur.box_2d[2] = mid; next.box_2d[0] = mid;
+          }
+        }
+      }
+    }
+
+    const detectionJson = JSON.stringify(detection, null, 2);
+    console.log("Detection result:", detectionJson);
+    try { fs.writeFileSync("/tmp/last-detection.json", detectionJson); } catch (_) {}
     return res.json(detection);
   } catch (error: any) {
     console.error("Gemini artwork detection failed:", error);
@@ -657,12 +777,7 @@ app.post("/api/user/catalog-list", async (req, res) => {
           await db.renameCatalogue(clientCat.id, clientCat.name);
         }
       } else {
-        const query = `
-          INSERT INTO catalogues (id, user_id, name, created_at)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
-        `;
-        await pool.query(query, [clientCat.id, user.id, clientCat.name, clientCat.timestamp || new Date()]);
+        await db.upsertCatalogueById(clientCat.id, user.id, clientCat.name, clientCat.timestamp ? new Date(clientCat.timestamp) : undefined);
       }
     }
 
@@ -684,7 +799,7 @@ app.get("/api/user/catalog", async (req, res) => {
     }
 
     const user = await resolveUser(username);
-    const catalog = await db.getCatalogueItems(id);
+    const catalog = await db.getCatalogueItems(id, user.id);
     return res.json(catalog);
   } catch (err: any) {
     console.error("Failed to load user catalog:", err);
@@ -766,6 +881,25 @@ app.post("/api/user/items", async (req, res) => {
   }
 });
 
+// POST upsert a small batch of new/changed items without affecting the rest of the catalogue
+app.post("/api/user/items/upsert", async (req, res) => {
+  try {
+    const username = req.headers["x-user-header"];
+    const { items } = req.body;
+
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({ error: "Items must be a valid array." });
+    }
+
+    const user = await resolveUser(username);
+    await db.upsertNewItems(user.id, items);
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error("Failed to upsert items:", err);
+    return res.status(err.message.includes("Unauthorized") || err.message.includes("not found") ? 401 : 500).json({ error: err.message || "Failed to upsert items." });
+  }
+});
+
 // POST upload scan image route
 app.post("/api/user/upload-scan", (req, res) => {
   try {
@@ -795,34 +929,53 @@ app.post("/api/user/upload-scan", (req, res) => {
 async function setupServer() {
   await initDatabase();
 
-  // Seed default appraisal methods if the table is empty
-  console.log("Checking appraisal methods seeding...");
+  // Seed/update default appraisal methods
+  console.log("Syncing default appraisal methods with database...");
   const client = await pool.connect();
   try {
-    const countRes = await client.query("SELECT COUNT(*) FROM appraisal_methods;");
-    const count = parseInt(countRes.rows[0].count, 10);
-    if (count === 0) {
-      console.log("Seeding default appraisal methods into database...");
-      for (const config of appraiserConfigs) {
-        await client.query(`
-          INSERT INTO appraisal_methods (id, name, description, model_name, temperature, prompt_key, prompt_text, image_quality, include_auxiliary_scans, provider)
-          VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9);
-        `, [
-          config.id,
-          config.name,
-          config.description,
-          config.modelName,
-          config.temperature,
-          config.promptKey,
-          config.imageQuality,
-          config.includeAuxiliaryScans,
-          config.provider || 'gemini'
-        ]);
-      }
-      console.log("✓ Default appraisal methods seeded.");
+    console.log("Upserting default appraisal methods into database...");
+    for (const config of appraiserConfigs) {
+      await client.query(`
+        INSERT INTO appraisal_methods (id, name, description, model_name, temperature, prompt_key, prompt_text, image_quality, include_auxiliary_scans, provider, stage1_model, stage1b_model, stage2_model, stage2a_model, stage2b_model, stage3_model, enable_visual_search)
+        VALUES ($1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        ON CONFLICT (id) DO UPDATE SET
+          name = EXCLUDED.name,
+          description = EXCLUDED.description,
+          model_name = EXCLUDED.model_name,
+          temperature = EXCLUDED.temperature,
+          prompt_key = EXCLUDED.prompt_key,
+          image_quality = EXCLUDED.image_quality,
+          include_auxiliary_scans = EXCLUDED.include_auxiliary_scans,
+          provider = EXCLUDED.provider,
+          stage1_model = EXCLUDED.stage1_model,
+          stage1b_model = EXCLUDED.stage1b_model,
+          stage2_model = EXCLUDED.stage2_model,
+          stage2a_model = EXCLUDED.stage2a_model,
+          stage2b_model = EXCLUDED.stage2b_model,
+          stage3_model = EXCLUDED.stage3_model,
+          enable_visual_search = EXCLUDED.enable_visual_search;
+      `, [
+        config.id,
+        config.name,
+        config.description,
+        config.modelName,
+        config.temperature,
+        config.promptKey,
+        config.imageQuality,
+        config.includeAuxiliaryScans,
+        config.provider || 'gemini',
+        config.stage1Model || null,
+        (config as any).stage1bModel || null,
+        config.stage2Model || null,
+        config.stage2aModel || null,
+        config.stage2bModel || null,
+        config.stage3Model || null,
+        (config as any).enableVisualSearch ?? true,
+      ]);
     }
+    console.log("✓ Default appraisal methods synchronized.");
   } catch (err) {
-    console.error("❌ Failed to seed default appraisal methods:", err);
+    console.error("❌ Failed to sync default appraisal methods:", err);
   } finally {
     client.release();
   }

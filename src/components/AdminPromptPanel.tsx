@@ -300,6 +300,8 @@ export default function AdminPromptPanel({ currentUser, onMethodAdded }: AdminPr
                     onChange={(e) => setModelName(e.target.value)}
                     className="w-full bg-white border border-rosebery-border rounded-sm px-2.5 py-2 text-xs focus:outline-none focus:border-rosebery-primary focus:ring-1 focus:ring-rosebery-primary/25 cursor-pointer font-sans"
                   >
+                    <option value="gemini-3stage">Gemini 3-Stage Pipeline</option>
+                    <option value="claude-3stage">Claude 3-Stage Pipeline</option>
                     <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                     <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                     <option value="gemini-pro-latest">Gemini Pro Stable</option>

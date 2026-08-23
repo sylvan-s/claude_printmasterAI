@@ -8,3 +8,4 @@ coverage/
 !.env.example
 data/
 .antigravity/
+ACCESS_NOTES.md
