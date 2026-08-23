@@ -1,7 +1,9 @@
 # ADR-0003: Knowledge-graph-grounded Triage with Stage 1b feedback and appraiser input
 
 **Date:** 2026-08-23
-**Status:** Proposed — item 1 implemented (PR #13, branch `VEA_confidence`); items 2–4 not started
+**Status:** Proposed — item 1 implemented (PR #13, branch `VEA_confidence`); item 3 superseded
+by [ADR-0004](0004-appraiser-input-agent.md) (to-be architecture only, not implemented);
+items 2 and 4 not started
 
 ---
 
@@ -95,6 +97,15 @@ them. Each entry carries an explicit status:
 - `documented_fact` — backed by paperwork (e.g. a provenance chain, a prior sale record)
 
 A `hypothesis` must not outrank contradicting VEA/ACKG evidence; a `documented_fact` should.
+
+**Superseded by [ADR-0004](0004-appraiser-input-agent.md).** What's sketched here as an
+input surface is fleshed out there as a full Stage-1-level agent — **Stage 1c, the Appraiser
+Input Agent (AIA)** — running in parallel with VEA and Stage 1b rather than being folded into
+either. ADR-0004 also resolves something this ADR didn't address: the appraiser's free text
+was, until now, being fed directly into *VEA's* prompt (`{userNotes}`), not routed to Triage
+at all — a layering violation ADR-0004 removes as part of standing AIA up. Read ADR-0004 for
+the actual design (extraction approach, output schema, pipeline placement); this section is
+left in place for historical context only.
 
 ### 4. Art Context Knowledge Graph (ACKG), queried by Stage 2a as a tool call
 
