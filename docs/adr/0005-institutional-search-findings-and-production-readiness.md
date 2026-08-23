@@ -1,4 +1,4 @@
-# ADR-0003: Institutional search tool — findings and production readiness
+# ADR-0005: Institutional search tool — findings and production readiness
 
 **Date:** 2026-08-22
 **Status:** R&D complete on this branch — **not recommended to merge** until the "Before shipping" items below are addressed.
