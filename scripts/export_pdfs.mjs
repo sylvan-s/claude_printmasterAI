@@ -17,6 +17,7 @@ const OUTPUT_DIR = path.resolve(
 
 const ITEMS = [
   { id: "f24b20d7-5dfa-4b7e-a7d2-e615afaa081b", artist: "Utagawa Toyokuni I",    title: "From an untitled series of beautiful women" },
+  { id: "7f39fc1c-e557-46fc-8a44-6a238a0f5a18", artist: "Mughal School",           title: "Folio from a Dispersed Mughal Manuscript" },
   { id: "2a9c34ff-b621-4c84-832a-329c83b9ab17", artist: "Elisabeth Frink",         title: "Chanticleer and Pertelote" },
   { id: "6722ba0e-da13-4818-af5b-a7f415640a03", artist: "Pablo Picasso",           title: "Plate from Carmen (Prosper Mérimée)" },
   { id: "b1332b0e-7a0c-41e7-8458-b2560d9030a3", artist: "Pablo Picasso",           title: "Carmen (by Prosper Mérimée, 38 burin engravings)" },
@@ -24,6 +25,7 @@ const ITEMS = [
   { id: "630206b2-dc80-41f4-bf1f-78f4413bbf00", artist: "Julian Trevelyan",        title: "Marlborough College" },
   { id: "63b624cf-4f59-4475-994b-f08c9905891e", artist: "Agathe Sorel",            title: "Après la Moisson (After the Harvest)" },
   { id: "9db2131f-4f3e-4f59-b2e2-3cbb3badef77", artist: "Agathe Sorel",            title: "Of Biplanes and Catamarans" },
+  { id: "1102dec3-8a93-4f17-95b8-4a553f317454", artist: "Agathe Sorel",            title: "Palmroots Searching for Water" },
   { id: "22e6c506-3dfb-4981-a258-ce85d93a2f63", artist: "Madame Hassia",           title: "Untitled (Nude Nu)" },
   { id: "d4739966-782f-4ff2-8d8a-751ad6f0c0ef", artist: "Jacques Villon",          title: "Le Petit Équilibriste (The Small Equilibrist)" },
   { id: "da0eaed5-5285-4a15-94ff-0f530b487076", artist: "Pablo Picasso",           title: "Plate from Carmen (plate number unidentified)" },
