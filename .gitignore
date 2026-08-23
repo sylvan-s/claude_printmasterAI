@@ -9,3 +9,4 @@ coverage/
 data/
 .antigravity/
 ACCESS_NOTES.md
+tests/vea/output/

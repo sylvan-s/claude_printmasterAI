@@ -27,24 +27,9 @@ interface ReportViewProps {
   fileSize?: string;
   imageUrl?: string;
 
-  // Auxiliary upload functionality
-  signatureFile?: File | null;
-  signaturePreview?: string | null;
-  setSignatureFile?: (file: File | null) => void;
-  setSignaturePreview?: (url: string | null) => void;
-  signatureInputRef?: React.RefObject<HTMLInputElement | null>;
-
-  damageFile?: File | null;
-  damagePreview?: string | null;
-  setDamageFile?: (file: File | null) => void;
-  setDamagePreview?: (url: string | null) => void;
-  damageInputRef?: React.RefObject<HTMLInputElement | null>;
-
-  scaleFile?: File | null;
-  scalePreview?: string | null;
-  setScaleFile?: (file: File | null) => void;
-  setScalePreview?: (url: string | null) => void;
-  scaleInputRef?: React.RefObject<HTMLInputElement | null>;
+  // Supplementary photos (arbitrary count, each with a user caption) —
+  // display-only here, shown in the printed certificate.
+  supplementaryImages?: Array<{ imageUrl: string; caption: string }>;
 
   onReAnalyze?: () => void;
   isLoading?: boolean;
@@ -174,21 +159,7 @@ export default function ReportView({
   fileName, 
   fileSize, 
   imageUrl,
-  signatureFile,
-  signaturePreview,
-  setSignatureFile,
-  setSignaturePreview,
-  signatureInputRef,
-  damageFile,
-  damagePreview,
-  setDamageFile,
-  setDamagePreview,
-  damageInputRef,
-  scaleFile,
-  scalePreview,
-  setScaleFile,
-  setScalePreview,
-  scaleInputRef,
+  supplementaryImages,
   onReAnalyze,
   isLoading,
   currency: propCurrency,
@@ -1289,7 +1260,7 @@ export default function ReportView({
                         const dims = report.stage1Result.dimensions;
                         const hasPlate = dims.printedImageMM?.width && dims.printedImageMM?.height;
                         const hasSheet = dims.fullSheetMM?.width && dims.fullSheetMM?.height;
-                        const hasScale = dims.sourceImage?.includes("SCALE_SCAN");
+                        const hasScale = dims.sourceImage?.includes("supplementary_scale_photo");
                         const hasNotes = report.inferredDimensions && report.inferredDimensions.trim().length > 0;
                         if (!hasPlate && !hasSheet && !hasScale && !hasNotes) {
                           return (
@@ -2059,12 +2030,6 @@ export default function ReportView({
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: "#7A6C71" }}>No image provided</span>
               </div>
             )}
-            {signaturePreview && (
-              <div style={{ marginTop: "8px" }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "8px", textTransform: "uppercase", letterSpacing: "0.15em", color: "#7A6C71", display: "block", marginBottom: "4px" }}>Signature detail</span>
-                <img src={signaturePreview} alt="Signature" style={{ width: "100%", maxHeight: "80px", objectFit: "contain", border: "1px solid #E8E2D7", background: "#FAF8F5" }} />
-              </div>
-            )}
           </div>
 
           {/* Physical record */}
@@ -2116,7 +2081,7 @@ export default function ReportView({
           const titles = (report.stage1Result?.titleInscriptions || []).filter((t: any) => t.box_2d?.length === 4);
           const eds    = (report.stage1Result?.editionInfo   || []).filter((e: any) => e.box_2d?.length === 4);
           const defects= (report.stage1Result?.condition?.defects || []).filter((d: any) => d.box_2d?.length === 4);
-          const hasSupp= signaturePreview || damagePreview || scalePreview;
+          const hasSupp = (supplementaryImages || []).length > 0;
           const hasCrops = sigs.length || titles.length || eds.length || defects.length;
           if (!hasSupp && !hasCrops) return null;
 
@@ -2138,25 +2103,13 @@ export default function ReportView({
               </span>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(90px, 1fr))", gap: "8px" }}>
 
-                {/* Supplemental upload photos */}
-                {signaturePreview && (
-                  <div style={cropCardStyle}>
-                    <img src={signaturePreview} alt="Signature" style={{ width: "100%", height: "80px", objectFit: "contain", background: "#fff" }} />
-                    <span style={labelStyle}>Signature</span>
+                {/* Supplementary upload photos */}
+                {(supplementaryImages || []).map((supp, i) => (
+                  <div key={`supp-${i}`} style={cropCardStyle}>
+                    <img src={supp.imageUrl} alt={supp.caption || `Supplementary photo ${i + 1}`} style={{ width: "100%", height: "80px", objectFit: "contain", background: "#fff" }} />
+                    <span style={labelStyle}>{supp.caption || `Supplementary photo ${i + 1}`}</span>
                   </div>
-                )}
-                {damagePreview && (
-                  <div style={cropCardStyle}>
-                    <img src={damagePreview} alt="Damage" style={{ width: "100%", height: "80px", objectFit: "contain", background: "#fff" }} />
-                    <span style={labelStyle}>Damage detail</span>
-                  </div>
-                )}
-                {scalePreview && (
-                  <div style={cropCardStyle}>
-                    <img src={scalePreview} alt="Scale" style={{ width: "100%", height: "80px", objectFit: "contain", background: "#fff" }} />
-                    <span style={labelStyle}>Scale reference</span>
-                  </div>
-                )}
+                ))}
 
                 {/* Box-crop evidence from stage1 */}
                 {imageUrl && sigs.map((sig: any, i: number) => (

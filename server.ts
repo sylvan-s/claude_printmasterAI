@@ -137,12 +137,7 @@ app.post("/api/analyze-print", async (req, res) => {
       imageBase64,
       mimeType,
       userNotes,
-      signatureBase64,
-      signatureMimeType,
-      damageBase64,
-      damageMimeType,
-      scaleBase64,
-      scaleMimeType,
+      supplementaryImages,
       currency = "USD",
       method = "claude-4stage-fast",
       progressId,
@@ -153,9 +148,12 @@ app.post("/api/analyze-print", async (req, res) => {
       return res.status(400).json({ error: "Missing uploaded image content." });
     }
 
-    const resolvedSignature = resolveImageInput(signatureBase64, signatureMimeType) || undefined;
-    const resolvedDamage = resolveImageInput(damageBase64, damageMimeType) || undefined;
-    const resolvedScale = resolveImageInput(scaleBase64, scaleMimeType) || undefined;
+    const resolvedSupplementaryImages = ((supplementaryImages || []) as Array<{ base64: string; mimeType?: string; caption: string }>)
+      .map((img) => {
+        const resolved = resolveImageInput(img.base64, img.mimeType);
+        return resolved ? { base64: resolved.base64, mimeType: resolved.mimeType, caption: img.caption || "" } : null;
+      })
+      .filter((img): img is { base64: string; mimeType: string; caption: string } => img !== null);
 
     const methodConfig = await db.getAppraisalMethodById(method);
     if (!methodConfig) {
@@ -176,12 +174,7 @@ app.post("/api/analyze-print", async (req, res) => {
       imageBase64: resolvedImage.base64,
       mimeType: resolvedImage.mimeType,
       userNotes,
-      signatureBase64: resolvedSignature?.base64,
-      signatureMimeType: resolvedSignature?.mimeType,
-      damageBase64: resolvedDamage?.base64,
-      damageMimeType: resolvedDamage?.mimeType,
-      scaleBase64: resolvedScale?.base64,
-      scaleMimeType: resolvedScale?.mimeType,
+      supplementaryImages: resolvedSupplementaryImages,
       currency,
       onProgress,
     });

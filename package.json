@@ -11,7 +11,8 @@
     "lint": "tsc --noEmit",
     "bench:fetch": "tsx benchmark/src/roseberys/extract.ts",
     "forum:fetch": "tsx benchmark/src/forum/extract.ts",
-    "lookup:artist": "tsx src/appraisal/reference_lookup/cli.ts"
+    "lookup:artist": "tsx src/appraisal/reference_lookup/cli.ts",
+    "test:vea": "tsx tests/vea/run_vea_trial.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

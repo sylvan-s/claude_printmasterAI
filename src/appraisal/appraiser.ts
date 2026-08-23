@@ -61,16 +61,17 @@ export interface AppraisalProgressEvent {
   percent: number;     // 0–95 (100 is reserved for post-pipeline completion)
 }
 
+export interface SupplementaryImageInput {
+  base64: string;
+  mimeType?: string;
+  caption: string; // free-text guidance from the user on what this photo shows
+}
+
 export interface AppraisalInput {
   imageBase64: string;
   mimeType?: string;
   userNotes?: string;
-  signatureBase64?: string;
-  signatureMimeType?: string;
-  damageBase64?: string;
-  damageMimeType?: string;
-  scaleBase64?: string;
-  scaleMimeType?: string;
+  supplementaryImages?: SupplementaryImageInput[];
   currency?: string;
   onProgress?: (event: AppraisalProgressEvent) => void;
 }
@@ -193,9 +194,17 @@ function loadSpecialistConfig(configKey: string): object {
 // Image assembly helpers — used by all three appraiser classes
 // ---------------------------------------------------------------------------
 
-const AUX_LABEL_SIGNATURE = "--- AUXILIARY SPECIMEN SCAN: CLOSEUP OF THE ARTIST SIGNATURE OR EMBOSSMENT MARK ---";
-const AUX_LABEL_DAMAGE = "--- AUXILIARY SPECIMEN SCAN: CLOSEUP OF POTENTIAL PAPER DAMAGE, STAINING, OR SURFACE WEAR ---";
-const AUX_LABEL_SCALE = "--- AUXILIARY SPECIMEN SCAN: DENSITY SCALE REFERENCE PHOTO WITH COIN PLACED ADJACENT TO SHEET --- Use the coin as a standard size scale (e.g. standard penny or quarter coin diameter) to mathematically infer sheet/print dimensions of this artwork.";
+// A supplementary image's label always carries the user's own caption, so the
+// model knows what the photo is meant to show — but is told elsewhere
+// (VISUAL_EXTRACTION_SYSTEM_PROMPT Section 1) to verify rather than assume
+// the caption is accurate.
+function supplementaryLabel(index: number, caption: string): string {
+  const trimmed = (caption || "").trim();
+  const guidance = trimmed
+    ? `user-provided guidance: "${trimmed}"`
+    : "no guidance provided by the user — inspect for whatever is visible";
+  return `--- SUPPLEMENTARY_SCAN_${index + 1}: ${guidance} ---`;
+}
 
 function buildGeminiImageParts(input: AppraisalInput, includeAux: boolean): any[] {
   const parts: any[] = [];
@@ -205,17 +214,11 @@ function buildGeminiImageParts(input: AppraisalInput, includeAux: boolean): any[
       mimeType: input.mimeType || "image/jpeg",
     },
   });
-  if (includeAux && input.signatureBase64) {
-    parts.push({ text: AUX_LABEL_SIGNATURE });
-    parts.push({ inlineData: { data: input.signatureBase64.replace(/^data:image\/\w+;base64,/, ""), mimeType: input.signatureMimeType || "image/jpeg" } });
-  }
-  if (includeAux && input.damageBase64) {
-    parts.push({ text: AUX_LABEL_DAMAGE });
-    parts.push({ inlineData: { data: input.damageBase64.replace(/^data:image\/\w+;base64,/, ""), mimeType: input.damageMimeType || "image/jpeg" } });
-  }
-  if (includeAux && input.scaleBase64) {
-    parts.push({ text: AUX_LABEL_SCALE });
-    parts.push({ inlineData: { data: input.scaleBase64.replace(/^data:image\/\w+;base64,/, ""), mimeType: input.scaleMimeType || "image/jpeg" } });
+  if (includeAux) {
+    (input.supplementaryImages || []).forEach((img, i) => {
+      parts.push({ text: supplementaryLabel(i, img.caption) });
+      parts.push({ inlineData: { data: img.base64.replace(/^data:image\/\w+;base64,/, ""), mimeType: img.mimeType || "image/jpeg" } });
+    });
   }
   return parts;
 }
@@ -230,17 +233,11 @@ function buildClaudeImageBlocks(input: AppraisalInput, includeAux: boolean): any
       data: input.imageBase64.replace(/^data:image\/\w+;base64,/, ""),
     },
   });
-  if (includeAux && input.signatureBase64) {
-    blocks.push({ type: "text", text: AUX_LABEL_SIGNATURE });
-    blocks.push({ type: "image", source: { type: "base64", media_type: input.signatureMimeType || "image/jpeg", data: input.signatureBase64.replace(/^data:image\/\w+;base64,/, "") } });
-  }
-  if (includeAux && input.damageBase64) {
-    blocks.push({ type: "text", text: AUX_LABEL_DAMAGE });
-    blocks.push({ type: "image", source: { type: "base64", media_type: input.damageMimeType || "image/jpeg", data: input.damageBase64.replace(/^data:image\/\w+;base64,/, "") } });
-  }
-  if (includeAux && input.scaleBase64) {
-    blocks.push({ type: "text", text: AUX_LABEL_SCALE });
-    blocks.push({ type: "image", source: { type: "base64", media_type: input.scaleMimeType || "image/jpeg", data: input.scaleBase64.replace(/^data:image\/\w+;base64,/, "") } });
+  if (includeAux) {
+    (input.supplementaryImages || []).forEach((img, i) => {
+      blocks.push({ type: "text", text: supplementaryLabel(i, img.caption) });
+      blocks.push({ type: "image", source: { type: "base64", media_type: img.mimeType || "image/jpeg", data: img.base64.replace(/^data:image\/\w+;base64,/, "") } });
+    });
   }
   return blocks;
 }
@@ -279,11 +276,12 @@ export class ConfigurableGeminiAppraiser implements AppraisalMethod {
     const includeAux = this.config.includeAuxiliaryScans;
     const parts = buildGeminiImageParts(input, includeAux);
 
+    const supplementaryCaptions = includeAux ? (input.supplementaryImages || []).map((i) => i.caption) : [];
     let textPrompt: string;
     if (this.config.promptText) {
-      textPrompt = resolveCustomPrompt(this.config.promptText, currency, input.userNotes, includeAux && !!input.signatureBase64, includeAux && !!input.damageBase64, includeAux && !!input.scaleBase64);
+      textPrompt = resolveCustomPrompt(this.config.promptText, currency, input.userNotes, supplementaryCaptions);
     } else {
-      textPrompt = getPrompt(this.config.promptKey, currency, input.userNotes, includeAux && !!input.signatureBase64, includeAux && !!input.damageBase64, includeAux && !!input.scaleBase64);
+      textPrompt = getPrompt(this.config.promptKey, currency, input.userNotes, supplementaryCaptions);
     }
     parts.push({ text: textPrompt });
 
@@ -331,11 +329,12 @@ export class ConfigurableClaudeAppraiser implements AppraisalMethod {
     const includeAux = this.config.includeAuxiliaryScans;
     const contentBlocks = buildClaudeImageBlocks(input, includeAux);
 
+    const supplementaryCaptions = includeAux ? (input.supplementaryImages || []).map((i) => i.caption) : [];
     let textPrompt: string;
     if (this.config.promptText) {
-      textPrompt = resolveCustomPrompt(this.config.promptText, currency, input.userNotes, includeAux && !!input.signatureBase64, includeAux && !!input.damageBase64, includeAux && !!input.scaleBase64);
+      textPrompt = resolveCustomPrompt(this.config.promptText, currency, input.userNotes, supplementaryCaptions);
     } else {
-      textPrompt = getPrompt(this.config.promptKey, currency, input.userNotes, includeAux && !!input.signatureBase64, includeAux && !!input.damageBase64, includeAux && !!input.scaleBase64);
+      textPrompt = getPrompt(this.config.promptKey, currency, input.userNotes, supplementaryCaptions);
     }
     contentBlocks.push({ type: "text", text: textPrompt });
 
@@ -1008,20 +1007,24 @@ If no confident match is found, set artist and title to null and confidence to L
         present: vea.plateMark?.present,
         clarity: vea.plateMark?.clarity,
         observationNotes: vea.plateMark?.observationNotes,
+        plateMarkConfidence: vea.plateMark?.plateMarkConfidence,
       },
       composition: vea.composition,
       inkAndColour: {
         coloursPresent: vea.inkAndColour?.coloursPresent,
         colourMode: vea.inkAndColour?.colourMode,
+        inkAndColourConfidence: vea.inkAndColour?.inkAndColourConfidence,
       },
       paper: {
         surfaceType: vea.paper?.surfaceType,
         watermarkVisible: vea.paper?.watermarkVisible,
         watermarkDescription: vea.paper?.watermarkDescription,
+        paperConfidence: vea.paper?.paperConfidence,
       },
       dimensions: {
         printedImageMM: vea.dimensions?.printedImageMM,
         fullSheetMM: vea.dimensions?.fullSheetMM,
+        dimensionsConfidence: vea.dimensions?.dimensionsConfidence,
       },
       stampsAndLabels: vea.stampsAndLabels,
       overallExtractionConfidence: vea.overallExtractionConfidence,
@@ -1041,9 +1044,7 @@ If no confident match is found, set artist and title to null and confidence to L
     const systemPrompt = "You are a specialist Fine Art Print Visual Extraction Agent.";
     const textPrompt = resolveCustomPrompt(
       VISUAL_EXTRACTION_SYSTEM_PROMPT, currency, input.userNotes,
-      includeAux && !!input.signatureBase64,
-      includeAux && !!input.damageBase64,
-      includeAux && !!input.scaleBase64
+      includeAux ? (input.supplementaryImages || []).map((i) => i.caption) : []
     );
 
     if (isClaude(stage1Model)) {
