@@ -1,7 +1,7 @@
 # ADR-0003: Knowledge-graph-grounded Triage with Stage 1b feedback and appraiser input
 
 **Date:** 2026-08-23
-**Status:** Proposed — not yet implemented
+**Status:** Proposed — item 1 implemented (PR #13, branch `VEA_confidence`); items 2–4 not started
 
 ---
 
@@ -53,6 +53,30 @@ Every extracted observation, not only the ones that already have it, carries the
 
 Bumps VEA to `VEA-1.1`. `paper`, `composition`, and `stampsAndLabels` fields gain confidence
 scoring for the first time.
+
+**Implemented** in PR #13 (branch `VEA_confidence`), with one deliberate deviation from the
+shape proposed above: rather than wrapping every leaf field as `{value, confidence,
+evidenceNote}`, each section gained a single named sibling field instead —
+`paperConfidence`, `compositionConfidence`, `defectConfidence`, `conditionConfidence`,
+`stampConfidence`, `plateMarkConfidence`, `dimensionsConfidence`, `inkAndColourConfidence`,
+`qualityAssessmentConfidence`, `editionConfidence` — matching the pattern the schema already
+used for `signatureConfidence`/`techniqueConfidence`/`titleConfidence`. A full per-field
+envelope would have meant restructuring every existing accessor across the prompt, schema,
+Triage input, and the UI's report rendering for no real gain in expressiveness at this grain.
+Verified against a real Claude Opus 4.8 call (not just schema validation): the new
+confidence fields correctly separated high-certainty observations (`compositionConfidence:
+0.85`) from low-certainty ones (`dimensionsConfidence: 0.20` without a scale reference), and
+a targeted test confirmed the model does not blindly parrot a false user-supplied claim about
+a supplementary photo's content — see `tests/vea/README.md`.
+
+This work also folded in the unrelated fix from doc 07 that never got its own ADR: the
+app's three fixed auxiliary-image slots (signature/damage/scale) were replaced with an
+arbitrary-length list of user-captioned supplementary photos, which incidentally satisfies
+the `VERSO_SCAN` gap noted in earlier design discussion — a user can now caption a photo as
+the sheet's reverse without a dedicated scan type ever needing to exist for it. This is *not*
+the structured `hypothesis`/`documented_fact` appraiser-input channel proposed in item 3
+below — it's free-text guidance attached to an image, not a standalone assertion with a
+trust level. Item 3 as scoped below is still unimplemented.
 
 ### 2. Route Stage 1b's `VisualSearchResult` into Stage 2a, not only Stage 2b
 
