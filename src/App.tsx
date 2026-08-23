@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { PrintAnalysisReport, AnalysisHistoryItem, CatalogMetadata } from "./types";
 import ReportView from "./components/ReportView";
-import UploadPanel from "./components/UploadPanel";
+import UploadPanel, { SupplementaryPhotoDraft } from "./components/UploadPanel";
 import AppraiserNotesInput from "./components/AppraiserNotesInput";
 import CatalogListView from "./components/CatalogListView";
 import BatchProcessor from "./components/BatchProcessor";
@@ -160,13 +160,31 @@ export default function App() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
-  // Auxiliary image states
-  const [signatureFile, setSignatureFile] = useState<File | null>(null);
-  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
-  const [damageFile, setDamageFile] = useState<File | null>(null);
-  const [damagePreview, setDamagePreview] = useState<string | null>(null);
-  const [scaleFile, setScaleFile] = useState<File | null>(null);
-  const [scalePreview, setScalePreview] = useState<string | null>(null);
+  // Supplementary photo states — arbitrary count, each with a user caption
+  const [supplementaryPhotos, setSupplementaryPhotos] = useState<SupplementaryPhotoDraft[]>([]);
+
+  const addSupplementaryPhoto = (file: File) => {
+    setSupplementaryPhotos((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), file, preview: URL.createObjectURL(file), caption: "" },
+    ]);
+  };
+  const removeSupplementaryPhoto = (id: string) => {
+    setSupplementaryPhotos((prev) => {
+      const target = prev.find((p) => p.id === id);
+      if (target) URL.revokeObjectURL(target.preview);
+      return prev.filter((p) => p.id !== id);
+    });
+  };
+  const updateSupplementaryCaption = (id: string, caption: string) => {
+    setSupplementaryPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, caption } : p)));
+  };
+  const clearSupplementaryPhotos = () => {
+    setSupplementaryPhotos((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.preview));
+      return [];
+    });
+  };
 
   const [currency, setCurrency] = useState<"USD" | "GBP" | "EUR">("USD");
   const [appraisalMethods, setAppraisalMethods] = useState<any[]>([]);
@@ -263,9 +281,7 @@ export default function App() {
 
   // File input refs
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const signatureInputRef = useRef<HTMLInputElement>(null);
-  const damageInputRef = useRef<HTMLInputElement>(null);
-  const scaleInputRef = useRef<HTMLInputElement>(null);
+  const supplementaryInputRef = useRef<HTMLInputElement>(null);
 
   // Load history from IndexedDB (or server if logged in) on mount
   useEffect(() => {
@@ -392,23 +408,18 @@ export default function App() {
         item.imageUrl = await uploadImagePayload(item.imageUrl, username);
         console.timeEnd(`[Upload] item[${i}] main image (${Math.round(item.imageUrl.length / 1024)}KB)`);
       }
-      // 2. Signature image
-      if (item.signatureImageUrl && item.signatureImageUrl.startsWith("data:image/")) {
-        console.time(`[Upload] item[${i}] signature image`);
-        item.signatureImageUrl = await uploadImagePayload(item.signatureImageUrl, username);
-        console.timeEnd(`[Upload] item[${i}] signature image`);
-      }
-      // 3. Damage image
-      if (item.damageImageUrl && item.damageImageUrl.startsWith("data:image/")) {
-        console.time(`[Upload] item[${i}] damage image`);
-        item.damageImageUrl = await uploadImagePayload(item.damageImageUrl, username);
-        console.timeEnd(`[Upload] item[${i}] damage image`);
-      }
-      // 4. Scale image
-      if (item.scaleImageUrl && item.scaleImageUrl.startsWith("data:image/")) {
-        console.time(`[Upload] item[${i}] scale image`);
-        item.scaleImageUrl = await uploadImagePayload(item.scaleImageUrl, username);
-        console.timeEnd(`[Upload] item[${i}] scale image`);
+      // 2. Supplementary images
+      if (item.supplementaryImages?.length) {
+        const updatedSupplementary = [...item.supplementaryImages];
+        for (let j = 0; j < updatedSupplementary.length; j++) {
+          const supp = updatedSupplementary[j];
+          if (supp.imageUrl && supp.imageUrl.startsWith("data:image/")) {
+            console.time(`[Upload] item[${i}] supplementary[${j}] image`);
+            updatedSupplementary[j] = { ...supp, imageUrl: await uploadImagePayload(supp.imageUrl, username) };
+            console.timeEnd(`[Upload] item[${i}] supplementary[${j}] image`);
+          }
+        }
+        item.supplementaryImages = updatedSupplementary;
       }
 
       updatedHistory[i] = item;
@@ -862,23 +873,7 @@ export default function App() {
     }
     setPreviewUrl(null);
     
-    setSignatureFile(null);
-    if (signaturePreview) {
-      URL.revokeObjectURL(signaturePreview);
-    }
-    setSignaturePreview(null);
-    
-    setDamageFile(null);
-    if (damagePreview) {
-      URL.revokeObjectURL(damagePreview);
-    }
-    setDamagePreview(null);
-    
-    setScaleFile(null);
-    if (scalePreview) {
-      URL.revokeObjectURL(scalePreview);
-    }
-    setScalePreview(null);
+    clearSupplementaryPhotos();
 
     setAnalysisResult(null);
     setError(null);
@@ -932,28 +927,14 @@ export default function App() {
       const base64Data = await fileToBase64(selectedFile);
       const processedBase64 = await resizeImageIfNeeded(base64Data, targetQuality);
 
-      let signatureBase64 = undefined;
-      let signatureMimeType = undefined;
-      if (includeAux && signatureFile) {
-        const rawSigBase64 = await fileToBase64(signatureFile);
-        signatureBase64 = await resizeImageIfNeeded(rawSigBase64, targetQuality);
-        signatureMimeType = signatureFile.type;
-      }
-
-      let damageBase64 = undefined;
-      let damageMimeType = undefined;
-      if (includeAux && damageFile) {
-        const rawDmgBase64 = await fileToBase64(damageFile);
-        damageBase64 = await resizeImageIfNeeded(rawDmgBase64, targetQuality);
-        damageMimeType = damageFile.type;
-      }
-
-      let scaleBase64 = undefined;
-      let scaleMimeType = undefined;
-      if (includeAux && scaleFile) {
-        const rawScaleBase64 = await fileToBase64(scaleFile);
-        scaleBase64 = await resizeImageIfNeeded(rawScaleBase64, targetQuality);
-        scaleMimeType = scaleFile.type;
+      const resolvedSupplementaryImages: Array<{ base64: string; mimeType: string; caption: string }> = [];
+      if (includeAux) {
+        for (const photo of supplementaryPhotos) {
+          if (!photo.file) continue; // loaded from a saved item — no File to re-send
+          const rawBase64 = await fileToBase64(photo.file);
+          const resizedBase64 = await resizeImageIfNeeded(rawBase64, targetQuality);
+          resolvedSupplementaryImages.push({ base64: resizedBase64, mimeType: photo.file.type, caption: photo.caption });
+        }
       }
 
       // Compile all user-provided notes to support valuation
@@ -1046,12 +1027,7 @@ export default function App() {
             imageBase64: processedBase64,
             mimeType: selectedFile.type,
             userNotes: compiledNotes.trim() || undefined,
-            signatureBase64,
-            signatureMimeType,
-            damageBase64,
-            damageMimeType,
-            scaleBase64,
-            scaleMimeType,
+            supplementaryImages: resolvedSupplementaryImages,
             currency,
             method: appraisalMethod,
             progressId,
@@ -1084,9 +1060,12 @@ export default function App() {
           imageFileName: selectedFile.name || "Uploaded_Print.png",
           imageSize: formatBytes(selectedFile.size),
           report,
-          signatureImageUrl: signaturePreview || undefined,
-          damageImageUrl: damagePreview || undefined,
-          scaleImageUrl: scalePreview || undefined,
+          // resolvedSupplementaryImages[].base64 is already a full data: URI
+          // (fileToBase64 uses FileReader.readAsDataURL) — do not re-wrap it.
+          supplementaryImages: resolvedSupplementaryImages.map((img) => ({
+            imageUrl: img.base64,
+            caption: img.caption,
+          })),
         };
         splitItems.push(historyItem);
       }
@@ -1610,18 +1589,11 @@ export default function App() {
                     onFileSelect={handleFileSelection}
                     onClear={clearSelection}
                     fileInputRef={fileInputRef}
-                    signaturePreview={signaturePreview}
-                    setSignatureFile={setSignatureFile}
-                    setSignaturePreview={setSignaturePreview}
-                    signatureInputRef={signatureInputRef}
-                    damagePreview={damagePreview}
-                    setDamageFile={setDamageFile}
-                    setDamagePreview={setDamagePreview}
-                    damageInputRef={damageInputRef}
-                    scalePreview={scalePreview}
-                    setScaleFile={setScaleFile}
-                    setScalePreview={setScalePreview}
-                    scaleInputRef={scaleInputRef}
+                    supplementaryPhotos={supplementaryPhotos}
+                    onAddSupplementaryPhoto={addSupplementaryPhoto}
+                    onRemoveSupplementaryPhoto={removeSupplementaryPhoto}
+                    onSupplementaryCaptionChange={updateSupplementaryCaption}
+                    supplementaryInputRef={supplementaryInputRef}
                   />
 
                   {/* Right Column: Supporting Notes */}
@@ -1714,21 +1686,7 @@ export default function App() {
                   fileName={selectedFile?.name || (currentHistoryItemId ? catalogHistory.find(i => i.id === currentHistoryItemId)?.imageFileName : undefined)}
                   fileSize={selectedFile?.size ? formatBytes(selectedFile.size) : (currentHistoryItemId ? catalogHistory.find(i => i.id === currentHistoryItemId)?.imageSize : undefined)}
                   imageUrl={previewUrl || undefined}
-                  signatureFile={signatureFile}
-                  signaturePreview={signaturePreview}
-                  setSignatureFile={setSignatureFile}
-                  setSignaturePreview={setSignaturePreview}
-                  signatureInputRef={signatureInputRef}
-                  damageFile={damageFile}
-                  damagePreview={damagePreview}
-                  setDamageFile={setDamageFile}
-                  setDamagePreview={setDamagePreview}
-                  damageInputRef={damageInputRef}
-                  scaleFile={scaleFile}
-                  scalePreview={scalePreview}
-                  setScaleFile={setScaleFile}
-                  setScalePreview={setScalePreview}
-                  scaleInputRef={scaleInputRef}
+                  supplementaryImages={supplementaryPhotos.map((p) => ({ imageUrl: p.preview, caption: p.caption }))}
                   onReAnalyze={handleAnalysisSubmit}
                   isLoading={isLoading}
                   currency={currency}
@@ -1797,12 +1755,15 @@ export default function App() {
               setAnalysisResult(item.report);
               setPreviewUrl(item.imageUrl);
               setSelectedFile(null);
-              setSignatureFile(null);
-              setSignaturePreview(item.signatureImageUrl || null);
-              setDamageFile(null);
-              setDamagePreview(item.damageImageUrl || null);
-              setScaleFile(null);
-              setScalePreview(item.scaleImageUrl || null);
+              clearSupplementaryPhotos();
+              setSupplementaryPhotos(
+                (item.supplementaryImages || []).map((img) => ({
+                  id: crypto.randomUUID(),
+                  file: null,
+                  preview: img.imageUrl,
+                  caption: img.caption,
+                }))
+              );
               setCurrentHistoryItemId(item.id);
               setActiveTab("sandbox");
             }}

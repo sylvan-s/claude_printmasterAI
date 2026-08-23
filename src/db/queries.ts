@@ -121,10 +121,12 @@ export async function getItems(userId: string, catalogueId?: string): Promise<An
       a.id                    AS appraisal_id,
       a.created_at            AS timestamp,
       a.result                AS report,
-      -- Supplementary images aggregated in a single pass
-      MAX(CASE WHEN sup.description = 'signature' THEN sup.storage_key END) AS signature_image_url,
-      MAX(CASE WHEN sup.description = 'damage'    THEN sup.storage_key END) AS damage_image_url,
-      MAX(CASE WHEN sup.description = 'scale'     THEN sup.storage_key END) AS scale_image_url
+      -- Supplementary images (arbitrary count, each with a free-text caption)
+      -- aggregated in a single pass, ordered by upload position.
+      json_agg(
+        json_build_object('imageUrl', sup.storage_key, 'caption', sup.description)
+        ORDER BY sup.position
+      ) FILTER (WHERE sup.id IS NOT NULL) AS supplementary_images
     FROM items it
     LEFT JOIN lots      l   ON l.id       = it.lot_id  AND l.deleted_at IS NULL
     LEFT JOIN images    i   ON i.item_id  = it.id      AND i.image_type = 'primary'
@@ -155,9 +157,7 @@ export async function getItems(userId: string, catalogueId?: string): Promise<An
     report: row.report as PrintAnalysisReport,
     lotNumber: row.lot_number || undefined,
     lotTitle: row.lot_title || undefined,
-    signatureImageUrl: row.signature_image_url || undefined,
-    damageImageUrl: row.damage_image_url || undefined,
-    scaleImageUrl: row.scale_image_url || undefined,
+    supplementaryImages: row.supplementary_images || undefined,
     catalogue_id: row.catalogue_id || null,
     lot_id: row.lot_id || null,
   }));
@@ -290,22 +290,19 @@ export async function saveItems(userId: string, items: AnalysisHistoryItem[], ca
         );
       }
 
-      // E. Replace supplementary scans (signature, damage, scale)
+      // E. Replace supplementary images (arbitrary count, each with a caption)
       await client.query(
         `DELETE FROM images WHERE item_id = $1 AND image_type = 'supplementary'`,
         [itemId]
       );
-      const supplementaryScans: Array<[string | undefined, string]> = [
-        [item.signatureImageUrl, 'signature'],
-        [item.damageImageUrl,    'damage'],
-        [item.scaleImageUrl,     'scale'],
-      ];
-      for (const [url, desc] of supplementaryScans) {
-        if (url) {
+      const supplementaryImages = item.supplementaryImages || [];
+      for (let sIdx = 0; sIdx < supplementaryImages.length; sIdx++) {
+        const { imageUrl, caption } = supplementaryImages[sIdx];
+        if (imageUrl) {
           await client.query(
-            `INSERT INTO images (user_id, item_id, storage_key, image_type, description)
-             VALUES ($1, $2, $3, 'supplementary', $4)`,
-            [userId, itemId, url, desc]
+            `INSERT INTO images (user_id, item_id, storage_key, image_type, description, position)
+             VALUES ($1, $2, $3, 'supplementary', $4, $5)`,
+            [userId, itemId, imageUrl, caption || '', sIdx]
           );
         }
       }
@@ -420,13 +417,15 @@ export async function upsertNewItems(userId: string, items: AnalysisHistoryItem[
         );
       }
 
-      // Replace supplementary scans
+      // Replace supplementary images (arbitrary count, each with a caption)
       await client.query(`DELETE FROM images WHERE item_id = $1 AND image_type = 'supplementary'`, [itemId]);
-      for (const [url, desc] of [[item.signatureImageUrl, 'signature'], [item.damageImageUrl, 'damage'], [item.scaleImageUrl, 'scale']] as [string | undefined, string][]) {
-        if (url) {
+      const supplementaryImages = item.supplementaryImages || [];
+      for (let sIdx = 0; sIdx < supplementaryImages.length; sIdx++) {
+        const { imageUrl, caption } = supplementaryImages[sIdx];
+        if (imageUrl) {
           await client.query(
-            `INSERT INTO images (user_id, item_id, storage_key, image_type, description) VALUES ($1, $2, $3, 'supplementary', $4)`,
-            [userId, itemId, url, desc]
+            `INSERT INTO images (user_id, item_id, storage_key, image_type, description, position) VALUES ($1, $2, $3, 'supplementary', $4, $5)`,
+            [userId, itemId, imageUrl, caption || '', sIdx]
           );
         }
       }

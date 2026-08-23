@@ -37,9 +37,7 @@ When generating 'recentAuctionSales', ensure that:
 
 Here is the list of files provided:
 - Primary overall photograph of the print artwork.
-{signatureScan}
-{damageScan}
-{scaleScan}
+{supplementaryScans}
 
 {userNotes}
 
@@ -62,9 +60,7 @@ Do not write long academic paragraphs; keep descriptions clean, objective, and b
 
 FILES PROVIDED:
 - Primary artwork photograph.
-{signatureScan}
-{damageScan}
-{scaleScan}
+{supplementaryScans}
 
 {userNotes}
 
@@ -84,9 +80,7 @@ DEFENSIVE RULES & PENALTIES:
 
 FILES PROVIDED:
 - Primary overall photograph of the print.
-{signatureScan}
-{damageScan}
-{scaleScan}
+{supplementaryScans}
 
 {userNotes}
 
@@ -98,41 +92,27 @@ export function resolveCustomPrompt(
   template: string,
   currency: string,
   userNotes?: string,
-  hasSignature?: boolean,
-  hasDamage?: boolean,
-  hasScale?: boolean
+  supplementaryCaptions?: string[]
 ): string {
   let result = template;
-  
+
   // Replace currency references
   result = result.replace(/\{currency\}/g, currency);
   result = result.replace(/\$\{currency\}/g, currency);
-  
+
   // Replace userNotes conditional block
   if (userNotes && userNotes.trim().length > 0) {
     result = result.replace(/\{userNotes\}/g, `The user provided the following additional notes or inscriptions: "${userNotes}"`);
   } else {
     result = result.replace(/\{userNotes\}/g, "");
   }
-  
-  // Replace aux scan lists
-  if (hasSignature) {
-    result = result.replace(/\{signatureScan\}/g, "- A close-up scan focusing on the printmaker's signature/stamp/monogram/numbering block.");
-  } else {
-    result = result.replace(/\{signatureScan\}/g, "");
-  }
 
-  if (hasDamage) {
-    result = result.replace(/\{damageScan\}/g, "- A close-up detail showcasing potential physical paper damage (foxing, tears, creases, or mat stains).");
-  } else {
-    result = result.replace(/\{damageScan\}/g, "");
-  }
-
-  if (hasScale) {
-    result = result.replace(/\{scaleScan\}/g, "- A coin measurement scale calibration image. Place your focus on the standard coin adjacent to the artwork to mathematically estimate real-world sheet dimensions.");
-  } else {
-    result = result.replace(/\{scaleScan\}/g, "");
-  }
+  // Replace the supplementary-scans list with one line per user-captioned photo
+  const captions = supplementaryCaptions || [];
+  const supplementaryBlock = captions
+    .map((c, i) => `- Supplementary photo ${i + 1}: ${c.trim() ? `user says this shows "${c.trim()}"` : "no description provided by the user"}`)
+    .join("\n");
+  result = result.replace(/\{supplementaryScans\}/g, supplementaryBlock);
 
   // Double-check to remove any remaining cleanups or empty lines
   return result.trim();
@@ -142,9 +122,7 @@ export function getPrompt(
   key: PromptKey,
   currency: string,
   userNotes?: string,
-  hasSignature?: boolean,
-  hasDamage?: boolean,
-  hasScale?: boolean
+  supplementaryCaptions?: string[]
 ): string {
   let template = STANDARD_PROMPT_TEMPLATE;
   if (key === "simplified") {
@@ -152,8 +130,8 @@ export function getPrompt(
   } else if (key === "strict") {
     template = STRICT_PROMPT_TEMPLATE;
   }
-  
-  return resolveCustomPrompt(template, currency, userNotes, hasSignature, hasDamage, hasScale);
+
+  return resolveCustomPrompt(template, currency, userNotes, supplementaryCaptions);
 }
 
 export const VISUAL_EXTRACTION_SYSTEM_PROMPT = `You are a specialist Fine Art Print Visual Extraction Agent operating as
@@ -362,20 +340,33 @@ Classify the primary image as exactly one of:
 SECTION 1 — IMAGES PROVIDED
 ═══════════════════════════════════════════════════════════════════════
 
-You will receive one or more of the following image types. Each image
-that is present will be labelled in the user message:
+You will always receive exactly one PRIMARY_SCAN — a full-sheet
+photograph or scan of the entire print. This is always the recto
+(front face) of the sheet; there is no separate recto scan type.
 
-  PRIMARY_SCAN       — Full-sheet photograph or scan of the entire print
-  SIGNATURE_SCAN     — Close-up of the lower margin or signature area
-  DAMAGE_SCAN        — Close-up of a flagged condition area
-  RECTO_SCAN         — Front face of the sheet if photographed separately
-  VERSO_SCAN         — Reverse of the sheet (watermarks, stamps, labels)
-  SCALE_SCAN         — Image including a ruler or physical scale reference
+You may also receive zero or more supplementary photos, each labelled
+in the user message as SUPPLEMENTARY_SCAN_1, SUPPLEMENTARY_SCAN_2, and
+so on, in the order they appear. Each carries a short line of
+user-provided guidance about what it is meant to show — for example:
 
-If a scan type is absent, record null for its corresponding output
-fields. Do NOT infer or fabricate observations from scans that were
-not provided. If an image label is missing, infer the type from
-context and note the inference in captureMethodNotes.
+{supplementaryScans}
+
+Common reasons a user attaches a supplementary photo: a close-up of a
+signature, monogram, or edition number; a detail of condition damage
+(foxing, tears, creases); the reverse of the sheet (watermarks, stamps,
+labels — since PRIMARY_SCAN can only ever show the recto); or a ruler
+or coin placed near the sheet for scale. But the user's guidance is a
+starting point for where to look, not a fact to accept uncritically —
+independently verify what the photo actually shows. If a caption says
+"the signature" but the close-up clearly shows something else (a
+stamp, a price notation, nothing legible), record what you actually
+observe and note the discrepancy rather than reporting the user's
+claim as if you had confirmed it yourself.
+
+When citing a bounding box, use "PRIMARY_SCAN" or the exact
+supplementary label (e.g. "SUPPLEMENTARY_SCAN_2") as sourceImage. If no
+supplementary photos were provided, proceed using PRIMARY_SCAN alone —
+do not infer or fabricate observations from scans that don't exist.
 
 
 ═══════════════════════════════════════════════════════════════════════
@@ -485,6 +476,14 @@ For each found:
   4. Return bounding box [ymin, xmin, ymax, xmax] on 0–1000 scale
      with source image noted.
 
+  5. Assign editionConfidence from 0.0 to 1.0 reflecting certainty in
+     the transcription and classification:
+       1.0 = Fully legible, unambiguous classification
+       0.7 = Legible but classification involves minor judgement
+       0.4 = Partially legible or classification uncertain
+       0.2 = Mark present but nature unclear
+     Apply the photographic confidence penalty from Section 0D.
+
 If no edition information is visible anywhere on the sheet, set
 editionInfoAbsent: true explicitly. Do not assume open edition.
 
@@ -549,15 +548,23 @@ For each identified technique:
     printing) visible in the paper surface?
   • If visible: describe its clarity, apparent depth impression,
     and whether margins appear even on all four sides.
-  • If SCALE_SCAN is provided: estimate printed image dimensions
-    and full sheet dimensions in millimetres.
+  • If a supplementary photo with a ruler or coin for scale is
+    provided: estimate printed image dimensions and full sheet
+    dimensions in millimetres.
   • If no scale reference: estimate dimensions relative to standard
     paper sizes if possible, noting this is an estimate.
   • Note whether sheet margins appear original, trimmed, or irregular.
   • Are chain lines or laid lines visible (indicating handmade or
     mould-made paper)?
-  • Is any watermark visible through the sheet (note VERSO_SCAN
-    if available)?
+  • Is any watermark visible through the sheet (note a supplementary
+    verso photo if one was provided)?
+
+Assign plateMarkConfidence (0.0–1.0) reflecting certainty in the
+presence/absence and clarity assessment above, and dimensionsConfidence
+(0.0–1.0) reflecting certainty in the dimension estimates — 1.0 only
+when measured directly from a supplementary scale-reference photo,
+lower for estimates made without one. Apply the photographic
+confidence penalty from Section 0D to both.
 
 ──────────────────────────────────────────────────────────────────────
 2E. PAPER AND SUPPORT ASSESSMENT
@@ -572,7 +579,12 @@ For each identified technique:
     border; flush mount; dry mounted onto board; laid down (fully
     adhered to backing); housed in frame (sheet not fully visible).
   If mounted or framed: note whether verso is accessible for
-    inspection and recommend VERSO_SCAN if not provided.
+    inspection and recommend a supplementary verso photo if not
+    provided.
+
+Assign paperConfidence (0.0–1.0) reflecting overall certainty in the
+surface type, tone, and weight assessment above. Apply the
+photographic confidence penalty from Section 0D.
 
 ──────────────────────────────────────────────────────────────────────
 2F. CONDITION AND DAMAGE ASSESSMENT
@@ -633,6 +645,9 @@ For each defect found above NONE severity:
   4. Bounding box [ymin, xmin, ymax, xmax] on 0–1000 scale with
      source image noted. Bounding boxes are MANDATORY for all
      defects rated MINOR or above.
+  5. Assign defectConfidence (0.0–1.0) for this specific defect,
+     reflecting certainty in the type/severity classification.
+     Apply the photographic confidence penalty from Section 0D.
 
 Overall Condition Grade — assign one:
   EXCELLENT   — Pristine or near-pristine; no detectable defects
@@ -643,6 +658,9 @@ Overall Condition Grade — assign one:
   FAIR        — Moderate defects present; some impact on presentation
   POOR        — Significant defects; substantial impact on integrity
   DAMAGED     — Major physical damage or loss present
+
+Assign conditionConfidence (0.0–1.0) reflecting overall certainty in
+the overallGrade assessment across the full sheet.
 
 ──────────────────────────────────────────────────────────────────────
 2G. INK AND COLOUR ASSESSMENT
@@ -657,6 +675,10 @@ Overall Condition Grade — assign one:
   • Any evidence of inking irregularity characteristic of the
     identified technique (e.g. blind areas from over-wiped intaglio
     plate, uneven screen coverage in screenprint).
+
+Assign inkAndColourConfidence (0.0–1.0) reflecting overall certainty
+in the above assessment. Apply the photographic confidence penalty
+from Section 0D.
 
 ──────────────────────────────────────────────────────────────────────
 2H. STAMPS, LABELS, AND COLLECTOR MARKS
@@ -675,7 +697,9 @@ Inspect recto and verso for any of the following:
 
 For each found: transcribe verbatim, classify type, describe location,
 and provide bounding box [ymin, xmin, ymax, xmax] on 0–1000 scale
-with source image noted.
+with source image noted. Also assign stampConfidence (0.0–1.0) per
+mark, reflecting certainty in the transcription and type
+classification.
 
 ──────────────────────────────────────────────────────────────────────
 2I. VISUAL COMPOSITION OBSERVATIONS
@@ -699,6 +723,10 @@ what is objectively visible:
   • Whether the composition bleeds to the sheet edge or sits
     within a defined image boundary
 
+Assign compositionConfidence (0.0–1.0) reflecting overall certainty in
+these descriptive observations. This is rarely low unless image
+quality obscures the subject.
+
 ──────────────────────────────────────────────────────────────────────
 2J. PHOTOGRAPHIC AND SCAN QUALITY ASSESSMENT
 ──────────────────────────────────────────────────────────────────────
@@ -721,6 +749,10 @@ for uncertainty:
     the print itself?
   • What additional scans or photographs would materially improve
     confidence in the inspection output?
+
+Assign qualityAssessmentConfidence (0.0–1.0) reflecting your own
+certainty in this quality assessment itself — distinct from the
+confidence scores it may have reduced elsewhere in the output.
 
 
 ═══════════════════════════════════════════════════════════════════════
@@ -759,16 +791,12 @@ imageAuthenticity block and the schemaVersion, inspectionTimestamp,
 and imagesReceived fields. All other fields should be omitted.
 
 {
-  "schemaVersion": "VEA-1.0",
+  "schemaVersion": "VEA-1.1",
   "inspectionTimestamp": "<ISO 8601 datetime>",
 
   "imagesReceived": {
     "primaryScan": true | false,
-    "signatureScan": true | false,
-    "damageScan": true | false,
-    "rectoScan": true | false,
-    "versoScan": true | false,
-    "scaleScan": true | false
+    "supplementaryScanCount": 0
   },
 
   "imageAuthenticity": {
@@ -807,7 +835,7 @@ and imagesReceived fields. All other fields should be omitted.
       "classification": "hand_inscribed | printed | label | cartouche",
       "location": "lower_margin | upper_margin | within_image | verso | other",
       "medium": "graphite_pencil | black_ink | coloured_ink | printed | other",
-      "sourceImage": "<PRIMARY_SCAN | SIGNATURE_SCAN | VERSO_SCAN>",
+      "sourceImage": "<PRIMARY_SCAN | SUPPLEMENTARY_SCAN_n>",
       "box_2d": [ymin, xmin, ymax, xmax],
       "titleConfidence": 0.0
     }
@@ -821,7 +849,7 @@ and imagesReceived fields. All other fields should be omitted.
       "transcription": "<verbatim text or [illegible]>",
       "medium": "<graphite | ink | blind_stamp | printed | other>",
       "location": "<descriptive location on sheet>",
-      "sourceImage": "<PRIMARY_SCAN | SIGNATURE_SCAN | VERSO_SCAN>",
+      "sourceImage": "<PRIMARY_SCAN | SUPPLEMENTARY_SCAN_n>",
       "box_2d": [ymin, xmin, ymax, xmax],
       "authenticityNotes": "<visual evidence supporting or questioning
                             hand application>",
@@ -838,7 +866,8 @@ and imagesReceived fields. All other fields should be omitted.
       "inscriptionMethod": "hand_inscribed | printed | stamp | unknown",
       "location": "<descriptive location on sheet>",
       "sourceImage": "<image reference>",
-      "box_2d": [ymin, xmin, ymax, xmax]
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "editionConfidence": 0.0
     }
   ],
   "editionInfoAbsent": true | false,
@@ -861,14 +890,16 @@ and imagesReceived fields. All other fields should be omitted.
     "present": true | false | "uncertain",
     "clarity": "clear | faint | absent | not_visible_in_scan",
     "marginsEven": true | false | "uncertain",
-    "observationNotes": "<description>"
+    "observationNotes": "<description>",
+    "plateMarkConfidence": 0.0
   },
 
   "dimensions": {
-    "sourceImage": "SCALE_SCAN | estimated_from_PRIMARY_SCAN | unavailable",
+    "sourceImage": "supplementary_scale_photo | estimated_from_PRIMARY_SCAN | unavailable",
     "printedImageMM": { "width": null, "height": null },
     "fullSheetMM": { "width": null, "height": null },
-    "marginCondition": "original | trimmed | irregular | uncertain"
+    "marginCondition": "original | trimmed | irregular | uncertain",
+    "dimensionsConfidence": 0.0
   },
 
   "paper": {
@@ -880,7 +911,8 @@ and imagesReceived fields. All other fields should be omitted.
     "watermarkVisible": true | false | "uncertain",
     "watermarkDescription": null,
     "mountingStatus": "unmounted | window_mount | flush_mount |
-                       dry_mounted | laid_down | framed | unknown"
+                       dry_mounted | laid_down | framed | unknown",
+    "paperConfidence": 0.0
   },
 
   "condition": {
@@ -895,11 +927,13 @@ and imagesReceived fields. All other fields should be omitted.
         "location": "<descriptive location on sheet>",
         "affectsImageArea": true | false,
         "sourceImage": "<image reference>",
-        "box_2d": [ymin, xmin, ymax, xmax]
+        "box_2d": [ymin, xmin, ymax, xmax],
+        "defectConfidence": 0.0
       }
     ],
     "restorationEvidence": true | false,
-    "restorationNotes": "<description or null>"
+    "restorationNotes": "<description or null>",
+    "conditionConfidence": 0.0
   },
 
   "inkAndColour": {
@@ -908,7 +942,8 @@ and imagesReceived fields. All other fields should be omitted.
     "inkSurface": "matte | satin | glossy | mixed",
     "inkCoverageEvenness": "even | minor_variation | uneven",
     "unevennesDescription": "<description or null>",
-    "selectiveVarnishing": true | false | "uncertain"
+    "selectiveVarnishing": true | false | "uncertain",
+    "inkAndColourConfidence": 0.0
   },
 
   "stampsAndLabels": [
@@ -923,7 +958,8 @@ and imagesReceived fields. All other fields should be omitted.
       "location": "<descriptive location on sheet>",
       "sourceImage": "<image reference>",
       "box_2d": [ymin, xmin, ymax, xmax],
-      "lugReference": null
+      "lugReference": null,
+      "stampConfidence": 0.0
     }
   ],
 
@@ -939,7 +975,8 @@ and imagesReceived fields. All other fields should be omitted.
     "colourPaletteSummary": "<brief description>",
     "imageToSheetRatio": "<approximate description e.g. 'image occupies
                            approximately 70% of sheet area'>",
-    "imageBoundary": "bleeds_to_edge | defined_border | mixed"
+    "imageBoundary": "bleeds_to_edge | defined_border | mixed",
+    "compositionConfidence": 0.0
   },
 
   "photographicQuality": {
@@ -953,10 +990,11 @@ and imagesReceived fields. All other fields should be omitted.
     ],
     "additionalScansRecommended": [
       {
-        "scanType": "<e.g. VERSO_SCAN | raking light | UV | SCALE_SCAN>",
+        "scanType": "<free-text description, e.g. 'a photo of the verso' | 'raking light across the surface' | 'UV light' | 'a ruler or coin for scale'>",
         "reason": "<why this scan would improve confidence>"
       }
-    ]
+    ],
+    "qualityAssessmentConfidence": 0.0
   },
 
   "visualEvidenceHighlights": [
@@ -1003,11 +1041,17 @@ SECTION 5 — BEHAVIOURAL RULES
    — All visual evidence highlights
    An observation without a required box_2d is an incomplete output.
 
-5. CONFIDENCE IS HONEST. Apply Section 0D penalties consistently.
-   If photographic quality limits your ability to assess a feature,
-   reduce the confidence score and add the limitation to
-   observationsLimitedByPhotography. Do not report high confidence
-   on observations the image quality cannot support.
+5. CONFIDENCE IS HONEST AND UNIFORM. Every section of the output
+   carries its own confidence field — signatureConfidence,
+   titleConfidence, editionConfidence, techniqueConfidence,
+   plateMarkConfidence, dimensionsConfidence, paperConfidence,
+   defectConfidence, conditionConfidence, inkAndColourConfidence,
+   stampConfidence, compositionConfidence, qualityAssessmentConfidence
+   — no observation is exempt. Apply Section 0D penalties consistently
+   across all of them. If photographic quality limits your ability to
+   assess a feature, reduce the relevant confidence score(s) and add
+   the limitation to observationsLimitedByPhotography. Do not report
+   high confidence on observations the image quality cannot support.
 
 6. PROVISIONAL FLAG. If imageAuthenticity.classification is UNCERTAIN,
    set provisionalOutput: true at the root level. All consuming
@@ -1028,7 +1072,10 @@ Your output is a single strictly valid JSON object conforming to the TriageResul
 SECTION 1 — INPUT VALIDATION
 ═══════════════════════════════════════════════════════════════════════
 
-1. Confirm schemaVersion is "VEA-1.0". If not: inputValidationError: true
+1. Confirm schemaVersion is "VEA-1.1" (or "VEA-1.0" for older records
+   missing the newer per-section confidence fields — treat any absent
+   confidence field as unavailable, not as an error). If schemaVersion
+   is neither: inputValidationError: true
 2. Check imageAuthenticity.haltRecommended. If true: halt, return error.
 3. If imageAuthenticity.classification is UNCERTAIN: provisionalOutput: true, apply -0.20 penalty to all confidence scores.
 4. Note overallExtractionConfidence. If below 0.40: lowSourceConfidence: true.

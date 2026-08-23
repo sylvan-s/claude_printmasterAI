@@ -27,7 +27,7 @@ Images ──► Stage 1a (VEA)
 ## Stage 1a — Visual Extraction Agent (VEA)
 
 **Prompt:** `VISUAL_EXTRACTION_SYSTEM_PROMPT`
-**Schema output:** `VEA-1.0`
+**Schema output:** `VEA-1.1` (every section now carries its own `*Confidence` field — see below; `VEA-1.0` records without them are still accepted downstream)
 **Receives:** Raw images (primary scan + optional signature, damage, scale auxiliary scans)
 **Is the only stage that sees images.**
 

@@ -55,8 +55,10 @@ export interface PrintAnalysisReport {
 }
 
 export interface VisualEvidenceHighlight {
+  id?: string;
   label: string;
   observation: string;
+  sourceImage?: string;
   box_2d: number[]; // [ymin, xmin, ymax, xmax] coordinates from 0 to 1000
 }
 
@@ -72,6 +74,11 @@ export interface RecentSale {
   broaderLotPriceAdjustment?: string;
 }
 
+export interface SupplementaryImage {
+  imageUrl: string;
+  caption: string; // free-text guidance from the user on what this photo shows
+}
+
 export interface AnalysisHistoryItem {
   id: string;
   timestamp: string;
@@ -81,9 +88,7 @@ export interface AnalysisHistoryItem {
   report: PrintAnalysisReport;
   lotNumber?: string; // e.g. "Lot 101"
   lotTitle?: string;  // e.g. "Post-war Prints"
-  signatureImageUrl?: string;
-  damageImageUrl?: string;
-  scaleImageUrl?: string;
+  supplementaryImages?: SupplementaryImage[];
   catalogue_id?: string | null;
   lot_id?: string | null;
 }
@@ -119,7 +124,7 @@ export interface SignaturesItem {
   transcription: string;
   medium: 'graphite' | 'ink' | 'blind_stamp' | 'printed' | 'other' | string;
   location: string;
-  sourceImage: 'PRIMARY_SCAN' | 'SIGNATURE_SCAN' | 'VERSO_SCAN' | string;
+  sourceImage: 'PRIMARY_SCAN' | string; // or 'SUPPLEMENTARY_SCAN_n'
   box_2d: number[];
   authenticityNotes: string;
   signatureConfidence: number;
@@ -133,6 +138,7 @@ export interface EditionInfoItem {
   location: string;
   sourceImage: string;
   box_2d: number[];
+  editionConfidence: number;
 }
 
 export interface PrintingTechniqueItem {
@@ -148,13 +154,15 @@ export interface PlateMarkDetails {
   clarity: 'clear' | 'faint' | 'absent' | 'not_visible_in_scan';
   marginsEven: boolean | 'uncertain';
   observationNotes: string;
+  plateMarkConfidence: number;
 }
 
 export interface DimensionsDetails {
-  sourceImage: 'SCALE_SCAN' | 'estimated_from_PRIMARY_SCAN' | 'unavailable' | string;
+  sourceImage: 'supplementary_scale_photo' | 'estimated_from_PRIMARY_SCAN' | 'unavailable' | string;
   printedImageMM: { width: number | null; height: number | null };
   fullSheetMM: { width: number | null; height: number | null };
   marginCondition: 'original' | 'trimmed' | 'irregular' | 'uncertain';
+  dimensionsConfidence: number;
 }
 
 export interface PaperDetails {
@@ -165,6 +173,7 @@ export interface PaperDetails {
   watermarkVisible: boolean | 'uncertain';
   watermarkDescription: string | null;
   mountingStatus: 'unmounted' | 'window_mount' | 'flush_mount' | 'dry_mounted' | 'laid_down' | 'framed' | 'unknown';
+  paperConfidence: number;
 }
 
 export interface ConditionDefect {
@@ -176,6 +185,7 @@ export interface ConditionDefect {
   affectsImageArea: boolean;
   sourceImage: string;
   box_2d: number[];
+  defectConfidence: number;
 }
 
 export interface ConditionDetails {
@@ -183,6 +193,7 @@ export interface ConditionDetails {
   defects: ConditionDefect[];
   restorationEvidence: boolean;
   restorationNotes: string | null;
+  conditionConfidence: number;
 }
 
 export interface InkAndColourDetails {
@@ -192,6 +203,7 @@ export interface InkAndColourDetails {
   inkCoverageEvenness: 'even' | 'minor_variation' | 'uneven';
   unevennesDescription: string | null;
   selectiveVarnishing: boolean | 'uncertain';
+  inkAndColourConfidence: number;
 }
 
 export interface StampsAndLabelsItem {
@@ -203,6 +215,7 @@ export interface StampsAndLabelsItem {
   sourceImage: string;
   box_2d: number[];
   lugReference: string | null;
+  stampConfidence: number;
 }
 
 export interface CompositionDetails {
@@ -215,6 +228,7 @@ export interface CompositionDetails {
   colourPaletteSummary: string;
   imageToSheetRatio: string;
   imageBoundary: 'bleeds_to_edge' | 'defined_border' | 'mixed';
+  compositionConfidence: number;
 }
 
 export interface PhotographicQuality {
@@ -224,6 +238,7 @@ export interface PhotographicQuality {
   estimatedResolution: 'high' | 'medium' | 'low';
   observationsLimitedByPhotography: string[];
   additionalScansRecommended: Array<{ scanType: string; reason: string }>;
+  qualityAssessmentConfidence: number;
 }
 
 export interface VisualExtractionResult {
@@ -231,11 +246,7 @@ export interface VisualExtractionResult {
   inspectionTimestamp: string;
   imagesReceived: {
     primaryScan: boolean;
-    signatureScan: boolean;
-    damageScan: boolean;
-    rectoScan: boolean;
-    versoScan: boolean;
-    scaleScan: boolean;
+    supplementaryScanCount: number;
   };
   imageAuthenticity: ImageAuthenticity;
   titleInscriptions?: Array<{

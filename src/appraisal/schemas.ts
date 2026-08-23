@@ -19,7 +19,7 @@ export function translateSchemaToStandardJsonSchema(schema: any): any {
 }
 
 // ---------------------------------------------------------------------------
-// Stage 1 — Visual Extraction Agent (VEA-1.0)
+// Stage 1 — Visual Extraction Agent (VEA-1.1)
 // ---------------------------------------------------------------------------
 export const VISUAL_EXTRACTION_SCHEMA = {
   type: Type.OBJECT,
@@ -30,13 +30,9 @@ export const VISUAL_EXTRACTION_SCHEMA = {
       type: Type.OBJECT,
       properties: {
         primaryScan: { type: Type.BOOLEAN },
-        signatureScan: { type: Type.BOOLEAN },
-        damageScan: { type: Type.BOOLEAN },
-        rectoScan: { type: Type.BOOLEAN },
-        versoScan: { type: Type.BOOLEAN },
-        scaleScan: { type: Type.BOOLEAN }
+        supplementaryScanCount: { type: Type.INTEGER }
       },
-      required: ["primaryScan", "signatureScan", "damageScan", "rectoScan", "versoScan", "scaleScan"]
+      required: ["primaryScan", "supplementaryScanCount"]
     },
     imageAuthenticity: {
       type: Type.OBJECT,
@@ -125,9 +121,10 @@ export const VISUAL_EXTRACTION_SCHEMA = {
           inscriptionMethod: { type: Type.STRING },
           location: { type: Type.STRING },
           sourceImage: { type: Type.STRING },
-          box_2d: { type: Type.ARRAY, items: { type: Type.INTEGER } }
+          box_2d: { type: Type.ARRAY, items: { type: Type.INTEGER } },
+          editionConfidence: { type: Type.NUMBER }
         },
-        required: ["id", "type", "transcription", "inscriptionMethod", "location", "sourceImage", "box_2d"]
+        required: ["id", "type", "transcription", "inscriptionMethod", "location", "sourceImage", "box_2d", "editionConfidence"]
       }
     },
     editionInfoAbsent: { type: Type.BOOLEAN },
@@ -151,9 +148,10 @@ export const VISUAL_EXTRACTION_SCHEMA = {
         present: { type: Type.STRING },
         clarity: { type: Type.STRING },
         marginsEven: { type: Type.STRING },
-        observationNotes: { type: Type.STRING }
+        observationNotes: { type: Type.STRING },
+        plateMarkConfidence: { type: Type.NUMBER }
       },
-      required: ["present", "clarity", "marginsEven", "observationNotes"]
+      required: ["present", "clarity", "marginsEven", "observationNotes", "plateMarkConfidence"]
     },
     dimensions: {
       type: Type.OBJECT,
@@ -173,9 +171,10 @@ export const VISUAL_EXTRACTION_SCHEMA = {
             height: { type: Type.INTEGER }
           }
         },
-        marginCondition: { type: Type.STRING }
+        marginCondition: { type: Type.STRING },
+        dimensionsConfidence: { type: Type.NUMBER }
       },
-      required: ["sourceImage", "printedImageMM", "fullSheetMM", "marginCondition"]
+      required: ["sourceImage", "printedImageMM", "fullSheetMM", "marginCondition", "dimensionsConfidence"]
     },
     paper: {
       type: Type.OBJECT,
@@ -186,9 +185,10 @@ export const VISUAL_EXTRACTION_SCHEMA = {
         chainLinesVisible: { type: Type.STRING },
         watermarkVisible: { type: Type.STRING },
         watermarkDescription: { type: Type.STRING },
-        mountingStatus: { type: Type.STRING }
+        mountingStatus: { type: Type.STRING },
+        paperConfidence: { type: Type.NUMBER }
       },
-      required: ["surfaceType", "tone", "weight", "chainLinesVisible", "watermarkVisible", "watermarkDescription", "mountingStatus"]
+      required: ["surfaceType", "tone", "weight", "chainLinesVisible", "watermarkVisible", "watermarkDescription", "mountingStatus", "paperConfidence"]
     },
     condition: {
       type: Type.OBJECT,
@@ -206,15 +206,17 @@ export const VISUAL_EXTRACTION_SCHEMA = {
               location: { type: Type.STRING },
               affectsImageArea: { type: Type.BOOLEAN },
               sourceImage: { type: Type.STRING },
-              box_2d: { type: Type.ARRAY, items: { type: Type.INTEGER } }
+              box_2d: { type: Type.ARRAY, items: { type: Type.INTEGER } },
+              defectConfidence: { type: Type.NUMBER }
             },
-            required: ["id", "category", "type", "severity", "location", "affectsImageArea", "sourceImage", "box_2d"]
+            required: ["id", "category", "type", "severity", "location", "affectsImageArea", "sourceImage", "box_2d", "defectConfidence"]
           }
         },
         restorationEvidence: { type: Type.BOOLEAN },
-        restorationNotes: { type: Type.STRING }
+        restorationNotes: { type: Type.STRING },
+        conditionConfidence: { type: Type.NUMBER }
       },
-      required: ["overallGrade", "defects", "restorationEvidence", "restorationNotes"]
+      required: ["overallGrade", "defects", "restorationEvidence", "restorationNotes", "conditionConfidence"]
     },
     inkAndColour: {
       type: Type.OBJECT,
@@ -224,9 +226,10 @@ export const VISUAL_EXTRACTION_SCHEMA = {
         inkSurface: { type: Type.STRING },
         inkCoverageEvenness: { type: Type.STRING },
         unevennesDescription: { type: Type.STRING },
-        selectiveVarnishing: { type: Type.STRING }
+        selectiveVarnishing: { type: Type.STRING },
+        inkAndColourConfidence: { type: Type.NUMBER }
       },
-      required: ["coloursPresent", "colourMode", "inkSurface", "inkCoverageEvenness", "unevennesDescription", "selectiveVarnishing"]
+      required: ["coloursPresent", "colourMode", "inkSurface", "inkCoverageEvenness", "unevennesDescription", "selectiveVarnishing", "inkAndColourConfidence"]
     },
     stampsAndLabels: {
       type: Type.ARRAY,
@@ -240,9 +243,10 @@ export const VISUAL_EXTRACTION_SCHEMA = {
           location: { type: Type.STRING },
           sourceImage: { type: Type.STRING },
           box_2d: { type: Type.ARRAY, items: { type: Type.INTEGER } },
-          lugReference: { type: Type.STRING }
+          lugReference: { type: Type.STRING },
+          stampConfidence: { type: Type.NUMBER }
         },
-        required: ["id", "type", "transcription", "inkColour", "location", "sourceImage", "box_2d", "lugReference"]
+        required: ["id", "type", "transcription", "inkColour", "location", "sourceImage", "box_2d", "lugReference", "stampConfidence"]
       }
     },
     composition: {
@@ -256,9 +260,10 @@ export const VISUAL_EXTRACTION_SCHEMA = {
         numberOfColours: { type: Type.INTEGER },
         colourPaletteSummary: { type: Type.STRING },
         imageToSheetRatio: { type: Type.STRING },
-        imageBoundary: { type: Type.STRING }
+        imageBoundary: { type: Type.STRING },
+        compositionConfidence: { type: Type.NUMBER }
       },
-      required: ["subjectMatter", "subjectCategory", "visualStyle", "textWithinImage", "dateWithinImage", "numberOfColours", "colourPaletteSummary", "imageToSheetRatio", "imageBoundary"]
+      required: ["subjectMatter", "subjectCategory", "visualStyle", "textWithinImage", "dateWithinImage", "numberOfColours", "colourPaletteSummary", "imageToSheetRatio", "imageBoundary", "compositionConfidence"]
     },
     photographicQuality: {
       type: Type.OBJECT,
@@ -278,9 +283,10 @@ export const VISUAL_EXTRACTION_SCHEMA = {
             },
             required: ["scanType", "reason"]
           }
-        }
+        },
+        qualityAssessmentConfidence: { type: Type.NUMBER }
       },
-      required: ["focusUniformity", "lightingEvenness", "printFlat", "estimatedResolution", "observationsLimitedByPhotography", "additionalScansRecommended"]
+      required: ["focusUniformity", "lightingEvenness", "printFlat", "estimatedResolution", "observationsLimitedByPhotography", "additionalScansRecommended", "qualityAssessmentConfidence"]
     },
     visualEvidenceHighlights: {
       type: Type.ARRAY,

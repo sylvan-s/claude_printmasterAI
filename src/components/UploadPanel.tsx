@@ -1,6 +1,15 @@
 import React from "react";
 import { Upload, X } from "lucide-react";
 
+export interface SupplementaryPhotoDraft {
+  id: string;
+  // null when loaded from a previously-saved item (no re-uploadable File
+  // available) — such photos display but are skipped on re-analysis.
+  file: File | null;
+  preview: string;
+  caption: string;
+}
+
 interface UploadPanelProps {
   selectedFile: File | null;
   previewUrl: string | null;
@@ -11,20 +20,11 @@ interface UploadPanelProps {
   onClear: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
 
-  signaturePreview: string | null;
-  setSignatureFile: (file: File | null) => void;
-  setSignaturePreview: (url: string | null) => void;
-  signatureInputRef: React.RefObject<HTMLInputElement | null>;
-
-  damagePreview: string | null;
-  setDamageFile: (file: File | null) => void;
-  setDamagePreview: (url: string | null) => void;
-  damageInputRef: React.RefObject<HTMLInputElement | null>;
-
-  scalePreview: string | null;
-  setScaleFile: (file: File | null) => void;
-  setScalePreview: (url: string | null) => void;
-  scaleInputRef: React.RefObject<HTMLInputElement | null>;
+  supplementaryPhotos: SupplementaryPhotoDraft[];
+  onAddSupplementaryPhoto: (file: File) => void;
+  onRemoveSupplementaryPhoto: (id: string) => void;
+  onSupplementaryCaptionChange: (id: string, caption: string) => void;
+  supplementaryInputRef: React.RefObject<HTMLInputElement | null>;
 }
 
 const formatBytes = (bytes: number) => {
@@ -44,18 +44,11 @@ export default function UploadPanel({
   onFileSelect,
   onClear,
   fileInputRef,
-  signaturePreview,
-  setSignatureFile,
-  setSignaturePreview,
-  signatureInputRef,
-  damagePreview,
-  setDamageFile,
-  setDamagePreview,
-  damageInputRef,
-  scalePreview,
-  setScaleFile,
-  setScalePreview,
-  scaleInputRef,
+  supplementaryPhotos,
+  onAddSupplementaryPhoto,
+  onRemoveSupplementaryPhoto,
+  onSupplementaryCaptionChange,
+  supplementaryInputRef,
 }: UploadPanelProps) {
   const triggerFileInput = () => {
     fileInputRef.current?.click();
@@ -137,170 +130,79 @@ export default function UploadPanel({
         )}
       </div>
 
-      {/* Auxiliary Uploads Section */}
+      {/* Supplementary Photos Section */}
       <div className="bg-stone-50 border border-rosebery-border p-4 md:p-5 rounded-sm space-y-4">
         <div className="border-b border-rosebery-border pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-rosebery-primary block font-bold">
-            AUXILIARY EXHIBITION DETAIL VIEWS (OPTIONAL)
+            SUPPLEMENTARY PHOTOS (OPTIONAL)
           </span>
           <span className="text-[9px] font-mono text-rosebery-gold uppercase tracking-wider font-semibold">
             Enhance Appraisal Accuracy
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* 1. Signature Close-Up */}
-          <div className="bg-rosebery-card border border-rosebery-border rounded-sm p-3 flex flex-col justify-between space-y-3 relative overflow-hidden group hover:shadow-gallery-soft transition-all duration-200">
-            <input
-              ref={signatureInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  setSignatureFile(file);
-                  setSignaturePreview(URL.createObjectURL(file));
-                }
-              }}
-              className="hidden"
-            />
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-mono text-rosebery-charcoal font-bold block uppercase tracking-wider">
-                1. Signature Closeup
-              </label>
-              <p className="text-[10.5px] text-rosebery-muted leading-relaxed">
-                Upload a high-fidelity macro photo of the signature, monogram or edition numbers.
-              </p>
-            </div>
-            {signaturePreview ? (
-              <div className="relative aspect-video rounded-sm overflow-hidden bg-rosebery-cream-bg border border-rosebery-border">
-                <img src={signaturePreview} alt="Signature zoom" className="w-full h-full object-contain" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSignatureFile(null);
-                    if (signaturePreview) URL.revokeObjectURL(signaturePreview);
-                    setSignaturePreview(null);
-                  }}
-                  className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded p-1 shadow transition-all cursor-pointer"
-                  title="Delete Zoom"
-                >
-                  <X className="w-3 h-3 stroke-[2.5]" />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => signatureInputRef.current?.click()}
-                className="py-2 px-3 border border-dashed border-rosebery-border hover:border-rosebery-primary bg-stone-50 text-[11px] font-mono text-rosebery-muted hover:text-rosebery-primary rounded-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer duration-200"
-              >
-                <Upload className="w-3.5 h-3.5 text-rosebery-primary" />
-                Upload Closeup
-              </button>
-            )}
-          </div>
+        <p className="text-[10.5px] text-rosebery-muted leading-relaxed">
+          Add any extra photos that support the appraisal — a signature close-up, a
+          damage detail, the reverse of the sheet, a ruler or coin for scale, or
+          anything else worth a closer look. After each upload, describe in your own
+          words what the photo shows; that description is passed directly to the
+          inspection agent.
+        </p>
 
-          {/* 2. Damage Close-up */}
-          <div className="bg-rosebery-card border border-rosebery-border rounded-sm p-3 flex flex-col justify-between space-y-3 relative overflow-hidden group hover:shadow-gallery-soft transition-all duration-200">
-            <input
-              ref={damageInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  setDamageFile(file);
-                  setDamagePreview(URL.createObjectURL(file));
-                }
-              }}
-              className="hidden"
-            />
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-mono text-rosebery-charcoal font-bold block uppercase tracking-wider">
-                2. Damage Detail
-              </label>
-              <p className="text-[10.5px] text-rosebery-muted leading-relaxed">
-                Upload details of water stains, tears, raking light creasing or foxing dots.
-              </p>
-            </div>
-            {damagePreview ? (
-              <div className="relative aspect-video rounded-sm overflow-hidden bg-rosebery-cream-bg border border-rosebery-border">
-                <img src={damagePreview} alt="Damage zoom" className="w-full h-full object-contain" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDamageFile(null);
-                    if (damagePreview) URL.revokeObjectURL(damagePreview);
-                    setDamagePreview(null);
-                  }}
-                  className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded p-1 shadow transition-all cursor-pointer"
-                  title="Delete Zoom"
-                >
-                  <X className="w-3 h-3 stroke-[2.5]" />
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => damageInputRef.current?.click()}
-                className="py-2 px-3 border border-dashed border-rosebery-border hover:border-rosebery-primary bg-stone-50 text-[11px] font-mono text-rosebery-muted hover:text-rosebery-primary rounded-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer duration-200"
-              >
-                <Upload className="w-3.5 h-3.5 text-rosebery-primary" />
-                Upload Closeup
-              </button>
-            )}
-          </div>
+        <input
+          ref={supplementaryInputRef}
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) onAddSupplementaryPhoto(file);
+            e.target.value = ""; // allow re-selecting the same file again
+          }}
+          className="hidden"
+        />
 
-          {/* 3. Coin scale reference */}
-          <div className="bg-rosebery-card border border-rosebery-border rounded-sm p-3 flex flex-col justify-between space-y-3 relative overflow-hidden group hover:shadow-gallery-soft transition-all duration-200">
-            <input
-              ref={scaleInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  setScaleFile(file);
-                  setScalePreview(URL.createObjectURL(file));
-                }
-              }}
-              className="hidden"
-            />
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-mono text-rosebery-charcoal font-bold block uppercase tracking-wider">
-                3. Coin/Ruler Calibration
-              </label>
-              <p className="text-[10.5px] text-rosebery-muted leading-relaxed">
-                Upload a photo containing a coin or ruler near margins to infer physical sheet size.
-              </p>
-            </div>
-            {scalePreview ? (
-              <div className="relative aspect-video rounded-sm overflow-hidden bg-rosebery-cream-bg border border-rosebery-border">
-                <img src={scalePreview} alt="Coin calibration" className="w-full h-full object-contain" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {supplementaryPhotos.map((photo, index) => (
+            <div
+              key={photo.id}
+              className="bg-rosebery-card border border-rosebery-border rounded-sm p-3 flex flex-col gap-2.5 relative"
+            >
+              <div className="flex items-start gap-2.5">
+                <div className="relative w-20 h-20 flex-shrink-0 rounded-sm overflow-hidden bg-rosebery-cream-bg border border-rosebery-border">
+                  <img src={photo.preview} alt={`Supplementary photo ${index + 1}`} className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0 space-y-1">
+                  <label className="text-[10px] font-mono text-rosebery-charcoal font-bold block uppercase tracking-wider">
+                    Photo {index + 1} — what does this show?
+                  </label>
+                  <textarea
+                    value={photo.caption}
+                    onChange={(e) => onSupplementaryCaptionChange(photo.id, e.target.value)}
+                    placeholder="e.g. Close-up of the pencil signature, lower right margin"
+                    rows={3}
+                    className="w-full text-[11px] font-mono text-rosebery-charcoal bg-white border border-rosebery-border rounded-xs px-2 py-1.5 resize-none focus:outline-none focus:border-rosebery-primary"
+                  />
+                </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setScaleFile(null);
-                    if (scalePreview) URL.revokeObjectURL(scalePreview);
-                    setScalePreview(null);
-                  }}
-                  className="absolute top-1 right-1 bg-red-600 hover:bg-red-700 text-white rounded p-1 shadow transition-all cursor-pointer"
-                  title="Delete Zoom"
+                  onClick={() => onRemoveSupplementaryPhoto(photo.id)}
+                  className="absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white rounded p-1 shadow transition-all cursor-pointer"
+                  title="Remove photo"
                 >
                   <X className="w-3 h-3 stroke-[2.5]" />
                 </button>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => scaleInputRef.current?.click()}
-                className="py-2 px-3 border border-dashed border-rosebery-border hover:border-rosebery-primary bg-stone-50 text-[11px] font-mono text-rosebery-muted hover:text-rosebery-primary rounded-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer duration-200"
-              >
-                <Upload className="w-3.5 h-3.5 text-rosebery-primary" />
-                Upload Closeup
-              </button>
-            )}
-          </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() => supplementaryInputRef.current?.click()}
+            className="py-4 px-3 border border-dashed border-rosebery-border hover:border-rosebery-primary bg-stone-50 text-[11px] font-mono text-rosebery-muted hover:text-rosebery-primary rounded-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer duration-200 min-h-[104px]"
+          >
+            <Upload className="w-3.5 h-3.5 text-rosebery-primary" />
+            Add Supplementary Photo
+          </button>
         </div>
       </div>
     </div>
