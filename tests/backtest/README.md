@@ -10,12 +10,13 @@ then diffs the result against the withheld catalogue facts. Two parts:
    description as the Appraiser Input Agent's (Stage 1c) notes — exactly
    as a human appraiser transcribing the catalogue into the app's four
    notes boxes would. The artist name, title, and estimate are **never**
-   sent to the app — `parseDescription()` splits the catalogue text into
-   the same four boxes `AppraiserNotesInput.tsx` exposes (inscribed marks,
-   provenance, condition, catalogue refs), and none of those four boxes is
-   "who is the artist" in the real UI either — that's an assessment the
-   pipeline is meant to reach on its own, not a field an appraiser types
-   in.
+   sent to the app — `parseDescription()` splits off the artist/
+   nationality/title header from the rest of the catalogue body, and none
+   of Stage 1c's four boxes (`AppraiserNotesInput.tsx`) is "who is the
+   artist" in the real UI either — that's an assessment the pipeline is
+   meant to reach on its own, not a field an appraiser types in. Everything
+   else — medium, support, dimensions, edition markings, printer/publisher,
+   inscriptions — goes in verbatim, raw, as typed by Roseberys.
 2. **Compare** — parses the catalogue description (`parseDescription()`,
    already used by `benchmark/src/roseberys/`) to recover the withheld
    artist, title, and estimate, then flags material differences: different
@@ -70,13 +71,20 @@ Each run writes to `tests/backtest/output/<SaleCode-LotNumber>/` (gitignored
    `benchmark/src/roseberys/`) locate the `RawLot`.
 2. Downloads the primary image (`imageUrl(lot)`) and base64-encodes it.
 3. Runs `parseDescription(lot.description)` to get `ParsedLot` — used two
-   ways: `inscriptions`/`provenance`/`condition`/`catalogueRefs` become the
-   `AppraisalInput`'s `inscribedMarksNotes`/`provenanceNotes`/
-   `conditionNotes`/`catalogueNotes` (Stage 1c's input), and the whole
-   object is also the answer key for Part 2 comparison. `artist` and
-   `title` are read only for comparison — parsed but never plumbed into the
-   four notes fields, since neither has a corresponding notes box in the
-   real UI to go into.
+   ways: its fields become the `AppraisalInput`'s Stage 1c notes, and the
+   whole object is also the answer key for Part 2 comparison.
+   `catalogueNotes` gets `bodyLines` joined verbatim (the raw, unprocessed
+   catalogue text between the title line and the "Provenance" heading —
+   medium, support, dimensions, edition markings, printer/publisher,
+   inscriptions, all as typed) plus any catalogue-raisonné refs found
+   (those sit in the title line by house convention, so `bodyLines` alone
+   would miss them). `inscribedMarksNotes` and `provenanceNotes` additionally
+   get `parseDescription()`'s cleanly-split inscription and provenance
+   lines — some overlap with what's already in `catalogueNotes` is expected
+   and fine; Stage 1c's prompt is explicitly designed to scan all four
+   blocks holistically. `artist` and `title` are read only for comparison —
+   parsed but never plumbed into any notes field, since neither has a
+   corresponding notes box in the real UI to go into.
 4. Builds the `AppraisalInput` — image + those four notes fields +
    `currency: "GBP"`, no `userNotes`, no supplementary images, no
    estimate — and calls `getAppraiserFromConfig(config).appraise(input)`.
@@ -113,12 +121,14 @@ defaults to.
   backtest corpus, `benchmark/src/roseberys/extract.ts --benchmark` already
   builds blind-mode records at scale; this harness is for looking closely at
   one lot at a time.
-- `leakRisks` from `parseDescription()` (e.g. the artist's surname also
-  appearing in the body text, or a printer/publisher name) are logged as a
-  warning but don't block the run — they flag text *outside* the four
-  fields actually sent (medium/support/title lines, mainly), which stays
-  withheld regardless. They're surfaced in case the *image itself* also
-  carries a visible signature/label that would leak the same information.
+- `leakRisks` from `parseDescription()` includes "printer/publisher named"
+  and "catalogue ref(s)" even though both are now deliberately sent (they
+  double as genuinely useful appraiser-note content, not just leaks) — the
+  flag that still matters here is the artist-surname check, which would
+  mean the surname appears somewhere in the body text *outside* the title
+  line this harness excludes. That's logged as a warning but doesn't block
+  the run. It's also surfaced in case the *image itself* carries a visible
+  signature/label that would leak the same information regardless.
 - `condition` is populated by `parseDescription()`'s LLM fallback only —
   the regex pass used here (no `--llm-fallback` flag, unlike
   `benchmark/src/roseberys/extract.ts`) leaves it `null` for most lots, so

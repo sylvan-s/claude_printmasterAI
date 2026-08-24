@@ -1,18 +1,22 @@
 // Backtest harness — Part 1: given a Roseberys sale + lot number, pull the primary
 // lot image and description, and run both through the real appraisal pipeline —
-// the image as the primary scan, the description (parsed into inscriptions/
-// provenance/condition/catalogue-refs) as the Appraiser Input Agent's (Stage 1c)
-// notes, exactly as a human appraiser transcribing the catalogue would. Part 2:
-// diff the pipeline's output against the catalogue's own facts and flag material
-// differences (artist, title, estimate).
+// the image as the primary scan, the description as the Appraiser Input Agent's
+// (Stage 1c) notes, exactly as a human appraiser transcribing the catalogue
+// would. `catalogueNotes` carries the raw, unprocessed catalogue body verbatim —
+// dimensions, paper/support, technique/medium, edition markings, printer/
+// publisher, all as typed by Roseberys — while `inscribedMarksNotes` and
+// `provenanceNotes` additionally get parseDescription()'s cleanly-split
+// inscription and provenance lines, since those already have a natural home in
+// Stage 1c's own box structure. Part 2: diff the pipeline's output against the
+// catalogue's own facts and flag material differences (artist, title, estimate).
 //
 // The artist name and title themselves are never fed in — parseDescription()
-// splits the catalogue text into the same four boxes AppraiserNotesInput.tsx
-// exposes (inscribed marks, provenance, condition, catalogue refs), and none of
-// those four boxes is "who is the artist" in the real UI either; that's an
-// assessment the pipeline is meant to reach on its own, not a field a human
-// appraiser types in. The auction estimate (low_estimate/high_estimate) is
-// likewise never passed in — only used afterwards for comparison.
+// splits off the artist/nationality/title header from the rest of the catalogue
+// body, and none of Stage 1c's four boxes is "who is the artist" in the real UI
+// either; that's an assessment the pipeline is meant to reach on its own, not a
+// field a human appraiser types in. The auction estimate (low_estimate/
+// high_estimate) is likewise never passed in — only used afterwards for
+// comparison.
 //
 // Usage — see README.md for full details:
 //   npx tsx tests/backtest/run_backtest.ts --sale A0800 --lot 123
@@ -111,12 +115,17 @@ async function main() {
   console.log(`[Backtest] Downloading primary image: ${imgUrl}`);
   const { base64, mimeType } = await downloadImageBase64(imgUrl);
 
-  // Ground truth — parsed once, used two ways below: the non-attribution fields
-  // (inscriptions/provenance/condition/catalogueRefs) become the Appraiser Input
-  // Agent's notes; the whole object is also the answer key for Part 2 comparison.
+  // Ground truth — parsed once, used two ways below: most of it becomes the
+  // Appraiser Input Agent's notes (see below); the whole object is also the
+  // answer key for Part 2 comparison. Catalogue refs / printer / publisher in
+  // parseDescription()'s leakRisks are expected here (they're deliberately
+  // sent as notes content) — only a surname restated in the body text itself
+  // is a genuine concern, since that's outside anything this harness intends
+  // to send.
   const groundTruth: ParsedLot = parseDescription(rawLot.description);
-  if (groundTruth.leakRisks.length > 0) {
-    console.log(`[Backtest] Note: catalogue text carries leak risks beyond the four notes fields (e.g. artist surname elsewhere in the body): ${groundTruth.leakRisks.join("; ")}`);
+  const surnameLeak = groundTruth.leakRisks.find((r) => r.startsWith("artist surname"));
+  if (surnameLeak) {
+    console.log(`[Backtest] Note: ${surnameLeak} — the catalogue body itself restates the artist's name, beyond what this harness intends to send.`);
   }
 
   const config = appraiserConfigs.find((c) => c.id === method);
@@ -125,6 +134,22 @@ async function main() {
   const geminiKey = process.env.GEMINI_API_KEY;
   const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
   const appraiser = getAppraiserFromConfig(config, ai);
+
+  // catalogueNotes gets the raw, unprocessed catalogue body verbatim — everything
+  // between the title line and the "Provenance" heading (medium, support, sheet/
+  // image dimensions, edition markings, printer/publisher, inscriptions — as
+  // typed by Roseberys, not re-derived from the individual parsed fields) — so
+  // Stage 1c sees the same physical/technical detail a human appraiser reading
+  // the catalogue would transcribe. It's still just the raw text of ParsedLot's
+  // bodyLines, which by construction excludes the artist/nationality/title
+  // header lines that precede it. Catalogue-raisonné refs (e.g. "Bloch 1244")
+  // are appended explicitly since the house convention puts them in the title
+  // line (bracketed, e.g. "...; [Bloch 1244]"), which bodyLines excludes.
+  const catalogueRefsLine = groundTruth.catalogueRefs.length
+    ? `Catalogue reference(s): ${groundTruth.catalogueRefs.join(", ")}`
+    : null;
+  const rawCatalogueNotes =
+    [groundTruth.bodyLines.join("\n"), catalogueRefsLine].filter(Boolean).join("\n\n") || undefined;
 
   // Image as the primary scan, plus the catalogue text reshaped into the same
   // four boxes AppraiserNotesInput.tsx exposes, fed to Stage 1c (Appraiser Input
@@ -136,7 +161,7 @@ async function main() {
     inscribedMarksNotes: groundTruth.inscriptions || undefined,
     provenanceNotes: groundTruth.provenance || undefined,
     conditionNotes: groundTruth.condition || undefined,
-    catalogueNotes: groundTruth.catalogueRefs.length ? groundTruth.catalogueRefs.join(", ") : undefined,
+    catalogueNotes: rawCatalogueNotes,
   };
 
   const notesFieldsUsed = (["inscribedMarksNotes", "provenanceNotes", "conditionNotes", "catalogueNotes"] as const)
