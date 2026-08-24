@@ -1102,6 +1102,7 @@ export default function ReportView({
                 <div className="flex flex-wrap border-b border-rosebery-border gap-2 text-xs font-mono">
                   {[
                     { id: "authenticity", label: "Authenticity & Scan" },
+                    { id: "composition", label: "Subject & Style" },
                     { id: "paper", label: "Paper & Sheet" },
                     { id: "dimensions", label: "Dimensions & Margins" },
                     { id: "ink", label: "Ink & Printing" },
@@ -1193,6 +1194,77 @@ export default function ReportView({
                           )}
                         </div>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Composition Tab */}
+                  {activeObsTab === "composition" && (
+                    <div className="space-y-4 animate-fadeIn">
+                      {report.stage1Result.composition ? (
+                        <>
+                          <div className="bg-stone-50 border border-rosebery-border p-4 rounded space-y-1.5">
+                            <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block">Subject Matter</span>
+                            <p className="text-sm text-rosebery-charcoal leading-relaxed">{report.stage1Result.composition.subjectMatter}</p>
+                          </div>
+
+                          <div className="bg-stone-50 border border-rosebery-border p-4 rounded space-y-1.5">
+                            <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block">Visual Style</span>
+                            <p className="text-sm text-rosebery-charcoal leading-relaxed">{report.stage1Result.composition.visualStyle}</p>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
+                              <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Subject Category</span>
+                              <span className="font-bold text-rosebery-charcoal uppercase">{report.stage1Result.composition.subjectCategory?.replace(/_/g, " ") || "Unknown"}</span>
+                            </div>
+                            <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
+                              <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Image Boundary</span>
+                              <span className="font-bold text-rosebery-charcoal uppercase">{report.stage1Result.composition.imageBoundary?.replace(/_/g, " ") || "Unknown"}</span>
+                            </div>
+                            <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
+                              <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Image-to-Sheet Ratio</span>
+                              <span className="font-bold text-rosebery-charcoal">{report.stage1Result.composition.imageToSheetRatio || "Not assessed"}</span>
+                            </div>
+                            <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
+                              <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Composition Confidence</span>
+                              <span className="font-bold text-rosebery-primary">
+                                {typeof report.stage1Result.composition.compositionConfidence === "number"
+                                  ? `${Math.round(report.stage1Result.composition.compositionConfidence * 100)}%`
+                                  : "N/A"}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="bg-stone-50 border border-rosebery-border p-4 rounded space-y-1.5">
+                            <span className="text-[10px] font-mono text-rosebery-primary uppercase tracking-wider font-semibold block">Colour Palette</span>
+                            <p className="text-xs text-rosebery-muted leading-relaxed">
+                              {report.stage1Result.composition.colourPaletteSummary || "Not assessed"}
+                              {typeof report.stage1Result.composition.numberOfColours === "number" && (
+                                <span className="ml-2 font-mono text-rosebery-primary font-bold">({report.stage1Result.composition.numberOfColours} colours)</span>
+                              )}
+                            </p>
+                          </div>
+
+                          {(report.stage1Result.composition.textWithinImage || report.stage1Result.composition.dateWithinImage) && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {report.stage1Result.composition.textWithinImage && (
+                                <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
+                                  <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Text Within Image</span>
+                                  <span className="font-serif italic text-rosebery-primary">"{report.stage1Result.composition.textWithinImage}"</span>
+                                </div>
+                              )}
+                              {report.stage1Result.composition.dateWithinImage && (
+                                <div className="bg-stone-50 border border-rosebery-border p-3.5 rounded">
+                                  <span className="text-[10px] font-mono text-rosebery-muted uppercase block mb-1">Date Within Image</span>
+                                  <span className="font-bold text-rosebery-charcoal">{report.stage1Result.composition.dateWithinImage}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-rosebery-muted bg-stone-50 p-3.5 border border-rosebery-border rounded">No composition/style observations logged for this scan.</div>
+                      )}
                     </div>
                   )}
 
@@ -1362,7 +1434,7 @@ export default function ReportView({
                                   <div className="flex justify-between items-center">
                                     <span className="font-bold text-rosebery-charcoal">{tech.technique} ({tech.family})</span>
                                     <span className="bg-white border border-rosebery-border px-1.5 py-0.5 rounded font-mono font-bold text-rosebery-primary text-[9px]">
-                                      {tech.techniqueConfidence}% confidence
+                                      {Math.round(tech.techniqueConfidence * 100)}% confidence
                                     </span>
                                   </div>
                                   {tech.visualEvidence && tech.visualEvidence.length > 0 && (
@@ -1443,7 +1515,7 @@ export default function ReportView({
                                 <div className="space-y-1 flex-1 text-xs">
                                   <div className="flex justify-between items-start gap-1">
                                     <span className="font-bold text-rosebery-charcoal uppercase text-[10px]">{sig.type.replace(/_/g, " ")}</span>
-                                    <span className="bg-white border border-rosebery-border px-1 py-0.5 rounded font-mono text-[9px] text-rosebery-primary font-bold">{sig.signatureConfidence}% confidence</span>
+                                    <span className="bg-white border border-rosebery-border px-1 py-0.5 rounded font-mono text-[9px] text-rosebery-primary font-bold">{Math.round(sig.signatureConfidence * 100)}% confidence</span>
                                   </div>
                                   <p className="text-[11px] font-serif italic text-rosebery-primary">Transcription: "{sig.transcription}"</p>
                                   <p className="text-[10px] text-rosebery-muted">Medium: <strong>{sig.medium}</strong> | Location: <strong>{sig.location}</strong></p>
