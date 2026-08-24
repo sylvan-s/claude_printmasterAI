@@ -4,12 +4,18 @@ Runs the real appraisal pipeline blind against a live Roseberys auction lot,
 then diffs the result against the withheld catalogue facts. Two parts:
 
 1. **Fetch + run** — given a sale reference and lot number, pull the primary
-   lot image from Roseberys and feed it through the actual production
-   pipeline (`getAppraiserFromConfig`, same entry point `server.ts` uses).
-   The catalogue's own description, artist, and estimate are **never** sent
-   to the app — only the image. This is what makes it a genuine test of
-   independent attribution rather than a check that the app echoes back
-   what it was told.
+   lot image and the catalogue description from Roseberys, and feed both
+   through the actual production pipeline (`getAppraiserFromConfig`, same
+   entry point `server.ts` uses): the image as the primary scan, the
+   description as the Appraiser Input Agent's (Stage 1c) notes — exactly
+   as a human appraiser transcribing the catalogue into the app's four
+   notes boxes would. The artist name, title, and estimate are **never**
+   sent to the app — `parseDescription()` splits the catalogue text into
+   the same four boxes `AppraiserNotesInput.tsx` exposes (inscribed marks,
+   provenance, condition, catalogue refs), and none of those four boxes is
+   "who is the artist" in the real UI either — that's an assessment the
+   pipeline is meant to reach on its own, not a field an appraiser types
+   in.
 2. **Compare** — parses the catalogue description (`parseDescription()`,
    already used by `benchmark/src/roseberys/`) to recover the withheld
    artist, title, and estimate, then flags material differences: different
@@ -47,11 +53,13 @@ picker uses, so anything selectable in the UI is selectable here.
 Each run writes to `tests/backtest/output/<SaleCode-LotNumber>/` (gitignored
 — regenerate, don't commit):
 
-- `result.json` — full run record: sale/lot metadata, the app's
-  `PrintAnalysisReport`, the parsed ground truth (`ParsedLot`), the raw lot
-  record, and the comparison verdict.
+- `result.json` — full run record: sale/lot metadata, the exact
+  `appraiserInputNotes` sent to Stage 1c, the app's `PrintAnalysisReport`,
+  the parsed ground truth (`ParsedLot`), the raw lot record, and the
+  comparison verdict.
 - `report.html` — a self-contained side-by-side report: the lot image, the
-  app's blind output next to the catalogue's withheld facts, match/mismatch
+  notes given to the Appraiser Input Agent and what it extracted from them,
+  the app's output next to the catalogue's withheld facts, match/mismatch
   tags on artist/title/estimate, and the material-differences list called
   out at the top. Open directly in a browser — no server needed.
 
@@ -61,11 +69,17 @@ Each run writes to `tests/backtest/output/<SaleCode-LotNumber>/` (gitignored
 1. `resolveSaleRef()` + `fetchLotByNumber()` (both in
    `benchmark/src/roseberys/`) locate the `RawLot`.
 2. Downloads the primary image (`imageUrl(lot)`) and base64-encodes it.
-3. Runs `parseDescription(lot.description)` to get the ground truth
-   (`ParsedLot`) — held aside, never passed into the pipeline call.
-4. Builds a minimal `AppraisalInput` — image + `currency: "GBP"` only, no
-   `userNotes`, no supplementary images, no catalogue text — and calls
-   `getAppraiserFromConfig(config).appraise(input)`.
+3. Runs `parseDescription(lot.description)` to get `ParsedLot` — used two
+   ways: `inscriptions`/`provenance`/`condition`/`catalogueRefs` become the
+   `AppraisalInput`'s `inscribedMarksNotes`/`provenanceNotes`/
+   `conditionNotes`/`catalogueNotes` (Stage 1c's input), and the whole
+   object is also the answer key for Part 2 comparison. `artist` and
+   `title` are read only for comparison — parsed but never plumbed into the
+   four notes fields, since neither has a corresponding notes box in the
+   real UI to go into.
+4. Builds the `AppraisalInput` — image + those four notes fields +
+   `currency: "GBP"`, no `userNotes`, no supplementary images, no
+   estimate — and calls `getAppraiserFromConfig(config).appraise(input)`.
 5. `compare.ts` diffs the resulting `PrintAnalysisReport` against the
    `ParsedLot` and the raw estimate fields.
 
@@ -100,9 +114,15 @@ defaults to.
   builds blind-mode records at scale; this harness is for looking closely at
   one lot at a time.
 - `leakRisks` from `parseDescription()` (e.g. the artist's surname also
-  appearing in the body text) are logged as a warning but don't block the
-  run — they're a property of the *catalogue prose*, which is never sent to
-  the app anyway. They're surfaced in case the *image itself* also carries
-  a visible signature/label that would leak the same information.
+  appearing in the body text, or a printer/publisher name) are logged as a
+  warning but don't block the run — they flag text *outside* the four
+  fields actually sent (medium/support/title lines, mainly), which stays
+  withheld regardless. They're surfaced in case the *image itself* also
+  carries a visible signature/label that would leak the same information.
+- `condition` is populated by `parseDescription()`'s LLM fallback only —
+  the regex pass used here (no `--llm-fallback` flag, unlike
+  `benchmark/src/roseberys/extract.ts`) leaves it `null` for most lots, so
+  `conditionNotes` is often empty. That matches reality: Roseberys'
+  catalogue prose rarely states condition explicitly.
 - No automated pass/fail threshold across a batch of lots — each run is
   read individually via the HTML report.

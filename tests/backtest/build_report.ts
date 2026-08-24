@@ -7,11 +7,19 @@ import type { ParsedLot } from "../../benchmark/src/roseberys/parse";
 import type { RawLot } from "../../benchmark/src/roseberys/api";
 import type { BacktestComparison, NameMatch, TitleMatch } from "./compare";
 
+export interface AppraiserInputNotes {
+  inscribedMarksNotes: string | null;
+  provenanceNotes: string | null;
+  conditionNotes: string | null;
+  catalogueNotes: string | null;
+}
+
 export interface BacktestReportInput {
   lotId: string;
   lotUrl: string;
   imageDataUrl: string;
   method: string;
+  appraiserInputNotes: AppraiserInputNotes;
   report: PrintAnalysisReport;
   groundTruth: ParsedLot;
   rawLot: RawLot;
@@ -104,8 +112,48 @@ function money(v: number | null, currency: string): string {
   return `${currency} ${v.toLocaleString()}`;
 }
 
+const NOTES_LABELS: Record<keyof AppraiserInputNotes, string> = {
+  inscribedMarksNotes: "Inscribed marks & text",
+  provenanceNotes: "Provenance & ownership",
+  conditionNotes: "Condition",
+  catalogueNotes: "Catalogue / literature refs",
+};
+
+function notesGivenHtml(notes: AppraiserInputNotes): string {
+  const entries = (Object.keys(NOTES_LABELS) as (keyof AppraiserInputNotes)[])
+    .map((k) => [NOTES_LABELS[k], notes[k]] as const)
+    .filter(([, v]) => v);
+  if (entries.length === 0) {
+    return `<span style="color:var(--ink-faint);font-style:italic;">Nothing extracted from this lot's catalogue text — Stage 1c ran with no notes.</span>`;
+  }
+  return entries.map(([label, v]) => `<strong>${esc(label)}:</strong> ${esc(v)}`).join("\n\n");
+}
+
+/** Stage 1c's own extraction, if the pipeline ran it (only FourStageAppraiser does).
+ *  Interesting mainly for claimedAttribution — did text evidence alone (inscriptions/
+ *  provenance/catalogue refs, never the artist's name itself) let it guess the artist? */
+function stage1cSectionHtml(report: PrintAnalysisReport): string {
+  const s1c = report.stage1cResult as any;
+  if (!s1c) return "";
+  const attr = s1c.claimedAttribution;
+  const attrLine =
+    attr && attr.status !== "absent"
+      ? `${esc(attr.artist ?? "—")} / ${esc(attr.title ?? "—")} <span class="match-tag ${attr.status === "documented_fact" ? "match" : "partial"}">${esc(attr.status)}</span> <span class="conf">from ${esc(attr.sourceField ?? "?")}</span>`
+      : `<span style="color:var(--ink-faint);font-style:italic;">no attribution claim found in the notes</span>`;
+  const refs = (s1c.catalogueReferences ?? []).map((r: any) => r.ref).join(", ") || "—";
+  return `
+<div class="section">
+  <h2>Stage 1c extraction (from the notes above, text-only)</h2>
+  <div class="prose">
+    <strong>Claimed attribution:</strong> ${attrLine}
+    <br><strong>Catalogue references:</strong> ${esc(refs)}
+    <br><strong>Extraction confidence:</strong> ${((s1c.overallExtractionConfidence ?? 0) * 100).toFixed(0)}%
+  </div>
+</div>`;
+}
+
 export function buildBacktestReport(input: BacktestReportInput): string {
-  const { lotId, lotUrl, imageDataUrl, method, report, groundTruth, rawLot, comparison } = input;
+  const { lotId, lotUrl, imageDataUrl, method, appraiserInputNotes, report, groundTruth, rawLot, comparison } = input;
 
   const verdictLabel =
     comparison.overallVerdict === "consistent" ? "Consistent with catalogue" : "Material differences found";
@@ -146,8 +194,8 @@ ${diffsHtml}
   <div class="plate"><img src="${imageDataUrl}" alt="Lot image"></div>
   <div class="compare-grid">
     <div class="compare-col">
-      <h2>App (blind — image only)</h2>
-      <div class="sub">no catalogue text was provided as input</div>
+      <h2>App output</h2>
+      <div class="sub">image + appraiser notes below — never told the artist/title/estimate</div>
 
       <div class="field">
         <div class="label">Artist</div>
@@ -206,6 +254,13 @@ ${diffsHtml}
     </div>
   </div>
 </div>
+
+<div class="section">
+  <h2>Appraiser Input Agent (Stage 1c) — notes given to the app</h2>
+  <div class="prose">${notesGivenHtml(appraiserInputNotes)}</div>
+</div>
+
+${stage1cSectionHtml(report)}
 
 <div class="section">
   <h2>App visual description</h2>

@@ -1,12 +1,18 @@
 // Backtest harness — Part 1: given a Roseberys sale + lot number, pull the primary
-// lot image and run it through the real appraisal pipeline BLIND (image only, no
-// catalogue text). Part 2: diff the pipeline's output against the withheld
-// catalogue facts and flag material differences (artist, title, estimate).
+// lot image and description, and run both through the real appraisal pipeline —
+// the image as the primary scan, the description (parsed into inscriptions/
+// provenance/condition/catalogue-refs) as the Appraiser Input Agent's (Stage 1c)
+// notes, exactly as a human appraiser transcribing the catalogue would. Part 2:
+// diff the pipeline's output against the catalogue's own facts and flag material
+// differences (artist, title, estimate).
 //
-// The ground truth (parseDescription() of lot.description, plus low/high estimate)
-// is never passed into AppraisalInput — only used afterwards for comparison. This
-// is what makes the run a genuine test of the pipeline's independent attribution,
-// not a check that it echoes back what it was told.
+// The artist name and title themselves are never fed in — parseDescription()
+// splits the catalogue text into the same four boxes AppraiserNotesInput.tsx
+// exposes (inscribed marks, provenance, condition, catalogue refs), and none of
+// those four boxes is "who is the artist" in the real UI either; that's an
+// assessment the pipeline is meant to reach on its own, not a field a human
+// appraiser types in. The auction estimate (low_estimate/high_estimate) is
+// likewise never passed in — only used afterwards for comparison.
 //
 // Usage — see README.md for full details:
 //   npx tsx tests/backtest/run_backtest.ts --sale A0800 --lot 123
@@ -105,11 +111,12 @@ async function main() {
   console.log(`[Backtest] Downloading primary image: ${imgUrl}`);
   const { base64, mimeType } = await downloadImageBase64(imgUrl);
 
-  // Ground truth — parsed from the catalogue description, withheld from the app.
-  // This must never be threaded into `input` below.
+  // Ground truth — parsed once, used two ways below: the non-attribution fields
+  // (inscriptions/provenance/condition/catalogueRefs) become the Appraiser Input
+  // Agent's notes; the whole object is also the answer key for Part 2 comparison.
   const groundTruth: ParsedLot = parseDescription(rawLot.description);
   if (groundTruth.leakRisks.length > 0) {
-    console.log(`[Backtest] Note: catalogue text carries leak risks (not sent to the app): ${groundTruth.leakRisks.join("; ")}`);
+    console.log(`[Backtest] Note: catalogue text carries leak risks beyond the four notes fields (e.g. artist surname elsewhere in the body): ${groundTruth.leakRisks.join("; ")}`);
   }
 
   const config = appraiserConfigs.find((c) => c.id === method);
@@ -119,8 +126,26 @@ async function main() {
   const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
   const appraiser = getAppraiserFromConfig(config, ai);
 
-  // Blind input: image only. No userNotes, no supplementary photos, no catalogue text.
-  const input: AppraisalInput = { imageBase64: base64, mimeType, currency: "GBP" };
+  // Image as the primary scan, plus the catalogue text reshaped into the same
+  // four boxes AppraiserNotesInput.tsx exposes, fed to Stage 1c (Appraiser Input
+  // Agent). No userNotes, no supplementary photos, no estimate.
+  const input: AppraisalInput = {
+    imageBase64: base64,
+    mimeType,
+    currency: "GBP",
+    inscribedMarksNotes: groundTruth.inscriptions || undefined,
+    provenanceNotes: groundTruth.provenance || undefined,
+    conditionNotes: groundTruth.condition || undefined,
+    catalogueNotes: groundTruth.catalogueRefs.length ? groundTruth.catalogueRefs.join(", ") : undefined,
+  };
+
+  const notesFieldsUsed = (["inscribedMarksNotes", "provenanceNotes", "conditionNotes", "catalogueNotes"] as const)
+    .filter((k) => input[k]);
+  console.log(
+    notesFieldsUsed.length
+      ? `[Backtest] Appraiser Input Agent notes populated: ${notesFieldsUsed.join(", ")}`
+      : `[Backtest] No appraiser notes extracted from this lot's catalogue text — Stage 1c will run with nothing to extract.`,
+  );
 
   console.log(`[Backtest] Running pipeline (method: ${method})...`);
   const t0 = Date.now();
@@ -148,6 +173,12 @@ async function main() {
         sale: auction,
         lotUrl: lotUrl(rawLot),
         method,
+        appraiserInputNotes: {
+          inscribedMarksNotes: input.inscribedMarksNotes ?? null,
+          provenanceNotes: input.provenanceNotes ?? null,
+          conditionNotes: input.conditionNotes ?? null,
+          catalogueNotes: input.catalogueNotes ?? null,
+        },
         report,
         groundTruth,
         rawLot: { ...rawLot, description: undefined }, // description kept out of the JSON body; see rawLotDescriptionHtml below
@@ -164,6 +195,12 @@ async function main() {
     lotUrl: lotUrl(rawLot),
     imageDataUrl: `data:${mimeType};base64,${base64}`,
     method,
+    appraiserInputNotes: {
+      inscribedMarksNotes: input.inscribedMarksNotes ?? null,
+      provenanceNotes: input.provenanceNotes ?? null,
+      conditionNotes: input.conditionNotes ?? null,
+      catalogueNotes: input.catalogueNotes ?? null,
+    },
     report,
     groundTruth,
     rawLot,
