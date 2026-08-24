@@ -1510,10 +1510,19 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const emit = input.onProgress ?? (() => {});
     const t0 = Date.now();
 
-    // Stage 1c (Appraiser Input Agent) has no dependency on images or VEA —
-    // see ADR-0004. Launched here so it runs concurrently with Stage 1a
-    // rather than waiting for VEA to finish first; awaited below once we
-    // know VEA didn't halt.
+    // Stage 1b (Visual Search) and Stage 1c (Appraiser Input Agent) both have
+    // zero dependency on VEA — 1b only needs the primary image, 1c only needs
+    // the appraiser's text — so both launch immediately, fully concurrent
+    // with Stage 1a rather than waiting for VEA to finish first. (Stage 2a
+    // still needs VEA's output, so that one genuinely can't start yet.)
+    // Neither promise can reject — both wrap their own errors internally and
+    // resolve to an empty/default result — so no unhandled-rejection risk
+    // from starting them before anything awaits them.
+    emit({ stage: "stage1b", status: "start", message: "Searching global image databases for visual matches…", percent: 5 });
+    const visualSearchPromise = runVisualSearch
+      ? this.runStage1bVisionSearch(input.imageBase64, input.mimeType)
+      : Promise.resolve(undefined);
+
     emit({ stage: "stage1c", status: "start", message: "Extracting structured claims from appraiser notes…", percent: 5 });
     const appraiserInputPromise = this.runStage1cAppraiserInput({
       inscribedMarksNotes: input.inscribedMarksNotes,
@@ -1534,16 +1543,14 @@ export class FourStageAppraiser extends MultiStageAppraiser {
       return halt;
     }
 
-    // Stage 1b (visual search) + Stage 2a (triage) run in parallel. Stage 2a
-    // waits on Stage 1c (usually near-instant — it returns immediately when
-    // no notes were submitted) so Triage can weigh the appraiser's
-    // trust-tagged claims alongside VEA's physical evidence.
-    emit({ stage: "stage1b", status: "start", message: "Searching global image databases for visual matches…", percent: 22 });
+    // Stage 1b and Stage 1c were already launched above; awaited here
+    // alongside Stage 2a (Triage), which itself waits on Stage 1c (usually
+    // near-instant — it returns immediately when no notes were submitted)
+    // so Triage can weigh the appraiser's trust-tagged claims alongside
+    // VEA's physical evidence.
     emit({ stage: "stage2a", status: "start", message: "Triaging attribution complexity and routing to specialist…", percent: 24 });
     const [visualSearch, triageResult, appraiserInput] = await Promise.all([
-      runVisualSearch
-        ? this.runStage1bVisionSearch(input.imageBase64, input.mimeType)
-        : Promise.resolve(undefined),
+      visualSearchPromise,
       (async () => {
         const appraiserInputResult = await appraiserInputPromise;
         const t2a = Date.now();

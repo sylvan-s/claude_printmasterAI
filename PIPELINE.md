@@ -5,16 +5,14 @@
 The appraisal system supports both a 3-stage and a 4-stage pipeline, implemented in `src/appraisal/appraiser.ts`. The 4-stage pipeline is the primary production path. All stages communicate via structured JSON — **only Stage 1a ever sees the images**, and only Stage 1c ever sees the appraiser's free-text notes.
 
 ```
-   images                                appraiser free-text notes
-     │                                              │
-     ▼                                              ▼
-Stage 1a (VEA)                              Stage 1c (Appraiser Input Agent)
-     │                                              │
-     │            Stage 1b (Visual Search)          │
-     │             (runs after Stage 1a)             │
-     │                     │                         │
-     └──────────┬──────────┴────────────┬───────────┘
-                ▼ Stage 2a waits on Stage 1c; Stage 1b runs independently
+   images                     images                appraiser free-text notes
+     │                          │                              │
+     ▼                          ▼                              ▼
+Stage 1a (VEA)           Stage 1b (Visual Search)        Stage 1c (Appraiser Input Agent)
+     │                          │                              │
+     │   all three launch immediately and run fully concurrently  │
+     └──────────┬───────────────┴──────────────┬───────────────┘
+                ▼ Stage 2a waits on Stage 1a + Stage 1c; Stage 1b resolves independently
          Stage 2a (Triage)
                 │
                 ▼
@@ -26,6 +24,8 @@ Stage 1a (VEA)                              Stage 1c (Appraiser Input Agent)
                 ▼
          PrintAnalysisReport
 ```
+
+**Cost/latency tradeoff:** because Stage 1b starts before VEA's halt-gate result is known, a submission that VEA flags as a digital reproduction (Section 0, see below) still pays for a Stage 1b Gemini call whose result gets discarded — a deliberate latency-over-cost choice, since most submissions are real physical prints and halts are the exception.
 
 ---
 
@@ -62,7 +62,7 @@ All features with bounding boxes returned in `[ymin, xmin, ymax, xmax]` format o
 ## Stage 1b — Gemini Visual Search
 
 **Model:** Gemini 2.5 Flash (hardcoded — `STAGE1B_MODEL`)
-**Runs:** After Stage 1a, independently of Stage 1c and Stage 2a
+**Runs:** Launched immediately, fully concurrent with Stage 1a and Stage 1c — needs only the primary image, no dependency on VEA's output. Resolves independently; nothing downstream waits on it until Stage 2b.
 **Receives:** Primary image + Google Search tool
 
 ### What it does
