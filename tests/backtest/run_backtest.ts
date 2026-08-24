@@ -1,0 +1,180 @@
+// Backtest harness — Part 1: given a Roseberys sale + lot number, pull the primary
+// lot image and run it through the real appraisal pipeline BLIND (image only, no
+// catalogue text). Part 2: diff the pipeline's output against the withheld
+// catalogue facts and flag material differences (artist, title, estimate).
+//
+// The ground truth (parseDescription() of lot.description, plus low/high estimate)
+// is never passed into AppraisalInput — only used afterwards for comparison. This
+// is what makes the run a genuine test of the pipeline's independent attribution,
+// not a check that it echoes back what it was told.
+//
+// Usage — see README.md for full details:
+//   npx tsx tests/backtest/run_backtest.ts --sale A0800 --lot 123
+//   npx tsx tests/backtest/run_backtest.ts --sale 665 --lot 45A --method claude-4stage-fast
+
+import dotenv from "dotenv";
+dotenv.config();
+
+import { writeFileSync, mkdirSync } from "fs";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { GoogleGenAI } from "@google/genai";
+import { getAppraiserFromConfig, appraiserConfigs, type AppraisalInput } from "../../src/appraisal/appraiser";
+import { resolveSaleRef } from "../../benchmark/src/roseberys/discover";
+import { fetchLotByNumber, imageUrl, lotUrl, type RawLot } from "../../benchmark/src/roseberys/api";
+import { parseDescription, type ParsedLot } from "../../benchmark/src/roseberys/parse";
+import { compareResults, type BacktestComparison } from "./compare";
+import { buildBacktestReport } from "./build_report";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const DEFAULT_METHOD = "claude-4stage"; // production default
+
+interface Args {
+  sale: string;
+  lot: string;
+  method: string;
+}
+
+function parseArgs(argv: string[]): Args {
+  let sale: string | undefined;
+  let lot: string | undefined;
+  let method = DEFAULT_METHOD;
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--sale") sale = argv[++i];
+    else if (arg === "--lot") lot = argv[++i];
+    else if (arg === "--method") method = argv[++i];
+    else if (arg === "--help" || arg === "-h") {
+      printHelp();
+      process.exit(0);
+    } else {
+      console.error(`Unrecognised argument: ${arg}`);
+      printHelp();
+      process.exit(1);
+    }
+  }
+  if (!sale || !lot) {
+    console.error("Both --sale and --lot are required.\n");
+    printHelp();
+    process.exit(1);
+  }
+  return { sale, lot, method };
+}
+
+function printHelp() {
+  console.error(`
+Backtest harness — run the real pipeline blind against a Roseberys lot and diff
+the output against the withheld catalogue facts.
+
+  --sale <ref>      Auction id ("665"), sale code ("A0800"), or slug fragment
+  --lot <number>     Lot number as shown in the catalogue, e.g. "123" or "45A"
+  --method <id>      Appraiser config id from appraiserConfigs (default: ${DEFAULT_METHOD})
+
+Example:
+  npx tsx tests/backtest/run_backtest.ts --sale A0800 --lot 123
+`);
+}
+
+async function downloadImageBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Image fetch failed: ${url}: HTTP ${res.status}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  const mimeType = res.headers.get("content-type") || "image/jpeg";
+  return { base64: buf.toString("base64"), mimeType };
+}
+
+function slugify(s: string): string {
+  return s.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").slice(0, 60) || "lot";
+}
+
+async function main() {
+  const { sale, lot: lotNumber, method } = parseArgs(process.argv.slice(2));
+
+  console.log(`[Backtest] Resolving sale "${sale}"...`);
+  const auction = await resolveSaleRef(sale);
+  if (!auction) throw new Error(`Could not resolve sale reference "${sale}"`);
+  console.log(`[Backtest] Sale resolved: ${auction.saleCode} (auction_id ${auction.auctionId})`);
+
+  console.log(`[Backtest] Fetching lot ${lotNumber}...`);
+  const rawLot: RawLot | null = await fetchLotByNumber(auction.auctionId, lotNumber);
+  if (!rawLot) throw new Error(`Lot ${lotNumber} not found in sale ${auction.saleCode}`);
+
+  const imgUrl = imageUrl(rawLot);
+  if (!imgUrl) throw new Error(`Lot ${lotNumber} has no primary image`);
+  console.log(`[Backtest] Downloading primary image: ${imgUrl}`);
+  const { base64, mimeType } = await downloadImageBase64(imgUrl);
+
+  // Ground truth — parsed from the catalogue description, withheld from the app.
+  // This must never be threaded into `input` below.
+  const groundTruth: ParsedLot = parseDescription(rawLot.description);
+  if (groundTruth.leakRisks.length > 0) {
+    console.log(`[Backtest] Note: catalogue text carries leak risks (not sent to the app): ${groundTruth.leakRisks.join("; ")}`);
+  }
+
+  const config = appraiserConfigs.find((c) => c.id === method);
+  if (!config) throw new Error(`Unknown method "${method}" — check appraiserConfigs in src/appraisal/appraiser.ts`);
+
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
+  const appraiser = getAppraiserFromConfig(config, ai);
+
+  // Blind input: image only. No userNotes, no supplementary photos, no catalogue text.
+  const input: AppraisalInput = { imageBase64: base64, mimeType, currency: "GBP" };
+
+  console.log(`[Backtest] Running pipeline (method: ${method})...`);
+  const t0 = Date.now();
+  const report = await appraiser.appraise(input);
+  const elapsedS = ((Date.now() - t0) / 1000).toFixed(1);
+  console.log(`[Backtest] Done in ${elapsedS}s — app says: "${report.likelyArtist}" / "${report.artworkTitle}"`);
+
+  const comparison: BacktestComparison = compareResults(report, groundTruth, rawLot);
+
+  console.log(`[Backtest] Catalogue says: "${groundTruth.artist}" / "${groundTruth.title}"`);
+  console.log(`[Backtest] Verdict: ${comparison.overallVerdict}`);
+  if (comparison.materialDifferences.length > 0) {
+    for (const d of comparison.materialDifferences) console.log(`  - ${d}`);
+  }
+
+  const lotId = `${auction.saleCode}-${rawLot.lot_number}`;
+  const outDir = `${__dirname}/output/${slugify(lotId)}`;
+  mkdirSync(outDir, { recursive: true });
+
+  writeFileSync(
+    `${outDir}/result.json`,
+    JSON.stringify(
+      {
+        lotId,
+        sale: auction,
+        lotUrl: lotUrl(rawLot),
+        method,
+        report,
+        groundTruth,
+        rawLot: { ...rawLot, description: undefined }, // description kept out of the JSON body; see rawLotDescriptionHtml below
+        rawLotDescriptionHtml: rawLot.description,
+        comparison,
+      },
+      null,
+      2,
+    ),
+  );
+
+  const html = buildBacktestReport({
+    lotId,
+    lotUrl: lotUrl(rawLot),
+    imageDataUrl: `data:${mimeType};base64,${base64}`,
+    method,
+    report,
+    groundTruth,
+    rawLot,
+    comparison,
+  });
+  writeFileSync(`${outDir}/report.html`, html);
+
+  console.log(`\n[Backtest] Wrote ${outDir}/result.json and report.html`);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
