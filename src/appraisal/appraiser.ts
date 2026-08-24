@@ -79,6 +79,14 @@ export interface AppraisalInput {
   supplementaryImages?: SupplementaryImageInput[];
   currency?: string;
   onProgress?: (event: AppraisalProgressEvent) => void;
+  // Backtest/eval-harness only — not something a real submitting user would ever
+  // set. When this input's image/description were sourced from a live auction
+  // listing (e.g. tests/backtest/), pass that listing's identity here so Stage 3
+  // can recognise and exclude it from its own comps: Stage 2b's web search can
+  // find the very listing this input came from, and using its own price as a
+  // "comp" for the item it's describing would make the valuation circular rather
+  // than independent.
+  testingExcludeSourceListing?: string;
 }
 
 export interface AppraisalMethod {
@@ -1179,14 +1187,25 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     stage3Model: string,
     ai: GoogleGenAI,
     currency: string,
-    userNotes?: string
+    userNotes?: string,
+    testingExcludeSourceListing?: string
   ): Promise<Partial<PrintAnalysisReport>> {
     const systemInstruction = resolveCustomPrompt(VALUATION_REPORT_SYSTEM_PROMPT, currency, userNotes);
     const auctionComps = (attr as any).auctionComps;
     const compsNote = Array.isArray(auctionComps) && auctionComps.length > 0
       ? `\n\nAUCTION COMPS (collected during Stage 2b research — use these for valuation):\n${JSON.stringify(auctionComps, null, 2)}`
       : "\n\nAUCTION COMPS: None found during Stage 2b research — base valuation on condition and rarity factors alone.";
-    const userText = `Synthesise a valuation for the following print from Stage 1 and Stage 2b findings.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea, null, 2)}\n\nSTAGE 2b ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity/discount factors, forgery risk):\n${JSON.stringify(attr, null, 2)}${compsNote}\n\n⚠️ CRITICAL: Output ONLY the valuation fields — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT search the web. Do NOT re-describe the artwork. Start your response with { and end with }.`;
+    // Backtest/eval-harness only — see AppraisalInput.testingExcludeSourceListing.
+    // Stage 2b's web search can surface the exact listing this input's image/
+    // description came from; using its own estimate or hammer price as a "comp"
+    // would make the valuation circular, not independent, so this asks Stage 3 to
+    // actively recognise and discard it rather than filtering comps mechanically
+    // (Stage 2b's auctionComps are free-text research findings, not a structured
+    // field reliably matchable by URL/id).
+    const excludeSourceNote = testingExcludeSourceListing
+      ? `\n\n⚠️ TESTING MODE — SOURCE LISTING EXCLUDED: This artwork's image and description were sourced directly from this auction listing: ${testingExcludeSourceListing}. If any entry in AUCTION COMPS above is that same listing (same auction house, matching sale/lot, or described as "the subject work" / "the identical work" / "the present lot"), you MUST exclude its estimate and price data from your valuation entirely — do not anchor on it, average it in, or cite it as a reason for your number. Value this work using only genuinely independent comps and evidence. If excluding it leaves no usable comps, say so explicitly in valuationContext and value from first principles as you would with zero comps.`
+      : "";
+    const userText = `Synthesise a valuation for the following print from Stage 1 and Stage 2b findings.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea, null, 2)}\n\nSTAGE 2b ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity/discount factors, forgery risk):\n${JSON.stringify(attr, null, 2)}${compsNote}${excludeSourceNote}\n\n⚠️ CRITICAL: Output ONLY the valuation fields — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT search the web. Do NOT re-describe the artwork. Start your response with { and end with }.`;
     if (isClaude(stage3Model)) {
       console.log(`[4-Stage] Stage 3 pure reasoning (no web search) — model: ${stage3Model}`);
       return this.callClaude(stage3Model, systemInstruction, [{ type: "text", text: userText }], "report_valuation", "Report the structured print valuation synthesised from Stage 1 condition and Stage 2b findings.", STAGE3_VALUATION_ONLY_SCHEMA);
@@ -1349,7 +1368,7 @@ export class ThreeStageAppraiser extends MultiStageAppraiser {
 
     const t3 = Date.now();
     console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
-    const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes);
+    const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing);
     console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
@@ -1418,7 +1437,7 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const t3 = Date.now();
     emit({ stage: "stage3", status: "start", message: "Synthesising auction estimate and appraisal statement…", percent: 82 });
     console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
-    const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes);
+    const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing);
     console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });
