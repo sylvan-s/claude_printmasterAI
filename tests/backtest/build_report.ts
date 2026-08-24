@@ -141,12 +141,20 @@ function stage1cSectionHtml(report: PrintAnalysisReport): string {
       ? `${esc(attr.artist ?? "—")} / ${esc(attr.title ?? "—")} <span class="match-tag ${attr.status === "documented_fact" ? "match" : "partial"}">${esc(attr.status)}</span> <span class="conf">from ${esc(attr.sourceField ?? "?")}</span>`
       : `<span style="color:var(--ink-faint);font-style:italic;">no attribution claim found in the notes</span>`;
   const refs = (s1c.catalogueReferences ?? []).map((r: any) => r.ref).join(", ") || "—";
+  const dim = s1c.dimensionsClaim;
+  const dimLine = dim
+    ? `${dim.widthCm ?? "?"} x ${dim.heightCm ?? "?"} cm (${esc(dim.kind ?? "unspecified")}) <span class="conf">source: ${esc(dim.source)}</span>`
+    : "—";
+  const editionSize = s1c.inscriptionClaims?.editionSizeClaim;
   return `
 <div class="section">
   <h2>Stage 1c extraction (from the notes above, text-only)</h2>
   <div class="prose">
     <strong>Claimed attribution:</strong> ${attrLine}
     <br><strong>Catalogue references:</strong> ${esc(refs)}
+    <br><strong>Dimensions:</strong> ${dimLine}
+    <br><strong>Paper / support:</strong> ${esc(s1c.paperOrSupport ?? "—")}
+    <br><strong>Edition size:</strong> ${editionSize != null ? esc(editionSize) : "—"}
     <br><strong>Extraction confidence:</strong> ${((s1c.overallExtractionConfidence ?? 0) * 100).toFixed(0)}%
   </div>
 </div>`;
