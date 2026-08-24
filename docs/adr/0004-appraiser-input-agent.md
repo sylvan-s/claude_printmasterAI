@@ -235,6 +235,8 @@ interface AppraiserInputResult {
     source: "regex" | "llm" | "both";
   } | null;
 
+  paperOrSupport: string | null;   // e.g. "BFK Rives wove" — LLM-only, no regex hint
+
   rawNotes: {
     inscribedMarksNotes: string | null;
     provenanceNotes: string | null;
@@ -359,6 +361,20 @@ not worth deferring.
 - **3-stage legacy path is untouched**, as the original proposal allowed —
   it has no Stage 2a to feed Stage 1c's output into, so it was left exempt
   rather than given equivalent treatment.
+- **Correction (2026-08-24)**: the Stage 2a text block above initially
+  serialized only `claimedAttribution`, `inscriptionClaims` (minus
+  `editionSizeClaim`), `provenanceChain`, `conditionClaims`, and
+  `catalogueReferences` — `dimensionsClaim` was extracted by Stage 1c but
+  never included in the block at all, and `editionSizeClaim` (the parsed
+  integer, distinct from the string `editionClaim`) was dropped the same
+  way. Neither field being present also meant `hasStructuredClaims` could
+  be `false`, and the whole block skipped, for a lot where dimensions were
+  the only thing extracted. Also added `paperOrSupport` (schema had no
+  field for paper/support material at all — `technique` existed but only
+  nested inside `claimedAttribution`) since it's exactly the kind of
+  physical detail a real catalogue entry states and Triage should see.
+  Found via `tests/backtest/` — a real Roseberys lot's dimensions and paper
+  type were visibly extracted by Stage 1c but never reached Stage 2a.
 
 **Verification:** ran a real appraisal through the actual pipeline (not a
 schema-validation-only check) with realistic notes across all four boxes —

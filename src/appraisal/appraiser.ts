@@ -1034,6 +1034,7 @@ If no confident match is found, set artist and title to null and confidence to L
       catalogueReferences: [],
       literatureOrExhibitionClaims: [],
       dimensionsClaim: null,
+      paperOrSupport: null,
       rawNotes: {
         inscribedMarksNotes: notes.inscribedMarksNotes || null,
         provenanceNotes: notes.provenanceNotes || null,
@@ -1222,15 +1223,25 @@ CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
       ai1c.inscriptionClaims.status !== "absent" ||
       ai1c.provenanceChain.length > 0 ||
       ai1c.conditionClaims.length > 0 ||
-      ai1c.catalogueReferences.length > 0
+      ai1c.catalogueReferences.length > 0 ||
+      ai1c.dimensionsClaim !== null ||
+      !!ai1c.paperOrSupport
     );
+    const editionSizeText = ai1c?.inscriptionClaims.editionSizeClaim != null
+      ? `edition of ${ai1c.inscriptionClaims.editionSizeClaim}`
+      : null;
+    const dimensionsText = ai1c?.dimensionsClaim
+      ? `${ai1c.dimensionsClaim.widthCm ?? "?"} x ${ai1c.dimensionsClaim.heightCm ?? "?"} cm (${ai1c.dimensionsClaim.kind ?? "unspecified"}) [source: ${ai1c.dimensionsClaim.source}]`
+      : "None stated";
     const appraiserInputBlock = hasStructuredClaims && ai1c
       ? `\n\nSTAGE 1c APPRAISER INPUT AGENT — structured extraction of the appraiser's free-text notes. Each claim is tagged "hypothesis" (unverified assertion) or "documented_fact" (the note references supporting paperwork, not independently verified). Weigh documented_fact above hypothesis, and hypothesis no higher than VEA's own physical evidence — never silently prefer a claim over contradicting VEA observation:
   Claimed attribution  : ${ai1c.claimedAttribution.status !== "absent" ? `${ai1c.claimedAttribution.artist || "artist unstated"} — "${ai1c.claimedAttribution.title || "title unstated"}" (${ai1c.claimedAttribution.period || "period unstated"}, ${ai1c.claimedAttribution.technique || "technique unstated"}) [${ai1c.claimedAttribution.status}]` : "None stated"}
-  Inscription claims   : ${ai1c.inscriptionClaims.status !== "absent" ? `${[ai1c.inscriptionClaims.signatureClaim, ai1c.inscriptionClaims.editionClaim, ai1c.inscriptionClaims.monogramOrStampClaim].filter(Boolean).join("; ") || "stated but unspecific"} [${ai1c.inscriptionClaims.status}]` : "None stated"}
+  Inscription claims   : ${ai1c.inscriptionClaims.status !== "absent" ? `${[ai1c.inscriptionClaims.signatureClaim, ai1c.inscriptionClaims.editionClaim, editionSizeText, ai1c.inscriptionClaims.monogramOrStampClaim].filter(Boolean).join("; ") || "stated but unspecific"} [${ai1c.inscriptionClaims.status}]` : "None stated"}
   Provenance chain     : ${ai1c.provenanceChain.length ? ai1c.provenanceChain.map(p => `${p.ownerOrEntity}${p.dateOrPeriod ? ` (${p.dateOrPeriod})` : ""} [${p.status}]`).join("; ") : "None stated"}
   Condition claims     : ${ai1c.conditionClaims.length ? ai1c.conditionClaims.map(c => `${c.claim} [${c.status}]`).join("; ") : "None stated"}
   Catalogue references : ${ai1c.catalogueReferences.length ? ai1c.catalogueReferences.map(c => c.ref).join(", ") : "None stated"}
+  Dimensions           : ${dimensionsText}
+  Paper / support      : ${ai1c.paperOrSupport || "None stated"}
 
 INSTRUCTION: If any claim above conflicts with VEA's physical observations, record the conflict explicitly (e.g. in traditionNotes or a risk flag) rather than picking one silently.\n`
       : "";
