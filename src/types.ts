@@ -328,6 +328,10 @@ export interface AppraiserInputResult {
     kind: string | null;
     source: "regex" | "llm" | "both";
   } | null;
+  /** Paper/support material as stated in the notes, e.g. "BFK Rives wove",
+   *  "wove paper", "vellum". No regex hint exists for this (unlike dimensions/
+   *  catalogue refs/edition size) — LLM-only extraction. */
+  paperOrSupport: string | null;
   rawNotes: {
     inscribedMarksNotes: string | null;
     provenanceNotes: string | null;

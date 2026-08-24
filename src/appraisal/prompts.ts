@@ -1489,6 +1489,17 @@ clearly states something different (source: "llm"), or your reading matches
 and reinforces it (source: "both"). If no dimension was found by either
 pass, set dimensionsClaim to null — do not estimate.
 
+──────────────────────────────────────────────────────────────────────
+2H. PAPER / SUPPORT CLAIM
+──────────────────────────────────────────────────────────────────────
+
+If any block states the paper or support material (e.g. "BFK Rives wove",
+"wove paper", "vellum", "Japon nacré", "linen-backed on acid-free board"),
+record it verbatim in paperOrSupport. There is no regex hint for this —
+read for it directly. If no support/material is stated, set it to null —
+do not infer a material from the technique alone (e.g. do not assume
+"wove paper" just because the technique is an etching).
+
 ═══════════════════════════════════════════════════════════════════════
 SECTION 3 — OUTPUT SCHEMA
 ═══════════════════════════════════════════════════════════════════════
@@ -1533,6 +1544,7 @@ SECTION 3 — OUTPUT SCHEMA
     "kind": "<image | sheet | plate | framed | ... or null>",
     "source": "regex | llm | both"
   },
+  "paperOrSupport": "<e.g. BFK Rives wove, or null>",
   "rawNotes": {
     "inscribedMarksNotes": "<verbatim text or null>",
     "provenanceNotes": "<verbatim text or null>",

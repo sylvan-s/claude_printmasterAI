@@ -786,6 +786,7 @@ export const APPRAISER_INPUT_SCHEMA = {
       },
       required: ["widthCm", "heightCm", "kind", "source"]
     },
+    paperOrSupport: { type: Type.STRING, description: "Paper/support material as stated in the notes, e.g. 'BFK Rives wove', 'wove paper', 'vellum'. null if not stated." },
     rawNotes: {
       type: Type.OBJECT,
       properties: {
@@ -802,6 +803,6 @@ export const APPRAISER_INPUT_SCHEMA = {
   required: [
     "schemaVersion", "inputReceived", "claimedAttribution", "inscriptionClaims",
     "provenanceChain", "conditionClaims", "catalogueReferences", "literatureOrExhibitionClaims",
-    "dimensionsClaim", "rawNotes", "overallExtractionConfidence", "lowConfidenceFlags"
+    "dimensionsClaim", "paperOrSupport", "rawNotes", "overallExtractionConfidence", "lowConfidenceFlags"
   ]
 };
