@@ -154,6 +154,13 @@ async function main() {
   // Image as the primary scan, plus the catalogue text reshaped into the same
   // four boxes AppraiserNotesInput.tsx exposes, fed to Stage 1c (Appraiser Input
   // Agent). No userNotes, no supplementary photos, no estimate.
+  //
+  // testingExcludeSourceListing tells Stage 3 which listing this input was
+  // sourced from, so it can recognise and exclude that listing if Stage 2b's web
+  // search surfaces it as a "comp" — otherwise the app's estimate can end up
+  // anchored on the very auction record this test is comparing it against,
+  // which happened on a real run (Roseberys A0777 lot 5: Stage 2b's only comp
+  // was that same lot's own pre-sale estimate).
   const input: AppraisalInput = {
     imageBase64: base64,
     mimeType,
@@ -162,6 +169,7 @@ async function main() {
     provenanceNotes: groundTruth.provenance || undefined,
     conditionNotes: groundTruth.condition || undefined,
     catalogueNotes: rawCatalogueNotes,
+    testingExcludeSourceListing: `Roseberys, sale ${auction.saleCode}, lot ${rawLot.lot_number} (${lotUrl(rawLot)})`,
   };
 
   const notesFieldsUsed = (["inscribedMarksNotes", "provenanceNotes", "conditionNotes", "catalogueNotes"] as const)
@@ -171,6 +179,7 @@ async function main() {
       ? `[Backtest] Appraiser Input Agent notes populated: ${notesFieldsUsed.join(", ")}`
       : `[Backtest] No appraiser notes extracted from this lot's catalogue text — Stage 1c will run with nothing to extract.`,
   );
+  console.log(`[Backtest] Stage 3 will exclude comps matching: ${input.testingExcludeSourceListing}`);
 
   console.log(`[Backtest] Running pipeline (method: ${method})...`);
   const t0 = Date.now();
@@ -204,6 +213,7 @@ async function main() {
           conditionNotes: input.conditionNotes ?? null,
           catalogueNotes: input.catalogueNotes ?? null,
         },
+        testingExcludeSourceListing: input.testingExcludeSourceListing ?? null,
         report,
         groundTruth,
         rawLot: { ...rawLot, description: undefined }, // description kept out of the JSON body; see rawLotDescriptionHtml below
