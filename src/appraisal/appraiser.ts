@@ -4,6 +4,7 @@ import {
   VisualExtractionResult,
   AttributionResearchResult,
   TriageResult,
+  AppraiserInputResult,
 } from "../types";
 import {
   getPrompt,
@@ -13,6 +14,7 @@ import {
   ATTRIBUTION_TRIAGE_SYSTEM_PROMPT,
   ATTRIBUTION_RESEARCH_SYSTEM_PROMPT,
   VALUATION_REPORT_SYSTEM_PROMPT,
+  APPRAISER_INPUT_SYSTEM_PROMPT,
   injectSpecialistConfig,
 } from "./prompts";
 import {
@@ -24,10 +26,12 @@ import {
   FINAL_REPORT_RESPONSE_SCHEMA,
   FINAL_REPORT_CLAUDE_SCHEMA,
   STAGE3_VALUATION_ONLY_SCHEMA,
+  APPRAISER_INPUT_SCHEMA,
 } from "./schemas";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
+import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../shared/text_extraction";
 
 // Resolved from the process working directory, not import.meta.url / __dirname:
 // esbuild's --format=cjs bundling (src/appraisal/appraiser.ts -> dist/server.cjs)
@@ -77,6 +81,14 @@ export interface AppraisalInput {
   mimeType?: string;
   userNotes?: string;
   supplementaryImages?: SupplementaryImageInput[];
+  // Stage 1c (Appraiser Input Agent) inputs — the same four AppraiserNotesInput.tsx
+  // boxes, sent separately by topic rather than compiled into userNotes. See
+  // ADR-0004. userNotes above is untouched and keeps flowing to Stage 2a/2b/3
+  // exactly as before; these are additive, consumed only by Stage 1c.
+  inscribedMarksNotes?: string;
+  provenanceNotes?: string;
+  conditionNotes?: string;
+  catalogueNotes?: string;
   currency?: string;
   onProgress?: (event: AppraisalProgressEvent) => void;
 }
@@ -397,6 +409,7 @@ const GEMINI_SAFETY_SETTINGS = [
 const DEFAULT_STAGE1B_MODEL = "gemini-3.7-flash";
 const HYPOTHESIS_WARNING =
   "⚠️ HYPOTHESIS ONLY — Stage 1b reverse image search result. Must be verified against VEA visual evidence (signatures, inscriptions, technique) before use in attribution. Do not treat as confirmed attribution.";
+const STAGE1C_MODEL = "claude-haiku-4-5";
 
 // ---------------------------------------------------------------------------
 // MultiStageAppraiser — base class with shared callers and stage runners
@@ -1000,6 +1013,93 @@ If no confident match is found, set artist and title to null and confidence to L
     }
   }
 
+  // ---- Stage 1c — Appraiser Input Agent (AIA) --------------------------------
+  // See ADR-0004. Text-only, no vision, runs independently in parallel with
+  // Stage 1a/1b — advisory evidence for Stage 2a, same discipline as Stage 1b:
+  // best-effort, never fails the pipeline, never treated as confirmed fact.
+
+  protected async runStage1cAppraiserInput(notes: {
+    inscribedMarksNotes?: string;
+    provenanceNotes?: string;
+    conditionNotes?: string;
+    catalogueNotes?: string;
+  }): Promise<AppraiserInputResult> {
+    const EMPTY: AppraiserInputResult = {
+      schemaVersion: "AIA-1.0",
+      inputReceived: { inscribedMarksNotes: false, provenanceNotes: false, conditionNotes: false, catalogueNotes: false },
+      claimedAttribution: { artist: null, title: null, period: null, technique: null, status: "absent", sourceField: null, sourceExcerpt: null },
+      inscriptionClaims: { signatureClaim: null, editionClaim: null, editionSizeClaim: null, monogramOrStampClaim: null, status: "absent" },
+      provenanceChain: [],
+      conditionClaims: [],
+      catalogueReferences: [],
+      literatureOrExhibitionClaims: [],
+      dimensionsClaim: null,
+      rawNotes: {
+        inscribedMarksNotes: notes.inscribedMarksNotes || null,
+        provenanceNotes: notes.provenanceNotes || null,
+        conditionNotes: notes.conditionNotes || null,
+        catalogueNotes: notes.catalogueNotes || null,
+      },
+      overallExtractionConfidence: 0,
+      lowConfidenceFlags: [],
+    };
+
+    const { inscribedMarksNotes, provenanceNotes, conditionNotes, catalogueNotes } = notes;
+    const hasAnyNotes = !!(
+      inscribedMarksNotes?.trim() || provenanceNotes?.trim() || conditionNotes?.trim() || catalogueNotes?.trim()
+    );
+    if (!hasAnyNotes) {
+      return EMPTY; // nothing to extract — skip the call entirely, no cost for an empty submission
+    }
+
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      console.warn("[Stage 1c] ANTHROPIC_API_KEY not set — skipping appraiser input extraction.");
+      return EMPTY;
+    }
+
+    const t = Date.now();
+    console.log("[Timing] Stage 1c (Appraiser Input Agent) starting");
+
+    // Deterministic regex pass — cheap, reused from benchmark/src/roseberys/parse.ts
+    // (see src/shared/text_extraction.ts). Passed to the LLM as hints, not as
+    // ground truth it must repeat unquestioned — see the AIA-1.0 prompt.
+    const regexDimensions = parseDimensions([inscribedMarksNotes || "", catalogueNotes || ""]);
+    const regexCatalogueRefs = extractCatalogueRefs(catalogueNotes || "");
+    const regexEditionSize = detectEditionSize(inscribedMarksNotes || "");
+
+    const regexHintsBlock = `REGEX_HINTS:
+- Dimensions found: ${regexDimensions.length ? JSON.stringify(regexDimensions[0]) : "none"}
+- Catalogue references found: ${regexCatalogueRefs.length ? regexCatalogueRefs.join(", ") : "none"}
+- Edition size found: ${regexEditionSize ?? "none"}`;
+
+    const userMessage = `${regexHintsBlock}
+
+INSCRIBED_MARKS_NOTES: ${inscribedMarksNotes?.trim() || "(not provided)"}
+
+PROVENANCE_NOTES: ${provenanceNotes?.trim() || "(not provided)"}
+
+CONDITION_NOTES: ${conditionNotes?.trim() || "(not provided)"}
+
+CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
+
+    try {
+      const result = await this.callClaude(
+        STAGE1C_MODEL,
+        APPRAISER_INPUT_SYSTEM_PROMPT,
+        [{ type: "text", text: userMessage }],
+        "report_appraiser_input_extraction",
+        "Report the structured extraction of the appraiser's free-text notes.",
+        APPRAISER_INPUT_SCHEMA
+      );
+      console.log(`[Timing] Stage 1c done — ${((Date.now() - t) / 1000).toFixed(1)}s`);
+      return result as AppraiserInputResult;
+    } catch (err: any) {
+      console.warn(`[Stage 1c] Extraction failed — skipping: ${err.message}`);
+      return EMPTY;
+    }
+  }
+
   // ---- Helpers ---------------------------------------------------------------
 
   protected projectVeaForAttribution(vea: VisualExtractionResult) {
@@ -1047,8 +1147,12 @@ If no confident match is found, set artist and title to null and confidence to L
     const includeAux = this.config.includeAuxiliaryScans;
     const currency = input.currency || "USD";
     const systemPrompt = "You are a specialist Fine Art Print Visual Extraction Agent.";
+    // No userNotes here, deliberately: VEA is vision-only and must not see
+    // unverified human claims (see ADR-0004) — appraiser notes go to Stage 1c
+    // instead. VISUAL_EXTRACTION_SYSTEM_PROMPT has no {userNotes} placeholder
+    // to begin with, so this was already inert; omitted now for clarity.
     const textPrompt = resolveCustomPrompt(
-      VISUAL_EXTRACTION_SYSTEM_PROMPT, currency, input.userNotes,
+      VISUAL_EXTRACTION_SYSTEM_PROMPT, currency, undefined,
       includeAux ? (input.supplementaryImages || []).map((i) => i.caption) : []
     );
 
@@ -1100,13 +1204,39 @@ If no confident match is found, set artist and title to null and confidence to L
     vea: VisualExtractionResult,
     stage2aModel: string,
     ai: GoogleGenAI,
-    userNotes?: string
+    userNotes?: string,
+    appraiserInput?: AppraiserInputResult
   ): Promise<TriageResult> {
     const notesBlock = userNotes?.trim()
       ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for tradition identification and artist candidates):\n"${userNotes.trim()}"\n\n`
       : "";
+
+    // Stage 1c (Appraiser Input Agent) — structured, trust-tagged claims from
+    // the appraiser's notes. See ADR-0004. Additive to notesBlock above (the
+    // raw compiled string), not a replacement — this gives Triage the same
+    // claims with explicit hypothesis/documented_fact weighting instead of
+    // undifferentiated prose.
+    const ai1c = appraiserInput;
+    const hasStructuredClaims = !!ai1c && (
+      ai1c.claimedAttribution.status !== "absent" ||
+      ai1c.inscriptionClaims.status !== "absent" ||
+      ai1c.provenanceChain.length > 0 ||
+      ai1c.conditionClaims.length > 0 ||
+      ai1c.catalogueReferences.length > 0
+    );
+    const appraiserInputBlock = hasStructuredClaims && ai1c
+      ? `\n\nSTAGE 1c APPRAISER INPUT AGENT — structured extraction of the appraiser's free-text notes. Each claim is tagged "hypothesis" (unverified assertion) or "documented_fact" (the note references supporting paperwork, not independently verified). Weigh documented_fact above hypothesis, and hypothesis no higher than VEA's own physical evidence — never silently prefer a claim over contradicting VEA observation:
+  Claimed attribution  : ${ai1c.claimedAttribution.status !== "absent" ? `${ai1c.claimedAttribution.artist || "artist unstated"} — "${ai1c.claimedAttribution.title || "title unstated"}" (${ai1c.claimedAttribution.period || "period unstated"}, ${ai1c.claimedAttribution.technique || "technique unstated"}) [${ai1c.claimedAttribution.status}]` : "None stated"}
+  Inscription claims   : ${ai1c.inscriptionClaims.status !== "absent" ? `${[ai1c.inscriptionClaims.signatureClaim, ai1c.inscriptionClaims.editionClaim, ai1c.inscriptionClaims.monogramOrStampClaim].filter(Boolean).join("; ") || "stated but unspecific"} [${ai1c.inscriptionClaims.status}]` : "None stated"}
+  Provenance chain     : ${ai1c.provenanceChain.length ? ai1c.provenanceChain.map(p => `${p.ownerOrEntity}${p.dateOrPeriod ? ` (${p.dateOrPeriod})` : ""} [${p.status}]`).join("; ") : "None stated"}
+  Condition claims     : ${ai1c.conditionClaims.length ? ai1c.conditionClaims.map(c => `${c.claim} [${c.status}]`).join("; ") : "None stated"}
+  Catalogue references : ${ai1c.catalogueReferences.length ? ai1c.catalogueReferences.map(c => c.ref).join(", ") : "None stated"}
+
+INSTRUCTION: If any claim above conflicts with VEA's physical observations, record the conflict explicitly (e.g. in traditionNotes or a risk flag) rather than picking one silently.\n`
+      : "";
+
     const veaSlim = this.projectVeaForAttribution(vea);
-    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and route to the correct specialist config.\n\n${JSON.stringify(veaSlim, null, 2)}`;
+    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and route to the correct specialist config.\n\n${JSON.stringify(veaSlim, null, 2)}${appraiserInputBlock}`;
     if (isClaude(stage2aModel)) {
       return this.callClaude(stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ type: "text", text: userText }], "report_attribution_triage", "Report the structured attribution triage and routing decision.", TRIAGE_SCHEMA);
     } else {
@@ -1380,6 +1510,18 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const emit = input.onProgress ?? (() => {});
     const t0 = Date.now();
 
+    // Stage 1c (Appraiser Input Agent) has no dependency on images or VEA —
+    // see ADR-0004. Launched here so it runs concurrently with Stage 1a
+    // rather than waiting for VEA to finish first; awaited below once we
+    // know VEA didn't halt.
+    emit({ stage: "stage1c", status: "start", message: "Extracting structured claims from appraiser notes…", percent: 5 });
+    const appraiserInputPromise = this.runStage1cAppraiserInput({
+      inscribedMarksNotes: input.inscribedMarksNotes,
+      provenanceNotes: input.provenanceNotes,
+      conditionNotes: input.conditionNotes,
+      catalogueNotes: input.catalogueNotes,
+    });
+
     emit({ stage: "stage1", status: "start", message: "Extracting visual attributes — medium, technique, condition…", percent: 5 });
     console.log(`[Timing] Stage 1 (VEA) starting — model: ${stage1Model}`);
     const vea = await this.runStage1VEA(input, stage1Model, ai);
@@ -1387,26 +1529,34 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     emit({ stage: "stage1", status: "done", message: "Visual extraction complete", percent: 20 });
 
     if (vea.imageAuthenticity?.haltRecommended) {
-      return this.buildHaltReport(vea, currency);
+      const halt = this.buildHaltReport(vea, currency);
+      halt.stage1cResult = await appraiserInputPromise.catch(() => undefined);
+      return halt;
     }
 
-    // Stage 1b (visual search) + Stage 2a (triage) run in parallel
+    // Stage 1b (visual search) + Stage 2a (triage) run in parallel. Stage 2a
+    // waits on Stage 1c (usually near-instant — it returns immediately when
+    // no notes were submitted) so Triage can weigh the appraiser's
+    // trust-tagged claims alongside VEA's physical evidence.
     emit({ stage: "stage1b", status: "start", message: "Searching global image databases for visual matches…", percent: 22 });
     emit({ stage: "stage2a", status: "start", message: "Triaging attribution complexity and routing to specialist…", percent: 24 });
-    const [visualSearch, triageResult] = await Promise.all([
+    const [visualSearch, triageResult, appraiserInput] = await Promise.all([
       runVisualSearch
         ? this.runStage1bVisionSearch(input.imageBase64, input.mimeType)
         : Promise.resolve(undefined),
       (async () => {
+        const appraiserInputResult = await appraiserInputPromise;
         const t2a = Date.now();
         console.log(`[Timing] Stage 2a (Triage) starting — model: ${stage2aModel}`);
-        const r = await this.runStage2aTriage(vea, stage2aModel, ai, input.userNotes);
+        const r = await this.runStage2aTriage(vea, stage2aModel, ai, input.userNotes, appraiserInputResult);
         console.log(`[Timing] Stage 2a (Triage) done — ${((Date.now() - t2a) / 1000).toFixed(1)}s`);
         emit({ stage: "stage2a", status: "done", message: "Triage complete — specialist routing confirmed", percent: 40 });
         return r;
       })(),
+      appraiserInputPromise,
     ]);
     emit({ stage: "stage1b", status: "done", message: "Visual search complete", percent: 42 });
+    emit({ stage: "stage1c", status: "done", message: "Appraiser notes extraction complete", percent: 42 });
 
     const t2b = Date.now();
     emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
@@ -1425,10 +1575,11 @@ export class FourStageAppraiser extends MultiStageAppraiser {
 
     const report = this.assembleReport(vea, attr, valuation, currency);
     report.stage1Result = vea;
+    report.stage1cResult = appraiserInput;
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
-    report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${stage3Model}]`;
+    report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${stage3Model}]`;
     report.promptVersion = "4stage";
     return report;
   }
