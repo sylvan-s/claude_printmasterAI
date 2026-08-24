@@ -28,15 +28,19 @@
  * null rather than guessing.
  */
 
+import type { Dimension } from "../../../src/shared/text_extraction";
+import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../../../src/shared/text_extraction";
+
+// Re-exported for anything importing these from this module directly — the
+// canonical implementations now live in src/shared/text_extraction.ts since
+// they're shared with the Appraiser Input Agent (see ADR-0004). Forum's
+// parser (benchmark/src/forum/parse.ts) keeps its own independent copies —
+// deliberately not merged, see docs/agents/benchmark.md.
+export type { Dimension };
+export { parseDimensions, extractCatalogueRefs };
+
 export type ArtistQualifier =
   | "certain" | "attributed" | "circle" | "studio" | "follower" | "after" | "unknown";
-
-export interface Dimension {
-  kind: string;          // image | sheet | plate | overall | framed | diameter
-  widthCm: number | null;
-  heightCm: number | null;
-  raw: string;
-}
 
 export interface ParsedLot {
   artist: string | null;
@@ -108,28 +112,6 @@ function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function toCm(value: number, unit: string): number {
-  return /mm/i.test(unit) ? value / 10 : /\bin(ch(es)?)?\b/i.test(unit) ? value * 2.54 : value;
-}
-
-export function parseDimensions(lines: string[]): Dimension[] {
-  const out: Dimension[] = [];
-  const re =
-    /(each\s+sheet|image|sheet|plate|overall|framed(?:\s+size)?|block|diameter|size)\s*:?\s*([\d.]+)\s*(?:x|×)\s*([\d.]+)\s*(cm|mm|in(?:ch(?:es)?)?)?/gi;
-  for (const line of lines) {
-    for (const m of line.matchAll(re)) {
-      const unit = m[4] || "cm";
-      out.push({
-        kind: m[1].toLowerCase().replace(/\s+/g, " "),
-        widthCm: +toCm(parseFloat(m[2]), unit).toFixed(2),
-        heightCm: +toCm(parseFloat(m[3]), unit).toFixed(2),
-        raw: m[0].trim(),
-      });
-    }
-  }
-  return out;
-}
-
 const MULTIWORK_PATTERNS: [RegExp, string][] = [
   [/\ba\s+pair\b/i, "a pair"],
   [/\b(?:two|2)\s+works\b/i, "2 works"],
@@ -151,14 +133,6 @@ export function detectMultiWork(text: string): { isMultiWork: boolean; reason: s
   return { isMultiWork: false, reason: null };
 }
 
-/** Catalogue raisonné refs — e.g. [Bloch 1244], (Vallier 153), (Danilowitz 173.9). */
-export function extractCatalogueRefs(text: string): string[] {
-  const refs = new Set<string>();
-  for (const m of text.matchAll(/[\[(]\s*([A-Z][A-Za-z&.\s]{2,25}?\s+[\dIVX][\d.\-IVX]*)\s*[\])]/g)) {
-    refs.add(m[1].replace(/\s+/g, " ").trim());
-  }
-  return [...refs];
-}
 
 /* -------------------------------------------------------------------- parse */
 
@@ -234,8 +208,7 @@ export function parseDescription(html: string): ParsedLot {
     .join("; ").replace(/,\s*$/, "") || null;
 
   const editionLine = pick(/\b(edition|proof|artist'?s proof|A\/P|H\.?C\.?|hors commerce|épreuve)\b/i);
-  const editionSizeMatch = body.match(/edition\s+of\s+(\d+)/i) ?? body.match(/\b\d+\s*\/\s*(\d+)\b/);
-  const editionSize = editionSizeMatch ? Number(editionSizeMatch[1]) : null;
+  const editionSize = detectEditionSize(body);
 
   const { isMultiWork, reason } = detectMultiWork(full);
 

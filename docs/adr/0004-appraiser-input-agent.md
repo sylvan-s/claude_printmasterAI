@@ -1,7 +1,7 @@
 # ADR-0004: Appraiser Input Agent (AIA) — extracting structured claims from human free text
 
 **Date:** 2026-08-23
-**Status:** Proposed — to-be architecture only, nothing in this ADR is implemented
+**Status:** Implemented (2026-08-24) — see "Implementation notes" at the end for what shipped and where it deviated from this proposal
 
 ---
 
@@ -21,16 +21,23 @@ The app already collects free-text notes from the human appraiser via
    catalogue reference on 17th Century etching reproductions..."*
 
 Today (`src/App.tsx`, `handleAnalysisSubmit`) these four boxes are concatenated
-into one `compiledNotes` string and sent as `userNotes` on `AppraisalInput`.
-`runStage1VEA` (`src/appraisal/appraiser.ts`) passes it straight into
-`resolveCustomPrompt`, which substitutes it into `VISUAL_EXTRACTION_SYSTEM_PROMPT`'s
-`{userNotes}` placeholder. **VEA — a vision-only agent whose entire discipline
-is "observe only, physical evidence only" — currently receives unverified
-human claims mixed directly into its inspection prompt.** That's a layering
-violation: a text claim like "this is a hand-pulled proof from the 1968
-edition" sits in the same prompt as instructions to visually assess plate
-marks and paper age, with no separation between what VEA physically observed
-and what a human asserted.
+into one `compiledNotes` string and sent as `userNotes` on `AppraisalInput`,
+which reaches Stage 2a (Triage), Stage 2b (Specialist), and Stage 3
+(Valuation) as an undifferentiated blob of prose with no structure and no
+trust tagging — every claim in it is read with equal weight, whether it's
+"accompanied by a certificate of authenticity" or "I think this might be
+from the 1968 edition."
+
+**Correction (2026-08-24):** this ADR originally claimed `runStage1VEA` also
+passed `userNotes` into `VISUAL_EXTRACTION_SYSTEM_PROMPT` via a `{userNotes}`
+placeholder — checked against the actual prompt text while implementing this
+ADR, and that placeholder doesn't exist in `VISUAL_EXTRACTION_SYSTEM_PROMPT`.
+The `input.userNotes` argument was being passed into `resolveCustomPrompt`
+regardless, but had nothing to substitute — it was already inert, not an
+active layering violation. The argument has been removed from that call site
+for clarity (see Implementation notes), but no behavioural bug existed there
+to begin with. The real problem this ADR solves is the one stated above: no
+structure, no trust tagging, anywhere the notes were actually being used.
 
 Separately, ADR-0003 (item 3) proposed "Appraiser direct input as a defined
 pipeline input" only in sketch form — a `hypothesis` vs `documented_fact`
@@ -292,36 +299,82 @@ in the 3-stage legacy path, which this ADR deliberately does not touch.
 
 ---
 
-## Next steps (nothing above is implemented)
+## Implementation notes (2026-08-24)
 
-Roughly in dependency order:
+All seven "next steps" below shipped in one pass, including Triage
+integration (originally step 6, expected to wait for ADR-0003's items 2/4) —
+it turned out to be a small, self-contained addition once Stage 1c existed,
+not worth deferring.
 
-1. **Decide the shared-module question** for `parseDimensions` /
-   `extractCatalogueRefs` — duplicate into `src/appraisal/`, or extract to
-   a shared module both `benchmark/` and `src/appraisal/` import. Small
-   decision, blocks nothing else, but should be made before step 3.
-2. **Write the AIA-1.0 prompt** (a new `APPRAISER_INPUT_SYSTEM_PROMPT` in
-   `src/appraisal/prompts.ts`) and its JSON schema (`APPRAISER_INPUT_SCHEMA`
-   in `src/appraisal/schemas.ts`), following the output shape sketched
-   above — treat that shape as a draft, not final.
-3. **Add `runStage1cAppraiserInput`** to `MultiStageAppraiser` in
-   `src/appraisal/appraiser.ts`, modeled on `runStage1bVisionSearch`'s
-   shape (independent, parallel, advisory) rather than `runStage1VEA`'s
-   (vision, sequential-critical-path).
-4. **Wire it into `FourStageAppraiser.appraise()`** — add to the existing
-   `Promise.all([...])` alongside Stage 1b and Stage 2a, per the diagram
-   above. Confirm this doesn't change Stage 2a's own timing, since Stage 2a
-   currently starts immediately after VEA regardless of Stage 1b/1c.
-5. **Remove `{userNotes}` from `VISUAL_EXTRACTION_SYSTEM_PROMPT`** and the
-   corresponding pass-through in `runStage1VEA`. Decide the 3-stage legacy
-   path's fate in the same pass — either give it the same AIA treatment or
-   explicitly document why it's exempt.
-6. **Update Triage (ATA) to consume `AppraiserInputResult`** as a third
-   evidence stream — this is the same integration work ADR-0003 items 2
-   and 4 already require for Stage 1b and the ACKG, so sequencing this
-   alongside those (rather than as a fourth separate integration pass into
-   Triage) is worth considering when that work starts.
-7. **Backtest against real appraiser notes** — the benchmark corpus
-   (`benchmark/data/*/lots/*.json` once permission lands, or synthetic
-   notes in the meantime) before trusting extraction quality on live
-   appraisals.
+**What shipped, matching the proposal:**
+- `src/shared/text_extraction.ts` — `parseDimensions`, `extractCatalogueRefs`,
+  `detectEditionSize` moved here from `benchmark/src/roseberys/parse.ts`,
+  which now imports and re-exports them. `benchmark/src/forum/parse.ts` was
+  deliberately left untouched (its own independent implementations).
+- `APPRAISER_INPUT_SYSTEM_PROMPT` (`src/appraisal/prompts.ts`) and
+  `APPRAISER_INPUT_SCHEMA` (`src/appraisal/schemas.ts`), following the
+  output shape sketched above essentially unchanged.
+- `AppraiserInputResult` type and `stage1cResult` field on
+  `PrintAnalysisReport`, both in `src/types.ts`.
+- `runStage1cAppraiserInput` on `MultiStageAppraiser`, same best-effort
+  discipline as `runStage1bVisionSearch` (skips the API call entirely when
+  no notes were submitted; returns an empty result on any failure rather
+  than failing the pipeline).
+- `AppraisalInput` gained `inscribedMarksNotes` / `provenanceNotes` /
+  `conditionNotes` / `catalogueNotes` — additive, sent separately from the
+  existing compiled `userNotes`. `server.ts` and `App.tsx` updated to pass
+  them through; the four `AppraiserNotesInput.tsx` boxes themselves are
+  unchanged, exactly as proposed (backend-only change).
+
+**Deviations from the proposal:**
+- **Stage 1c launches before Stage 1a even starts**, not merely "alongside"
+  it — `FourStageAppraiser.appraise()` kicks off
+  `runStage1cAppraiserInput` first, then awaits VEA, so the two genuinely
+  overlap for their full duration rather than just being scheduled close
+  together.
+- **Stage 2a now explicitly awaits Stage 1c's result before running**,
+  which the original design didn't quite commit to (it said Triage would
+  "see all three at once" without saying whether that meant "wait for all
+  three" or "receive whichever have already resolved"). In practice this
+  costs nothing when there are no notes (Stage 1c returns immediately) and
+  a few seconds when there are — judged worth it for Triage to reliably
+  have the claims rather than sometimes not, depending on timing.
+- **`{userNotes}` removal turned out to be a no-op fix**, not a behavioural
+  one — see the correction in Context above. The `input.userNotes`
+  argument was removed from the `runStage1VEA` call site for clarity, but
+  it had nothing to substitute in `VISUAL_EXTRACTION_SYSTEM_PROMPT` even
+  before this change.
+- **Triage integration is a prompt-level addition, not a schema change** —
+  `TRIAGE_SCHEMA`/`TriageResult` gained no new fields. Stage 1c's claims are
+  appended to Stage 2a's existing user message as a text block with
+  explicit trust-weighting instructions (documented_fact > hypothesis;
+  hypothesis no higher than VEA's own evidence; conflicts recorded, never
+  silently resolved), and Triage's existing free-text fields
+  (`traditionNotes`, risk flag notes) are where that reasoning surfaces.
+  Deeper structural integration can still happen alongside ADR-0003 items 2
+  and 4 if a schema-level change turns out to be needed later.
+- **Stage 1c's model is hardcoded** (`STAGE1C_MODEL = "claude-haiku-4-5"`),
+  not a per-config field like Stage 1b's `stage1bModel`. No config currently
+  needs to vary it; can be promoted to a config field if that changes.
+- **3-stage legacy path is untouched**, as the original proposal allowed —
+  it has no Stage 2a to feed Stage 1c's output into, so it was left exempt
+  rather than given equivalent treatment.
+
+**Verification:** ran a real appraisal through the actual pipeline (not a
+schema-validation-only check) with realistic notes across all four boxes —
+a documented edition claim ("Ed. 45/100... signed"), a provenance claim with
+an invoice reference, a condition claim explicitly hedged as unconfirmed
+("believed to have been relined... no documentation of this survives"), and
+a catalogue reference in plain prose with no brackets ("Bloch 1244", not
+"[Bloch 1244]"). Confirmed: the catalogue reference was correctly tagged
+`source: "llm"` (the regex pass genuinely can't match unbracketed prose, so
+this proves the LLM pass is doing real work, not just deferring to regex);
+the hedged relining claim was correctly tagged `hypothesis` while the
+Sotheby's/invoice claim was tagged `documented_fact`; and — using a
+deliberately blank/featureless test image so VEA would find nothing —
+Triage correctly detected the resulting mismatch between the appraiser's
+detailed claims and VEA's empty observation, flagged it as a primary
+conflict, declined to name an individual artist from the claims alone, and
+routed to Tier 3 with mandatory human escalation. That last result is the
+actual point of this whole design: conflicting evidence surfacing as a risk
+flag instead of being silently resolved in either direction.

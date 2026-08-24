@@ -695,3 +695,113 @@ export const STAGE3_VALUATION_ONLY_SCHEMA = {
   },
   required: ["auctionEstimate", "recentAuctionSales", "nextSteps", "editionSizeAndPrintNumber", "isLikelyReproductionOrPoster", "reproductionExplanation"]
 };
+
+// ---------------------------------------------------------------------------
+// Stage 1c — Appraiser Input Agent (AIA-1.0) — see ADR-0004
+// ---------------------------------------------------------------------------
+const STATUS_ENUM = { type: Type.STRING, description: "'hypothesis' | 'documented_fact' | 'absent'" };
+
+export const APPRAISER_INPUT_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    schemaVersion: { type: Type.STRING },
+    inputReceived: {
+      type: Type.OBJECT,
+      properties: {
+        inscribedMarksNotes: { type: Type.BOOLEAN },
+        provenanceNotes: { type: Type.BOOLEAN },
+        conditionNotes: { type: Type.BOOLEAN },
+        catalogueNotes: { type: Type.BOOLEAN }
+      },
+      required: ["inscribedMarksNotes", "provenanceNotes", "conditionNotes", "catalogueNotes"]
+    },
+    claimedAttribution: {
+      type: Type.OBJECT,
+      properties: {
+        artist: { type: Type.STRING },
+        title: { type: Type.STRING },
+        period: { type: Type.STRING },
+        technique: { type: Type.STRING },
+        status: STATUS_ENUM,
+        sourceField: { type: Type.STRING, description: "'inscribedMarksNotes' | 'provenanceNotes' | 'conditionNotes' | 'catalogueNotes' | null" },
+        sourceExcerpt: { type: Type.STRING }
+      },
+      required: ["artist", "title", "period", "technique", "status", "sourceField", "sourceExcerpt"]
+    },
+    inscriptionClaims: {
+      type: Type.OBJECT,
+      properties: {
+        signatureClaim: { type: Type.STRING },
+        editionClaim: { type: Type.STRING },
+        editionSizeClaim: { type: Type.INTEGER },
+        monogramOrStampClaim: { type: Type.STRING },
+        status: STATUS_ENUM
+      },
+      required: ["signatureClaim", "editionClaim", "editionSizeClaim", "monogramOrStampClaim", "status"]
+    },
+    provenanceChain: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          ownerOrEntity: { type: Type.STRING },
+          dateOrPeriod: { type: Type.STRING },
+          status: STATUS_ENUM,
+          sourceExcerpt: { type: Type.STRING }
+        },
+        required: ["ownerOrEntity", "dateOrPeriod", "status", "sourceExcerpt"]
+      }
+    },
+    conditionClaims: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          claim: { type: Type.STRING },
+          status: STATUS_ENUM,
+          sourceExcerpt: { type: Type.STRING }
+        },
+        required: ["claim", "status", "sourceExcerpt"]
+      }
+    },
+    catalogueReferences: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          ref: { type: Type.STRING },
+          source: { type: Type.STRING, description: "'regex' | 'llm'" }
+        },
+        required: ["ref", "source"]
+      }
+    },
+    literatureOrExhibitionClaims: { type: Type.ARRAY, items: { type: Type.STRING } },
+    dimensionsClaim: {
+      type: Type.OBJECT,
+      properties: {
+        widthCm: { type: Type.NUMBER },
+        heightCm: { type: Type.NUMBER },
+        kind: { type: Type.STRING },
+        source: { type: Type.STRING, description: "'regex' | 'llm' | 'both'" }
+      },
+      required: ["widthCm", "heightCm", "kind", "source"]
+    },
+    rawNotes: {
+      type: Type.OBJECT,
+      properties: {
+        inscribedMarksNotes: { type: Type.STRING },
+        provenanceNotes: { type: Type.STRING },
+        conditionNotes: { type: Type.STRING },
+        catalogueNotes: { type: Type.STRING }
+      },
+      required: ["inscribedMarksNotes", "provenanceNotes", "conditionNotes", "catalogueNotes"]
+    },
+    overallExtractionConfidence: { type: Type.NUMBER },
+    lowConfidenceFlags: { type: Type.ARRAY, items: { type: Type.STRING } }
+  },
+  required: [
+    "schemaVersion", "inputReceived", "claimedAttribution", "inscriptionClaims",
+    "provenanceChain", "conditionClaims", "catalogueReferences", "literatureOrExhibitionClaims",
+    "dimensionsClaim", "rawNotes", "overallExtractionConfidence", "lowConfidenceFlags"
+  ]
+};

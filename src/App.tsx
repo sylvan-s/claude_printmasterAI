@@ -1028,6 +1028,13 @@ export default function App() {
             mimeType: selectedFile.type,
             userNotes: compiledNotes.trim() || undefined,
             supplementaryImages: resolvedSupplementaryImages,
+            // Sent separately (not just compiled into userNotes) for Stage 1c
+            // (Appraiser Input Agent) — see ADR-0004. userNotes above is
+            // unchanged and still reaches Stage 2a/2b/3 as before.
+            inscribedMarksNotes: userNotes.trim() || undefined,
+            provenanceNotes: provenanceNotes.trim() || undefined,
+            conditionNotes: conditionNotes.trim() || undefined,
+            catalogueNotes: literatureNotes.trim() || undefined,
             currency,
             method: appraisalMethod,
             progressId,

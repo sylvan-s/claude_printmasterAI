@@ -2,8 +2,8 @@
 
 **Date:** 2026-08-23
 **Status:** Proposed — item 1 implemented (PR #13, branch `VEA_confidence`); item 3 superseded
-by [ADR-0004](0004-appraiser-input-agent.md) (to-be architecture only, not implemented);
-items 2 and 4 not started
+by [ADR-0004](0004-appraiser-input-agent.md), now implemented (2026-08-24); items 2 and 4
+not started
 
 ---
 
@@ -78,7 +78,8 @@ the `VERSO_SCAN` gap noted in earlier design discussion — a user can now capti
 the sheet's reverse without a dedicated scan type ever needing to exist for it. This is *not*
 the structured `hypothesis`/`documented_fact` appraiser-input channel proposed in item 3
 below — it's free-text guidance attached to an image, not a standalone assertion with a
-trust level. Item 3 as scoped below is still unimplemented.
+trust level. That channel is now implemented, as [ADR-0004](0004-appraiser-input-agent.md)
+(Stage 1c, the Appraiser Input Agent) — see item 3's own section below.
 
 ### 2. Route Stage 1b's `VisualSearchResult` into Stage 2a, not only Stage 2b
 
@@ -98,14 +99,14 @@ them. Each entry carries an explicit status:
 
 A `hypothesis` must not outrank contradicting VEA/ACKG evidence; a `documented_fact` should.
 
-**Superseded by [ADR-0004](0004-appraiser-input-agent.md).** What's sketched here as an
-input surface is fleshed out there as a full Stage-1-level agent — **Stage 1c, the Appraiser
-Input Agent (AIA)** — running in parallel with VEA and Stage 1b rather than being folded into
-either. ADR-0004 also resolves something this ADR didn't address: the appraiser's free text
-was, until now, being fed directly into *VEA's* prompt (`{userNotes}`), not routed to Triage
-at all — a layering violation ADR-0004 removes as part of standing AIA up. Read ADR-0004 for
-the actual design (extraction approach, output schema, pipeline placement); this section is
-left in place for historical context only.
+**Superseded by [ADR-0004](0004-appraiser-input-agent.md), implemented 2026-08-24.** What's
+sketched here as an input surface shipped there as a full Stage-1-level agent — **Stage 1c,
+the Appraiser Input Agent (AIA)** — launched in parallel with VEA rather than being folded
+into either it or Stage 1b. Verified end-to-end: Triage correctly weighs `documented_fact`
+claims above `hypothesis` claims and flags a conflict rather than silently resolving it when
+the appraiser's claims disagree with VEA's physical evidence (see ADR-0004's implementation
+notes for the actual test). Read ADR-0004 for the full design and what shipped; this section
+is left in place for historical context only.
 
 ### 4. Art Context Knowledge Graph (ACKG), queried by Stage 2a as a tool call
 
