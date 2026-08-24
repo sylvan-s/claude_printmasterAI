@@ -26,12 +26,17 @@ import {
   STAGE3_VALUATION_ONLY_SCHEMA,
 } from "./schemas";
 import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
 
-const __dirname_esm = dirname(fileURLToPath(import.meta.url));
-const SPECIALIST_CONFIGS_DIR = join(__dirname_esm, "specialist_configs");
+// Resolved from the process working directory, not import.meta.url / __dirname:
+// esbuild's --format=cjs bundling (src/appraisal/appraiser.ts -> dist/server.cjs)
+// squashes every module into one file, so any path relative to "where this code
+// physically lives" stops meaning anything post-bundle — and import.meta.url
+// itself comes back undefined in the bundled CJS output, crashing at import
+// time. npm start/dev both run from the project root, so cwd is the one
+// reliable anchor across the bundled and unbundled cases alike.
+const SPECIALIST_CONFIGS_DIR = join(process.cwd(), "src/appraisal/specialist_configs");
 
 // ---------------------------------------------------------------------------
 // Public interfaces
