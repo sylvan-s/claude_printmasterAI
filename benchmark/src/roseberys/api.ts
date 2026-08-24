@@ -114,6 +114,29 @@ export async function fetchAuctionLots(
   return [...new Map(out.map((l) => [l.id, l])).values()];
 }
 
+/**
+ * Fetch a single lot by its display number within a sale. The API has no
+ * single-lot endpoint, so this pulls the whole sale and filters — fine for
+ * ad hoc lookups (e.g. tests/backtest/), not something to call in a loop.
+ * Matches against both lot_number and total_lot_number since split/lettered
+ * lots (e.g. "43A") don't always agree between the two fields.
+ */
+export async function fetchLotByNumber(
+  auctionId: number,
+  lotNumber: string | number,
+  opts: { perPage?: number; delayMs?: number } = {},
+): Promise<RawLot | null> {
+  const target = String(lotNumber).trim().toLowerCase();
+  const lots = await fetchAuctionLots(auctionId, opts);
+  return (
+    lots.find(
+      (l) =>
+        String(l.lot_number).trim().toLowerCase() === target ||
+        String(l.total_lot_number).trim().toLowerCase() === target,
+    ) ?? null
+  );
+}
+
 export function imageUrl(lot: RawLot): string | null {
   return lot.image ? `${ASSET_BASE}/${lot.image.replace(/^\/+/, "")}` : null;
 }
