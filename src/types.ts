@@ -44,6 +44,7 @@ export interface PrintAnalysisReport {
   modelUsed?: string;
   promptVersion?: string;
   stage1Result?: VisualExtractionResult;
+  stage1cResult?: AppraiserInputResult;
   stage2aResult?: TriageResult;
   stage2Result?: AttributionResearchResult;
   pipelineMeta?: {
@@ -275,6 +276,70 @@ export interface VisualExtractionResult {
   overallExtractionConfidence: number;
   lowConfidenceFlags: string[];
   provisionalOutput: boolean;
+}
+
+// Stage 1c — Appraiser Input Agent output. See ADR-0004. Text-only, no
+// vision — extracted from the four AppraiserNotesInput.tsx free-text boxes.
+export type ClaimStatus = "hypothesis" | "documented_fact" | "absent";
+
+export interface AppraiserInputResult {
+  schemaVersion: "AIA-1.0";
+  inputReceived: {
+    inscribedMarksNotes: boolean;
+    provenanceNotes: boolean;
+    conditionNotes: boolean;
+    catalogueNotes: boolean;
+  };
+  claimedAttribution: {
+    artist: string | null;
+    title: string | null;
+    period: string | null;
+    technique: string | null;
+    status: ClaimStatus;
+    sourceField: "inscribedMarksNotes" | "provenanceNotes" | "conditionNotes" | "catalogueNotes" | null;
+    sourceExcerpt: string | null;
+  };
+  inscriptionClaims: {
+    signatureClaim: string | null;
+    editionClaim: string | null;
+    editionSizeClaim: number | null;
+    monogramOrStampClaim: string | null;
+    status: ClaimStatus;
+  };
+  provenanceChain: Array<{
+    ownerOrEntity: string;
+    dateOrPeriod: string | null;
+    status: Exclude<ClaimStatus, "absent">;
+    sourceExcerpt: string;
+  }>;
+  conditionClaims: Array<{
+    claim: string;
+    status: Exclude<ClaimStatus, "absent">;
+    sourceExcerpt: string;
+  }>;
+  catalogueReferences: Array<{
+    ref: string;
+    source: "regex" | "llm";
+  }>;
+  literatureOrExhibitionClaims: string[];
+  dimensionsClaim: {
+    widthCm: number | null;
+    heightCm: number | null;
+    kind: string | null;
+    source: "regex" | "llm" | "both";
+  } | null;
+  /** Paper/support material as stated in the notes, e.g. "BFK Rives wove",
+   *  "wove paper", "vellum". No regex hint exists for this (unlike dimensions/
+   *  catalogue refs/edition size) — LLM-only extraction. */
+  paperOrSupport: string | null;
+  rawNotes: {
+    inscribedMarksNotes: string | null;
+    provenanceNotes: string | null;
+    conditionNotes: string | null;
+    catalogueNotes: string | null;
+  };
+  overallExtractionConfidence: number;
+  lowConfidenceFlags: string[];
 }
 
 // 3-stage legacy attribution result. schemaVersion is absent in existing DB records.
