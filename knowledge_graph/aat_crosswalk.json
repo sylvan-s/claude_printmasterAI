@@ -1,0 +1,73 @@
+{
+  "_purpose": "Deterministic crosswalk from VEA-1.0's closed-enum vocabulary (doc 01) to verified AAT URIs. Built per doc 06 recommendation (b): VEA never emits AAT IDs itself; this table is applied downstream. Every entry below was resolved via a live fetch against vocab.getty.edu / getty.edu/vow, not from model memory. See doc 06 Appendix / doc 08 Appendix A for the hallucination risk this discipline exists to prevent.",
+  "_lastVerified": "2026-08-24",
+
+  "printingTechniques": {
+    "Etching": { "aatId": "300053241", "aatLabel": "etching (process)" },
+    "Drypoint": { "aatId": "300053228", "aatLabel": "drypoint (printing process)" },
+    "Aquatint": { "aatId": "300053242", "aatLabel": "aquatint (printing process)" },
+    "Mezzotint": { "aatId": "300053233", "aatLabel": "mezzotint (process)" },
+    "Engraving": { "aatId": "300053225", "aatLabel": "engraving (printing process)" },
+    "Photogravure": { "aatId": "300053207", "aatLabel": "photogravure (process)" },
+    "Woodcut": { "aatId": "300053296", "aatLabel": "woodcut (process)" },
+    "Wood engraving": { "aatId": "300053303", "aatLabel": "wood engraving (process)" },
+    "Linocut": {
+      "aatId": "300060720",
+      "aatLabel": "linoleum block printing",
+      "note": "AAT's PREFERRED label is 'linoleum block printing'; 'linocut (process)' is a registered alternate label under the same concept. Kept as 'Linocut' in VEA's enum to match conventional print-market usage — the URI is what matters for interoperability, not which of AAT's own labels is used."
+    },
+    "Lithograph": { "aatId": "300053271", "aatLabel": "lithography" },
+    "Offset lithograph": { "aatId": "300192900", "aatLabel": "offset lithography" },
+    "Screenprint / Serigraphy": {
+      "aatId": "300053281",
+      "aatLabel": "screen printing",
+      "note": "AAT's confirmed alternate labels include 'screenprinting', 'silk screen printing', 'silk-screen printing'. 'Serigraphy' is standard print-market usage for the same process but was NOT independently confirmed as a registered AAT alternate label in this pass — flagged, not assumed."
+    },
+    "Giclée": {
+      "aatId": null,
+      "note": "UNMAPPED at process level. Only a PRINT-OBJECT concept exists — 'giclée prints' (300375334) — no separate 'giclée (process)' entry was found in AAT. Record as unmapped per doc 09's discipline rather than force a mapping to the object-level concept."
+    },
+    "Photolithograph": { "aatId": "300053275", "aatLabel": "photolithography" },
+    "Letterpress": { "aatId": "300178926", "aatLabel": "letterpress printing" },
+    "Embossing": { "aatId": "300053826", "aatLabel": "embossing (technique)" },
+    "Collage": {
+      "aatId": "300138699",
+      "aatLabel": "collage (technique)",
+      "note": "General image-making technique, distinct from AAT's 'collagraph printing' (300053220) which is a specific printmaking process using collaged materials as the printing plate itself. Met's Medium field uses 'collage' in the general sense (e.g. photographic-print collage elements), so the general concept is the correct match here — but if collagraph printmaking is ever encountered specifically, it should map to 300053220 instead, not this entry."
+    },
+    "Chine-collé": {
+      "aatId": "300256021",
+      "aatLabel": "chine collé (process)",
+      "note": "Moved here from paperSurfaceType — AAT classifies this as a process ('strengthening, stabilizing'), not a paper material, and doc 01 §2C/§2E were updated to match. An additive/compound process, not a standalone technique family: record family: 'mixed' alongside whatever primary technique it was combined with."
+    }
+  },
+
+  "paperSurfaceType": {
+    "wove": { "aatId": "300014187", "aatLabel": "wove paper" },
+    "laid": { "aatId": "300014184", "aatLabel": "laid paper" },
+    "vellum": {
+      "aatId": null,
+      "candidates": [
+        { "aatId": "300011852", "aatLabel": "vellum (parchment)", "meaning": "genuine animal-skin parchment support" },
+        { "aatId": "300250699", "aatLabel": "vellum (paper)", "meaning": "modern smooth translucent paper marketed as 'vellum'" }
+      ],
+      "note": "Genuinely ambiguous without physical examination — VEA cannot distinguish these from an image alone, and neither should the crosswalk guess. Needs a disambiguation rule (probably: default to parchment for pre-20th-century prints, paper for modern editions) or a VEA-side follow-up question, not a silent pick."
+    },
+    "japanese": { "aatId": "300404752", "aatLabel": "japan paper", "note": "Confirmed unambiguous on lookup — only one matching concept, under Materials > paper (fiber product) > paper by composition or origin." },
+    "BFK": { "aatId": null, "note": "Not yet verified — BFK Rives is a specific manufacturer's paper brand, likely falls under AAT's Materials facet if present at all; not checked." },
+    "card": { "aatId": null, "note": "Not yet verified." },
+    "fabric": { "aatId": null, "note": "Not yet verified." }
+  },
+
+  "stylesAndPeriods": {
+    "_purpose": "Backs VEA's styleObservations[] (doc 01 §2I) — Genre nodes for per-Impression stylistic observations, distinct from the Artist-level Movement node (doc 08), see doc 01 §2I note.",
+    "Cubism": { "aatId": "300021495", "aatLabel": "Cubist", "facet": "Styles and Periods Facet, Modern European fine arts styles and movements" },
+    "Surrealism": { "aatId": "300021512", "aatLabel": "Surrealist", "facet": "Styles and Periods Facet, Modern European fine arts styles and movements" },
+    "Impressionism": { "aatId": "300021503", "aatLabel": "Impressionist", "facet": "Styles and Periods Facet, Modern European fine arts styles and movements" }
+  },
+
+  "conditionDefects": {
+    "Foxing": { "aatId": "300078853", "aatLabel": "foxing", "facet": "Physical Attributes Facet, Conditions and Effects hierarchy" },
+    "Tears": { "aatId": "300254138", "aatLabel": "tears (condition)", "facet": "Physical Attributes Facet, Conditions and Effects hierarchy" }
+  }
+}

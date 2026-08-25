@@ -11,3 +11,5 @@ data/
 ACCESS_NOTES.md
 tests/vea/output/
 tests/backtest/output/
+__pycache__/
+*.pyc
