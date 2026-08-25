@@ -24,12 +24,21 @@ same way Tate's did.
 Dependencies are heavier and more fragile than the rest of this toolkit (torch,
 transformers, Pillow with WebP support) — confirmed during the POC that installing them
 into a shared conda base environment can trigger real version conflicts (this project's
-own anaconda base has an old numpy that broke on a Pillow upgrade). Use an isolated venv:
+own anaconda base has an old numpy that broke on a Pillow upgrade). Use an isolated venv —
+and build it from the system's native-arm64 Python, not Anaconda's: on this project's own
+Apple Silicon Mac, Anaconda's `python3` is an x86_64 build running under Rosetta, which
+measured ~2x slower on CPU than native arm64 for this exact workload (0.62s/image vs.
+0.316s/image) — a bigger, free win than chasing MPS turned out to be (MPS only measured
+~1.16x over native-arm64 CPU for this small a model run unbatched, not worth the setup
+complexity here):
 
-    python3 -m venv knowledge_graph/venv-embeddings
+    /usr/bin/python3 -m venv knowledge_graph/venv-embeddings
     knowledge_graph/venv-embeddings/bin/pip install -r knowledge_graph/requirements-embeddings.txt
     set -a; source knowledge_graph/.env; set +a
     knowledge_graph/venv-embeddings/bin/python knowledge_graph/embed_images_dinov2.py --all
+
+(On non-Apple-Silicon hardware, plain `python3 -m venv` is fine — the Rosetta penalty
+above is specific to running an x86_64 Python build on an ARM Mac.)
 
 Usage:
     python3 embed_images_dinov2.py --all
