@@ -392,7 +392,9 @@ export const TRIAGE_SCHEMA = {
           artistName: { type: Type.STRING },
           candidateProbability: { type: Type.NUMBER },
           supportingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
-          contradictingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } }
+          contradictingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
+          ackgSupportCount: { type: Type.INTEGER },
+          ackgProvenanceTags: { type: Type.ARRAY, items: { type: Type.STRING } }
         },
         required: ["rank", "artistName", "candidateProbability", "supportingEvidence", "contradictingEvidence"]
       }
@@ -408,6 +410,15 @@ export const TRIAGE_SCHEMA = {
         physicalExaminationRequired: { type: Type.BOOLEAN }
       },
       required: ["forgeryRisk", "reprintRisk", "editionComplexityRisk", "misattributionRisk", "authenticationBodyExists", "physicalExaminationRequired"]
+    },
+    evidenceCorroboration: {
+      type: Type.OBJECT,
+      properties: {
+        stage1bAgreement: { type: Type.BOOLEAN },
+        ackgAgreement: { type: Type.BOOLEAN },
+        conflicts: { type: Type.ARRAY, items: { type: Type.STRING } }
+      },
+      required: ["conflicts"]
     },
     routingDecision: {
       type: Type.OBJECT,

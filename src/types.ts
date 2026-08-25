@@ -444,6 +444,11 @@ export interface TriageResult {
     candidateProbability: number;
     supportingEvidence: string[];
     contradictingEvidence: string[];
+    /** From the query_ackg tool (docs/adr/0003 item 4) — null when the tool wasn't
+     *  called or the graph is unavailable, distinct from 0 (a real zero-support result). */
+    ackgSupportCount?: number | null;
+    /** "institutional" and/or "auction_history", per which ACKG source layers matched. */
+    ackgProvenanceTags?: string[];
   }>;
   riskFlags: {
     forgeryRisk: boolean;
@@ -452,6 +457,19 @@ export interface TriageResult {
     misattributionRisk: boolean;
     authenticationBodyExists: boolean;
     physicalExaminationRequired: boolean;
+  };
+  /** Cross-source fusion result, per ADR-0003's "corroboration is the strong case,
+   *  contradiction must surface" discipline. Populated from Stage 1b's visual search
+   *  and the query_ackg tool (both new in this version) alongside Stage 1c's appraiser
+   *  claims. null fields mean that evidence source wasn't available to compare, not
+   *  that it agreed. */
+  evidenceCorroboration?: {
+    stage1bAgreement: boolean | null;
+    ackgAgreement: boolean | null;
+    /** Free-text description of each surfaced conflict — same idiom as the
+     *  contradictingEvidence arrays elsewhere in this schema. Never resolved
+     *  silently; every entry here is a conflict the model chose not to average away. */
+    conflicts: string[];
   };
   routingDecision: {
     tier: 1 | 2 | 3;

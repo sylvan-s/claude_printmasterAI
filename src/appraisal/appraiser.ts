@@ -31,6 +31,8 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
+import { queryAckg } from "./knowledge_graph/index.js";
+import type { AckgCandidate } from "./knowledge_graph/types.js";
 import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../shared/text_extraction";
 
 // Resolved from the process working directory, not import.meta.url / __dirname:
@@ -707,6 +709,155 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     }
   }
 
+  // ---- ACKG (Art Context Knowledge Graph) query tool (Stage 2a) --------------
+  // See docs/adr/0003-knowledge-graph-grounded-triage.md item 4 and
+  // src/appraisal/knowledge_graph/. Deliberately a tool call, not embedded in
+  // the prompt: an LLM asked to emit vocabulary URIs or population statistics
+  // from memory, without a live lookup, is a real hallucination risk.
+
+  private static readonly QUERY_ACKG_TOOL = {
+    name: "query_ackg",
+    description:
+      "Query the Art Context Knowledge Graph — a Neo4j graph built from real ingested " +
+      "print records (Metropolitan Museum of Art, Roseberys, Forum Auctions; ~4,800 " +
+      "artists, ~33,700 works) — for artists whose actual catalogued output matches the " +
+      "given technique/period/paper/region/subject combination. Returns candidates ranked " +
+      "by supportCount (how many real matching works exist), split into institutional vs. " +
+      "auction-history provenance. All parameters are optional — supply whichever you " +
+      "currently have evidence for from VEA, and narrow with a second call once your " +
+      "hypothesis sharpens. IMPORTANT: a zero or low supportCount is real absence-of-" +
+      "population-data for that combination in this graph's current sources — it is NOT " +
+      "evidence against a candidate. Coverage is strong for Western 19th-20th century " +
+      "prints and currently thin-to-absent for ukiyo-e specifically; treat a zero result " +
+      "for an East Asian candidate as a coverage gap, never as disqualifying.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        technique: { type: "string" as const, description: "Printing technique, e.g. \"Etching\", \"Screenprint\"." },
+        periodStartYear: { type: "integer" as const, description: "Inclusive lower bound on creation year." },
+        periodEndYear: { type: "integer" as const, description: "Inclusive upper bound on creation year." },
+        paper: { type: "string" as const, description: "Paper type, e.g. \"wove\", \"laid\"." },
+        region: { type: "string" as const, description: "Artist nationality/region hint, e.g. \"British\", \"Japanese\"." },
+        subject: { type: "string" as const, description: "Depicted subject, e.g. \"Portraits\", \"Horses\"." },
+      },
+      required: [],
+    },
+  };
+
+  /** Cap what reaches the model — ranked facts, not a raw graph dump. */
+  private formatAckgResultForClaude(candidates: AckgCandidate[]): string {
+    if (candidates.length === 0) {
+      return "No candidates found for this filter combination — this is an absence-of-" +
+        "population-data signal for this graph's current sources, not evidence against " +
+        "any specific artist. Try broadening or dropping a filter, or proceed with other evidence.";
+    }
+    const lines = [`${candidates.length} candidate(s), ranked by support count:`];
+    for (const c of candidates) {
+      lines.push(
+        `\n${c.artistName} — supportCount=${c.supportCount} ` +
+        `(institutional=${c.institutionalSupportCount}, auction_history=${c.auctionSupportCount})` +
+        `${c.ulanUrl ? ` [ULAN: ${c.ulanUrl}]` : ""}`
+      );
+      if (c.sampleWorks.length) lines.push(`  sample works: ${c.sampleWorks.join(" | ")}`);
+    }
+    return lines.join("\n");
+  }
+
+  /**
+   * Bounded tool loop for Stage 2a (Triage), scoped to only the query_ackg tool —
+   * no native web_search, since Triage classifies and routes, it doesn't browse
+   * the web (that's Stage 2b's job via callClaudeWithWebSearch below). A new,
+   * dedicated function rather than a modification of callClaudeWithWebSearch:
+   * that function is Stage 2b's already-shipped, tested tool loop and stays
+   * untouched here to carry zero regression risk.
+   *
+   * Finalises with a forced tool_choice matching the target schema (the same
+   * mechanism callClaude uses) rather than callClaudeWithWebSearch's free-text-
+   * JSON-then-parse finalisation — more robust, and the full tool-call history
+   * carries over into that final request at no extra cost.
+   */
+  protected async callClaudeWithAckgTool(
+    modelName: string,
+    systemInstruction: string,
+    userText: string,
+    maxTokens: number = 8192
+  ): Promise<any> {
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
+
+    const tools = [MultiStageAppraiser.QUERY_ACKG_TOOL];
+    const finalToolName = "report_attribution_triage";
+
+    const post = async (messages: any[], forceFinalTool: boolean) => {
+      const doRequest = () => fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "x-api-key": apiKey!, "anthropic-version": "2023-06-01", "content-type": "application/json" },
+        body: JSON.stringify({
+          model: modelName,
+          max_tokens: maxTokens,
+          system: systemInstruction,
+          messages,
+          tools: forceFinalTool
+            ? [...tools, { name: finalToolName, description: "Report the structured attribution triage and routing decision.", input_schema: translateSchemaToStandardJsonSchema(TRIAGE_SCHEMA) }]
+            : tools,
+          ...(forceFinalTool ? { tool_choice: { type: "tool", name: finalToolName } } : {}),
+        }),
+      });
+      let response = await doRequest();
+      if (response.status >= 500) {
+        console.warn(`[Stage 2a ACKG tool] Transient ${response.status} — retrying in 5s`);
+        await new Promise(r => setTimeout(r, 5000));
+        response = await doRequest();
+      }
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Claude ACKG-tool API request failed: ${response.status}: ${errorText}`);
+      }
+      return response.json();
+    };
+
+    const messages: any[] = [{ role: "user", content: userText }];
+    const MAX_ROUNDS = 4;
+    let data: any = null;
+
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      data = await post(messages, false);
+      if (data.stop_reason === "max_tokens") {
+        throw new Error("Claude (ACKG tool) hit max_tokens limit — response was truncated.");
+      }
+      const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use" && b.name === "query_ackg");
+      if (clientToolUses.length === 0) break;
+
+      messages.push({ role: "assistant", content: data.content });
+      const toolResults = await Promise.all(
+        clientToolUses.map(async (b: any) => {
+          let content: string;
+          try {
+            const result = await queryAckg(b.input || {});
+            content = this.formatAckgResultForClaude(result);
+          } catch (err: any) {
+            content = `ACKG query failed: ${err.message}`;
+          }
+          return { type: "tool_result", tool_use_id: b.id, content };
+        }),
+      );
+      messages.push({ role: "user", content: toolResults });
+    }
+
+    // Finalise: force the schema tool call, carrying the full reasoning + tool-result
+    // history from above into it.
+    messages.push({
+      role: "user",
+      content: "Now report your final structured triage result via the report_attribution_triage tool.",
+    });
+    const finalData = await post(messages, true);
+    const toolUseBlock = finalData.content?.find((b: any) => b.type === "tool_use" && b.name === finalToolName);
+    if (!toolUseBlock?.input) {
+      throw new Error("Claude (ACKG tool) did not return a valid structured tool call for report_attribution_triage.");
+    }
+    return toolUseBlock.input;
+  }
+
   // ---- Stage 1b — Gemini Visual Search ----------------------------------------
 
   // Uses Google Custom Search API (image search) to retrieve a direct image URL for a
@@ -1237,7 +1388,8 @@ CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
     stage2aModel: string,
     ai: GoogleGenAI,
     userNotes?: string,
-    appraiserInput?: AppraiserInputResult
+    appraiserInput?: AppraiserInputResult,
+    visualSearch?: VisualSearchResult
   ): Promise<TriageResult> {
     const notesBlock = userNotes?.trim()
       ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for tradition identification and artist candidates):\n"${userNotes.trim()}"\n\n`
@@ -1277,12 +1429,52 @@ CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
 INSTRUCTION: If any claim above conflicts with VEA's physical observations, record the conflict explicitly (e.g. in traditionNotes or a risk flag) rather than picking one silently.\n`
       : "";
 
+    // Stage 1b (Visual Search) — see docs/adr/0003 item 2. Previously reached only
+    // Stage 2b; now also available here so a strong reverse-image hit can influence
+    // routing/candidates rather than surfacing only after a specialist config is
+    // already picked. Same hypothesis-warning framing Stage 2b already uses below.
+    const vs = visualSearch;
+    const hasMatch = vs?.bestMatchArtist || vs?.bestMatchTitle;
+    const hasPages = vs && (vs.webEntities.length > 0 || vs.pagesWithMatchingImages.length > 0);
+    const visualSearchBlock = (hasMatch || hasPages)
+      ? `\n\n${vs?.hypothesisWarning || ""}
+
+STAGE 1b VISUAL SEARCH RESULT (Gemini ${this.config.stage1bModel || DEFAULT_STAGE1B_MODEL} reverse image search):
+  Best match artist : ${vs?.bestMatchArtist || "No match found"}
+  Best match title  : ${vs?.bestMatchTitle || "No match found"}
+  Confidence        : ${vs?.matchConfidence || "N/A"}
+  Evidence basis    : ${vs?.evidenceBasis || "unspecified"} (visual = confirmed against an actual reference image; textual = only a page's written attribution, not visually confirmed)
+  Visual similarity : ${vs?.visualSimilarityScore != null ? `${(vs.visualSimilarityScore * 100).toFixed(0)}% — ${vs.visualSimilarityRationale}` : "Not scored (image not retrieved)"}
+
+INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCorroboration, never as confirmed attribution. A visual-basis match with similarity >= 0.7 that agrees with VEA signature/technique evidence is corroboration; any disagreement with VEA's physical evidence must be recorded in evidenceCorroboration.conflicts, not silently resolved. A "textual" basis or similarity below 0.6 should be treated with high scepticism.\n`
+      : "";
+
     const veaSlim = this.projectVeaForAttribution(vea);
-    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and route to the correct specialist config.\n\n${JSON.stringify(veaSlim, null, 2)}${appraiserInputBlock}`;
+    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and route to the correct specialist config.\n\n${JSON.stringify(veaSlim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
     if (isClaude(stage2aModel)) {
-      return this.callClaude(stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ type: "text", text: userText }], "report_attribution_triage", "Report the structured attribution triage and routing decision.", TRIAGE_SCHEMA);
+      // Claude gets the live query_ackg tool — see callClaudeWithAckgTool above.
+      return this.callClaudeWithAckgTool(stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, userText);
     } else {
-      return this.callGemini(ai, stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ text: userText }], TRIAGE_SCHEMA, 0.1);
+      // Gemini has no user-defined function-calling loop in this codebase (same
+      // existing limitation as the Claude-only lookup_museum_collections tool —
+      // see ADR-0005 finding #4). One deterministic ACKG lookup, built directly
+      // from VEA's own fields (no LLM involved in forming the query), stands in
+      // for the interactive multi-round version Claude gets. Weaker — a single
+      // fixed query instead of iteratively narrowed ones — but real grounding is
+      // still better than none. Worth a genuine Gemini tool loop if Gemini-routed
+      // Triage volume ever justifies the build.
+      let ackgBlock = "";
+      try {
+        const primaryTechnique = vea.printingTechniques?.[0]?.technique;
+        const candidates = await queryAckg({
+          technique: primaryTechnique || undefined,
+          paper: vea.paper?.surfaceType || undefined,
+        });
+        ackgBlock = `\n\nART CONTEXT KNOWLEDGE GRAPH — candidates matching VEA's observed technique/paper, ranked by real population support (see evidenceCorroboration.ackgAgreement instructions in your prompt):\n${this.formatAckgResultForClaude(candidates)}\n`;
+      } catch (err: any) {
+        console.warn(`[Stage 2a] ACKG pre-fetch failed (Gemini path) — proceeding without it: ${err.message}`);
+      }
+      return this.callGemini(ai, stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ text: userText + ackgBlock }], TRIAGE_SCHEMA, 0.1);
     }
   }
 
@@ -1597,19 +1789,21 @@ export class FourStageAppraiser extends MultiStageAppraiser {
       return halt;
     }
 
-    // Stage 1b and Stage 1c were already launched above; awaited here
-    // alongside Stage 2a (Triage), which itself waits on Stage 1c (usually
-    // near-instant — it returns immediately when no notes were submitted)
-    // so Triage can weigh the appraiser's trust-tagged claims alongside
-    // VEA's physical evidence.
+    // Stage 1b and Stage 1c were already launched above. Per docs/adr/0003 item 2,
+    // Stage 2a (Triage) now also waits on Stage 1b's visual-search result (not
+    // just Stage 1c's appraiser claims) before making its routing decision —
+    // this is the ADR's accepted "blocking" tradeoff (Stage 1b's latency now
+    // sits on Stage 2a's critical path, rather than 1b and 2a running fully in
+    // parallel as before) in exchange for Triage actually being able to weigh a
+    // strong reverse-image match instead of it only reaching Stage 2b afterward.
     emit({ stage: "stage2a", status: "start", message: "Triaging attribution complexity and routing to specialist…", percent: 24 });
     const [visualSearch, triageResult, appraiserInput] = await Promise.all([
       visualSearchPromise,
       (async () => {
-        const appraiserInputResult = await appraiserInputPromise;
+        const [appraiserInputResult, visualSearchResult] = await Promise.all([appraiserInputPromise, visualSearchPromise]);
         const t2a = Date.now();
         console.log(`[Timing] Stage 2a (Triage) starting — model: ${stage2aModel}`);
-        const r = await this.runStage2aTriage(vea, stage2aModel, ai, input.userNotes, appraiserInputResult);
+        const r = await this.runStage2aTriage(vea, stage2aModel, ai, input.userNotes, appraiserInputResult, visualSearchResult);
         console.log(`[Timing] Stage 2a (Triage) done — ${((Date.now() - t2a) / 1000).toFixed(1)}s`);
         emit({ stage: "stage2a", status: "done", message: "Triage complete — specialist routing confirmed", percent: 40 });
         return r;
