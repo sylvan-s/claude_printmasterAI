@@ -131,6 +131,23 @@ def _clean(v):
     return html.unescape(str(v)).strip()
 
 
+# See roseberys_ingest.py's _fix_lot_image_url for the full explanation — same CDN,
+# same WAF-blocked-not-dead finding (confirmed 2026-08-25), same fix: the real asset
+# lives on a public S3 bucket one hop away, under "forum/prod/..." instead of
+# "roseberys/prod/...".
+_LOT_IMAGE_URL_PREFIX = "https://www.forumauctions.co.uk/lot_images/large/"
+_LOT_IMAGE_URL_REPLACEMENT = "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/"
+
+
+def _fix_lot_image_url(raw):
+    if raw is None or pd.isna(raw):
+        return None
+    raw = str(raw).strip()
+    if raw.startswith(_LOT_IMAGE_URL_PREFIX):
+        return raw.replace(_LOT_IMAGE_URL_PREFIX, _LOT_IMAGE_URL_REPLACEMENT, 1)
+    return raw
+
+
 _PAREN_RE = re.compile(r"\s*\([^)]*\)")
 _TRAILING_BY_RE = re.compile(r"\s+by\s+.+$", re.IGNORECASE)
 _PAREN_DATES_RE = re.compile(r"\(([^)]*\d{4}[^)]*)\)")
@@ -259,7 +276,7 @@ def map_row(row):
         "catalogueRefs": parse_catalogue_refs(_clean(row.get("catalogue_refs"))),
         "provenanceNote": _clean(row.get("provenance")),
         "listingUrl": row.get("lot_url") if pd.notna(row.get("lot_url")) else None,
-        "imageUrl": row.get("image_url") if pd.notna(row.get("image_url")) else None,
+        "imageUrl": _fix_lot_image_url(row.get("image_url")),
         "estimateLow": _num("low_estimate"),
         "estimateHigh": _num("high_estimate"),
         "reserve": _num("reserve"),

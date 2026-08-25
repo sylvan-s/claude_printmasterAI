@@ -145,6 +145,26 @@ def _clean(v):
     return html.unescape(str(v)).strip()
 
 
+# The CSV's own image_url column points at www.roseberys.co.uk/lot_images/large/... —
+# a path that's live-blocked by an AWS WAF Bot Control challenge on any non-browser
+# client (confirmed 2026-08-25), not actually dead. The real asset already lives one
+# hop away, on a public, unauthenticated S3 bucket under the same two UUIDs, just at
+# "xlarge" instead of "large" — confirmed by inspecting a real lot page's rendered
+# image element in a live browser session. Rewriting at ingest time so this doesn't
+# need a retroactive graph-wide fix again (see doc 09, DINOv2 POC section).
+_LOT_IMAGE_URL_PREFIX = "https://www.roseberys.co.uk/lot_images/large/"
+_LOT_IMAGE_URL_REPLACEMENT = "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/"
+
+
+def _fix_lot_image_url(raw):
+    if raw is None or pd.isna(raw):
+        return None
+    raw = str(raw).strip()
+    if raw.startswith(_LOT_IMAGE_URL_PREFIX):
+        return raw.replace(_LOT_IMAGE_URL_PREFIX, _LOT_IMAGE_URL_REPLACEMENT, 1)
+    return raw
+
+
 def map_row(row):
     sale_code = row["sale_code"]
     lot_number = int(row["lot_number"])
@@ -200,7 +220,7 @@ def map_row(row):
         "catalogueRefsRaw": _clean(row.get("catalogue_refs")),
         "provenanceNote": _clean(row.get("provenance")),
         "listingUrl": row.get("lot_url") if pd.notna(row.get("lot_url")) else None,
-        "imageUrl": row.get("image_url") if pd.notna(row.get("image_url")) else None,
+        "imageUrl": _fix_lot_image_url(row.get("image_url")),
         "estimateLow": _num("low_estimate"),
         "estimateHigh": _num("high_estimate"),
         "reserve": _num("reserve"),

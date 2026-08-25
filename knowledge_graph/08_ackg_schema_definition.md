@@ -336,6 +336,39 @@ reasoning about the schema on paper:
   was empty on all 38 pilot records (none are public domain) — expect near-zero
   `DigitalImage` coverage from this source for 20th-century artists specifically.
 
+## 7. Schema addition: `DigitalImage.embedding`
+
+Added 2026-08-25 for the DINOv2 visual-similarity proof-of-concept (see doc 09's Roseberys
+section for the WAF/URL-rewrite finding that made this viable at all). Four new flat
+properties on the existing `DigitalImage` type, no new node/edge type needed:
+
+```
+DigitalImage {
+  ...,
+  embedding: LIST<FLOAT>,     -- CLS-token pooled output, model-dependent length
+  embeddingModel: STRING,     -- e.g. "facebook/dinov2-small" — always record which
+  embeddingDim: INTEGER,      -- redundant with size(embedding) but cheap to filter on
+  embeddedAt: STRING          -- ISO date, so a future re-embed (bigger model, fine-
+                              -- tuned variant) can target only stale/missing vectors
+}
+```
+
+Scope: **Roseberys and Forum Auctions only.** Tate has zero working images (dead URLs,
+nodes pruned — doc 09 §4.2) and Met has zero `DigitalImage` nodes at all (never fetched —
+`met_ingest.py`'s own header comment). Storing this costs no node/relationship budget
+(AuraDB Free's 200k/400k limits count nodes and relationships, not property size) — at
+384 dims × 8-byte Neo4j floats, the full ~20,291-image set costs roughly 61MB, which is
+noise against what a 190k-node graph already stores.
+
+Explicitly **not** an attribution signal by itself — DINOv2 is a general-purpose visual-
+similarity model (composition/palette/texture), not trained to distinguish artists' hands.
+Confirmed empirically in the POC: the top cosine-similarity match across a 20-image sample
+was two different artists sharing a visual style, not a same-artist pair. Treat `embedding`
+as one corroborating evidence type for Stage 2a's fusion logic (doc 07 §2.3's "never
+averaged away" rule) alongside the graph's existing text/provenance evidence, not a
+standalone artist classifier — a real attribution-specific signal would need calibration
+against known-artist pairs, not just a bigger off-the-shelf checkpoint.
+
 ## Next steps
 
 Per doc 07 §5's roadmap, this doc completes step 2 ("define the ACKG schema and a minimal seed

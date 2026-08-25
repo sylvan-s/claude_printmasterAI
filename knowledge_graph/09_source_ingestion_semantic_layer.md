@@ -161,6 +161,27 @@ surname+given-name key (stripping ALL-CAPS trailing tokens generically, not just
 known postnominal list) and flag any group with more than one node for review, rather
 than continuing to discover these one artist at a time.
 
+### Fixed 2026-08-25 — WAF-blocked lot image URLs (also covers Forum Auctions)
+
+Discovered while building a DINOv2 embedding proof-of-concept: the `image_url` column's
+`www.roseberys.co.uk/lot_images/large/...` / `www.forumauctions.co.uk/lot_images/large/...`
+URLs are **not dead** (unlike Tate's — see §4.2) but return an AWS WAF Bot Control
+`202 challenge` to any non-browser client. Live-inspecting a real lot page in a browser
+found the actual asset one hop away on a public, unauthenticated S3 bucket, same two UUIDs,
+just `xlarge` instead of `large`:
+`am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/{roseberys|forum}/prod/lot_images/xlarge/...`
+— confirmed reachable via plain `curl`, no browser session needed once rewritten.
+
+**Retroactively fixed** for all 20,291 already-loaded `DigitalImage` nodes (10,255
+Roseberys + 10,036 Forum, both exact 100% matches against the old prefix, no outliers) via
+a bulk `SET img.sourceUrl = replace(...)`, verified live against a fresh random sample.
+**Fixed going forward** too: `roseberys_ingest.py`'s and `forum_ingest.py`'s `_fix_lot_image_url()`
+now rewrite the URL at ingest time, so this doesn't need a repeat retroactive fix.
+
+(Forum Auctions doesn't yet have its own numbered adapter section in this doc — a
+pre-existing gap, not introduced here — so this fix is logged against the Roseberys
+section it's structurally identical to.)
+
 ---
 
 ## 4. Source adapter: Met Open Access (bulk CSV + REST API)
@@ -249,6 +270,137 @@ via [`resolve_vea_composition.py`](resolve_vea_composition.py).
   test): a mock "two cubist female figures" submission correctly matched a mock
   reference work sharing the same Genre/Subject tags, via the exact `query_ackg`-shaped
   Cypher doc 07 always intended — the mechanism this whole layer exists to support.
+
+## 4.2 Source adapter: Tate Collection bulk CSV (`tate_ingest.py`)
+
+- **Access method:** bulk CSV from `tategallery/collection` on GitHub (CC0) —
+  `artwork_data.csv` (69,201 rows) + `artist_data.csv` (3,532 artists). **Confirmed frozen**,
+  not a live feed: the repo's own README states it hasn't been actively maintained since
+  October 2014 — the same category of limitation as the Met's own point-in-time CSV extract.
+- **Entity identity:** `accession_number` — confirmed unique across all 69,201 rows, used as
+  `tate-{accession}` across `ConceptualWork`/`EditionRun`/`Impression`/`SourceRecord` ids.
+  Genuinely simple compared to Roseberys/Forum: one row is one artwork with one
+  `(artist, role)` pair, no multi-constituent parsing needed.
+- **Artist identity:** no ULAN/Wikidata column in this source (confirmed) — merges by
+  `name`, `identityConfidence: "unresolved"`, same policy as Roseberys/Forum.
+- Tate's institutional-layer position per doc 09/ADR-0003: strong for British and Western
+  artists generally, but still one Western institution's holdings — does not close the
+  non-Western coverage gap already documented for Met/ULAN (Japan ~1.3% of ULAN records),
+  since Tate's own collection carries the same skew.
+
+Three real adaptations were required, found and handled before the first load ran:
+
+- **No classification flag.** Met has `Classification` containing "Print"; Tate's `medium`
+  is free text only ("Etching and aquatint on paper"). Filtered with the same
+  `extract_techniques()` crosswalk every other adapter already uses — no new vocabulary —
+  which means coverage depends on the existing technique keyword list; a genuinely novel
+  print technique with no keyword match is silently excluded, not misclassified, the same
+  shape of limitation doc 09 already documents for HEURISTIC_EXTRACTION mappings elsewhere.
+- **Reversed name convention.** Artist names arrive "Surname, Firstname" ("Blake, Robert") —
+  the opposite of every other source in this graph. Reversed via `_parse_tate_artist_name()`
+  before merging, or this source would silently fragment every artist already in the graph
+  under a second, differently-formatted node. 65 of 3,532 artists have no comma (single
+  names — "Matta", "Absalon"); the literal placeholder "Anonymous" is excluded rather than
+  merged as if it were a real person (though it never actually occurs in the print-qualifying
+  rows — confirmed by direct check, zero rows).
+- **`artistRole` reconciled against the existing qualifier vocabulary** (`QUALIFIER_MAP`).
+  One value is deliberately **not** mapped and excluded outright: "formerly attributed to"
+  (Tate itself no longer holds this attribution, so ingesting it as live would insert a fact
+  the source institution has already disavowed). Three more structurally ambiguous roles
+  ("and other artists", "and a pupil", "and assistants") name no specific second party and
+  are excluded rather than guessed at.
+
+**Filters applied in sequence, each logged and none silently dropped** (`load_catalogue()`):
+
+| Filter | Rows excluded | Reason |
+|---|---:|---|
+| Disavowed/ambiguous attribution role | 33 | see above — "formerly attributed to" and the three ambiguous multi-party roles |
+| Non-print medium | 56,696 | paintings, sculpture, drawings, etc. — this graph scopes to prints |
+| Generic period/nationality placeholder ("British (?) School", "British School 18th century") | 159 | not an individually-attributable artist — can never be the answer to "who made this" |
+| Deprioritized artists (Turner) | 1,469 | see "Known deliberate exclusion" below |
+| **Qualifying rows** | **10,844** | |
+
+**Fully ingested 2026-08-25** — all 10,844 qualifying rows are loaded (confirmed via
+`SourceRecord {institutionName: "Tate"}` count matching exactly). Added 3,785 nodes on top
+of Turner's freed headroom (752 new rows × 4 base nodes + 722 `DigitalImage` + 55 new
+`Artist` nodes — estimated in advance from the actual filtered/deduplicated row set, not
+extrapolated from a single chunk, and landed exactly on the predicted figure), bringing the
+graph to 199,167 of AuraDB Free's 200,000-node ceiling — 833 nodes of headroom remain.
+
+### Known deliberate exclusion — J.M.W. Turner
+
+Not a data-quality problem, an explicit ingestion-priority decision, made and logged
+2026-08-25 against a real hard constraint: AuraDB Free's **200,000-node ceiling**. This graph
+crossed that ceiling during Tate ingestion, so every further row genuinely competes with
+every other row for scarce node budget — the same discipline applied earlier in this project
+to pruning Met's zero-metadata/zero-artist works.
+
+The question that surfaced Turner specifically was a methodological one developed this
+session: *for an artist who already has significant representation in the graph, does one
+more record actually add information that supports attribution, or is it redundant?* Raw
+support-count totals turned out to be a poor signal on their own — an artist's **source-layer
+diversity** (institutional vs. auction-history) and **attribute-slice saturation** within
+their own existing profile are the real test. Checked directly against Turner's profile
+(not assumed from his headline volume): his existing ~908 loaded Tate works were **100%
+institutional/Tate-sourced, with zero auction-history presence** — his own source-layer was
+already fully saturated. Each further Turner row was therefore low marginal value, while the
+same node budget spent on the ~566 remaining rows for artists with *zero* existing coverage of
+any kind (see the per-artist source-layer re-ranking pass this session applied to the
+remaining Tate queue) added genuinely new attribution-support population data.
+
+Given that, and given the ceiling was already binding, the decision went one step further
+than simply excluding Turner from future loads: **the 908 already-loaded Turner records were
+deleted from the graph entirely** (`DETACH DELETE`, 2026-08-25) — 4,538 nodes (908 Tate works
+× 5 nodes each, including 906 `DigitalImage` nodes) plus the now-orphaned Turner `Artist` node
+itself (0% auction-history presence meant no other relationship kept it alive), freeing 4,539
+nodes of headroom. This is a retroactive prune, not just a block on further growth — Turner's
+prior inclusion is judged to have been the lowest per-node value use of a now-scarce resource,
+not merely no-longer-a-priority.
+
+`tate_ingest.py`'s `_DEPRIORITIZED_ARTISTS_RAW` set (`{"Turner, Joseph Mallord William"}`)
+enforces the future-blocking half of this decision at the CSV-filter stage, referencing this
+section (§4.2) directly in its code comment. **Revisit this exclusion** once AuraDB headroom
+stops being the binding constraint (e.g. an upgrade to a paid tier, judged too expensive for
+this personal project as of 2026-08-25 — see the pricing discussion this session), or if a
+future need specifically requires Turner population data for attribution support.
+
+### Known deliberate exclusion — dead `thumbnailUrl` values (`DigitalImage` nodes removed)
+
+Discovered 2026-08-25 while assessing whether DINOv2 could be run over the ACKG's images
+for visual-similarity embeddings: **every one of the 8,942 `DigitalImage` nodes created
+from Tate's `thumbnailUrl` column pointed at a dead link.** A random sample of 42 URLs
+(`http://www.tate.org.uk/art/images/work/...`) returned **42/42 HTTP 404s** — Tate has
+restructured its site since the `tategallery/collection` CSV was frozen in 2014, and the
+old image-serving path no longer resolves at all. Checked, not assumed: Tate's homepage
+and search are live (confirmed `200`), so the images likely exist somewhere under a new
+URL scheme, but no current public API, IIIF manifest, or guessable path was found — and
+Tate's own website terms of use restrict bulk downloading/reproduction of site content
+regardless, with real image licensing gated behind the separate commercial Tate Images
+picture library.
+
+Since the stored URLs are non-functional and provide no path toward finding the *correct*
+current URL (the site restructure changed the scheme entirely, so the old link is not a
+useful clue), keeping 8,942 dead `DigitalImage` nodes cost real node budget for zero
+working value — the same logic as every other prune in this project, just applied to a
+node type rather than a `ConceptualWork`. **All 8,942 were deleted** (`DETACH DELETE`,
+2026-08-25), freeing 8,942 nodes (headroom rose from 833 to 9,775 — over 10x). Nothing of
+future value was lost: `SourceRecord.accessionNumber` (untouched by this deletion) is what
+a correct future re-fetch would key off, not the dead thumbnail URL.
+
+`tate_ingest.py`'s `LOAD_QUERY` no longer materializes a `DigitalImage` node at all (the
+`FOREACH` block was removed, replaced with a code comment referencing this section) — so a
+future re-run of the loader (e.g. a maintenance fix) won't silently recreate the dead
+nodes. `map_row()` still computes `imageUrl` from the raw column in case a real image
+source is ever found and this needs re-enabling.
+
+**Also checked and ruled out as a cause, for completeness:** the Met's separate lack of
+image coverage (0 `DigitalImage` nodes across all 6,366 ingested Met records, confirmed via
+a live spot-check against the real Met Collection API — 0/46 sampled objects, including
+every genuinely pre-1900 work in the corpus, have `isPublicDomain: true` or a populated
+`primaryImage`) is an unrelated, separate limitation — Met's images were never fetched at
+all (a deliberate v2.0 tradeoff, see `met_ingest.py`'s own header comment), not fetched-then-
+gone-stale like Tate's. Not pruned, since there was nothing to prune — no `DigitalImage`
+nodes were ever created for Met in the first place.
 
 ## 5. Schema addition: `Genre` node
 
