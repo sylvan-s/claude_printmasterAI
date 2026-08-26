@@ -421,16 +421,16 @@ export const TRIAGE_SCHEMA = {
       required: ["conflicts"]
     },
     routingDecision: {
+      // Deliberately minimal — scenario/tier/specialistConfig/routingRationale are no
+      // longer asked of the model at all (ADR-0006): classifyTriageOutcome (src/appraisal/
+      // routing.ts) computes and splices them onto this object deterministically after the
+      // LLM call returns. Only humanEscalationRequired/Reason remain genuine LLM judgment.
       type: Type.OBJECT,
       properties: {
-        tier: { type: Type.INTEGER },
-        specialistConfig: { type: Type.STRING },
-        routingRationale: { type: Type.STRING },
         humanEscalationRequired: { type: Type.BOOLEAN },
-        humanEscalationReason: { type: Type.STRING },
-        alternativeConfig: { type: Type.STRING }
+        humanEscalationReason: { type: Type.STRING }
       },
-      required: ["tier", "specialistConfig", "routingRationale", "humanEscalationRequired", "alternativeConfig"]
+      required: ["humanEscalationRequired"]
     },
     triageConfidenceSummary: {
       type: Type.OBJECT,
@@ -535,6 +535,17 @@ export const SPECIALIST_ATTRIBUTION_SCHEMA = {
         required: ["question", "resolutionAction", "confidenceImpact"]
       }
     },
+    // ADR-0006 Decision 4 / GitHub Issue #7 — mandatory real verdict under Scenario 2/5
+    // task profiles (injected via [TASK_PROFILE]), NOT_APPLICABLE otherwise.
+    attributionChallengeAssessment: {
+      type: Type.OBJECT,
+      properties: {
+        skepticModeEngaged: { type: Type.BOOLEAN },
+        verdict: { type: Type.STRING },
+        challengeNarrative: { type: Type.STRING }
+      },
+      required: ["skepticModeEngaged", "verdict"]
+    },
     auctionComps: {
       type: Type.ARRAY,
       description: "2–3 verified auction comps collected during Stage 2b research. Empty array if none found.",
@@ -558,7 +569,7 @@ export const SPECIALIST_ATTRIBUTION_SCHEMA = {
   required: [
     "schemaVersion", "specialistConfigUsed", "attributionConclusion", "catalogueRaisonne",
     "reprintForgeryAssessment", "seriesAndEditionIdentification", "valuationRelevantFindings",
-    "researchConfidenceSummary", "unresolvedQuestions", "auctionComps"
+    "researchConfidenceSummary", "unresolvedQuestions", "attributionChallengeAssessment", "auctionComps"
   ]
 };
 

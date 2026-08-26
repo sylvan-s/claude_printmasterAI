@@ -13,3 +13,5 @@ tests/vea/output/
 tests/backtest/output/
 __pycache__/
 *.pyc
+knowledge_graph/venv-embeddings/
+knowledge_graph/embed_dinov2_failures.json

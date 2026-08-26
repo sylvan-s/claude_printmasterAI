@@ -16,7 +16,9 @@ import {
   VALUATION_REPORT_SYSTEM_PROMPT,
   APPRAISER_INPUT_SYSTEM_PROMPT,
   injectSpecialistConfig,
+  injectTaskProfile,
 } from "./prompts";
+import { classifyTriageOutcome, Scenario } from "./routing";
 import {
   translateSchemaToStandardJsonSchema,
   VISUAL_EXTRACTION_SCHEMA,
@@ -1450,10 +1452,12 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       : "";
 
     const veaSlim = this.projectVeaForAttribution(vea);
-    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and route to the correct specialist config.\n\n${JSON.stringify(veaSlim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
+    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and candidate artists.\n\n${JSON.stringify(veaSlim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
+
+    let raw: TriageResult;
     if (isClaude(stage2aModel)) {
       // Claude gets the live query_ackg tool — see callClaudeWithAckgTool above.
-      return this.callClaudeWithAckgTool(stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, userText);
+      raw = await this.callClaudeWithAckgTool(stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, userText);
     } else {
       // Gemini has no user-defined function-calling loop in this codebase (same
       // existing limitation as the Claude-only lookup_museum_collections tool —
@@ -1474,8 +1478,24 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       } catch (err: any) {
         console.warn(`[Stage 2a] ACKG pre-fetch failed (Gemini path) — proceeding without it: ${err.message}`);
       }
-      return this.callGemini(ai, stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ text: userText + ackgBlock }], TRIAGE_SCHEMA, 0.1);
+      raw = await this.callGemini(ai, stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ text: userText + ackgBlock }], TRIAGE_SCHEMA, 0.1);
     }
+
+    // ADR-0006: routing is decided deterministically, in code, from the structured fields
+    // the LLM just populated — never LLM-declared. Single splice point so both model paths
+    // above get identical treatment.
+    const plan = classifyTriageOutcome(raw);
+    raw.routingDecision = {
+      ...raw.routingDecision,
+      scenario: plan.scenario,
+      scenarioName: plan.scenarioName,
+      tier: plan.tier,
+      specialistConfig: plan.specialistConfig,
+      routingRationale: plan.routingRationale,
+    };
+    console.log(`[Stage 2a routing] scenario=${plan.scenario} (${plan.scenarioName}) tier=${plan.tier} specialistConfig=${plan.specialistConfig} (matched on ${plan.specialistConfigMatchedOn}) skeptic=${plan.skepticModeEngaged}`);
+    console.log(`[Stage 2a routing] trace: ${plan.ruleTrace.join(" | ")}`);
+    return raw;
   }
 
   protected async runStage2bSpecialist(
@@ -1488,7 +1508,14 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
-    const asaSystemPrompt = injectSpecialistConfig(ATTRIBUTION_RESEARCH_SYSTEM_PROMPT, specialistConfig);
+    // ADR-0006: scenario (and its task profile) was decided deterministically in
+    // runStage2aTriage — default to LowSignalEverywhere only for pre-ADR-0006 stored
+    // triage results that predate the scenario field existing.
+    const scenario = (triage.routingDecision?.scenario ?? Scenario.LowSignalEverywhere) as Scenario;
+    const asaSystemPrompt = injectTaskProfile(
+      injectSpecialistConfig(ATTRIBUTION_RESEARCH_SYSTEM_PROMPT, specialistConfig),
+      scenario
+    );
     const notesBlock = userNotes?.trim()
       ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for attribution and title identification):\n"${userNotes.trim()}"\n\n`
       : "";
@@ -1522,6 +1549,12 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     }
   }
 
+  // NOTE (ADR-0006): this legacy 3-stage path uses resolveCustomPrompt, not
+  // injectSpecialistConfig/injectTaskProfile — it already left an unresolved
+  // "[SPECIALIST_CONFIG]" literal in ATTRIBUTION_RESEARCH_SYSTEM_PROMPT (a pre-existing,
+  // separately-scoped bug), and now also carries an unresolved "[TASK_PROFILE]" literal for
+  // the same reason. Deliberately left untouched — ADR-0006 and this session's routing work
+  // is scoped to the 4-stage pipeline (runStage2aTriage/runStage2bSpecialist) only.
   protected async runStage2Attribution(
     vea: VisualExtractionResult,
     stage2Model: string,

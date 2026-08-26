@@ -195,5 +195,39 @@ existing latency/cost budget rather than adding a whole additional LLM stage bet
   within Stage 2b (a genuine two-round hypothesize-then-challenge pattern) rather than one
   combined call — an implementation decision for whoever builds this, informed by whether the
   single-call version shows real adversarial pressure in practice.
-- Changes to Stage 3 (valuation) — unaffected; this ADR only changes how Stage 2a's output
-  routes into Stage 2b and what Stage 2b does once routed.
+
+---
+
+## Implementation note (2026-08-26)
+
+Implemented as planned, with one correction and one addition found during implementation:
+
+- **Correction to this ADR's own Scenario 1 pseudocode**: the trigger as originally written
+  references ACKG's `sampleWorks` matching "the specific piece." `sampleWorks`
+  (`src/appraisal/knowledge_graph/types.ts` `AckgCandidate.sampleWorks`) is never persisted
+  onto `TriageResult` — it exists only transiently inside Stage 2a's live `query_ackg` tool
+  loop. `classifyTriageOutcome` (`src/appraisal/routing.ts`) uses the closest available proxy
+  instead: `ackgSupportCount > 0 && ackgProvenanceTags.includes("institutional")`. Weaker than
+  the ideal (title/dimensions were never actually compared) — documented inline in code as a
+  known simplification, not silently substituted.
+- **Addition, decided via AskUserQuestion during planning**: GitHub Issue #7 asked for an
+  explicit CONFIRMED/CHALLENGED/UNCERTAIN verdict that Stage 3 reacts to by widening its
+  valuation range. Rather than lose that behaviour when folding Skeptic logic into Stage 2b,
+  `ASAAttributionResult` gained a new `attributionChallengeAssessment` field
+  (`skepticModeEngaged`, `verdict`, `challengeNarrative`), and
+  `VALUATION_REPORT_SYSTEM_PROMPT` gained a step reacting to it. **This means Stage 3 is not
+  unaffected by this ADR**, correcting the "Not addressed" claim below.
+- **Verified live, end-to-end**, not just via the unit suite (`tests/routing/`, 20/20
+  passing): three real `tests/backtest/run_backtest.ts` runs (A0785 lot 2 — Braque, A0777
+  lot 9 — Villon, A0785 lot 67 — Nash) all routed into Scenario 2 (each had a genuine
+  `riskFlags` hit) and produced three *different* verdicts — UNCERTAIN, CONFIRMED, and
+  CHALLENGED respectively — confirming the adversarial pass is genuinely discriminating
+  rather than defaulting to one canned answer. The Nash case is a particularly good real
+  example: skeptic mode correctly caught that Stage 1b's own visual-search hypothesis was
+  likely wrong (no such print title in any accessible record, missing standard edition
+  apparatus, a documented "after Nash" reproduction category exists). All three lots hitting
+  Scenario 2 in a 3-lot sample is noted as a data point for future threshold tuning, not
+  read as evidence of a routing bug — the classifier correctly followed whatever `riskFlags`
+  Stage 2a's own LLM call produced in each case.
+- Not yet exercised in a real run: Scenarios 1, 3, 4, 5, 6. Worth a wider backtest pass before
+  fully trusting the untuned placeholder thresholds at volume.

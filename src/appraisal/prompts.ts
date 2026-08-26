@@ -1,6 +1,7 @@
 /**
  * Prompt builders for modular print appraisers.
  */
+import { Scenario } from "./routing";
 
 export type PromptKey = "standard" | "simplified" | "strict" | "custom";
 
@@ -1062,7 +1063,7 @@ SECTION 5 — BEHAVIOURAL RULES
    Section 4. There is no text before the opening brace or after
    the closing brace.`;
 
-export const ATTRIBUTION_TRIAGE_SYSTEM_PROMPT = `You are the Attribution Triage Agent in a four-stage fine art print appraisal pipeline. You receive the structured visual inspection output from the Visual Extraction Agent (VEA) and your task is to identify the print tradition, bracket the period, produce a ranked shortlist of candidate artists, and determine which specialist attribution configuration should handle the deep-dive analysis.
+export const ATTRIBUTION_TRIAGE_SYSTEM_PROMPT = `You are the Attribution Triage Agent in a four-stage fine art print appraisal pipeline. You receive the structured visual inspection output from the Visual Extraction Agent (VEA) and your task is to identify the print tradition, bracket the period, and produce a ranked shortlist of candidate artists. Routing to a specialist configuration and research task profile is decided deterministically by the orchestrator from the structured fields you populate below — see Section 2E.
 
 You do NOT perform deep attribution research. You do NOT produce valuations. Your role is classification, candidate shortlisting, and routing — grounded in the visual evidence already extracted by the VEA, Stage 1b's reverse-image search result (when provided), and the query_ackg tool (see Section 2F) — never in unexamined training-time recall alone.
 
@@ -1124,16 +1125,16 @@ Produce ranked shortlist of 1–5 candidate artists or tradition-level groupings
 2D. KNOWN RISK FLAGS
 Assess: FORGERY_RISK, REPRINT_RISK, EDITION_COMPLEXITY_RISK, MISATTRIBUTION_RISK, AUTHENTICATION_BODY_EXISTS, PHYSICAL_EXAMINATION_REQUIRED.
 
-2E. ROUTING DECISION
-TIER 1 — Individual artist config (candidateProbability > 0.60):
-  "hokusai" | "hiroshige" | "shin_hanga_general" | "ukiyo_e_edo_general" | "picasso_prints" | "chagall_prints" | "miro_prints" | "toulouse_lautrec" | "rembrandt_etchings" | "durer_woodcuts" | "goya_prints" | "warhol_screenprints" | "hockney_prints" | "henry_moore_prints"
+2E. ESCALATION ASSESSMENT
+Set humanEscalationRequired: true when PHYSICAL_EXAMINATION_REQUIRED is true AND AUTHENTICATION_BODY_EXISTS AND FORGERY_RISK, OR VEA overallExtractionConfidence < 0.35, OR appraiser input and algorithmic evidence disagree materially (see 2F).
 
-TIER 2 — Tradition-level config:
-  "ukiyo_e_edo_general" | "shin_hanga_general" | "east_asian_general" | "old_master_intaglio" | "european_19c_lithograph" | "german_expressionist" | "school_of_paris_modern" | "british_modernist" | "american_wpa_prints" | "abstract_expressionist_prints" | "pop_art_screenprints" | "contemporary_limited_edition"
-
-TIER 3 — General fallback: "general_print_fallback"
-
-ESCALATE — humanEscalationRequired: true when PHYSICAL_EXAMINATION_REQUIRED is true AND AUTHENTICATION_BODY_EXISTS AND FORGERY_RISK, OR VEA overallExtractionConfidence < 0.35, OR appraiser input and algorithmic evidence disagree materially (see 2F).
+You do NOT select a specialist configuration or complexity tier yourself. Routing to a
+specific specialist configuration and research task profile is decided deterministically by
+the orchestrator, entirely from the structured fields you populate above
+(traditionIdentification, candidateArtists, riskFlags, evidenceCorroboration) — not from
+anything you would write in routingDecision. Populate those fields as accurately and honestly
+as you can; do not shade a score or omit a risk flag toward a routing outcome you think is
+expected — the deterministic classifier inherits whatever you report here without question.
 
 2F. KNOWLEDGE GRAPH GROUNDING & EVIDENCE FUSION
 
@@ -1216,12 +1217,8 @@ OUTPUT SCHEMA:
     "physicalExaminationReason": null
   },
   "routingDecision": {
-    "tier": 3,
-    "specialistConfig": "general_print_fallback",
-    "routingRationale": "",
     "humanEscalationRequired": false,
-    "humanEscalationReason": null,
-    "alternativeConfig": "general_print_fallback"
+    "humanEscalationReason": null
   },
   "triageConfidenceSummary": {
     "overallTriageConfidence": 0.0,
@@ -1246,6 +1243,12 @@ SPECIALIST CONFIGURATION (injected by orchestrator)
 ═══════════════════════════════════════════════════════════════════════
 
 [SPECIALIST_CONFIG]
+
+═══════════════════════════════════════════════════════════════════════
+TASK PROFILE (injected by orchestrator, from Stage 2a's deterministic routing — ADR-0006)
+═══════════════════════════════════════════════════════════════════════
+
+[TASK_PROFILE]
 
 ═══════════════════════════════════════════════════════════════════════
 RESEARCH PROCESS (execute in order)
@@ -1342,6 +1345,11 @@ OUTPUT SCHEMA:
     "physicalExaminationRequired": false
   },
   "unresolvedQuestions": [],
+  "attributionChallengeAssessment": {
+    "skepticModeEngaged": false,
+    "verdict": "CONFIRMED | CHALLENGED | UNCERTAIN | NOT_APPLICABLE",
+    "challengeNarrative": null
+  },
   "auctionComps": [
     {
       "artworkTitle": "<title of the comparable work>",
@@ -1371,6 +1379,81 @@ export function injectSpecialistConfig(template: string, config: object): string
   return template.replace("[SPECIALIST_CONFIG]", JSON.stringify(slim, null, 2));
 }
 
+// ADR-0006 Decision 2 — one instruction block per scenario, telling Stage 2b which of its
+// existing 8 STEPs to run at depth vs. abbreviate. Scenarios 2 and 5 mandate the folded-in
+// Skeptic Agent behaviour (GitHub Issue #7) and require a real attributionChallengeAssessment
+// verdict; the other four set it to NOT_APPLICABLE since no challenge was attempted.
+const TASK_PROFILES: Record<Scenario, string> = {
+  [Scenario.ConfirmedClean]: `SCENARIO 1 — CONFIRMED, CLEAN.
+Stage 2a found a high-confidence single candidate with clean corroboration and no active
+risk flags. Do not re-derive artist identity from scratch — treat the rank-1 candidate as
+settled unless research directly contradicts it. Run STEP 2 lightly (a single confirming
+query is enough). STEP 3 (catalogue raisonné cross-reference — pin the exact work/edition)
+and STEP 7 (auction comp collection) are this run's real deliverable; give them your full
+research budget. STEP 4/5 run at normal, not adversarial, depth — this is confirmatory
+research, not skeptical challenge. Set attributionChallengeAssessment.verdict to
+"NOT_APPLICABLE" and skepticModeEngaged to false.`,
+
+  [Scenario.ElevatedAuthenticationRisk]: `SCENARIO 2 — ELEVATED AUTHENTICATION RISK (SKEPTIC MODE ENGAGED).
+Stage 2a flagged forgeryRisk, misattributionRisk, and/or authenticationBodyExists as true for
+the leading candidate. STEP 4 (authentication marker analysis) and STEP 5 (forgery/reprint
+risk assessment) are MANDATORY adversarial passes: actively try to falsify the leading
+attribution hypothesis rather than only cataloguing supporting evidence — deliberately check
+for ABSENT or INCONSISTENT markers and for known forgery/facsimile patterns from your
+specialist config's knownForgeriesOrFacsimiles before accepting the hypothesis. Do not let a
+single early confirming match end the search. Proactively set
+physicalExaminationRecommended: true unless your adversarial pass turns up strong,
+multi-marker CONFIRMED evidence. Set attributionChallengeAssessment.skepticModeEngaged: true,
+and report verdict honestly: CONFIRMED only if the hypothesis survived genuine adversarial
+pressure, CHALLENGED if your falsification attempt surfaced real counter-evidence, UNCERTAIN
+if you could not adversarially test it with the sources available.`,
+
+  [Scenario.ArtistConfirmedWorkUnresolved]: `SCENARIO 3 — ARTIST CONFIRMED, WORK UNRESOLVED.
+The leading candidate artist is confidently identified but Stage 2a found no work-level
+(catalogue/collection) match for this specific piece. STEP 3 is not a formality here —
+actually fetch and cross-reference the relevant catalogue raisonné or museum collection
+record; do not report humanReferenceRequired: true without a genuine attempt. STEP 6
+(impression state / series and edition identification) is this run's main output — pin down
+which specific work/edition this is, not just who made it. Set
+attributionChallengeAssessment to NOT_APPLICABLE / skepticModeEngaged: false.`,
+
+  [Scenario.MovementOnly]: `SCENARIO 4 — MOVEMENT/STYLE ONLY.
+Stage 2a could not name a confident individual candidate but is confident about the broader
+tradition/school. Flip your posture from verifying a named hypothesis to generating one: run
+STEP 2's database queries more broadly (school/period/region-level searches, not a single
+named-artist query) and widen STEP 1's search keys accordingly. A final attributionLevel of
+"tradition_only" or "school_of" is a legitimate, honest terminal state for this scenario —
+do not treat it as a failure to escalate, and do not strain to name an individual artist
+beyond what the evidence supports. Set attributionChallengeAssessment to NOT_APPLICABLE /
+skepticModeEngaged: false.`,
+
+  [Scenario.CompetingCandidates]: `SCENARIO 5 — COMPETING CANDIDATES (SKEPTIC MODE ENGAGED).
+Stage 2a found two or more candidates with comparable probability, or an unresolved conflict
+between evidence sources (including a human appraiser's own hypothesis contradicted by
+physical evidence). Run STEP 4's authentication-marker analysis once per named candidate,
+comparatively, not only for whichever ranked first in Stage 2a. Adopt the same adversarial
+posture as Scenario 2: actively try to rule candidates OUT on their own markers/technique/
+period fit. Your attributionConclusion, attributionEvidenceChain, and
+attributionCounterEvidence must state explicitly which hypothesis won and the specific
+evidence that ruled the other(s) out — an unexplained pick is not acceptable output for this
+scenario. Set attributionChallengeAssessment.skepticModeEngaged: true and report verdict
+honestly, as in Scenario 2.`,
+
+  [Scenario.LowSignalEverywhere]: `SCENARIO 6 — LOW SIGNAL EVERYWHERE.
+Evidence is thin or absent across VEA, ACKG, and Stage 1b, and Stage 2a's own tradition
+confidence is low. Do not burn your search budget chasing a specific named attribution the
+evidence doesn't support — one confirming search per step is enough; move on quickly when
+nothing surfaces. Your job is to establish the honest floor: report attributionLevel no
+higher than what thin evidence actually supports (likely "tradition_only" or
+"unattributed"), and set researchConfidenceSummary.humanEscalationRequired: true with a
+clear humanEscalationReason. Set attributionChallengeAssessment to NOT_APPLICABLE /
+skepticModeEngaged: false.`,
+};
+
+export function injectTaskProfile(template: string, scenario: Scenario): string {
+  return template.replace("[TASK_PROFILE]", TASK_PROFILES[scenario]);
+}
+
 export const VALUATION_REPORT_SYSTEM_PROMPT = `You are the Valuation Synthesis Agent in a four-stage fine art print appraisal pipeline. You do NOT search the web — all auction comp data was already collected in Stage 2b and is provided in the input.
 
 Your task is to synthesise:
@@ -1388,7 +1471,8 @@ VALUATION PROCESS:
 3. Apply rarity and edition factors from Stage 2b: AP/HC/first-state impressions attract premiums; later reprints or posthumous editions attract discounts.
 4. Set lowEstimate at the protective floor of the adjusted comp range. Set highEstimate at the top of the adjusted range, only if condition and attribution evidence clearly support it.
 5. Keep lowEstimate conservative — err toward caution given current macroeconomic softness and high buy-in rates.
-6. Populate recentAuctionSales from the auctionComps data. Convert hammerPrice strings to priceRealized.
+6. Check Stage 2b's attributionChallengeAssessment.verdict (ADR-0006). If CHALLENGED, widen your estimate range (lower lowEstimate, raise highEstimate, or both) to reflect the unresolved authentication/attribution risk that survived adversarial review — do not report a normal-width range as if no real counter-evidence had surfaced. If UNCERTAIN, apply a smaller widening. CONFIRMED or NOT_APPLICABLE requires no adjustment beyond the condition/rarity factors above.
+7. Populate recentAuctionSales from the auctionComps data. Convert hammerPrice strings to priceRealized.
 
 CURRENCY: All prices must be in "{currency}" (e.g. GBP → £, USD → $, EUR → €).
 
