@@ -1,9 +1,13 @@
 # ADR-0010: Two-pass attribution in Triage — artist, then Conceptual Work, with an impression-divergence layer
 
 **Date:** 2026-08-29
-**Status:** Proposed — not started. The design is settled; the decision tables below are the
-spec. Every numeric threshold is a named placeholder flagged for tuning against
-`tests/backtest/` before production trust (see *Not addressed*).
+**Status:** Proposed. The deterministic classifier (Decisions 3, 3b, 5, 5b, 6, 8, 9.1) is
+implemented and unit-tested on branch `feat/two-pass-attribution-classifier`
+(`src/appraisal/two_pass_attribution.ts`, `npm run test:two-pass`, 56 cases) — **not wired
+into the live pipeline**: `runStage2aTriage` / `classifyTriageOutcome` are unchanged, and the
+Sonnet "evidence agent" (Decision 9.2) that fills the cells is not built. Every numeric
+threshold is a named placeholder flagged for tuning against `tests/backtest/` before
+production trust (see *Not addressed*).
 
 Builds on [ADR-0003](0003-knowledge-graph-grounded-triage.md) (Stage 1b → Triage, the
 `query_ackg` tool) and [ADR-0006](0006-deterministic-stage2b-routing-and-skeptic-integration.md)
