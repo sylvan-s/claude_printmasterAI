@@ -6,9 +6,10 @@
  * the router or the two-pass thresholds, re-run, diff — with no VEA / Visual Search /
  * Appraiser Input cost.
  *
- *   npm run test:pool:triage                       # every fixture, claude-sonnet-4-6
+ *   npm run test:pool:triage                       # every fixture, classic triage, claude-sonnet-4-6
  *   npm run test:pool:triage -- --limit 5
- *   npm run test:pool:triage -- --two-pass         # also run classifyTwoPass (coarse adapter)
+ *   npm run test:pool:triage -- --two-pass         # also run classifyTwoPass (coarse fixture adapter)
+ *   npm run test:pool:triage -- --evidence         # ADR-0010: run the real Attribution Evidence Agent
  *   npm run test:pool:triage -- --model claude-haiku-4-5
  *   npm run test:pool:triage -- --resume
  *
@@ -50,6 +51,7 @@ const LIMIT = intArg("limit", 999);
 const CONCURRENCY = intArg("concurrency", 2);
 const MODEL = strArg("model", "claude-sonnet-4-6");
 const TWO_PASS = process.argv.includes("--two-pass");
+const EVIDENCE = process.argv.includes("--evidence");
 const RESUME = process.argv.includes("--resume");
 
 // ── expose the protected triage method ───────────────────────────────────────
@@ -135,7 +137,8 @@ function toTwoPassInput(vea: any, vs: any, aia: any, triage: TriageResult): { in
 }
 
 // ── run ──────────────────────────────────────────────────────────────────────
-const config = appraiserConfigs.find((c) => c.id === "claude-4stage")!;
+const config = { ...appraiserConfigs.find((c) => c.id === "claude-4stage")! };
+if (EVIDENCE) config.stage2aMode = "evidence";
 const geminiKey = process.env.GEMINI_API_KEY;
 const runner = new TriageRunner(config, geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined);
 const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : (undefined as any);
@@ -151,7 +154,7 @@ if (RESUME) {
 }
 
 console.log(`\nStage 2a triage over the fixture`);
-console.log(`model: ${MODEL}  |  lots: ${ids.length}  |  concurrency: ${CONCURRENCY}  |  two-pass: ${TWO_PASS}\n`);
+console.log(`model: ${MODEL}  |  lots: ${ids.length}  |  concurrency: ${CONCURRENCY}  |  mode: ${EVIDENCE ? "evidence-agent" : "classic triage"}  |  two-pass adapter: ${TWO_PASS}\n`);
 
 const rows: any[] = [];
 let done = 0;
@@ -171,7 +174,20 @@ async function runOne(id: string) {
     const artistHit = top.artistName && gtArtist !== "?" ? nameSimilarity(top.artistName, gtArtist) >= TAU_NAME : false;
 
     let twoPass: any = null;
-    if (TWO_PASS) {
+    if (EVIDENCE && triage.artistAttribution) {
+      // The real evidence agent already ran the two-pass tree — read it straight off.
+      const a = triage.artistAttribution;
+      const w = triage.workIdentification;
+      twoPass = {
+        scenario: rd.scenario,
+        scenarioName: rd.scenarioName,
+        artist: `${a.evidenceBasis} ${a.verdict}/${a.confidence ?? "-"} "${a.artistName ?? "-"}"`,
+        work: w ? `${w.evidenceBasis} ${w.verdict}/${w.confidence ?? "-"}` : "(pass 2 not run)",
+        impression: triage.impressionAssessment?.divergence ?? "n/a",
+        agreesWithRouter: true,
+        source: "evidence-agent",
+      };
+    } else if (TWO_PASS) {
       const { input, notes } = toTwoPassInput(f.stage1a_vea, f.stage1b_visualSearch, f.stage1c_appraiserInput, triage);
       const r = classifyTwoPass(input);
       twoPass = {

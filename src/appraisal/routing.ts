@@ -36,7 +36,7 @@ export const SCENARIO_NAMES: Record<Scenario, string> = {
 };
 
 // ADR-0006 Decision 3: 1→1, 3/4→2, 2/5/6→3.
-const SCENARIO_TO_TIER: Record<Scenario, 1 | 2 | 3> = {
+export const SCENARIO_TO_TIER: Record<Scenario, 1 | 2 | 3> = {
   [Scenario.ConfirmedClean]: 1,
   [Scenario.ArtistConfirmedWorkUnresolved]: 2,
   [Scenario.MovementOnly]: 2,

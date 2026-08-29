@@ -1,13 +1,11 @@
 # ADR-0010: Two-pass attribution in Triage — artist, then Conceptual Work, with an impression-divergence layer
 
 **Date:** 2026-08-29
-**Status:** Proposed. The deterministic classifier (Decisions 3, 3b, 5, 5b, 6, 8, 9.1) is
-implemented and unit-tested on branch `feat/two-pass-attribution-classifier`
-(`src/appraisal/two_pass_attribution.ts`, `npm run test:two-pass`, 56 cases) — **not wired
-into the live pipeline**: `runStage2aTriage` / `classifyTriageOutcome` are unchanged, and the
-Sonnet "evidence agent" (Decision 9.2) that fills the cells is not built. Every numeric
-threshold is a named placeholder flagged for tuning against `tests/backtest/` before
-production trust (see *Not addressed*).
+**Status:** Accepted, implemented behind a config flag; thresholds untuned.
+- The deterministic classifier (Decisions 3, 3b, 5, 5b, 6, 8, 9.1) — `src/appraisal/two_pass_attribution.ts`, `npm run test:two-pass` (59 cases).
+- The Sonnet **Attribution Evidence Agent** (Decision 9.2) — `ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT` / `ATTRIBUTION_EVIDENCE_SCHEMA` (one Claude call + the `query_ackg` loop, fills observation cells only), plus `src/appraisal/stage2a_evidence.ts` (`evidenceToTwoPassInput` → `classifyTwoPass` → `assembleTriageResult`) and `FourStageAppraiser.runStage2aEvidence`. `npm run test:stage2a-evidence` (16 cases).
+- **Opt-in:** `config.stage2aMode === "evidence"` (Claude only — needs the tool loop; Gemini falls back to classic triage). Config `claude-4stage-evidence`. Classic `runStage2aTriage` / `classifyTriageOutcome` are otherwise unchanged. Exercise against the fixture with `npm run test:pool:triage -- --evidence`.
+- Every numeric threshold is still a named placeholder flagged for tuning against `tests/backtest/` before production trust (see *Not addressed*). `K_work` per-work technique/dimension comparison (Decision 9.1 embeddings) is not built — the agent reports `unassessable` rather than guessing, so Pass 2 lands on T4 not T3 in the common case.
 
 Builds on [ADR-0003](0003-knowledge-graph-grounded-triage.md) (Stage 1b → Triage, the
 `query_ackg` tool) and [ADR-0006](0006-deterministic-stage2b-routing-and-skeptic-integration.md)

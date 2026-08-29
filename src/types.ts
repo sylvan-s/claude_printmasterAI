@@ -512,5 +512,39 @@ export interface TriageResult {
     overallTriageConfidence: number;
     criticalUnresolved: string[];
   };
+  /** ADR-0010 Decision 7 — populated only by the Stage 2a Attribution Evidence Agent path
+   *  (config.stage2aMode === "evidence"). The classic triage path leaves these undefined.
+   *  candidateArtists[0] / candidateProbability stay populated for backward compatibility
+   *  (Stage 2b + the report renderer still read them); these decompose that one number into
+   *  the three questions it was averaging — artist, Conceptual Work, impression. */
+  artistAttribution?: {
+    verdict: "attributed" | "candidate" | "not_attributed" | "conflict";
+    artistName: string | null;
+    confidence: "HIGH" | "MEDIUM_HIGH" | "MEDIUM" | "LOW" | null;
+    /** Which A1..A11 row of ADR-0010 Decision 3 fired (or "A-backprop" / "VEA-halt"). */
+    evidenceBasis: string;
+    agreementSet: string[];
+    kId: "true" | "false" | "unknown";
+    kOeuvreMatchCount: number | null;
+    subjectCorroboration: "typical" | "occasional" | "atypical" | "unassessable";
+    subjectNote: string;
+    flags: string[];
+    contradictingIdentities: string[];
+  };
+  workIdentification?: {
+    verdict: "identified" | "candidate" | "unresolved" | "conflict";
+    conceptualWorkTitle: string | null;
+    confidence: "HIGH" | "MEDIUM_HIGH" | "MEDIUM" | "LOW" | null;
+    /** Which T1..T7 row fired. */
+    evidenceBasis: string;
+    agreementSet: string[];
+    backPropagatedToArtist: boolean;
+  } | null;
+  impressionAssessment?: {
+    divergence: "none" | "variant_sheet" | "later_edition" | "medium_divergence" | "reproduction";
+    dimensionMatch: "true" | "false" | "UNASSESSABLE";
+    techniqueMatch: boolean;
+    notes: string;
+  } | null;
 }
 
