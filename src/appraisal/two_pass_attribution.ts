@@ -77,7 +77,7 @@ export function normalizeName(raw: string): { key: string; tokens: string[] } {
     .map((t) => t.replace(/^['-]+|['-]+$/g, ""))
     .filter(
       (t) =>
-        t.length > 0 &&
+        t.length > 1 && // drops single-letter initials ("E. Munch" -> ["munch"])
         !HONORIFICS.has(t) &&
         !NATIONALITY_WORDS.has(t) &&
         !/^b?\.?\d/.test(t) && // life dates, "b.1938", "1910-1988"
@@ -673,17 +673,33 @@ export function classifyImpression(ev: ImpressionEvidence): ImpressionAssessment
 // ───────────────────────────────────────────────────────────────────────────────
 export const MOVEMENT_THRESHOLD = 0.5; // mirrors routing.ts
 
+/** ADR-0010's two-pass verdicts ADD structure; they do not replace the triage LLM's
+ *  Section-2D risk flags. `forgeryRisk` / `misattributionRisk` still trigger Scenario 2
+ *  (ADR-0006), including when the cause is a signature-medium conflict rather than an
+ *  impression divergence — carried through here so that case can't fall between the tables. */
+export interface RiskFlagsLite {
+  forgeryRisk: boolean;
+  misattributionRisk: boolean;
+}
+
 export function mapTwoPassToScenario(input: {
   artist: ArtistVerdict;
   work: WorkVerdict | null;
   impression: ImpressionAssessment | null;
   traditionConfidence: number;
   competingTitleCount?: number;
+  riskFlags?: RiskFlagsLite;
 }): { scenario: Scenario; scenarioName: string; rationale: string } {
   const { artist, work, impression, traditionConfidence } = input;
   const pick = (s: Scenario, rationale: string) => ({ scenario: s, scenarioName: SCENARIO_NAMES[s], rationale });
 
   // Order matters — risk/divergence/conflict before a confident-looking match (ADR-0006).
+  if (input.riskFlags?.forgeryRisk || input.riskFlags?.misattributionRisk)
+    return pick(
+      Scenario.ElevatedAuthenticationRisk,
+      `riskFlags: forgeryRisk=${!!input.riskFlags?.forgeryRisk} misattributionRisk=${!!input.riskFlags?.misattributionRisk}`,
+    );
+
   if (impression && (impression.divergence === "later_edition" || impression.divergence === "medium_divergence" || impression.divergence === "reproduction"))
     return pick(Scenario.ElevatedAuthenticationRisk, `impressionAssessment.divergence=${impression.divergence}`);
 
@@ -725,6 +741,8 @@ export interface TwoPassInput {
   impressionEvidence: ImpressionEvidence | null;
   veaInImageTitleLegible: boolean;
   traditionConfidence: number;
+  /** The triage LLM's Section-2D flags — still consumed for Scenario 2 routing (ADR-0006). */
+  riskFlags?: RiskFlagsLite;
 }
 
 export interface TwoPassResult {
@@ -808,6 +826,7 @@ export function classifyTwoPass(input: TwoPassInput): TwoPassResult {
     work,
     impression,
     traditionConfidence: input.traditionConfidence,
+    riskFlags: input.riskFlags,
   });
   trace.push(`SCENARIO: ${scenario} ${scenarioName} (${rationale})`);
 

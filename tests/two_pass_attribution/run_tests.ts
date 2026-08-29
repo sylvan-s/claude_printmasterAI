@@ -365,6 +365,27 @@ test("not attributed + weak tradition -> Scenario 6", () => {
   assert.equal(s.scenario, Scenario.LowSignalEverywhere);
 });
 
+test("riskFlags.forgeryRisk carries forward -> Scenario 2, even with an otherwise-clean A1/HIGH match", () => {
+  const s = mapTwoPassToScenario({
+    artist: classifyArtistPass(f.a1_threeAgree),
+    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch),
+    impression: classifyImpression(f.imp_none),
+    traditionConfidence: 0.8,
+    riskFlags: { forgeryRisk: true, misattributionRisk: false },
+  });
+  assert.equal(s.scenario, Scenario.ElevatedAuthenticationRisk);
+});
+
+test("riskFlags absent -> risk path is skipped (no crash on undefined)", () => {
+  const s = mapTwoPassToScenario({
+    artist: classifyArtistPass(f.a1_threeAgree),
+    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch),
+    impression: classifyImpression(f.imp_none),
+    traditionConfidence: 0.8,
+  });
+  assert.equal(s.scenario, Scenario.ConfirmedClean);
+});
+
 // ── END-TO-END ──────────────────────────────────────────────────────────────
 console.log("\nclassifyTwoPass — end to end\n");
 

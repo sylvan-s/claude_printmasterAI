@@ -270,10 +270,15 @@ renderer still read it; `candidateArtists[0]` = `x*`), but `candidateProbability
 
 ### 8. Router mapping (`classifyTriageOutcome()` update)
 
-The six scenarios are unchanged; their triggers now read the structured verdicts:
+The six scenarios are unchanged. The two-pass verdicts **add** to what the router reads; they
+do not replace the triage LLM's Section-2D risk flags. `forgeryRisk` / `misattributionRisk`
+still trigger Scenario 2 (ADR-0006), checked **first** — a forgery flag raised by a
+signature-medium conflict (not an impression divergence) would otherwise fall between the
+tables. Then:
 
 | Triage outcome | Scenario |
 |---|---|
+| `riskFlags.forgeryRisk` **or** `riskFlags.misattributionRisk` | 2 — Elevated authentication risk (Skeptic) |
 | `artistAttribution` HIGH **and** `workIdentification` HIGH **and** `impressionAssessment.divergence = none` | 1 — Confirmed, clean |
 | `impressionAssessment.divergence ∈ {later_edition, medium_divergence, reproduction}` | 2 — Elevated authentication risk (Skeptic) |
 | `artistAttribution.verdict = conflict` **or** `workIdentification.verdict = conflict` **or** `countCompetitive ≥ 2` | 5 — Competing candidates (Skeptic) |
