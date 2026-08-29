@@ -743,6 +743,9 @@ export interface TwoPassInput {
   traditionConfidence: number;
   /** The triage LLM's Section-2D flags — still consumed for Scenario 2 routing (ADR-0006). */
   riskFlags?: RiskFlagsLite;
+  /** VEA Section 0 halt — a digital reproduction / not-an-original-print. When true the
+   *  tree is not run: there is no work to attribute. Routes straight to escalation. */
+  veaHaltRecommended?: boolean;
 }
 
 export interface TwoPassResult {
@@ -758,6 +761,36 @@ export interface TwoPassResult {
 
 export function classifyTwoPass(input: TwoPassInput): TwoPassResult {
   const trace: string[] = [];
+
+  // VEA Section 0 halt short-circuits everything — a reproduction / poster / catalogue
+  // scan has no original work to attribute. Neither pass runs; go straight to escalation.
+  if (input.veaHaltRecommended) {
+    trace.push("VEA haltRecommended — digital reproduction / not an original print; tree not run");
+    const artistAttribution: ArtistVerdict = {
+      verdict: "not_attributed",
+      artistName: null,
+      confidence: null,
+      evidenceBasis: "VEA-halt",
+      agreementSet: [],
+      kId: input.artistEvidence.kId,
+      kOeuvreMatchCount: input.artistEvidence.kOeuvreMatchCount,
+      subjectCorroboration: "unassessable",
+      subjectNote: "",
+      flags: ["veaHalt"],
+      contradictingIdentities: [],
+      ruleTrace: trace,
+    };
+    return {
+      artistAttribution,
+      pass2Ran: false,
+      pass2Mode: null,
+      workIdentification: null,
+      impressionAssessment: null,
+      scenario: Scenario.LowSignalEverywhere,
+      scenarioName: SCENARIO_NAMES[Scenario.LowSignalEverywhere],
+      ruleTrace: [...trace, `SCENARIO: ${Scenario.LowSignalEverywhere} (VEA halt -> escalate)`],
+    };
+  }
 
   // Pass 1
   let artist = classifyArtistPass(input.artistEvidence);

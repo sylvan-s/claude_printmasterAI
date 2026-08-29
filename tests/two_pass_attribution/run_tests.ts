@@ -434,5 +434,14 @@ test("e2e: low signal -> Scenario 6", () => {
   assert.equal(classifyTwoPass(f.e2e_lowSignal).scenario, Scenario.LowSignalEverywhere);
 });
 
+test("VEA halt short-circuits both passes -> not_attributed, Scenario 6, even with a clean-looking match", () => {
+  const r = classifyTwoPass({ ...f.e2e_confirmedClean, veaHaltRecommended: true });
+  assert.equal(r.artistAttribution.verdict, "not_attributed");
+  assert.equal(r.artistAttribution.evidenceBasis, "VEA-halt");
+  assert.equal(r.pass2Ran, false);
+  assert.equal(r.workIdentification, null);
+  assert.equal(r.scenario, Scenario.LowSignalEverywhere);
+});
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

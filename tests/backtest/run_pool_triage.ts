@@ -125,6 +125,7 @@ function toTwoPassInput(vea: any, vs: any, aia: any, triage: TriageResult): { in
     impressionEvidence: null,
     veaInImageTitleLegible: !!veaTitle,
     traditionConfidence: triage.traditionIdentification?.traditionConfidence ?? 0,
+    veaHaltRecommended: !!vea.imageAuthenticity?.haltRecommended,
     riskFlags: {
       forgeryRisk: !!triage.riskFlags?.forgeryRisk,
       misattributionRisk: !!triage.riskFlags?.misattributionRisk,
