@@ -67,26 +67,28 @@ All features with bounding boxes returned in `[ymin, xmin, ymax, xmax]` format o
 
 ### What it does
 
-Two-pass reverse image search and visual similarity scoring:
+Two passes. The deliverable of the whole stage is **a reference image of the same work, scored against the submission** — the artist/title are metadata on that image, not the goal.
 
-**Pass 1 — Search (Gemini 2.5 Flash + Google Search)**
-Sends the artwork image with Google Search enabled. Searches Artnet, MutualArt, Catawiki, Invaluable, Christie's, Sotheby's, Bonhams, British Museum, V&A, Met, and MoMA.
+**Pass 1 — find the closest reference image (Gemini + Google Search)**
+Sends the artwork image with Google Search enabled and asks for the single deliverable: `closestReferenceImageUrl` — the direct file URL of the reference image on the public web that is visually closest to the submission. The prompt is explicit that *"an artist name with no matching image is a failure, not a result"*, and that a page's prose (auction description, gallery caption) is never grounds for a match without visual confirmation. Searches auction archives (Artnet, MutualArt, Christie's, Sotheby's, Bonhams, Phillips, Invaluable) and museum collections (British Museum, V&A, Met, MoMA, Tate, NGA, AIC).
 
-Prioritises evidence in this order: legible text (signatures, titles, edition numbers, stamps) → distinctive composition → technique markers → subject/style. Returns a **single best-match hypothesis** — artist, title, technique, period, confidence level, a direct URL to a matching image of the work, and a source page URL.
+Returns: `closestReferenceImageUrl`, `sourcePageUrl`, `compositionMatch` (`identical | very_close | loose | none`), `whatMatches` / `whatDiffers`, plus `artist` / `title` / `technique` / `period` *only when the image match supports them*.
 
-**Pass 2 — Visual similarity scoring (Gemini 2.5 Flash, multimodal)**
-Fetches the best-match image URL returned in Pass 1. Passes both the original submission and the retrieved image to Gemini for side-by-side comparison. Returns a `visualSimilarityScore` (0.0–1.0) and a one-sentence rationale.
+**Pass 2 — visual similarity scoring (Gemini, multimodal)**
+Fetches `closestReferenceImageUrl` **first** (magic-byte sniffed — museum IIIF endpoints and CDN proxies have no file extension). Only if that yields no usable image does it fall back to Wikimedia Commons for the *work* by title — it **never** scores against a Wikipedia artist-portrait, which was the old bug (every lot came back ~0.25 because it was comparing the print to a photo of the artist's face). Passes submission + retrieved image to Gemini side-by-side for a `visualSimilarityScore` (0.0–1.0) + rationale.
 
 | Score | Meaning |
 |-------|---------|
-| 1.0 | Identical work, same impression |
-| 0.9 | Same work, minor photographic differences |
-| 0.8 | Very likely same work or direct variant |
-| 0.7 | Strong match — same artist, same period, similar composition |
-| 0.6 | Probable match — similar style and technique |
-| < 0.6 | Treat with high scepticism |
+| 1.0 | Same work, near-identical reproduction |
+| 0.9 | Clearly the same work — differs only in photography (angle, lighting, crop) |
+| 0.8 | Very likely the same work or a direct variant (state / edition / colourway) |
+| 0.7 | Strong match — same artist and composition family, one genuine difference remains |
+| 0.6 | Probable — similar style/technique, composition only loosely aligned |
+| < 0.5 | Weak or no match |
 
-The full result — artist, title, similarity score, rationale, image URL, and page URLs — is passed to **Stage 2a** (where Triage fuses it with VEA and the ACKG in `evidenceCorroboration` — see below) and **again to Stage 2b**, always carrying an explicit hypothesis warning. Both stages are instructed to cross-reference against VEA signatures, title inscriptions, and technique before accepting any match, and to treat results with similarity < 0.6 or `LOW` confidence with high scepticism.
+`evidenceBasis` and `matchConfidence` are then **derived in code from what actually happened**, not the model's self-report: a real image scored → `visual`; a name with no scored image → `textual` (capped `LOW`); nothing → `none`. When the score contradicts Pass 1's `compositionMatch` claim (Gemini often says "identical" then returns a different work by the same artist), `compositionMatch` is downgraded (`identical → loose`/`very_close`).
+
+The full result — artist, title, `compositionMatch`, similarity score + rationale, image URL, page URLs — is passed to **Stage 2a** (where Triage fuses it with VEA and the ACKG in `evidenceCorroboration` — see below) and **again to Stage 2b**, always carrying an explicit hypothesis warning. Both stages are instructed to cross-reference against VEA before accepting any match, and to treat a `textual` basis (a name with no scored image) as an unverified hypothesis that must not drive a candidate above a low probability on its own.
 
 ---
 
