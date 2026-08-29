@@ -1393,6 +1393,7 @@ CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
         paperConfidence: vea.paper?.paperConfidence,
       },
       dimensions: {
+        sourceImage: vea.dimensions?.sourceImage,
         printedImageMM: vea.dimensions?.printedImageMM,
         fullSheetMM: vea.dimensions?.fullSheetMM,
         dimensionsConfidence: vea.dimensions?.dimensionsConfidence,
@@ -1780,9 +1781,11 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
       `${d.category} / ${d.type} — ${d.severity}${d.affectsImageArea ? " (affects image area)" : ""}`
     ).join(". ") || "No significant damage detected.";
 
-    const inferredDimensions = vea.dimensions?.sourceImage !== "unavailable"
+    const hasScaledDims = vea.dimensions?.sourceImage === "supplementary_scale_photo"
+      && (vea.dimensions?.printedImageMM?.width || vea.dimensions?.fullSheetMM?.width);
+    const inferredDimensions = hasScaledDims
       ? `Plate: ${vea.dimensions?.printedImageMM?.width ?? "?"}×${vea.dimensions?.printedImageMM?.height ?? "?"}mm, Sheet: ${vea.dimensions?.fullSheetMM?.width ?? "?"}×${vea.dimensions?.fullSheetMM?.height ?? "?"}mm`
-      : "Dimensions not available — no scale scan provided.";
+      : "Dimensions not available — no scale reference in the images.";
 
     const editionRaw = (valuation as any).editionSizeAndPrintNumber;
 

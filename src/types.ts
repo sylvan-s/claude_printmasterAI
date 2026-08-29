@@ -159,7 +159,7 @@ export interface PlateMarkDetails {
 }
 
 export interface DimensionsDetails {
-  sourceImage: 'supplementary_scale_photo' | 'estimated_from_PRIMARY_SCAN' | 'unavailable' | string;
+  sourceImage: 'supplementary_scale_photo' | 'no_scale_reference' | 'unavailable' | string;
   printedImageMM: { width: number | null; height: number | null };
   fullSheetMM: { width: number | null; height: number | null };
   marginCondition: 'original' | 'trimmed' | 'irregular' | 'uncertain';

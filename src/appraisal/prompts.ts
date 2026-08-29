@@ -549,11 +549,18 @@ For each identified technique:
     printing) visible in the paper surface?
   • If visible: describe its clarity, apparent depth impression,
     and whether margins appear even on all four sides.
-  • If a supplementary photo with a ruler or coin for scale is
-    provided: estimate printed image dimensions and full sheet
-    dimensions in millimetres.
-  • If no scale reference: estimate dimensions relative to standard
-    paper sizes if possible, noting this is an estimate.
+  • Dimensions: report printedImageMM / fullSheetMM ONLY when a
+    supplementary photo contains a ruler, coin, or other object of
+    known real-world size that you can use to scale the print. In that
+    case give the measurements in millimetres and set sourceImage to
+    "supplementary_scale_photo".
+  • If no such scale reference is present: leave printedImageMM and
+    fullSheetMM null, set sourceImage to "no_scale_reference", and set
+    dimensionsConfidence to 0.0. Do NOT estimate dimensions — not from
+    standard paper sizes, not from the plate mark, not by any other
+    means. A guessed measurement is worse than none: downstream it
+    collides with the catalogue's real dimension and manufactures a
+    false discrepancy.
   • Note whether sheet margins appear original, trimmed, or irregular.
   • Are chain lines or laid lines visible (indicating handmade or
     mould-made paper)?
@@ -561,10 +568,10 @@ For each identified technique:
     verso photo if one was provided)?
 
 Assign plateMarkConfidence (0.0–1.0) reflecting certainty in the
-presence/absence and clarity assessment above, and dimensionsConfidence
-(0.0–1.0) reflecting certainty in the dimension estimates — 1.0 only
-when measured directly from a supplementary scale-reference photo,
-lower for estimates made without one. Apply the photographic
+presence/absence and clarity assessment above. dimensionsConfidence is
+1.0 only when the measurement was scaled from a supplementary
+scale-reference photo, and 0.0 whenever no scale reference was available
+(in which case the dimension fields are left null). Apply the photographic
 confidence penalty from Section 0D to both.
 
 ──────────────────────────────────────────────────────────────────────
@@ -896,9 +903,9 @@ and imagesReceived fields. All other fields should be omitted.
   },
 
   "dimensions": {
-    "sourceImage": "supplementary_scale_photo | estimated_from_PRIMARY_SCAN | unavailable",
-    "printedImageMM": { "width": null, "height": null },
-    "fullSheetMM": { "width": null, "height": null },
+    "sourceImage": "supplementary_scale_photo | no_scale_reference | unavailable",
+    "printedImageMM": { "width": null, "height": null },  // null unless scaled from a scale-reference photo
+    "fullSheetMM": { "width": null, "height": null },      // null unless scaled from a scale-reference photo
     "marginCondition": "original | trimmed | irregular | uncertain",
     "dimensionsConfidence": 0.0
   },
