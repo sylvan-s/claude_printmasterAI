@@ -1537,15 +1537,40 @@ only the presence of a referenced document or verifiable record justifies
 documented_fact.
 
 ──────────────────────────────────────────────────────────────────────
-2B. CLAIMED ATTRIBUTION (holistic — scan all four blocks)
+2B. CLAIMED ATTRIBUTION — the maker of THIS lot (holistic — scan all four blocks)
 ──────────────────────────────────────────────────────────────────────
 
 An artist, title, period, or technique claim can appear in any of the four
-blocks, not just one you'd expect (e.g. a provenance note naming "the
-artist's studio assistant" implies an artist). Scan all provided text for
-the single strongest such claim. If none exists, set all fields null and
-status "absent". Record which block it came from (sourceField) and the
-verbatim excerpt (sourceExcerpt) it was drawn from.
+blocks, not just the one you'd expect. Scan all provided text for the single
+strongest claim about who made THIS work. Record which block it came from
+(sourceField) and the verbatim excerpt (sourceExcerpt) it was drawn from.
+
+CRITICAL — a name is this lot's artist ONLY when the text grammatically
+attaches that person to authorship of the work being catalogued: "by X",
+"X's etching/lithograph/woodcut", "signed X", "a [medium] by X", "circle of
+/ attributed to / studio of / workshop of X". "after X" means the sheet is
+a later copy NOT by X — record X in artist but add a lowConfidenceFlag
+noting it is "after".
+
+The following are NOT this lot's artist — route a person-name here to
+provenanceChain (2D) instead, and never to claimedAttribution.artist —
+even when the name belongs to a real, famous artist, and even when a
+document is referenced:
+  • a collector, previous owner, consignor, dealer, or the person/couple
+    who assembled a named collection — INCLUDING when a catalogue title or
+    sale blurb frames the whole consignment as "from the [X] Collection",
+    "The [X and Y] Print Collection", "assembled by X", "X's private
+    collection", or gives X's biography. That X is themselves described as
+    an artist is context about the collection, not this lot's attribution.
+  • a publisher, printer, atelier, or gallery
+  • a dedicatee ("inscribed to X"), the sitter or subject, or any artist
+    named only for comparison or art-historical context ("in the manner of
+    the Grosvenor School", "reminiscent of X", "a contemporary of Y")
+
+If no text grammatically attaches a maker to THIS work, set all
+claimedAttribution fields null and status "absent". That is the correct
+and common result here — a blind appraisal legitimately reaches Stage 1c
+with the maker withheld; do not reach for the nearest available name.
 
 ──────────────────────────────────────────────────────────────────────
 2C. INSCRIPTION CLAIMS
@@ -1564,9 +1589,13 @@ the actual text.
 2D. PROVENANCE CHAIN
 ──────────────────────────────────────────────────────────────────────
 
-From PROVENANCE_NOTES: extract each owner, dealer, or collection named, in
-the order given, with any date or period stated. One entry per distinct
-owner/entity. Tag each with status and the verbatim excerpt it came from.
+Primarily from PROVENANCE_NOTES, but ALSO any owner / dealer / collector /
+named collection that appears elsewhere — e.g. a collection title or
+consignor blurb in CATALOGUE_NOTES ("The X and Y Print Collection", "from
+the estate of X"). Extract each in the order given, with any date or period
+stated. One entry per distinct owner/entity. Tag each with status and the
+verbatim excerpt it came from. This is where a collector's name belongs —
+not claimedAttribution (2B), even if that collector is also an artist.
 
 ──────────────────────────────────────────────────────────────────────
 2E. CONDITION CLAIMS
@@ -1677,5 +1706,9 @@ SECTION 4 — BEHAVIOURAL RULES
 4. YOU DO NOT VERIFY. Detecting that a note references a document is a
    text-reading task, not a verification task — you have no way to check
    the document exists.
-5. JSON ONLY. Nothing before the opening brace or after the closing brace.`;
+5. A COLLECTOR IS NOT THE ARTIST. A name the text places in a collection,
+   provenance, ownership, consignment, or publishing role never becomes
+   claimedAttribution.artist — not when that person is also a known artist,
+   not when paperwork is referenced. It goes to provenanceChain. See 2B.
+6. JSON ONLY. Nothing before the opening brace or after the closing brace.`;
 
