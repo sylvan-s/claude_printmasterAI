@@ -402,7 +402,11 @@ async function runOne(lot: PoolLot): Promise<void> {
             catalogueNotes: input.catalogueNotes ?? null,
           },
           stage1a_vea: r.vea,
-          stage1b_visualSearch: r.visualSearch ?? null,
+          // drop the retrieved reference image's base64 — big, and not needed to
+          // evaluate triage against the fixture (the URL is kept)
+          stage1b_visualSearch: r.visualSearch
+            ? { ...(r.visualSearch as Record<string, unknown>), bestMatchImageBase64: undefined }
+            : null,
           stage1c_appraiserInput: r.appraiserInput,
           timings: { ...r.timings, totalMs },
           generatedAt: new Date().toISOString(),
