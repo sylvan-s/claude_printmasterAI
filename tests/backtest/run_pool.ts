@@ -63,10 +63,25 @@ interface PoolLot {
   saleId: string;
   lotNumber: number;
   listingUrl: string;
+  auctionInternalId?: number | null;
   estimateLow: number;
   estimateHigh: number;
   artistName: string; // ground-truth — never fed to the pipeline
   title: string; // ground-truth
+  // TESTPOOL-1.1: image + structured lot fields straight from the ACKG, so a run
+  // needs no live auction-site round-trip.
+  imageUrl?: string | null;
+  datePeriod?: string | null;
+  techniques?: string[];
+  papers?: string[];
+  rawMedium?: string | null;
+  dimensions?: string | null;
+  dimKind?: "plate" | "sheet" | "image" | null;
+  copyType?: string | null;
+  editionSize?: number | null;
+  signed?: boolean | null;
+  catalogueRefsRaw?: string | null;
+  provenanceNote?: string | null;
 }
 
 // ── a FourStageAppraiser that stops after Stage 1 ─────────────────────────────
@@ -111,6 +126,7 @@ class Stage1PoolRunner extends FourStageAppraiser {
 const forumAuctionCache = new Map<string, ForumRawLot[]>();
 
 const MIN_IMAGE_BYTES = 6000; // guard against placeholder / broken images
+const MAX_IMAGE_BYTES = 4_500_000; // Anthropic rejects images over ~5MB; fall back to the smaller CDN variant
 
 /** Derive the media type from the URL extension. The S3 bucket Roseberys serves lot
  *  images from returns `binary/octet-stream` for `.webp`, which both the Anthropic and
@@ -123,11 +139,25 @@ function mimeFromUrl(url: string): string {
   );
 }
 
-async function fetchImage(url: string): Promise<{ base64: string; mimeType: string }> {
+async function fetchImageOnce(url: string): Promise<Buffer> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`image fetch ${url}: HTTP ${res.status}`);
-  const buf = Buffer.from(await res.arrayBuffer());
+  return Buffer.from(await res.arrayBuffer());
+}
+
+async function fetchImage(url: string): Promise<{ base64: string; mimeType: string }> {
+  let buf = await fetchImageOnce(url);
+  if (buf.length > MAX_IMAGE_BYTES && url.includes("/xlarge/")) {
+    const smaller = url.replace("/xlarge/", "/large/");
+    try {
+      const alt = await fetchImageOnce(smaller);
+      if (alt.length >= MIN_IMAGE_BYTES && alt.length <= MAX_IMAGE_BYTES) buf = alt;
+    } catch {
+      /* keep xlarge; the size check below will decide */
+    }
+  }
   if (buf.length < MIN_IMAGE_BYTES) throw new Error(`image too small (${buf.length}B) — likely a placeholder: ${url}`);
+  if (buf.length > MAX_IMAGE_BYTES) throw new Error(`image too large (${(buf.length / 1e6).toFixed(1)}MB) even at /large/: ${url}`);
   return { base64: buf.toString("base64"), mimeType: mimeFromUrl(url) };
 }
 
@@ -171,25 +201,95 @@ async function fetchLot(lot: PoolLot) {
   return { descriptionHtml: raw.description, imageUrl: img, lotUrl: forumLotUrl(raw), groundTruth: forumParse(raw.description) };
 }
 
-interface ParsedLotLike {
-  catalogueRefs: string[];
-  bodyLines: string[];
-  inscriptions: string | null;
-  provenance: string | null;
-  condition?: string | null;
+type Notes = Pick<AppraisalInput, "inscribedMarksNotes" | "provenanceNotes" | "conditionNotes" | "catalogueNotes">;
+
+/** Build the Stage 1c appraiser note from the ACKG's structured lot fields — the offline
+ *  equivalent of transcribing the catalogue body. `rawMedium` often already contains the
+ *  full catalogue sentence ("screenprint in colours, signed in pencil, edition of 40,
+ *  sheet 64 x 90cm"); use it verbatim when so, otherwise assemble from the parts. */
+function synthesizeNotes(lot: PoolLot): Notes {
+  const raw = (lot.rawMedium ?? "").trim();
+  let catalogue: string;
+  if (raw.length > 40 && raw.includes(",")) {
+    catalogue = raw;
+  } else {
+    const parts: string[] = [];
+    const medium = raw || lot.techniques?.[0];
+    const support = lot.papers?.[0];
+    if (medium) parts.push(support ? `${medium} on ${support}` : medium);
+    if (lot.datePeriod && !/^(null|none)$/i.test(lot.datePeriod)) parts.push(lot.datePeriod);
+    const edn = [lot.copyType, lot.editionSize ? `from an edition of ${lot.editionSize}` : null].filter(Boolean);
+    if (edn.length) parts.push(edn.join(", "));
+    if (lot.signed === true) parts.push("signed");
+    else if (lot.signed === false) parts.push("not hand-signed");
+    if (lot.dimensions) parts.push(`${lot.dimKind ?? "sheet"} ${lot.dimensions}`);
+    catalogue = parts.filter(Boolean).join(",\n");
+  }
+  if (lot.catalogueRefsRaw) catalogue += `\n\nCatalogue reference(s): ${lot.catalogueRefsRaw}`;
+  // defensive: never let the artist's own name into the notes (the header line the
+  // real harness withholds — it shouldn't be in `rawMedium`, but strip it if it is)
+  const surname = lot.artistName.split(/\s+/).pop() ?? "";
+  if (surname.length > 3) catalogue = catalogue.replace(new RegExp(`\\b${surname}\\b`, "gi"), "[artist]");
+  return {
+    catalogueNotes: catalogue.trim() || undefined,
+    provenanceNotes: lot.provenanceNote?.trim() || undefined,
+    inscribedMarksNotes: undefined,
+    conditionNotes: undefined,
+  };
 }
 
-function buildInput(base64: string, mimeType: string, gt: ParsedLotLike): AppraisalInput {
-  const refsLine = gt.catalogueRefs.length ? `Catalogue reference(s): ${gt.catalogueRefs.join(", ")}` : null;
-  const catalogueNotes = [gt.bodyLines.join("\n"), refsLine].filter(Boolean).join("\n\n") || undefined;
+interface Resolved {
+  imageUrl: string;
+  lotUrl: string;
+  source: "ackg" | "live";
+  notes: Notes;
+  groundTruth: Record<string, unknown>;
+}
+
+/** TESTPOOL-1.1: if the pool record carries an image URL (from DigitalImage.sourceUrl),
+ *  run fully offline — no auction-site round-trip. Fall back to the live API only for a
+ *  pre-1.1 pool JSON. */
+async function resolveLot(lot: PoolLot): Promise<Resolved> {
+  if (lot.imageUrl) {
+    return {
+      imageUrl: lot.imageUrl,
+      lotUrl: lot.listingUrl,
+      source: "ackg",
+      notes: synthesizeNotes(lot),
+      groundTruth: {
+        artist: lot.artistName,
+        title: lot.title,
+        year: lot.datePeriod ?? null,
+        medium: lot.rawMedium ?? null,
+        support: lot.papers?.[0] ?? null,
+        dimensions: lot.dimensions ?? null,
+        dimKind: lot.dimKind ?? null,
+        editionSize: lot.editionSize ?? null,
+        signed: lot.signed ?? null,
+        provenance: lot.provenanceNote ?? null,
+        catalogueRefs: lot.catalogueRefsRaw ?? null,
+        source: "ackg",
+      },
+    };
+  }
+  const f = await fetchLot(lot);
+  if (!lotIdentityMatches(lot.artistName, f.groundTruth.artist)) {
+    throw new Error(`wrong-lot: pool "${lot.artistName}" vs live "${f.groundTruth.artist}" — stale ACKG lot numbering`);
+  }
+  const refsLine = f.groundTruth.catalogueRefs.length
+    ? `Catalogue reference(s): ${f.groundTruth.catalogueRefs.join(", ")}`
+    : null;
   return {
-    imageBase64: base64,
-    mimeType,
-    currency: "GBP",
-    inscribedMarksNotes: gt.inscriptions || undefined,
-    provenanceNotes: gt.provenance || undefined,
-    conditionNotes: gt.condition || undefined,
-    catalogueNotes: catalogueNotes || undefined,
+    imageUrl: f.imageUrl,
+    lotUrl: f.lotUrl,
+    source: "live",
+    notes: {
+      inscribedMarksNotes: f.groundTruth.inscriptions || undefined,
+      provenanceNotes: f.groundTruth.provenance || undefined,
+      conditionNotes: (f.groundTruth as { condition?: string | null }).condition || undefined,
+      catalogueNotes: [f.groundTruth.bodyLines.join("\n"), refsLine].filter(Boolean).join("\n\n") || undefined,
+    },
+    groundTruth: { ...f.groundTruth, source: "live" },
   };
 }
 
@@ -257,21 +357,18 @@ async function runOne(lot: PoolLot): Promise<void> {
   const id = outId(lot);
   const dir = join(OUT_ROOT, id);
   try {
-    const fetched = await withRetry(`${id} fetch`, () => fetchLot(lot));
-    if (!lotIdentityMatches(lot.artistName, fetched.groundTruth.artist)) {
-      throw new Error(
-        `wrong-lot: pool says "${lot.artistName}", live lot parses as "${fetched.groundTruth.artist}" — stale ACKG lot numbering`,
-      );
-    }
-    const { base64, mimeType } = await withRetry(`${id} image`, () => fetchImage(fetched.imageUrl));
+    const res = await withRetry(`${id} resolve`, () => resolveLot(lot));
+    const { base64, mimeType } = await withRetry(`${id} image`, () => fetchImage(res.imageUrl));
     if (FETCH_ONLY) {
       done++;
+      const n = res.notes;
       console.log(
-        `  ok  ${id.padEnd(14)} ${String(lot.artistName).slice(0, 22).padEnd(23)} img ${(base64.length / 1365).toFixed(0)}KB  gt-artist="${fetched.groundTruth.artist ?? "-"}"  notes:${["inscriptions", "provenance", "condition"].filter((k) => (fetched.groundTruth as any)[k]).join("/") || "catalogue-only"}`,
+        `  ok  ${id.padEnd(14)} ${String(lot.artistName).slice(0, 22).padEnd(23)} [${res.source}] img ${(base64.length / 1365).toFixed(0)}KB  ` +
+          `notes:${[n.inscribedMarksNotes && "inscr", n.provenanceNotes && "prov", n.catalogueNotes && "cat"].filter(Boolean).join("/") || "none"}`,
       );
       return;
     }
-    const input = buildInput(base64, mimeType, fetched.groundTruth);
+    const input: AppraisalInput = { imageBase64: base64, mimeType, currency: "GBP", ...res.notes };
 
     const t0 = Date.now();
     const r = await withRetry(`${id} pipeline`, () => runner.runStage1Only(input));
@@ -287,16 +384,17 @@ async function runOne(lot: PoolLot): Promise<void> {
             saleId: lot.saleId,
             lotNumber: lot.lotNumber,
             listingUrl: lot.listingUrl,
-            lotUrl: fetched.lotUrl,
+            lotUrl: res.lotUrl,
             techBucket: lot.techBucket,
             bracket: lot.bracket,
             estimateLow: lot.estimateLow,
             estimateHigh: lot.estimateHigh,
           },
-          groundTruth: { ...fetched.groundTruth, poolArtistName: lot.artistName, poolTitle: lot.title },
+          groundTruth: { ...res.groundTruth, poolArtistName: lot.artistName, poolTitle: lot.title },
+          resolvedFrom: res.source,
           method: METHOD,
           models: { stage1a: r.stage1Model, stage1b: r.stage1bModel, stage1c: "claude-haiku-4-5" },
-          imageUrl: fetched.imageUrl,
+          imageUrl: res.imageUrl,
           appraiserInputNotes: {
             inscribedMarksNotes: input.inscribedMarksNotes ?? null,
             provenanceNotes: input.provenanceNotes ?? null,

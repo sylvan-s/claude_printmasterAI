@@ -1,9 +1,11 @@
 """
 PrintMasterAI — stratified backtest pool builder
-Version: TESTPOOL-1.0
+Version: TESTPOOL-1.1  (adds DigitalImage.sourceUrl + structured lot fields so the
+                        pool builds/runs fully offline; requires a lot image, which
+                        changes pool contents vs 1.0 — the seed is the same)
 
 Builds a reusable, stratified sample of real Roseberys/Forum lots from the ACKG for
-backtesting Stage 2a/2b, per the user's explicit stratification design (2026-08-26):
+backtesting the triage stage(s), per the user's explicit stratification design (2026-08-26):
 
   - Single-artist lots only (confirmed via the ACKG: 22,725 of 22,727 auction
     ConceptualWorks already have exactly one Artist via CREATED — multi-work/multi-artist
@@ -59,15 +61,26 @@ HOUSES = ["Roseberys London", "Forum Auctions"]
 BRACKETS = ["0-299", "300-499", "500-999", "1000-5000", "over5000"]
 CELLS_TO_DOUBLE = 20  # random cells that get a 2nd lot, to reach ~100 total from 80 cells
 
+# v1.1 (2026-08-29): also pulls DigitalImage.sourceUrl + auctionInternalId + the
+# structured lot fields, so the pool is usable fully offline — run_pool.ts fetches the
+# image straight from the CDN URL and synthesises the Stage 1c appraiser note from these
+# fields, with no live auction-site round-trip (which fails for old/archived sales).
+# Requiring a DigitalImage narrows the population and changes which lot each stratum
+# cell draws — the seed is unchanged but the pool contents differ from TESTPOOL-1.0.
 QUERY = """
 MATCH (src:SourceRecord)-[:DOCUMENTS]->(imp:Impression)<-[:INCLUDES]-(er:EditionRun)
       <-[:PRINTED_AS]-(cw:ConceptualWork)<-[:CREATED]-(a:Artist)
 WHERE src.sourceType = 'auction' AND src.institutionName IN $houses
-WITH src, imp, cw, a, count { (cw)<-[:CREATED]-(:Artist) } AS artistCount
+WITH src, imp, er, cw, a, count { (cw)<-[:CREATED]-(:Artist) } AS artistCount
 WHERE artistCount = 1
+MATCH (imp)<-[:SHOWS]-(di:DigitalImage)
 OPTIONAL MATCH (imp)-[:USES_TECHNIQUE]->(t:Technique)
-WITH src, cw, a, collect(DISTINCT t.name) AS techniques
-WITH src, cw, a,
+OPTIONAL MATCH (imp)-[:PRINTED_ON]->(p:Paper)
+WITH src, imp, er, cw, a,
+     collect(DISTINCT t.name) AS techniques,
+     collect(DISTINCT p.name) AS papers,
+     collect(DISTINCT di.sourceUrl) AS imageUrls
+WITH src, imp, er, cw, a, techniques, papers, imageUrls,
      CASE
        WHEN size(techniques) = 1 AND techniques[0] IN $topTechniques THEN techniques[0]
        ELSE 'Other'
@@ -81,8 +94,18 @@ WITH src, cw, a,
      END AS bracket
 RETURN src.institutionName AS house, techBucket, bracket,
        src.saleId AS saleId, src.lotNumber AS lotNumber, src.listingUrl AS listingUrl,
+       src.auctionInternalId AS auctionInternalId,
        src.estimateLow AS estimateLow, src.estimateHigh AS estimateHigh,
-       a.name AS artistName, cw.name AS title
+       a.name AS artistName, cw.name AS title,
+       coalesce(cw.dateCreated_displayLabel, toString(cw.dateCreated_year)) AS datePeriod,
+       imageUrls[0] AS imageUrl,
+       techniques AS techniques, papers AS papers, imp.rawMedium AS rawMedium,
+       coalesce(imp.plateDimensions, imp.sheetDimensions, imp.imageDimensions) AS dimensions,
+       CASE WHEN imp.plateDimensions IS NOT NULL THEN 'plate'
+            WHEN imp.sheetDimensions IS NOT NULL THEN 'sheet'
+            WHEN imp.imageDimensions IS NOT NULL THEN 'image' ELSE null END AS dimKind,
+       imp.copyType AS copyType, er.declaredSize AS editionSize, imp.signed AS signed,
+       cw.catalogueRefsRaw AS catalogueRefsRaw, imp.provenanceNote AS provenanceNote
 """
 
 
@@ -138,8 +161,10 @@ def build_pool(rows):
 
 
 def write_outputs(pool, csv_path, json_path):
+    # CSV keeps the human-scannable columns; the JSON carries every field (image URL,
+    # structured lot fields) that run_pool.ts needs.
     fieldnames = ["house", "techBucket", "bracket", "saleId", "lotNumber", "artistName",
-                  "title", "estimateLow", "estimateHigh", "listingUrl"]
+                  "title", "estimateLow", "estimateHigh", "imageUrl", "listingUrl"]
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()

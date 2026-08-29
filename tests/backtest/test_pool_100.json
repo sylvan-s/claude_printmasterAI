@@ -3,229 +3,542 @@
     "house": "Roseberys London",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "0-299",
-    "saleId": "A0642",
-    "lotNumber": 297,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0642-prints-multiples-519/297-shinkichi-tajiriamerican-1923-2009untitled-1989screenprint-561950",
+    "saleId": "A0673",
+    "lotNumber": 599,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0673-prints-multiples-550/599-shepard-faireyamerican-b1970-i-want-you-to-get-a-578961",
+    "auctionInternalId": 550,
     "estimateLow": 200.0,
     "estimateHigh": 300.0,
-    "artistName": "Shinkichi Tajiri",
-    "title": "Untitled"
+    "artistName": "Shepard Fairey",
+    "title": "I Want You to Get a Job",
+    "datePeriod": "2012",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/91d4c3f7-ad5b-ef11-bfe2-6045bdcfbcbf/fb5682a8-348a-ef11-ac21-6045bdd0accd.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [],
+    "rawMedium": "screenprint in colours",
+    "dimensions": "61.0x45.7cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 450,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "300-499",
     "saleId": "A0710",
-    "lotNumber": 243,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0710-prints-multiples-590/243-sebas-velasco-spanish-b1988-untitledscreenprint-in-colours-591172",
+    "lotNumber": 374,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0710-prints-multiples-590/374-ben-eine-british-b1970-change-2011screenprint-in-colours-on-591171",
+    "auctionInternalId": 590,
     "estimateLow": 300.0,
     "estimateHigh": 500.0,
-    "artistName": "Sebas Velasco",
-    "title": "Untitled"
+    "artistName": "Ben Eine",
+    "title": "Change",
+    "datePeriod": "2011",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/e925c82d-b9bb-ef11-8a6d-0022483f69aa/3f1d527f-27ff-ef11-9346-7c1e522d8b7a.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "screenprint in colours",
+    "dimensions": "53.5x75.5cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 150,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "500-999",
-    "saleId": "A0612",
-    "lotNumber": 230,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0612-prints-multiples-488/230-charming-bakerbritish-b1964-love-birds-1-2-20192-archival-555152",
-    "estimateLow": 500.0,
-    "estimateHigh": 700.0,
-    "artistName": "Charming Baker",
-    "title": "Love Birds 1 & 2"
+    "saleId": "A0673",
+    "lotNumber": 182,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0673-prints-multiples-550/182-yaacov-agam-israeli-b1928-hommage-georges-braque-580129",
+    "auctionInternalId": 550,
+    "estimateLow": 700.0,
+    "estimateHigh": 1000.0,
+    "artistName": "Yaacov Agam",
+    "title": "Hommage à Georges Braque",
+    "datePeriod": "1973",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/6d881849-0d74-ef11-a671-6045bdfc735b/7e55dc23-3198-ef11-8a6b-7c1e522dc7fc.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "screenprint in black and white",
+    "dimensions": "71.0x101.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "1000-5000",
-    "saleId": "A0324",
-    "lotNumber": 254,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0324-modern-contemporary-prints-multiples-229/254-wang-guangyichinese-b1957-hp-invent-2001screenprint-in-445726",
-    "estimateLow": 1000.0,
-    "estimateHigh": 1500.0,
-    "artistName": "Wang Guangyi",
-    "title": "\"HP Invent\" 2001"
+    "saleId": "A0414",
+    "lotNumber": 127,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0414-online-modern-contemporary-prints-301/127-fred-sandback-american-1943-2003-siebdruck-jahn-112-1985-474960",
+    "auctionInternalId": 301,
+    "estimateLow": 1500.0,
+    "estimateHigh": 2000.0,
+    "artistName": "Fred Sandback",
+    "title": "Siebdruck, [Jahn 112]",
+    "datePeriod": "1985",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/2c7b2c3b-8d9e-ed11-b835-d4548b6f1f2f/558678bf-7c9f-ed11-9a88-00224842e92f.jpeg",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [],
+    "rawMedium": "screenprint in colours, signed and dated in pencil, from and edition of 40, sheet 64 x 90cm (unframed)",
+    "dimensions": "64.0x90.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 40,
+    "signed": true,
+    "catalogueRefsRaw": "Jahn 112",
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "over5000",
     "saleId": "A0743",
-    "lotNumber": 235,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0743-prints-multiples-623/235-andy-warhol-american-1928-1987mick-jagger-f-and-s-ii141-605791",
-    "estimateLow": 100000.0,
-    "estimateHigh": 150000.0,
-    "artistName": "Andy Warhol",
-    "title": "Mick Jagger, (F and S II.141)"
+    "lotNumber": 374,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0743-prints-multiples-623/374-banksy-british-b1974-happy-chopper-2003screenprint-in-605927",
+    "auctionInternalId": 623,
+    "estimateLow": 12000.0,
+    "estimateHigh": 15000.0,
+    "artistName": "Banksy",
+    "title": "Happy Chopper",
+    "datePeriod": "2003",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/89b341b9-81aa-f011-bbd0-7c1e52662839/19324721-32ab-f011-bbd0-6045bd11de02.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "screenprint in colours",
+    "dimensions": "67.0x47.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 750,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Lithograph",
     "bracket": "0-299",
-    "saleId": "A0305",
-    "lotNumber": 218,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0305-modern-contemporary-prints-212/218-edward-bawden-cbe-ra-british-1903-1989-3939billingsgate3939-438056",
-    "estimateLow": 100.0,
-    "estimateHigh": 150.0,
-    "artistName": "Edward Bawden",
-    "title": "''Billingsgate''"
+    "saleId": "A0368",
+    "lotNumber": 157,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0368-modern-contemporary-prints-multiples-267/157-georges-mathieu-french-1921-2012-untitled-abstract-461170",
+    "auctionInternalId": 267,
+    "estimateLow": 200.0,
+    "estimateHigh": 300.0,
+    "artistName": "Georges Mathieu",
+    "title": "Untitled abstract composition",
+    "datePeriod": "1959",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/05a99038-8d9e-ed11-b835-d4548b6f1f2f/fd347f7a-6c9f-ed11-9a88-6045bdd0cb7f.jpeg",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [],
+    "rawMedium": "lithograph in colours",
+    "dimensions": null,
+    "dimKind": null,
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Lithograph",
     "bracket": "300-499",
-    "saleId": "A0785",
-    "lotNumber": 88,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0785-prints-multiples-665/88-graham-sutherland-ombritish-1903-1980firebird-618685",
+    "saleId": "A0583",
+    "lotNumber": 14,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0583-prints-multiples-459/14-marc-chagall-russianfrench-1887-1985the-angel-1956-mourlot-542538",
+    "auctionInternalId": 459,
     "estimateLow": 300.0,
     "estimateHigh": 500.0,
-    "artistName": "Graham Sutherland OM",
-    "title": "Firebird"
+    "artistName": "Marc Chagall",
+    "title": "The Angel, 1956 [Mourlot 120]",
+    "datePeriod": "1956",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/796d063b-c8c8-ed11-9a88-6045bd0f961f/88140786-cdf3-ed11-8848-6045bdd103b6.webp",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "lithograph printed in colours",
+    "dimensions": "33.5x25.5cm",
+    "dimKind": "image",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": false,
+    "catalogueRefsRaw": "Mourlot 120",
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Lithograph",
     "bracket": "500-999",
-    "saleId": "A0529",
-    "lotNumber": 21,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0529-prints-multiples-part-1-409/21-giorgio-de-chirico-italian-1888-1978-il-segreto-della-517302",
-    "estimateLow": 800.0,
-    "estimateHigh": 1200.0,
-    "artistName": "Giorgio de Chirico",
-    "title": "Il Segreto Della Fontana"
-  },
-  {
-    "house": "Roseberys London",
-    "techBucket": "Lithograph",
-    "bracket": "1000-5000",
     "saleId": "A0467",
-    "lotNumber": 225,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0467-prints-multiples-350/225-sam-francisamerican-1923-1994-untitled-1978lithograph-in-493117",
-    "estimateLow": 4000.0,
-    "estimateHigh": 6000.0,
-    "artistName": "Sam Francis",
-    "title": "Untitled"
+    "lotNumber": 60,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0467-prints-multiples-350/60-john-hoyland-rabritish-1934-2011-large-swiss-red-493078",
+    "auctionInternalId": 350,
+    "estimateLow": 600.0,
+    "estimateHigh": 800.0,
+    "artistName": "John Hoyland",
+    "title": "Large Swiss Red",
+    "datePeriod": "1968",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/41beee42-8d9e-ed11-b835-d4548b6f1f2f/fa3471ec-f19f-ed11-9a88-6045bdd0cb7f.jpeg",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "lithograph in colours",
+    "dimensions": "90.6x63.4cm",
+    "dimKind": "image",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Lithograph",
-    "bracket": "over5000",
-    "saleId": "A0724",
-    "lotNumber": 309,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0724-prints-multiples-604/309-nelson-mandela-south-african-1918-2013my-robben-island-596366",
-    "estimateLow": 7000.0,
-    "estimateHigh": 10000.0,
-    "artistName": "Nelson Mandela",
-    "title": "My Robben Island"
-  },
-  {
-    "house": "Roseberys London",
-    "techBucket": "Etching",
-    "bracket": "0-299",
-    "saleId": "A0356",
-    "lotNumber": 5,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0356-modern-contemporary-prints-multiples-255/5-margaret-m-rudge-british-exh-1913-1929-coffee-lane-cape-457114",
-    "estimateLow": 80.0,
-    "estimateHigh": 120.0,
-    "artistName": "Margaret M Rudge",
-    "title": "Coffee Lane, Cape Town"
-  },
-  {
-    "house": "Roseberys London",
-    "techBucket": "Etching",
-    "bracket": "300-499",
-    "saleId": "A0427",
-    "lotNumber": 120,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0427-prints-multiples-312/120-pierre-auguste-renoirfrench-1841-1919-claude-renoir-de-478639",
-    "estimateLow": 300.0,
-    "estimateHigh": 500.0,
-    "artistName": "Pierre-Auguste Renoir",
-    "title": "Claude Renoir, de trois-quarts a gauche [Stella 19]"
-  },
-  {
-    "house": "Roseberys London",
-    "techBucket": "Etching",
-    "bracket": "500-999",
-    "saleId": "A0445",
-    "lotNumber": 23,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0445-prints-multiples-328/23-henry-moore-om-ch-fbabritish-1898-1986-reclining-figure-4-484217",
-    "estimateLow": 700.0,
-    "estimateHigh": 900.0,
-    "artistName": "Henry Moore OM CH FBA",
-    "title": "Reclining Figure 4 [Cramer 475]"
-  },
-  {
-    "house": "Roseberys London",
-    "techBucket": "Etching",
     "bracket": "1000-5000",
-    "saleId": "A0571",
-    "lotNumber": 363,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0571-prints-multiples-450/363-tracey-emin-cbe-ra-british-b-1963-closed-2013-etching-on-533502",
+    "saleId": "A0662",
+    "lotNumber": 65,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0662-prints-multiples-539/65-john-piper-chbritish-1903-1992nursery-frieze-i-levinson-8-573400",
+    "auctionInternalId": 539,
     "estimateLow": 1000.0,
     "estimateHigh": 1500.0,
-    "artistName": "Tracey Emin",
-    "title": "Closed"
+    "artistName": "John Piper",
+    "title": "Nursery Frieze I [Levinson 8]",
+    "datePeriod": "1936",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/497aee22-b9c1-ee11-907a-00224807754f/0db0fc0e-d554-ef11-bfe2-002248430c79.webp",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "lithograph in colours",
+    "dimensions": "46.0x122.0cm",
+    "dimKind": "image",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": false,
+    "catalogueRefsRaw": "Levinson 8",
+    "provenanceNote": null
+  },
+  {
+    "house": "Roseberys London",
+    "techBucket": "Lithograph",
+    "bracket": "over5000",
+    "saleId": "A0592",
+    "lotNumber": 522,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0592-prints-multiples-468/522-yoshitomo-nara-japanese-b1959-in-the-cloud-2003lithograph-550076",
+    "auctionInternalId": 468,
+    "estimateLow": 20000.0,
+    "estimateHigh": 30000.0,
+    "artistName": "Yoshitomo Nara",
+    "title": "In The Cloud",
+    "datePeriod": "2003",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/4cd310d9-c327-ee11-bdf5-000d3ad4feb5/137dc58a-1931-ee11-bdf5-002248419d6c.webp",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "lithograph in colours",
+    "dimensions": "42.5x32.8cm",
+    "dimKind": "sheet",
+    "copyType": "AP",
+    "editionSize": 150,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
+  },
+  {
+    "house": "Roseberys London",
+    "techBucket": "Etching",
+    "bracket": "0-299",
+    "saleId": "A0427",
+    "lotNumber": 88,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0427-prints-multiples-312/88-bryan-inghambritish-1936-1997-white-jug-ii-kynance-1980soft-478801",
+    "auctionInternalId": 312,
+    "estimateLow": 150.0,
+    "estimateHigh": 200.0,
+    "artistName": "Bryan Ingham",
+    "title": "White Jug II (Kynance)",
+    "datePeriod": "1980",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/2497813f-8d9e-ed11-b835-d4548b6f1f2f/f1d84082-b89f-ed11-9a88-6045bdd0c225.jpeg",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "soft and hardground etching with hand-colouring",
+    "dimensions": "39.2x26.5cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
+  },
+  {
+    "house": "Roseberys London",
+    "techBucket": "Etching",
+    "bracket": "300-499",
+    "saleId": "A0445",
+    "lotNumber": 178,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0445-prints-multiples-328/178-louis-marcoussispolishfrench-1878-1941-serge-lifar-484465",
+    "auctionInternalId": 328,
+    "estimateLow": 300.0,
+    "estimateHigh": 500.0,
+    "artistName": "Louis Marcoussis",
+    "title": "Serge Lifar",
+    "datePeriod": "1933",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/c143ce41-8d9e-ed11-b835-d4548b6f1f2f/85374b37-d39f-ed11-9a88-6045bdd0cd9c.jpeg",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "etching in colour",
+    "dimensions": "42.0x23.5cm",
+    "dimKind": "image",
+    "copyType": "numbered",
+    "editionSize": 50,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
+  },
+  {
+    "house": "Roseberys London",
+    "techBucket": "Etching",
+    "bracket": "500-999",
+    "saleId": "A0724",
+    "lotNumber": 194,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0724-prints-multiples-604/194-jake-dinos-chapmanbritish-b1966-1962-the-birth-of-ideas-596259",
+    "auctionInternalId": 604,
+    "estimateLow": 500.0,
+    "estimateHigh": 700.0,
+    "artistName": "Jake & Dinos Chapman",
+    "title": "The Birth of Ideas",
+    "datePeriod": "2003",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/132ffa78-5f11-f011-9346-7c1e522dcac1/6db1f255-b43b-f011-be59-6045bd0feb54.webp",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [],
+    "rawMedium": "hard ground etching",
+    "dimensions": "52.0x64.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 200,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
+  },
+  {
+    "house": "Roseberys London",
+    "techBucket": "Etching",
+    "bracket": "1000-5000",
+    "saleId": "A0445",
+    "lotNumber": 191,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0445-prints-multiples-328/191-marc-chagallrussianfrench-1887-1985-elijah-and-the-widow-of-484244",
+    "auctionInternalId": 328,
+    "estimateLow": 2000.0,
+    "estimateHigh": 3000.0,
+    "artistName": "Marc Chagall",
+    "title": "Elijah and the Widow of Sarepta, from La Bible [Cramer Book 30]",
+    "datePeriod": null,
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/309d813f-8d9e-ed11-b835-d4548b6f1f2f/f951e269-bb9f-ed11-9a88-6045bdd0c225.jpeg",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "etching with hand colouring",
+    "dimensions": "28.7x24.3cm",
+    "dimKind": "plate",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": true,
+    "catalogueRefsRaw": "Cramer Book 30",
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Etching",
     "bracket": "over5000",
-    "saleId": "A0427",
-    "lotNumber": 108,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0427-prints-multiples-312/108-victor-pasmore-ch-cbebritish-1908-1998-images-on-the-wall-478790",
-    "estimateLow": 6000.0,
-    "estimateHigh": 8000.0,
-    "artistName": "Victor Pasmore",
-    "title": "Images on the Wall"
+    "saleId": "A0494",
+    "lotNumber": 71,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0494-prints-multiples-376/71-henri-matisse-french-1869-1954-martiniquaise-duthuit-288-502793",
+    "auctionInternalId": 376,
+    "estimateLow": 8000.0,
+    "estimateHigh": 12000.0,
+    "artistName": "Henri Matisse",
+    "title": "Martiniquaise [Duthuit 288]",
+    "datePeriod": "1946",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/560be748-8d9e-ed11-b835-d4548b6f1f2f/38e179b9-c9a0-ed11-9a88-6045bdd0c225.webp",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "etching",
+    "dimensions": "38.3x27.8cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 29,
+    "signed": true,
+    "catalogueRefsRaw": "Duthuit 288",
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Offset lithograph",
     "bracket": "0-299",
     "saleId": "A0427",
-    "lotNumber": 81,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0427-prints-multiples-312/81-sir-kyffin-williams-kbe-ra-welsh-1918-2006-conwy-castle-478587",
-    "estimateLow": 250.0,
-    "estimateHigh": 350.0,
-    "artistName": "Kyffin Williams KBE",
-    "title": "Conwy Castle"
+    "lotNumber": 234,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0427-prints-multiples-312/234-after-andy-warholamerican-1928-1987-stripes-from-the-house-478523",
+    "auctionInternalId": 312,
+    "estimateLow": 200.0,
+    "estimateHigh": 300.0,
+    "artistName": "Andy Warhol",
+    "title": "Stripes From the House of the Shaman, Joseph Beuys Exhibition Poster",
+    "datePeriod": "1980",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/f578f63c-8d9e-ed11-b835-d4548b6f1f2f/f01ee8d4-879f-ed11-9a88-6045bdd0cb7f.jpeg",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [],
+    "rawMedium": "offset lithograph in colours, poster designed by H. Bastian, published by Anthony DOffay Fine Art, London, from an unnumbered edition, sheet 72.5 x 50.3cm (unframed)",
+    "dimensions": "72.5x50.3cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Offset lithograph",
     "bracket": "300-499",
-    "saleId": "A0494",
-    "lotNumber": 222,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0494-prints-multiples-376/222-david-hockney-om-ch-ra-british-b1937-parade-1981offset-502723",
-    "estimateLow": 400.0,
-    "estimateHigh": 600.0,
-    "artistName": "David Hockney",
-    "title": "Parade"
+    "saleId": "A0731",
+    "lotNumber": 150,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0731-prints-multiples-611/150-robert-del-naja-3dbritish-b1965-hoping-for-palestine-599289",
+    "auctionInternalId": 611,
+    "estimateLow": 300.0,
+    "estimateHigh": 500.0,
+    "artistName": "Robert Del Naja (3D)",
+    "title": "Hoping for Palestine",
+    "datePeriod": "2018",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/ef040f1e-5f6c-f011-8eed-6045bdd11136/f804c077-9773-f011-8eef-7c1e52049af7.webp",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "offset lithographic poster in colours",
+    "dimensions": "55.0x50.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Offset lithograph",
     "bracket": "500-999",
-    "saleId": "A0345",
-    "lotNumber": 36,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0345-online-modern-contemporary-prints-244/36-laurence-stephen-lowry-rba-rabritish-1887-1976-on-the-sands-452289",
+    "saleId": "A0445",
+    "lotNumber": 442,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0445-prints-multiples-328/442-takashi-murakamijapanese-b1962-spiral-2014offset-lithograph-484511",
+    "auctionInternalId": 328,
     "estimateLow": 500.0,
     "estimateHigh": 700.0,
-    "artistName": "Laurence Stephen Lowry",
-    "title": "\"On The Sands\""
+    "artistName": "Takashi Murakami",
+    "title": "Spiral",
+    "datePeriod": "2014",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/baa2ee42-8d9e-ed11-b835-d4548b6f1f2f/1a1c45ba-d69f-ed11-9a88-000d3a7f2a7a.jpeg",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "offset lithograph in colours",
+    "dimensions": "68.0x68.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 300,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Offset lithograph",
     "bracket": "1000-5000",
-    "saleId": "A0529",
-    "lotNumber": 86,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0529-prints-multiples-part-1-409/86-laurence-stephen-lowry-rba-ra-british-1887-1976-britain-at-517572",
-    "estimateLow": 2000.0,
-    "estimateHigh": 3000.0,
+    "saleId": "A0571",
+    "lotNumber": 1,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0571-prints-multiples-450/1-laurence-stephen-lowry-rba-ra-british-1887-1976-the-two-533564",
+    "auctionInternalId": 450,
+    "estimateLow": 2500.0,
+    "estimateHigh": 3500.0,
     "artistName": "Laurence Stephen Lowry",
-    "title": "Britain at Play"
+    "title": "The two brothers",
+    "datePeriod": "1972",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/1a44fd54-8d9e-ed11-b835-d4548b6f1f2f/2457748f-8a9f-ed11-9a88-6045bdd0cd9c.webp",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "offset lithograph",
+    "dimensions": "60.5x30.2cm",
+    "dimKind": "image",
+    "copyType": "numbered",
+    "editionSize": 850,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
@@ -234,46 +547,110 @@
     "saleId": "A0592",
     "lotNumber": 151,
     "listingUrl": "https://www.roseberys.co.uk/bidding/A0592-prints-multiples-468/151-andy-warholamerican-1928-1987tattooed-woman-holding-a-rose-549614",
+    "auctionInternalId": 468,
     "estimateLow": 15000.0,
     "estimateHigh": 20000.0,
     "artistName": "Andy Warhol",
-    "title": "Tattooed Woman Holding a Rose, circa 1955 (Not in F. and S.)"
+    "title": "Tattooed Woman Holding a Rose, circa 1955 (Not in F. and S.)",
+    "datePeriod": "1955",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/86aba07e-591a-ee11-8f70-6045bdd2d36c/24b1ddcf-1735-ee11-bdf5-6045bdc1d13f.webp",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [],
+    "rawMedium": "offset lithograph printed in orange",
+    "dimensions": "24.0x78.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Aquatint",
     "bracket": "0-299",
-    "saleId": "A0305",
-    "lotNumber": 114,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0305-modern-contemporary-prints-212/114-norman-ackroyd-cbe-ra-british-b1938-bridge-aquatint-signed-438088",
-    "estimateLow": 150.0,
-    "estimateHigh": 200.0,
+    "saleId": "A0368",
+    "lotNumber": 103,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0368-modern-contemporary-prints-multiples-267/103-norman-ackroyd-british-b1938-hillside-and-trees-1976-461094",
+    "auctionInternalId": 267,
+    "estimateLow": 200.0,
+    "estimateHigh": 300.0,
     "artistName": "Norman Ackroyd",
-    "title": "\"Bridge\""
+    "title": "Hillside and Trees",
+    "datePeriod": "1976",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/8ba39038-8d9e-ed11-b835-d4548b6f1f2f/56d233c4-6b9f-ed11-9a88-6045bdd0cb7f.jpeg",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [],
+    "rawMedium": "aquatint, signed, dated, titled and numbered 19/75 in pencil, 41x37.5cm (ARR)",
+    "dimensions": null,
+    "dimKind": null,
+    "copyType": "numbered",
+    "editionSize": 75,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Aquatint",
     "bracket": "300-499",
-    "saleId": "A0427",
-    "lotNumber": 272,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0427-prints-multiples-312/272-patrick-procktor-ra-re-rwsbritish-1936-2003-back-bay-in-478486",
-    "estimateLow": 300.0,
-    "estimateHigh": 500.0,
-    "artistName": "Patrick Procktor RA RE",
-    "title": "Back Bay in Bombay, 1970 & Untitled (blue)"
+    "saleId": "A0445",
+    "lotNumber": 30,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0445-prints-multiples-328/30-geoffrey-clarke-rabritish-1924-2014-untitled-1950aquatint-484540",
+    "auctionInternalId": 328,
+    "estimateLow": 400.0,
+    "estimateHigh": 600.0,
+    "artistName": "Geoffrey Clarke",
+    "title": "Untitled",
+    "datePeriod": "1950",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/baa3ee42-8d9e-ed11-b835-d4548b6f1f2f/e27fb77c-d89f-ed11-9a88-000d3a7f2a7a.jpeg",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "laid"
+    ],
+    "rawMedium": "aquatint",
+    "dimensions": "42.6x23.8cm",
+    "dimKind": "plate",
+    "copyType": "numbered",
+    "editionSize": 25,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Aquatint",
     "bracket": "500-999",
-    "saleId": "A0324",
-    "lotNumber": 36,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0324-modern-contemporary-prints-multiples-229/36-john-piper-ch-british-1903-1992-rheims-cathedral-1972-445742",
-    "estimateLow": 700.0,
-    "estimateHigh": 900.0,
-    "artistName": "John Piper",
-    "title": "\"Rheims Cathedral\""
+    "saleId": "A0785",
+    "lotNumber": 22,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0785-prints-multiples-665/22-sam-francisamerican-1923-1994untitled-1986aquatint-in-618620",
+    "auctionInternalId": 665,
+    "estimateLow": 800.0,
+    "estimateHigh": 1200.0,
+    "artistName": "Sam Francis",
+    "title": "Untitled",
+    "datePeriod": "1986",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/1ea71972-bf32-f111-bec2-7c1e5203ed9f/2804596b-d45d-f111-ab09-7ced8d99f9b8.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "aquatint in colours",
+    "dimensions": "17.5x17.5cm",
+    "dimKind": "plate",
+    "copyType": "numbered",
+    "editionSize": 30,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": "A Private Collector of Art & Studio Pottery"
   },
   {
     "house": "Roseberys London",
@@ -282,10 +659,27 @@
     "saleId": "A0743",
     "lotNumber": 63,
     "listingUrl": "https://www.roseberys.co.uk/bidding/A0743-prints-multiples-623/63-massimo-campigli-italian-1895-1971le-memorie-di-casanova-605616",
+    "auctionInternalId": 623,
     "estimateLow": 3000.0,
     "estimateHigh": 5000.0,
     "artistName": "Massimo Campigli",
-    "title": "Le memorie di Casanova"
+    "title": "Le memorie di Casanova",
+    "datePeriod": "1965",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/4162901b-20a4-f011-bbd0-7c1e52662348/452f6d9b-3da8-f011-bbd0-7c1e52662839.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "ten aquatints",
+    "dimensions": null,
+    "dimKind": null,
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
@@ -294,58 +688,141 @@
     "saleId": "A0673",
     "lotNumber": 146,
     "listingUrl": "https://www.roseberys.co.uk/bidding/A0673-prints-multiples-550/146-pablo-picasso-spanish-1881-1973portrait-de-mousquetaire-580593",
+    "auctionInternalId": 550,
     "estimateLow": 7000.0,
     "estimateHigh": 10000.0,
     "artistName": "Pablo Picasso",
-    "title": "Portrait de \"Mousquetaire\" triste"
+    "title": "Portrait de \"Mousquetaire\" triste",
+    "datePeriod": "1969",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/d78c095f-3782-ef11-ac23-00224801570a/1301dc48-7f97-ef11-8a6b-7c1e522f5daf.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "aquatint",
+    "dimensions": "59.5x41.4cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 50,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Giclée",
     "bracket": "0-299",
-    "saleId": "A0592",
-    "lotNumber": 356,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0592-prints-multiples-468/356-dan-hillierbritish-b1973-waking-dream-2020gicle-on-300gsm-550599",
+    "saleId": "A0650",
+    "lotNumber": 369,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0650-prints-multiples-527/369-jj-adams-british-b1978-down-to-business-gicle-in-colours-on-569244",
+    "auctionInternalId": 527,
     "estimateLow": 250.0,
     "estimateHigh": 350.0,
-    "artistName": "Dan Hillier",
-    "title": "Waking Dream"
+    "artistName": "JJ Adams",
+    "title": "Down to Business",
+    "datePeriod": null,
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/d23a8b02-21f7-ee11-a1ff-7c1e52049efd/16a482cc-0411-ef11-9f88-002248073e9e.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "giclée in colours",
+    "dimensions": "57.0x73.0cm",
+    "dimKind": "image",
+    "copyType": "numbered",
+    "editionSize": 10,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Giclée",
     "bracket": "300-499",
     "saleId": "A0550",
-    "lotNumber": 711,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0550-prints-multiples-429/711-property-of-an-urban-art-collectorjamie-reid-british-b1947-523906",
+    "lotNumber": 726,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0550-prints-multiples-429/726-pure-evil-british-b1968-lockdown-2-midnight-marauder-2020-523962",
+    "auctionInternalId": 429,
     "estimateLow": 300.0,
     "estimateHigh": 500.0,
-    "artistName": "Property of an Urban Art Collector",
-    "title": "Never Trust a Punk"
+    "artistName": "Pure Evil",
+    "title": "Lockdown 2- Midnight Marauder",
+    "datePeriod": "2020",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/0a36df4e-8d9e-ed11-b835-d4548b6f1f2f/e37083cb-2a9f-ed11-9a88-00224842e92f.jpeg",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "giclée print in colours",
+    "dimensions": "50.2x61.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Giclée",
     "bracket": "500-999",
-    "saleId": "A0469",
-    "lotNumber": 373,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0469-prints-multiples-352/373-the-connor-brothers-british-b1968-the-truth-will-set-you-493890",
-    "estimateLow": 600.0,
-    "estimateHigh": 800.0,
+    "saleId": "A0494",
+    "lotNumber": 419,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0494-prints-multiples-376/419-the-connor-brothers-british-b1968-the-truth-will-set-you-502488",
+    "auctionInternalId": 376,
+    "estimateLow": 500.0,
+    "estimateHigh": 700.0,
     "artistName": "The Connor Brothers",
-    "title": "The Truth Will Set You Free"
+    "title": "The Truth Will Set You Free",
+    "datePeriod": "2015",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/ba9bf647-8d9e-ed11-b835-d4548b6f1f2f/e195025c-30a0-ed11-9a88-6045bdd0cd9c.jpeg",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "giclée print in colours",
+    "dimensions": "70.0x46.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 95,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Giclée",
     "bracket": "1000-5000",
     "saleId": "A0724",
-    "lotNumber": 54,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0724-prints-multiples-604/54-john-minton-british-1952-2016lucian-freud-a-portraita-2016-596121",
+    "lotNumber": 373,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0724-prints-multiples-604/373-damien-hirstbritish-b1965-h10-1-wu-zetian-2022laminated-596428",
+    "auctionInternalId": 604,
     "estimateLow": 1500.0,
     "estimateHigh": 2000.0,
-    "artistName": "John Minton",
-    "title": "Lucian Freud, a portrait"
+    "artistName": "Damien Hirst",
+    "title": "H10-1 Wu Zetian",
+    "datePeriod": "2022",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/e1669649-0337-f011-9a4a-00224842b589/593c7e73-8840-f011-be59-6045bdf16fdb.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [],
+    "rawMedium": "laminated giclée print",
+    "dimensions": null,
+    "dimKind": null,
+    "copyType": "numbered",
+    "editionSize": 2853,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
@@ -354,10 +831,25 @@
     "saleId": "A0731",
     "lotNumber": 289,
     "listingUrl": "https://www.roseberys.co.uk/bidding/A0731-prints-multiples-611/289-damien-hirst-british-b1965-harlequin-h18-1-2024diasec-599432",
+    "auctionInternalId": 611,
     "estimateLow": 10000.0,
     "estimateHigh": 15000.0,
     "artistName": "Damien Hirst",
-    "title": "Harlequin, H18-1"
+    "title": "Harlequin, H18-1",
+    "datePeriod": "2024",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/4c7b87b3-d36b-f011-8eed-7ced8d38b6e7/68f6db55-9773-f011-8eef-7c1e52049af7.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [],
+    "rawMedium": "diasec mounted giclée print",
+    "dimensions": "85.0x140.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 180,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
@@ -366,10 +858,25 @@
     "saleId": "A0356",
     "lotNumber": 64,
     "listingUrl": "https://www.roseberys.co.uk/bidding/A0356-modern-contemporary-prints-multiples-255/64-hans-bellmer-german-1902-1975-untitled-drypoint-on-silk-457184",
+    "auctionInternalId": 255,
     "estimateLow": 100.0,
     "estimateHigh": 150.0,
     "artistName": "Hans Bellmer",
-    "title": "Untitled"
+    "title": "Untitled",
+    "datePeriod": null,
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/bbf06535-8d9e-ed11-b835-d4548b6f1f2f/ed7e4ce4-599f-ed11-9a88-6045bdd0cb7f.jpeg",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [],
+    "rawMedium": "drypoint",
+    "dimensions": null,
+    "dimKind": null,
+    "copyType": "numbered",
+    "editionSize": 6,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
@@ -378,10 +885,27 @@
     "saleId": "A0650",
     "lotNumber": 49,
     "listingUrl": "https://www.roseberys.co.uk/bidding/A0650-prints-multiples-527/49-leon-kossoffbritish-1926-2019-pilar-and-jacinto-3-563430",
+    "auctionInternalId": 527,
     "estimateLow": 400.0,
     "estimateHigh": 600.0,
     "artistName": "Leon Kossoff",
-    "title": "Pilar and Jacinto (3)"
+    "title": "Pilar and Jacinto (3)",
+    "datePeriod": "1992",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/b500e369-3fc7-ee11-907b-6045bd10c295/e9eff99b-0411-ef11-9f88-002248073e9e.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "drypoint",
+    "dimensions": "77.5x59.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 10,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
@@ -390,154 +914,353 @@
     "saleId": "A0467",
     "lotNumber": 166,
     "listingUrl": "https://www.roseberys.co.uk/bidding/A0467-prints-multiples-350/166-otto-wols-german-1913-1951-untitled-links-unten-raupenform-493027",
+    "auctionInternalId": 350,
     "estimateLow": 800.0,
     "estimateHigh": 1200.0,
     "artistName": "Otto Wols",
-    "title": "Untitled (links unten Raupenform) c.1947/49"
+    "title": "Untitled (links unten Raupenform) c.1947/49",
+    "datePeriod": "1947",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/0bbbee42-8d9e-ed11-b835-d4548b6f1f2f/e5c1d4f9-ee9f-ed11-9a88-000d3a7f2a7a.jpeg",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "drypoint",
+    "dimensions": "20.3x12.0cm",
+    "dimKind": "plate",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Drypoint",
     "bracket": "1000-5000",
-    "saleId": "A0587",
-    "lotNumber": 10,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0587-prints-multiples-463/10-pablo-picasso-spanish-1881-1973au-cirque-from-les-538070",
-    "estimateLow": 3000.0,
-    "estimateHigh": 5000.0,
-    "artistName": "Pablo Picasso",
-    "title": "Au Cirque, from Les Saltimbanques, 1905-6"
+    "saleId": "A0743",
+    "lotNumber": 49,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0743-prints-multiples-623/49-mary-cassatt-american-1844-1926mre-allaitant-son-enfant-605602",
+    "auctionInternalId": 623,
+    "estimateLow": 1000.0,
+    "estimateHigh": 1500.0,
+    "artistName": "Mary Cassatt",
+    "title": "Mère allaitant son enfant",
+    "datePeriod": "1890",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/6e2cbe3e-52a4-f011-bbd0-7c1e52662348/04e60c69-b5a9-f011-bbd0-6045bdc12450.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [
+      "laid"
+    ],
+    "rawMedium": "drypoint printed in sepia",
+    "dimensions": "31.0x23.7cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Other",
     "bracket": "0-299",
-    "saleId": "A0583",
-    "lotNumber": 41,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0583-prints-multiples-459/41-after-edouard-manet-french-1832-1883cat-with-flowers-545016",
+    "saleId": "A0785",
+    "lotNumber": 29,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0785-prints-multiples-665/29-phillip-kingbritish-b1934-yellow-disc-2007marble-and-hand-618627",
+    "auctionInternalId": 665,
+    "estimateLow": 180.0,
+    "estimateHigh": 220.0,
+    "artistName": "Phillip King",
+    "title": "Yellow Disc",
+    "datePeriod": "2007",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/905a7d70-6833-f111-bec2-7ced8d38ebaf/524dd262-975e-f111-ab09-6045bd11224b.webp",
+    "techniques": [],
+    "papers": [],
+    "rawMedium": "marble and hand-painted steel",
+    "dimensions": "14.3x30.5cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 35,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": "A Private Collector of Art & Studio Pottery"
+  },
+  {
+    "house": "Roseberys London",
+    "techBucket": "Other",
+    "bracket": "300-499",
+    "saleId": "A0650",
+    "lotNumber": 109,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0650-prints-multiples-527/109-gerhard-richtergerman-b1932-abendstimmung-2021digital-569396",
+    "auctionInternalId": 527,
+    "estimateLow": 400.0,
+    "estimateHigh": 500.0,
+    "artistName": "Gerhard Richter",
+    "title": "Abendstimmung",
+    "datePeriod": "2021",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/a6442567-fe0d-ef11-9f88-6045bd1143c1/6f1766f0-cb11-ef11-9f8a-6045bd0e6469.webp",
+    "techniques": [],
+    "papers": [],
+    "rawMedium": "digital pigment print in colours",
+    "dimensions": "60.0x80.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 500,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
+  },
+  {
+    "house": "Roseberys London",
+    "techBucket": "Other",
+    "bracket": "500-999",
+    "saleId": "A0743",
+    "lotNumber": 348,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0743-prints-multiples-623/348-walasse-ting-chineseamerican-1928-2010-sam-francis-american-605901",
+    "auctionInternalId": 623,
+    "estimateLow": 500.0,
+    "estimateHigh": 700.0,
+    "artistName": "Walasse Ting (Chinese/American 1928-2010) &",
+    "title": "One Cent Life folio",
+    "datePeriod": null,
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/bc7d70c3-93a2-f011-b41a-7c1e52662839/53cada5b-12b0-f011-bbd0-7ced8d392b45.webp",
+    "techniques": [],
+    "papers": [],
+    "rawMedium": "the incomplete folio",
+    "dimensions": null,
+    "dimKind": null,
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": false,
+    "catalogueRefsRaw": "American 1923-1994",
+    "provenanceNote": "Note: in 1962, the Chinese-American artist Walasse Ting shared his dream project with painter Sam Francis to create an anthology of his poetry illustrated by leading artists of their time. Over the next two years, Ting and Francis recruited Abstract Expressionists and Pop artists Andy Warhol, Joan Mitchell, Robert Rauschenburg and Roy Lichtenstein, among them—to create prints for their collaborative publication, which they titled 1¢ Life. Published in 1964 by E. W. Kornfeld in an edition of 2,000 books, 1¢ Life features 62 colour lithographs by 28 iconic artists."
+  },
+  {
+    "house": "Roseberys London",
+    "techBucket": "Other",
+    "bracket": "1000-5000",
+    "saleId": "A0642",
+    "lotNumber": 102,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0642-prints-multiples-519/102-david-batchelor-british-b1955-electric-colour-picture-2002-560765",
+    "auctionInternalId": 519,
+    "estimateLow": 1000.0,
+    "estimateHigh": 1500.0,
+    "artistName": "David Batchelor",
+    "title": "Electric Colour Picture",
+    "datePeriod": "2002",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/a8ad43b9-79b7-ee11-a56a-6045bdd12b0d/4ccc5dd4-aec5-ee11-907b-6045bd10c295.webp",
+    "techniques": [],
+    "papers": [],
+    "rawMedium": "emergency exit sign, fluorescent light, acrylic sheet with metal casing",
+    "dimensions": null,
+    "dimKind": null,
+    "copyType": "numbered",
+    "editionSize": 75,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
+  },
+  {
+    "house": "Roseberys London",
+    "techBucket": "Other",
+    "bracket": "over5000",
+    "saleId": "A0494",
+    "lotNumber": 308,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0494-prints-multiples-376/308-damien-hirst-british-b1965-leaf-greenoriental-502780",
+    "auctionInternalId": 376,
+    "estimateLow": 7000.0,
+    "estimateHigh": 10000.0,
+    "artistName": "Damien Hirst",
+    "title": "Leaf Green/Oriental Gold/Westminster Blue",
+    "datePeriod": "2010",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/6908e748-8d9e-ed11-b835-d4548b6f1f2f/1fce4e09-75a0-ed11-9a88-6045bdd0c225.jpeg",
+    "techniques": [],
+    "papers": [],
+    "rawMedium": "foil block print in colours",
+    "dimensions": "72.0x51.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 15,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
+  },
+  {
+    "house": "Forum Auctions",
+    "techBucket": "Screenprint / Serigraphy",
+    "bracket": "0-299",
+    "saleId": "2285",
+    "lotNumber": 99,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/2285-autumn-selection-modern-contemporary-612/99-katherine-bradford-b1942untitled-from-white-columns-112947",
+    "auctionInternalId": 612,
     "estimateLow": 200.0,
     "estimateHigh": 300.0,
-    "artistName": "Edouard Manet",
-    "title": "Cat with flowers"
+    "artistName": "Katherine Bradford",
+    "title": "Untitled, from White Columns Portfolio",
+    "datePeriod": "2019",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/68242442-9b90-ee11-b864-d4548b6f1f2f/95a98432-1a91-ee11-8178-002248070a4a.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Screenprint in colours",
+    "dimensions": "53.5x40.7cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
-    "house": "Roseberys London",
-    "techBucket": "Other",
+    "house": "Forum Auctions",
+    "techBucket": "Screenprint / Serigraphy",
     "bracket": "300-499",
-    "saleId": "A0710",
-    "lotNumber": 238,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0710-prints-multiples-590/238-manolo-valds-spanish-b-1942-flores-i-1994etching-with-591120",
+    "saleId": "1163",
+    "lotNumber": 94,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1163-modern-contemporary-art-and-editions-986/94-peter-blake-b1932untitled-from-homage-to-rauschenberg-143541",
+    "auctionInternalId": 986,
     "estimateLow": 400.0,
     "estimateHigh": 600.0,
-    "artistName": "Manolo Valdés",
-    "title": "Flores I"
-  },
-  {
-    "house": "Roseberys London",
-    "techBucket": "Other",
-    "bracket": "500-999",
-    "saleId": "A0250",
-    "lotNumber": 261,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0250-modern-contemporary-prints-165/261-victor-pasmore-cbe-british-1908-1998-untitled-7-lynton-g65-421792",
-    "estimateLow": 800.0,
-    "estimateHigh": 1200.0,
-    "artistName": "Victor Pasmore",
-    "title": "Untitled (A0250 lot 261)"
-  },
-  {
-    "house": "Roseberys London",
-    "techBucket": "Other",
-    "bracket": "1000-5000",
-    "saleId": "A0571",
-    "lotNumber": 421,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0571-prints-multiples-450/421-robert-mangold-american-b-1937-seven-original-woodcuts-533441",
-    "estimateLow": 4000.0,
-    "estimateHigh": 6000.0,
-    "artistName": "Robert Mangold",
-    "title": "Seven Original Woodcuts Documentation"
-  },
-  {
-    "house": "Roseberys London",
-    "techBucket": "Other",
-    "bracket": "over5000",
-    "saleId": "A0743",
-    "lotNumber": 37,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0743-prints-multiples-623/37-pablo-picasso-spanish-1881-1973la-sauterelle-the-605590",
-    "estimateLow": 12000.0,
-    "estimateHigh": 15000.0,
-    "artistName": "Pablo Picasso",
-    "title": "La Sauterelle (The Grasshopper)"
-  },
-  {
-    "house": "Forum Auctions",
-    "techBucket": "Screenprint / Serigraphy",
-    "bracket": "0-299",
-    "saleId": "100002",
-    "lotNumber": 112,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/100002-online-modern-contemporary-prints-1094/112-tim-fishlock-b1973-nopenbsp-159552",
-    "estimateLow": 100.0,
-    "estimateHigh": 150.0,
-    "artistName": "Tim Fishlock",
-    "title": "Nope"
-  },
-  {
-    "house": "Forum Auctions",
-    "techBucket": "Screenprint / Serigraphy",
-    "bracket": "300-499",
-    "saleId": "1094",
-    "lotNumber": 130,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1094-prints-and-editions-427/130-rachel-howard-b1969can39t-breath-without-you-89927",
-    "estimateLow": 300.0,
-    "estimateHigh": 500.0,
-    "artistName": "Rachel Howard",
-    "title": "Can't breath without you"
+    "artistName": "Peter Blake",
+    "title": "Untitled, from Homage to Rauschenberg",
+    "datePeriod": "2011",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/a7b48307-d649-ef11-a316-7c1e521d5e56/2355ef1c-d154-ef11-bfe2-6045bd0f6963.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Screenprint in colours with gold leaf",
+    "dimensions": "86.0x70.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 125,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "500-999",
-    "saleId": "1183",
-    "lotNumber": 55,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1183-modern-contemporary-urban-art-editions-1032/55-the-connor-brothers-b1968-i-drink-to-make-other-people-more-153753",
-    "estimateLow": 700.0,
-    "estimateHigh": 900.0,
-    "artistName": "The Connor Brothers",
-    "title": "I Drink To Make Other People More Interesting"
+    "saleId": "1171",
+    "lotNumber": 177,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1171-modern-contemporary-editions-980/177-chris-ofili-b1968-skateboard-156068",
+    "auctionInternalId": 980,
+    "estimateLow": 500.0,
+    "estimateHigh": 700.0,
+    "artistName": "Chris Ofili",
+    "title": "Skateboard",
+    "datePeriod": "2014",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/aa4f3c67-be97-f011-b419-7c1e521d63a7/ef502858-0ac6-f011-bbd1-00224840f0e4.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [],
+    "rawMedium": "Screenprint in colours with laser cut and gold automotive paint elements",
+    "dimensions": "81.3x21.6cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "1000-5000",
-    "saleId": "1052",
-    "lotNumber": 171,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1052-editions-works-on-paper-255/171-keith-haring-1958-1990joseph-beuys-littmann-p61-63690",
-    "estimateLow": 5000.0,
-    "estimateHigh": 7000.0,
-    "artistName": "Keith Haring",
-    "title": "Joseph Beuys (Littmann p.61)"
+    "saleId": "1083",
+    "lotNumber": 111,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1083-prints-and-editions-388/111-hebru-brantley-b1981lilac-80248",
+    "auctionInternalId": 388,
+    "estimateLow": 1800.0,
+    "estimateHigh": 2200.0,
+    "artistName": "Hebru Brantley",
+    "title": "Lilac",
+    "datePeriod": "2020",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/4cb23c18-9b90-ee11-b864-d4548b6f1f2f/03cc1067-5d91-ee11-817b-6045bdfc47ac.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "The unique Screenprint in colours",
+    "dimensions": "71.0x61.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 15,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "over5000",
-    "saleId": "10012",
-    "lotNumber": 33,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/10012-the-10th-anniversary-fine-prints-works-1100/33-keith-haring-1958-1990untitled-plate-2-from-the-blueprint-167263",
-    "estimateLow": 20000.0,
-    "estimateHigh": 25000.0,
-    "artistName": "Keith Haring",
-    "title": "Untitled (Plate 2), from The Blueprint Drawings (Littmann p.176)"
+    "saleId": "1187",
+    "lotNumber": 114,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1187-prints-multiples-1500-2025-1033/114-pierre-soulages-1919-2022seacuterigraphie-no-18-156290",
+    "auctionInternalId": 1033,
+    "estimateLow": 6000.0,
+    "estimateHigh": 8000.0,
+    "artistName": "Pierre Soulages",
+    "title": "Sérigraphie no. 18 (Encrevé and Miessner 110)",
+    "datePeriod": "1988",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/b8b1e7c0-b59e-f011-b419-7c1e527998d1/796e5fde-eea4-f011-bbd0-7c1e5278b257.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Screenprint in colours",
+    "dimensions": "88.5x68.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 300,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Lithograph",
     "bracket": "0-299",
-    "saleId": "100003",
-    "lotNumber": 237,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/100003-modern-contemporary-editions-1092/237-henri-toulouse-lautrec-1864-1901-afterpaula-breacutebion-167342",
-    "estimateLow": 100.0,
-    "estimateHigh": 150.0,
-    "artistName": "Henri Toulouse-Lautrec",
-    "title": "Paula Brébion, from Le Café Concert (Wittrock 20)"
+    "saleId": "2080",
+    "lotNumber": 75,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/2080-online-sale-select-modern-contemporary-197/75-sam-francis-1923-1994-sam-francis-fondation-maeght-50974",
+    "auctionInternalId": 197,
+    "estimateLow": 50.0,
+    "estimateHigh": 100.0,
+    "artistName": "Sam Francis",
+    "title": "Sam Francis Fondation Maeght",
+    "datePeriod": "1983",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/bb542aed-9a90-ee11-b864-d4548b6f1f2f/7e78a8e5-c591-ee11-8178-002248070a4a.webp",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Lithographic poster printed in colours",
+    "dimensions": "89.5x53.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 5000,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -546,10 +1269,25 @@
     "saleId": "1187",
     "lotNumber": 282,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1187-prints-multiples-1500-2025-1033/282-reneacute-magritte-1898-1967-afterle-sourire-du-diable-153050",
+    "auctionInternalId": 1033,
     "estimateLow": 300.0,
     "estimateHigh": 500.0,
     "artistName": "René Magritte",
-    "title": "Le Sourire du Diable"
+    "title": "Le Sourire du Diable",
+    "datePeriod": "1968",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/2194611a-5d61-f011-8eed-7c1e522df196/20a05369-7b68-f011-8eed-000d3a7eb022.webp",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [],
+    "rawMedium": "Lithograph printed in colours",
+    "dimensions": "64.6x49.7cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 150,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -558,10 +1296,25 @@
     "saleId": "1105",
     "lotNumber": 109,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1105-prints-and-editions-1500-2022-506/109-salvador-dal237-1904-1989diamond-head-field-80-3-mampl-1580-96375",
+    "auctionInternalId": 506,
     "estimateLow": 500.0,
     "estimateHigh": 700.0,
     "artistName": "Salvador Dalí",
-    "title": "Diamond Head (Field 80-3; M&L 1580)"
+    "title": "Diamond Head (Field 80-3; M&L 1580)",
+    "datePeriod": "1980",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/54ee0131-9b90-ee11-b864-d4548b6f1f2f/13b1b318-6691-ee11-817b-6045bdfc47ac.webp",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [],
+    "rawMedium": "Lithograph printed in colours",
+    "dimensions": "74.9x54.7cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 350,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -570,10 +1323,27 @@
     "saleId": "1084",
     "lotNumber": 184,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1084-prints-and-editions-1500-2021-385/184-tracey-emin-b1963inside-your-heart-82723",
+    "auctionInternalId": 385,
     "estimateLow": 5000.0,
     "estimateHigh": 7000.0,
     "artistName": "Tracey Emin",
-    "title": "Inside Your Heart"
+    "title": "Inside Your Heart",
+    "datePeriod": "2014",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/2ad8321b-9b90-ee11-b864-d4548b6f1f2f/faf9bb95-6791-ee11-8178-002248070a4a.webp",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Lithograph printed in colours",
+    "dimensions": "70.0x90.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -582,22 +1352,56 @@
     "saleId": "1167",
     "lotNumber": 58,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1167-prints-multiples-1500-2025-983/58-roy-lichtenstein-1923-1997bull-vi-from-the-bull-profile-151538",
+    "auctionInternalId": 983,
     "estimateLow": 7000.0,
     "estimateHigh": 9000.0,
     "artistName": "Roy Lichtenstein",
-    "title": "Bull VI, from the Bull Profile Series (Corlett 121)"
+    "title": "Bull VI, from the Bull Profile Series (Corlett 121)",
+    "datePeriod": "1973",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/1f74f5b5-e3cc-ef11-8a6d-7c1e522e3ad6/dd493fc3-6fd2-ef11-b8ec-6045bdfc3c6a.webp",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Lithograph",
+    "dimensions": "68.6x88.9cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Etching",
     "bracket": "0-299",
-    "saleId": "2246",
-    "lotNumber": 55,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/2246-forum-auctions-artsy-summer-editions-488/55-peter-max-b-1937woodstock-series-profile-95819",
-    "estimateLow": 200.0,
-    "estimateHigh": 300.0,
-    "artistName": "Peter Max",
-    "title": "Woodstock Series: Profile"
+    "saleId": "2285",
+    "lotNumber": 224,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/2285-autumn-selection-modern-contemporary-612/224-david-inshaw-b1943-two-lovers-113061",
+    "auctionInternalId": 612,
+    "estimateLow": 100.0,
+    "estimateHigh": 150.0,
+    "artistName": "David Inshaw",
+    "title": "Two Lovers",
+    "datePeriod": "1986",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/b4daa43f-9b90-ee11-b864-d4548b6f1f2f/1a15b96e-0d91-ee11-817a-6045bdfc47ac.webp",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Etching",
+    "dimensions": "15.0x15.0cm",
+    "dimKind": "plate",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -606,10 +1410,27 @@
     "saleId": "1088",
     "lotNumber": 22,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1088-prints-and-editions-425/22-simone-cantarini-1612-1648-rest-on-the-flight-into-egyptnbsp-85258",
+    "auctionInternalId": 425,
     "estimateLow": 300.0,
     "estimateHigh": 500.0,
     "artistName": "Simone Cantarini",
-    "title": "Rest on the Flight into Egypt"
+    "title": "Rest on the Flight into Egypt",
+    "datePeriod": "1630",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/11e40622-9b90-ee11-b864-d4548b6f1f2f/6f49824d-7391-ee11-8178-002248070a4a.webp",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [
+      "laid"
+    ],
+    "rawMedium": "Etching",
+    "dimensions": "22.7x17.3cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 8,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -618,10 +1439,27 @@
     "saleId": "1151",
     "lotNumber": 224,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1151-prints-and-multiples-1500-2024-889/224-jost-amman-1539-1591-plate-h-iii-from-wenzel-jamnitzers-139459",
+    "auctionInternalId": 889,
     "estimateLow": 700.0,
     "estimateHigh": 1000.0,
     "artistName": "Jost Amman",
-    "title": "Plate H III, from Wenzel Jamnitzer's 'Perspectiva Corporum Regularium'"
+    "title": "Plate H III, from Wenzel Jamnitzer's 'Perspectiva Corporum Regularium'",
+    "datePeriod": "1568",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/40375d68-157c-ef11-a671-7c1e521e1d5f/375e437b-bc80-ef11-ac21-6045bdd21853.webp",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [
+      "laid"
+    ],
+    "rawMedium": "Etching",
+    "dimensions": "17.9x25.3cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -630,10 +1468,25 @@
     "saleId": "1167",
     "lotNumber": 186,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1167-prints-multiples-1500-2025-983/186-marc-chagall-1887-1985aaron-et-le-chandelier-from-bible-151307",
+    "auctionInternalId": 983,
     "estimateLow": 1500.0,
     "estimateHigh": 2000.0,
     "artistName": "Marc Chagall",
-    "title": "Aaron et le Chandelier, from Bible (Cramer 30)"
+    "title": "Aaron et le Chandelier, from Bible (Cramer 30)",
+    "datePeriod": "1958",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/ce9b82a6-e97c-ef11-a671-7c1e5202ca53/10d35d10-3782-ef11-ac23-6045bdd0d286.webp",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [],
+    "rawMedium": "Etching heightened with watercolour",
+    "dimensions": "53.5x38.8cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -642,34 +1495,85 @@
     "saleId": "1165",
     "lotNumber": 237,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1165-prints-multiples-1500-2025-985/237-pablo-picasso-1881-1973les-trois-baigneuses-ii-bloch-61-145643",
+    "auctionInternalId": 985,
     "estimateLow": 15000.0,
     "estimateHigh": 20000.0,
     "artistName": "Pablo Picasso",
-    "title": "Les Trois Baigneuses II (Bloch 61)"
+    "title": "Les Trois Baigneuses II (Bloch 61)",
+    "datePeriod": "1922",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/694dce69-2fe9-ef11-9345-6045bd127f5f/a80e1c1b-abf2-ef11-9345-7c1e522f65c6.webp",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [
+      "laid"
+    ],
+    "rawMedium": "Etching",
+    "dimensions": "30.7x24.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 65,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Offset lithograph",
     "bracket": "0-299",
-    "saleId": "1171",
-    "lotNumber": 16,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1171-modern-contemporary-editions-980/16-tracey-emin-b1963take-this-to-a-stranger-155527",
+    "saleId": "1159",
+    "lotNumber": 121,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1159-autumn-selection-modern-contemporary-947/121-david-shrigley-b1968when-life-gives-you-a-lemon-137981",
+    "auctionInternalId": 947,
     "estimateLow": 200.0,
     "estimateHigh": 300.0,
-    "artistName": "Tracey Emin",
-    "title": "Take This To A Stranger"
+    "artistName": "David Shrigley",
+    "title": "When Life Gives You a Lemon",
+    "datePeriod": "2021",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/68208343-9b90-ee11-b864-d4548b6f1f2f/24a760cc-a155-ef11-bfe2-7c1e5209b32a.webp",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Offset lithograph printed in colours",
+    "dimensions": "80.0x60.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 2,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Offset lithograph",
     "bracket": "300-499",
     "saleId": "1171",
-    "lotNumber": 197,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1171-modern-contemporary-editions-980/197-gerhard-richter-b1932motorboat-1965-155411",
-    "estimateLow": 400.0,
-    "estimateHigh": 600.0,
+    "lotNumber": 198,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1171-modern-contemporary-editions-980/198-gerhard-richter-b1932tiger-1965-155412",
+    "auctionInternalId": 980,
+    "estimateLow": 300.0,
+    "estimateHigh": 500.0,
     "artistName": "Gerhard Richter",
-    "title": "Motorboat, 1965"
+    "title": "Tiger, 1965",
+    "datePeriod": "2023",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/f238cded-ce5e-ef11-bfe2-6045bd139ed6/4a749333-d5bb-f011-bbd1-6045bdd24ade.webp",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Offset lithograph",
+    "dimensions": "70.0x70.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 2,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -678,22 +1582,56 @@
     "saleId": "1163",
     "lotNumber": 172,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1163-modern-contemporary-art-and-editions-986/172-chris-ofili-b1968the-merry-widow-poster-with-afro-eclipse-1-143363",
+    "auctionInternalId": 986,
     "estimateLow": 500.0,
     "estimateHigh": 700.0,
     "artistName": "Chris Ofili",
-    "title": "The Merry Widow poster with Afro Eclipse 1, 2003"
+    "title": "The Merry Widow poster with Afro Eclipse 1, 2003",
+    "datePeriod": "2024",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/0fe1ea33-1569-ef11-a671-7c1e521d3243/74a9cd30-459c-ef11-8a6b-000d3a7f4634.webp",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Offset lithograph printed in colours",
+    "dimensions": "90.0x60.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 150,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Offset lithograph",
     "bracket": "1000-5000",
     "saleId": "2285",
-    "lotNumber": 31,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/2285-autumn-selection-modern-contemporary-612/31-takashi-murakami-b1962flowerball-colorful-miracle-sparkle-113134",
+    "lotNumber": 32,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/2285-autumn-selection-modern-contemporary-612/32-takashi-murakami-b1962let-us-devote-our-hearts-113130",
+    "auctionInternalId": 612,
     "estimateLow": 1000.0,
     "estimateHigh": 1500.0,
     "artistName": "Takashi Murakami",
-    "title": "Flowerball: Colorful, Miracle, Sparkle"
+    "title": "Let Us Devote Our Hearts",
+    "datePeriod": "2022",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/7e182442-9b90-ee11-b864-d4548b6f1f2f/e345cc0b-1891-ee11-817a-6045bdcfd69d.webp",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Offset lithograph printed in colours with cold stamp and high gloss varnishing",
+    "dimensions": null,
+    "dimKind": null,
+    "copyType": "numbered",
+    "editionSize": 300,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -702,10 +1640,27 @@
     "saleId": "1198",
     "lotNumber": 259,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1198-prints-works-on-paper-1500-2026-1091/259-pablo-picasso-1881-1973-afternu-au-faubourg-st-honoreacute-163869",
+    "auctionInternalId": 1091,
     "estimateLow": 8000.0,
     "estimateHigh": 12000.0,
     "artistName": "Pablo Picasso",
-    "title": "Nu au Faubourg St. Honoré (Czwiklitzer 357)"
+    "title": "Nu au Faubourg St. Honoré (Czwiklitzer 357)",
+    "datePeriod": "1970",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/90874f1f-53f5-f011-8405-0022484051b0/0e57e31a-051e-f111-8340-7c1e5279d86b.webp",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Offset lithograph printed in colours",
+    "dimensions": "118.0x156.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -714,10 +1669,27 @@
     "saleId": "2091",
     "lotNumber": 112,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/2091-online-sale-select-modern-contemporary-211/112-pat-steir-b1940as-matisse-with-many-eyes-53053",
+    "auctionInternalId": 211,
     "estimateLow": 150.0,
     "estimateHigh": 200.0,
     "artistName": "Pat Steir",
-    "title": "As Matisse with many eyes"
+    "title": "As Matisse with many eyes",
+    "datePeriod": "1986",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/8b4711e2-9a90-ee11-b864-d4548b6f1f2f/515465f7-a191-ee11-817b-6045bdfc47ac.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Monoprint with aquatint printed in colours",
+    "dimensions": "66.5x50.7cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 8,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -726,10 +1698,28 @@
     "saleId": "1171",
     "lotNumber": 341,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1171-modern-contemporary-editions-980/341-georges-rouault-1871-1958-le-clown-aacute-la-grosse-from-le-155414",
+    "auctionInternalId": 980,
     "estimateLow": 300.0,
     "estimateHigh": 500.0,
     "artistName": "Georges Rouault",
-    "title": "Le Clown á La Grosse, from Le Cirque (Chapon Rouault 200)"
+    "title": "Le Clown á La Grosse, from Le Cirque (Chapon Rouault 200)",
+    "datePeriod": "1930",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/711263a4-6d6f-ef11-a671-7c1e521d410c/a9801618-bd80-ef11-ac21-6045bdd21853.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "BFK",
+      "laid"
+    ],
+    "rawMedium": "Aquatint printed in colours",
+    "dimensions": "44.5x33.6cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 160,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -738,10 +1728,28 @@
     "saleId": "1151",
     "lotNumber": 204,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1151-prints-and-multiples-1500-2024-889/204-georges-rouault-1871-1958-le-clown-jaune-from-le-cirque-138996",
+    "auctionInternalId": 889,
     "estimateLow": 500.0,
     "estimateHigh": 700.0,
     "artistName": "Georges Rouault",
-    "title": "Le Clown Jaune, from Le Cirque (Chapon Rouault 204)"
+    "title": "Le Clown Jaune, from Le Cirque (Chapon Rouault 204)",
+    "datePeriod": "1930",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/80313f3c-6e6f-ef11-a671-7c1e521d410c/b3801618-bd80-ef11-ac21-6045bdd21853.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "BFK",
+      "laid"
+    ],
+    "rawMedium": "Aquatint printed in colours",
+    "dimensions": "44.0x33.6cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 160,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -750,10 +1758,27 @@
     "saleId": "1069",
     "lotNumber": 88,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1069-best-of-british-prints-and-editions-345/88-peter-doig-b1959untitled-canoe-74194",
+    "auctionInternalId": 345,
     "estimateLow": 1000.0,
     "estimateHigh": 1500.0,
     "artistName": "Peter Doig",
-    "title": "Untitled (Canoe)"
+    "title": "Untitled (Canoe)",
+    "datePeriod": "2008",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/b5817206-9b90-ee11-b864-d4548b6f1f2f/cebec7ba-5091-ee11-817a-6045bdcfd69d.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Aquatint printed in colours",
+    "dimensions": "59.0x74.5cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 500,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -762,10 +1787,27 @@
     "saleId": "1012",
     "lotNumber": 147,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1012-modern-and-contemporary-editions-and-44/147-sam-francis-1923-1994untitled-sfe-075-lembark-i114-33595",
+    "auctionInternalId": 44,
     "estimateLow": 6000.0,
     "estimateHigh": 8000.0,
     "artistName": "Sam Francis",
-    "title": "Untitled SFE-075 (Lembark I.114)"
+    "title": "Untitled SFE-075 (Lembark I.114)",
+    "datePeriod": "1990",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/8fbcbdd9-9a90-ee11-b864-d4548b6f1f2f/a10ddaa2-8891-ee11-817b-6045bdfc47ac.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Monoprint aquatint in colours",
+    "dimensions": "84.5x68.6cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 22,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -774,10 +1816,25 @@
     "saleId": "1145",
     "lotNumber": 186,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1145-spring-selection-modern-contemporary-886/186-kenny-random-b-1971let39s-go-132363",
+    "auctionInternalId": 886,
     "estimateLow": 100.0,
     "estimateHigh": 150.0,
     "artistName": "Kenny Random",
-    "title": "Let's Go!"
+    "title": "Let's Go!",
+    "datePeriod": "2011",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/d2c147f4-9a90-ee11-b864-d4548b6f1f2f/6087dd80-4291-ee11-8178-002248070a4a.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [],
+    "rawMedium": "Giclée print in colours",
+    "dimensions": "70.0x50.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 25,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -786,10 +1843,25 @@
     "saleId": "100006",
     "lotNumber": 56,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/100006-modern-contemporary-editions-1098/56-damien-hirst-b1965-h8-2-fruitful-small-161492",
+    "auctionInternalId": 1098,
     "estimateLow": 400.0,
     "estimateHigh": 600.0,
     "artistName": "Damien Hirst",
-    "title": "H8-2. Fruitful (Small)"
+    "title": "H8-2. Fruitful (Small)",
+    "datePeriod": "2020",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/ed068416-7dec-f011-8542-6045bd1365bd/9949f65c-95f7-f011-8405-7c1e5204bd21.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [],
+    "rawMedium": "Laminated giclée in colours on aluminium composite panel",
+    "dimensions": "39.0x39.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 3308,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -798,10 +1870,25 @@
     "saleId": "2285",
     "lotNumber": 95,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/2285-autumn-selection-modern-contemporary-612/95-tunji-adeniyi-jones-b1992three-red-figures-rising-112879",
+    "auctionInternalId": 612,
     "estimateLow": 600.0,
     "estimateHigh": 800.0,
     "artistName": "Tunji Adeniyi-Jones",
-    "title": "Three Red Figures Rising"
+    "title": "Three Red Figures Rising",
+    "datePeriod": "2021",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/f7d6a43f-9b90-ee11-b864-d4548b6f1f2f/b15d7ee3-0c91-ee11-817a-6045bdfc47ac.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [],
+    "rawMedium": "Giclée print in colours",
+    "dimensions": "29.9x21.4cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 40,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -810,10 +1897,27 @@
     "saleId": "1154",
     "lotNumber": 21,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1154-prints-and-multiples-890/21-bob-dylan-b1941-classic-car-show-cleveland-oh-from-the-142088",
+    "auctionInternalId": 890,
     "estimateLow": 1500.0,
     "estimateHigh": 2000.0,
     "artistName": "Bob Dylan",
-    "title": "Classic Car Show, Cleveland, OH, from The Beaten Path"
+    "title": "Classic Car Show, Cleveland, OH, from The Beaten Path",
+    "datePeriod": "2016",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/a170401d-df96-ef11-8a6b-002248413147/929d5e06-2ca7-ef11-8a6d-000d3ad4c242.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Giclée in colours",
+    "dimensions": "76.2x101.5cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 295,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -822,10 +1926,25 @@
     "saleId": "1167",
     "lotNumber": 100,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1167-prints-multiples-1500-2025-983/100-gerhard-richter-b1932december-2020-f-147616",
+    "auctionInternalId": 983,
     "estimateLow": 10000.0,
     "estimateHigh": 15000.0,
     "artistName": "Gerhard Richter",
-    "title": "December 2020 (F)"
+    "title": "December 2020 (F)",
+    "datePeriod": "2020",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/d45dd46e-1de3-ef11-9345-000d3ad4f402/012e3125-8ef3-ef11-9345-7c1e522f65c6.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [],
+    "rawMedium": "Diasec-mounted giclée print on aluminium composite panel",
+    "dimensions": "42.0x60.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 25,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -834,10 +1953,27 @@
     "saleId": "1170",
     "lotNumber": 1,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1170-modern-british-prints-981/1-walter-sickert-1860-1942-interior-of-a-restaurant-148812",
+    "auctionInternalId": 981,
     "estimateLow": 200.0,
     "estimateHigh": 400.0,
     "artistName": "Walter Sickert",
-    "title": "Untitled (Interior of a Restaurant)"
+    "title": "Untitled (Interior of a Restaurant)",
+    "datePeriod": "1885",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/172e00a5-a1ef-ef11-9345-000d3a7e99b9/44163ea0-0916-f011-9346-6045bd13433b.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Drypoint with plate tone",
+    "dimensions": "6.5x6.5cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 8,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": "Agnew & Sons Ltd., London [stock no. 20684] (with gallery label affixed to frame verso)."
   },
   {
     "house": "Forum Auctions",
@@ -846,10 +1982,27 @@
     "saleId": "1147",
     "lotNumber": 196,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1147-editions-1500-2024-887/196-salvador-daliacute-1904-1989-el-de-los-rontildeones-a-la-134712",
+    "auctionInternalId": 887,
     "estimateLow": 400.0,
     "estimateHigh": 600.0,
     "artistName": "Salvador Dalí",
-    "title": "El de los roñones a la brochette, plate 4 from Les Caprices de Goya de Dalí (Field 77-3; M&L 851)"
+    "title": "El de los roñones a la brochette, plate 4 from Les Caprices de Goya de Dalí (Field 77-3; M&L 851)",
+    "datePeriod": "1977",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/8a4a5820-da19-ef11-9f88-6045bdf13a7e/6177cb0a-eb27-ef11-9f88-000d3ad48541.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [
+      "BFK"
+    ],
+    "rawMedium": "Drypoint on heliogravure with pochoir",
+    "dimensions": "45.0x31.2cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 200,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -858,10 +2011,27 @@
     "saleId": "1171",
     "lotNumber": 300,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1171-modern-contemporary-editions-980/300-salvador-daliacute-1904-1989larbe-de-vie-from-le-paradis-156813",
+    "auctionInternalId": 980,
     "estimateLow": 600.0,
     "estimateHigh": 800.0,
     "artistName": "Salvador Dalí",
-    "title": "L'arbe de vie, from Le Paradis Perdu (Field 74-11H; M&L 705d)"
+    "title": "L'arbe de vie, from Le Paradis Perdu (Field 74-11H; M&L 705d)",
+    "datePeriod": "1974",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/62331ffa-509d-f011-b419-7c1e521d63a7/168ffb6f-32a4-f011-bbd0-7c1e521d57f6.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [
+      "japanese"
+    ],
+    "rawMedium": "Drypoint printed in colours",
+    "dimensions": "37.6x27.4cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 10,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -870,10 +2040,27 @@
     "saleId": "1088",
     "lotNumber": 79,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1088-prints-and-editions-425/79-salvador-dai237-1904-1989lady-godiva-field-69-6nbsp-85069",
+    "auctionInternalId": 425,
     "estimateLow": 1000.0,
     "estimateHigh": 1900.0,
     "artistName": "Salvador DaIí",
-    "title": "Lady Godiva (Field 69-6)"
+    "title": "Lady Godiva (Field 69-6)",
+    "datePeriod": "1969",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/d8e30622-9b90-ee11-b864-d4548b6f1f2f/548a259d-7691-ee11-817a-6045bdcfd69d.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [
+      "BFK"
+    ],
+    "rawMedium": "Drypoint",
+    "dimensions": "74.5x55.5cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 125,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -882,22 +2069,55 @@
     "saleId": "1140",
     "lotNumber": 241,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1140-editions-1500-2024-883/241-pierre-august-renoir-1841-1919-etude-pour-une-baigneuse-131012",
+    "auctionInternalId": 883,
     "estimateLow": 15000.0,
     "estimateHigh": 20000.0,
     "artistName": "Pierre-August Renoir",
-    "title": "Etude pour une baigneuse (Delteil 16)"
+    "title": "Etude pour une baigneuse (Delteil 16)",
+    "datePeriod": "1906",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/d3d49caa-b4d0-ee11-9078-6045bdd0caa1/8c11ff9c-d5d0-ee11-9078-6045bd131be1.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [],
+    "rawMedium": "The original uncancelled copperplate for the drypoint",
+    "dimensions": "21.8x16.6cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 8,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": "Ex Coll Ambroise Vollard Ex Coll Henri-M. Petiet Acquired by the present owner from the estate sale of the above"
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Other",
     "bracket": "0-299",
-    "saleId": "2080",
-    "lotNumber": 85,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/2080-online-sale-select-modern-contemporary-197/85-jonathan-borofsky-b1942cross-head-51067",
+    "saleId": "2091",
+    "lotNumber": 86,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/2091-online-sale-select-modern-contemporary-211/86-jonathan-borofsky-b1942cross-head-53004",
+    "auctionInternalId": 211,
     "estimateLow": 100.0,
     "estimateHigh": 150.0,
     "artistName": "Jonathan Borofsky",
-    "title": "Cross Head"
+    "title": "Cross Head",
+    "datePeriod": "1991",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/9aebf8e3-9a90-ee11-b864-d4548b6f1f2f/0c784b2a-ab91-ee11-817b-6045bdfc47ac.webp",
+    "techniques": [
+      "Etching",
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Etching with screenprint in colours",
+    "dimensions": "118.0x87.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 2,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -906,22 +2126,53 @@
     "saleId": "1166",
     "lotNumber": 328,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1166-modern-contemporary-prints-and-multiples-984/328-george-grosz-1893-1959madison-square-from-baghdad-on-the-146986",
+    "auctionInternalId": 984,
     "estimateLow": 300.0,
     "estimateHigh": 500.0,
     "artistName": "George Grosz",
-    "title": "Madison Square, from Baghdad on the Subway (Dückers M.VII.3)"
+    "title": "Madison Square, from Baghdad on the Subway (Dückers M.VII.3)",
+    "datePeriod": "1935",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/9ab4d414-6f6f-ef11-a671-7c1e521d410c/aadfe4fe-bc80-ef11-ac21-6045bdd21853.webp",
+    "techniques": [],
+    "papers": [],
+    "rawMedium": "Collotype printed in colours",
+    "dimensions": "41.0x28.0cm",
+    "dimKind": "image",
+    "copyType": "numbered",
+    "editionSize": 150,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Other",
     "bracket": "500-999",
     "saleId": "1183",
-    "lotNumber": 293,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1183-modern-contemporary-urban-art-editions-1032/293-salvador-daliacute-1904-1989dan-fromnbspthe-twelve-tribes-154154",
-    "estimateLow": 700.0,
-    "estimateHigh": 900.0,
+    "lotNumber": 302,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1183-modern-contemporary-urban-art-editions-1032/302-salvador-daliacute-1904-1989rembrandt-from-quinze-gravures-152608",
+    "auctionInternalId": 1032,
+    "estimateLow": 500.0,
+    "estimateHigh": 700.0,
     "artistName": "Salvador Dalí",
-    "title": "Dan, From The Twelve Tribes of Israel (Field 72-6F, M&L 626)"
+    "title": "Rembrandt, from Quinze Gravures (Field 68-4K; M&L 292)",
+    "datePeriod": "1968",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/5cd7844b-f045-f011-be59-6045bdc18c90/6a303251-7b68-f011-8eed-000d3a7eb022.webp",
+    "techniques": [
+      "Etching",
+      "Drypoint"
+    ],
+    "papers": [
+      "japanese"
+    ],
+    "rawMedium": "Etching with drypoint printed in colour",
+    "dimensions": "37.5x27.5cm",
+    "dimKind": "sheet",
+    "copyType": "AP",
+    "editionSize": 4,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -930,10 +2181,23 @@
     "saleId": "1166",
     "lotNumber": 21,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1166-modern-contemporary-prints-and-multiples-984/21-damien-hirst-b1965im-standing-there-2016-from-the-currency-148878",
+    "auctionInternalId": 984,
     "estimateLow": 5000.0,
     "estimateHigh": 7000.0,
     "artistName": "Damien Hirst",
-    "title": "I'm Standing There, from The Currency"
+    "title": "I'm Standing There, from The Currency",
+    "datePeriod": "2016",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/6a004bf9-d524-f011-9af7-7ced8d3a016a/8ffbd1c4-d624-f011-9af7-7ced8d3a016a.webp",
+    "techniques": [],
+    "papers": [],
+    "rawMedium": "Enamel paint on paper",
+    "dimensions": "21.5x30.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 2,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -942,10 +2206,28 @@
     "saleId": "1147",
     "lotNumber": 303,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1147-editions-1500-2024-887/303-rembrandt-harmensz-van-rijn-1606-1669-the-death-of-the-133486",
+    "auctionInternalId": 887,
     "estimateLow": 6000.0,
     "estimateHigh": 8000.0,
     "artistName": "Rembrandt van Rijn",
-    "title": "The Death of the Virgin"
+    "title": "The Death of the Virgin",
+    "datePeriod": "1639",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/4468bf59-4f02-ef11-9f88-6045bdf20453/3efa7591-ee23-ef11-9f88-000d3a0b41e7.webp",
+    "techniques": [
+      "Etching",
+      "Drypoint"
+    ],
+    "papers": [
+      "laid"
+    ],
+    "rawMedium": "Etching and drypoint",
+    "dimensions": "41.0x32.4cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 8,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -954,10 +2236,25 @@
     "saleId": "1105",
     "lotNumber": 165,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1105-prints-and-editions-1500-2022-506/165-maurice-utrillo-1883-1955-after-by-jacques-villon-1875-96459",
+    "auctionInternalId": 506,
     "estimateLow": 2500.0,
     "estimateHigh": 3000.0,
     "artistName": "Maurice Utrillo",
-    "title": "L'église de Limours (Ginstet/Pouillon 654)"
+    "title": "L'église de Limours (Ginstet/Pouillon 654)",
+    "datePeriod": "1926",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/00030231-9b90-ee11-b864-d4548b6f1f2f/8957de93-6991-ee11-8178-002248070a4a.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [],
+    "rawMedium": "Aquatint in colours",
+    "dimensions": "63.0x45.2cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 200,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -966,22 +2263,54 @@
     "saleId": "1141",
     "lotNumber": 69,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1141-winter-selection-modern-contemporary-884/69-nick-smith-b1980-beauty-128332",
+    "auctionInternalId": 884,
     "estimateLow": 1000.0,
     "estimateHigh": 1500.0,
     "artistName": "Nick Smith",
-    "title": "Beauty"
+    "title": "Beauty",
+    "datePeriod": "2022",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/86e5a03d-ea94-ee11-be38-7c1e5203008f/13f2adb4-85b3-ee11-a56a-6045bdf111bf.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Giclée in colours",
+    "dimensions": "62.0x60.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 66,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "500-999",
-    "saleId": "A0612",
-    "lotNumber": 189,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0612-prints-multiples-488/189-sir-peter-blake-cbe-rdi-rabritish-b1932-la-vern-baker-553553",
-    "estimateLow": 500.0,
-    "estimateHigh": 700.0,
-    "artistName": "Peter Blake CBE RDI",
-    "title": "La Vern Baker"
+    "saleId": "A0673",
+    "lotNumber": 180,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0673-prints-multiples-550/180-keith-michellaustralian-1926-2015king-henry-viii-581696",
+    "auctionInternalId": 550,
+    "estimateLow": 800.0,
+    "estimateHigh": 1200.0,
+    "artistName": "Keith Michell",
+    "title": "King Henry VIII",
+    "datePeriod": "1972",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/6acc6193-fa8a-ef11-ac21-6045bdd0accd/47cddd7d-7f97-ef11-8a6b-7c1e522f5daf.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [],
+    "rawMedium": "screenprint in colours with gold ink",
+    "dimensions": "102.0x70.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 70,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -990,10 +2319,27 @@
     "saleId": "1119",
     "lotNumber": 111,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1119-art-and-editions-1500-2022-560/111-pablo-picasso-1881-1973femme-frontispiece-for-picasso-104984",
+    "auctionInternalId": 560,
     "estimateLow": 6000.0,
     "estimateHigh": 8000.0,
     "artistName": "Pablo Picasso",
-    "title": "Femme (Frontispiece for Picasso Oeuvres 1920-1926) (Bloch 56; Cramer 15)"
+    "title": "Femme (Frontispiece for Picasso Oeuvres 1920-1926) (Bloch 56; Cramer 15)",
+    "datePeriod": "1922",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/23159839-9b90-ee11-b864-d4548b6f1f2f/de2018d8-4d91-ee11-8178-002248070a4a.webp",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [
+      "laid"
+    ],
+    "rawMedium": "Etching",
+    "dimensions": "28.2x23.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 50,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -1002,10 +2348,25 @@
     "saleId": "2399",
     "lotNumber": 52,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/2399-online-modern-contemporary-prints-1136/52-damien-hirst-b1965-h8-4-forever-small-170059",
+    "auctionInternalId": 1136,
     "estimateLow": 400.0,
     "estimateHigh": 600.0,
     "artistName": "Damien Hirst",
-    "title": "H8-4. Forever (Small)"
+    "title": "H8-4. Forever (Small)",
+    "datePeriod": "2020",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/94114dcb-c052-f111-a820-7ced8d99fce5/4d61fbae-7e5a-f111-a820-0022483f2a80.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [],
+    "rawMedium": "Laminated giclée in colours on aluminium composite panel",
+    "dimensions": "39.0x39.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 2573,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -1014,10 +2375,25 @@
     "saleId": "1151",
     "lotNumber": 41,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/1151-prints-and-multiples-1500-2024-889/41-alex-katz-b1927-cow-schroumlder-420-138372",
+    "auctionInternalId": 889,
     "estimateLow": 800.0,
     "estimateHigh": 1000.0,
     "artistName": "Alex Katz",
-    "title": "Cow (Schröder 420)"
+    "title": "Cow (Schröder 420)",
+    "datePeriod": "2005",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/45f141c7-6156-ef11-bfe2-00224801d434/4654c9ac-bc80-ef11-ac21-6045bdd21853.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [],
+    "rawMedium": "Aquatint in black and white",
+    "dimensions": "26.6x26.8cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 100,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -1026,58 +2402,141 @@
     "saleId": "2121",
     "lotNumber": 158,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/2121-online-only-select-modern-contemporary-239/158-shepard-fairey-b1970-pedestal-61615",
+    "auctionInternalId": 239,
     "estimateLow": 200.0,
     "estimateHigh": 300.0,
     "artistName": "Shepard Fairey",
-    "title": "Pedestal"
+    "title": "Pedestal",
+    "datePeriod": "2012",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/34b547f4-9a90-ee11-b864-d4548b6f1f2f/fe32e23a-e691-ee11-817a-7c1e5204c008.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Screenprint in colours",
+    "dimensions": "61.0x45.8cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 450,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "0-299",
-    "saleId": "A0673",
-    "lotNumber": 108,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0673-prints-multiples-550/108-bryan-illsleybritish-b-1937-two-jugsscreenprint-in-colours-581814",
-    "estimateLow": 200.0,
-    "estimateHigh": 300.0,
-    "artistName": "Bryan Illsley",
-    "title": "Two Jugs"
+    "saleId": "A0469",
+    "lotNumber": 201,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0469-prints-multiples-352/201-sir-peter-blake-cbe-rdi-ra-british-b1932-c-is-for-clowning-493765",
+    "auctionInternalId": 352,
+    "estimateLow": 250.0,
+    "estimateHigh": 350.0,
+    "artistName": "Peter Blake CBE RDI",
+    "title": "C is for Clowning",
+    "datePeriod": "1991",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/6e38a345-8d9e-ed11-b835-d4548b6f1f2f/a719e120-26a0-ed11-9a88-6045bdd0c57a.jpeg",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "screenprint in colours",
+    "dimensions": "72.0x53.0cm",
+    "dimKind": "image",
+    "copyType": "numbered",
+    "editionSize": 95,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Aquatint",
     "bracket": "300-499",
-    "saleId": "A0445",
-    "lotNumber": 70,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0445-prints-multiples-328/70-patrick-procktor-ra-re-rwsbritish-1936-2003-lion-rocks-484597",
-    "estimateLow": 300.0,
-    "estimateHigh": 500.0,
-    "artistName": "Patrick Procktor RA RE",
-    "title": "Lion Rocks Garden, Soochow"
+    "saleId": "A0368",
+    "lotNumber": 118,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0368-modern-contemporary-prints-multiples-267/118-sir-terry-frost-rabritish-1915-2003-arizona-kemp-247-461244",
+    "auctionInternalId": 267,
+    "estimateLow": 400.0,
+    "estimateHigh": 600.0,
+    "artistName": "Terry Frost",
+    "title": "Arizona [Kemp 247]",
+    "datePeriod": "1996",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/6bab9038-8d9e-ed11-b835-d4548b6f1f2f/ceedc6db-6c9f-ed11-9a88-6045bdd0cb7f.jpeg",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "aquatint printed in colours",
+    "dimensions": null,
+    "dimKind": null,
+    "copyType": "numbered",
+    "editionSize": 25,
+    "signed": true,
+    "catalogueRefsRaw": "Kemp 247",
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Drypoint",
     "bracket": "500-999",
-    "saleId": "1088",
-    "lotNumber": 112,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1088-prints-and-editions-425/112-salvador-dal237-1904-1989venus-mars-and-cupid-michler-amp-85063",
-    "estimateLow": 800.0,
-    "estimateHigh": 1200.0,
-    "artistName": "Salvador Dalí",
-    "title": "Venus Mars and Cupid (Michler & Löpsinger 487)"
+    "saleId": "100006",
+    "lotNumber": 326,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/100006-modern-contemporary-editions-1098/326-pierre-auguste-renoir-1841-1919le-chapeau-eacutepingleacute-165808",
+    "auctionInternalId": 1098,
+    "estimateLow": 600.0,
+    "estimateHigh": 800.0,
+    "artistName": "Pierre-Auguste Renoir",
+    "title": "Le Chapeau Épinglé (2e Planche) (Delteil 8)",
+    "datePeriod": "1894",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/69e39c20-1a38-f111-bec2-0022483fda5d/aac88bed-df3f-f111-bec4-70a8a54ea388.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [
+      "laid"
+    ],
+    "rawMedium": "Drypoint",
+    "dimensions": "25.2x20.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 8,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Giclée",
     "bracket": "1000-5000",
-    "saleId": "A0710",
-    "lotNumber": 301,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0710-prints-multiples-590/301-damien-hirstbritish-b-1965-the-currency-large-format-590898",
-    "estimateLow": 3000.0,
-    "estimateHigh": 5000.0,
-    "artistName": "Damien Hirst",
-    "title": "The Currency, large format"
+    "saleId": "A0571",
+    "lotNumber": 203,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0571-prints-multiples-450/203-andy-gotts-mbe-british-b1967-tony-curtis-2012-gicle-print-533252",
+    "auctionInternalId": 450,
+    "estimateLow": 1500.0,
+    "estimateHigh": 2500.0,
+    "artistName": "Andy Gotts",
+    "title": "Tony Curtis",
+    "datePeriod": "2012",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/b6ea7251-8d9e-ed11-b835-d4548b6f1f2f/336e7b53-519f-ed11-9a88-6045bdd0c225.webp",
+    "techniques": [
+      "Giclée"
+    ],
+    "papers": [],
+    "rawMedium": "giclée print",
+    "dimensions": "60.8x50.8cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 25,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
@@ -1086,105 +2545,254 @@
     "saleId": "2070",
     "lotNumber": 145,
     "listingUrl": "https://www.forumauctions.co.uk/bidding/2070-online-sale-select-modern-contemporary-185/145-pat-steir-b1940as-matisse-with-many-eyes-49880",
+    "auctionInternalId": 185,
     "estimateLow": 150.0,
     "estimateHigh": 200.0,
     "artistName": "Pat Steir",
-    "title": "As Matisse with many eyes"
+    "title": "As Matisse with many eyes",
+    "datePeriod": "1986",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/8b4711e2-9a90-ee11-b864-d4548b6f1f2f/515465f7-a191-ee11-817b-6045bdfc47ac.webp",
+    "techniques": [
+      "Aquatint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Monoprint with aquatint printed in colours",
+    "dimensions": "66.5x50.7cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 8,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Drypoint",
     "bracket": "over5000",
-    "saleId": "1088",
-    "lotNumber": 159,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1088-prints-and-editions-425/159-pablo-picasso-1881-1973portrait-de-dora-maar-au-chignon-i-85032",
-    "estimateLow": 6000.0,
-    "estimateHigh": 8000.0,
-    "artistName": "Pablo Picasso",
-    "title": "Portrait de Dora Maar au Chignon I (Tête de Femme Demi-Profil À Gauche) (Bloch 291, Baer 611)"
+    "saleId": "1198",
+    "lotNumber": 58,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1198-prints-works-on-paper-1500-2026-1091/58-william-kentridge-b1955-head-orange-163754",
+    "auctionInternalId": 1091,
+    "estimateLow": 20000.0,
+    "estimateHigh": 30000.0,
+    "artistName": "William Kentridge",
+    "title": "Head (Orange)",
+    "datePeriod": "1993",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/0bb46ff1-dd0c-f111-8405-000d3ad66395/2cb442f8-c91b-f111-8340-002248425bc7.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [],
+    "rawMedium": "Drypoint printed with tone extensively hand-coloured in acrylic",
+    "dimensions": "121.0x91.5cm",
+    "dimKind": "sheet",
+    "copyType": "PP",
+    "editionSize": 15,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Drypoint",
     "bracket": "300-499",
-    "saleId": "1187",
-    "lotNumber": 249,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1187-prints-multiples-1500-2025-1033/249-salvador-daliacutenbsp1904-1989ni-menas-ni-maacutes-plate-154324",
+    "saleId": "1141",
+    "lotNumber": 217,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1141-winter-selection-modern-contemporary-884/217-salvador-daliacute-1904-1989le-cerf-se-voyant-dans-leau-128640",
+    "auctionInternalId": 884,
     "estimateLow": 400.0,
     "estimateHigh": 600.0,
     "artistName": "Salvador Dalí",
-    "title": "Ni Menas Ni Más, Plate 41 From Les Caprices de Goya de Dalí (Field 77-3; M&L 888)"
+    "title": "Le Cerf se voyant dans l'eau, from Le Bestiaire de la Fontaine Dalinisé (Field 74-1G; M&L 660)",
+    "datePeriod": "1974",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/79638ce2-6b93-ee11-817a-6045bdcfd69d/ef861259-b7b3-ee11-a56a-6045bdf248df.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [
+      "japanese"
+    ],
+    "rawMedium": "Drypoint with pochoir in colours",
+    "dimensions": "76.6x56.2cm",
+    "dimKind": "sheet",
+    "copyType": "AP",
+    "editionSize": 250,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Drypoint",
     "bracket": "1000-5000",
-    "saleId": "1088",
-    "lotNumber": 151,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1088-prints-and-editions-425/151-pablo-picasso-1881-1973homme-devoilant-une-femme-bloch-138-85045",
-    "estimateLow": 4000.0,
-    "estimateHigh": 6000.0,
-    "artistName": "Pablo Picasso",
-    "title": "Homme Devoilant une Femme (Bloch 138; Baer 203)"
+    "saleId": "1187",
+    "lotNumber": 353,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1187-prints-multiples-1500-2025-1033/353-mary-cassatt-1844-1926sarah-smiling-breeskin-195-154328",
+    "auctionInternalId": 1033,
+    "estimateLow": 1000.0,
+    "estimateHigh": 1500.0,
+    "artistName": "Mary Cassatt",
+    "title": "Sarah Smiling (Breeskin 195)",
+    "datePeriod": "1904",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/020157a5-0151-f011-be59-7c1e522de60a/dc74c6c6-30a4-f011-bbd0-7c1e521d57f6.webp",
+    "techniques": [
+      "Drypoint"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "Drypoint with hand-colouring",
+    "dimensions": "37.9x28.1cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 8,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Etching",
     "bracket": "300-499",
-    "saleId": "1149",
-    "lotNumber": 280,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1149-summer-selection-modern-contemporary-888/280-anthony-gross-1905-1984-village-dancers-at-saux-no1-and-134057",
+    "saleId": "2188",
+    "lotNumber": 20,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/2188-prints-editions-368/20-tracey-emin-b1963bleeding-75979",
+    "auctionInternalId": 368,
     "estimateLow": 300.0,
     "estimateHigh": 500.0,
-    "artistName": "Anthony Gross",
-    "title": "Village Dancers at Saux No.1 and Village Dancers at Saux No.2 (Herdman 7402-7403)"
+    "artistName": "Tracey Emin",
+    "title": "Bleeding",
+    "datePeriod": "2010",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/e5fe5e14-9b90-ee11-b864-d4548b6f1f2f/ad737971-4f91-ee11-817b-6045bdfc47ac.webp",
+    "techniques": [
+      "Etching"
+    ],
+    "papers": [
+      "laid"
+    ],
+    "rawMedium": "Soft-ground etching printed in blue",
+    "dimensions": "32.0x40.0cm",
+    "dimKind": "sheet",
+    "copyType": "PP",
+    "editionSize": 100,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Offset lithograph",
     "bracket": "over5000",
-    "saleId": "1147",
-    "lotNumber": 149,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1147-editions-1500-2024-887/149-andy-warhol-1928-1987piglet-from-wild-raspberries-see-134764",
-    "estimateLow": 8000.0,
-    "estimateHigh": 12000.0,
-    "artistName": "Andy Warhol",
-    "title": "Piglet, from Wild Raspberries (see Feldman & Schellmann IV.134.A)"
+    "saleId": "1165",
+    "lotNumber": 69,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1165-prints-multiples-1500-2025-985/69-david-hockney-b1937neal-street-restaurant-seating-plan-145773",
+    "auctionInternalId": 985,
+    "estimateLow": 10000.0,
+    "estimateHigh": 15000.0,
+    "artistName": "David Hockney",
+    "title": "Neal Street Restaurant Seating Plan",
+    "datePeriod": "1970",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/142b4c12-c3dc-ef11-9344-6045bdcf395d/048ed37f-90f3-ef11-9345-6045bdfbd385.webp",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "A unique offset lithograph with a pen and ink drawing of a tin of caviar and other ink additions to the work",
+    "dimensions": "42.0x29.5cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": null,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Offset lithograph",
     "bracket": "1000-5000",
-    "saleId": "1198",
-    "lotNumber": 163,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1198-prints-works-on-paper-1500-2026-1091/163-ls-lowry-1887-1976the-cart-163898",
-    "estimateLow": 3000.0,
-    "estimateHigh": 5000.0,
-    "artistName": "L.S Lowry",
-    "title": "The Cart"
+    "saleId": "1167",
+    "lotNumber": 129,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/1167-prints-multiples-1500-2025-983/129-andy-warhol-1928-1987a-p-surprise-from-wild-raspberries-see-151390",
+    "auctionInternalId": 983,
+    "estimateLow": 1500.0,
+    "estimateHigh": 2000.0,
+    "artistName": "Andy Warhol",
+    "title": "A + P Surprise, From Wild Raspberries (See Feldman and Schellmann IV.127.A)",
+    "datePeriod": "1959",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/9b6651a1-3548-f011-be59-7c1e522de60a/aa9d1d00-4450-f011-be59-6045bdfcb709.webp",
+    "techniques": [
+      "Offset lithograph"
+    ],
+    "papers": [
+      "laid"
+    ],
+    "rawMedium": "Offset lithograph extensively heightened with watercolour",
+    "dimensions": "43.6x27.7cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 8,
+    "signed": false,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   },
   {
     "house": "Roseberys London",
     "techBucket": "Screenprint / Serigraphy",
     "bracket": "300-499",
-    "saleId": "A0673",
-    "lotNumber": 260,
-    "listingUrl": "https://www.roseberys.co.uk/bidding/A0673-prints-multiples-550/260-sir-howard-hodgkin-ch-cbebritish-1932-2017blue-skies-582229",
+    "saleId": "A0731",
+    "lotNumber": 171,
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0731-prints-multiples-611/171-sunday-b-morningafter-andy-warhol-american-1928-1987marilyn-599310",
+    "auctionInternalId": 611,
     "estimateLow": 300.0,
     "estimateHigh": 500.0,
-    "artistName": "Howard Hodgkin",
-    "title": "Blue skies, nothing but blue skies, a Momart Christmas Card"
+    "artistName": "Sunday B Morning",
+    "title": "Marilyn Monroe",
+    "datePeriod": null,
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod/lot_images/xlarge/9fa1a48d-235b-f011-8eed-000d3ad60f29/aed1d2fe-5677-f011-8eef-00224801184b.webp",
+    "techniques": [
+      "Screenprint / Serigraphy"
+    ],
+    "papers": [
+      "wove"
+    ],
+    "rawMedium": "screenprint in colours",
+    "dimensions": "91.5x91.5cm",
+    "dimKind": "sheet",
+    "copyType": "TP",
+    "editionSize": null,
+    "signed": false,
+    "catalogueRefsRaw": "American 1928-1987",
+    "provenanceNote": null
   },
   {
     "house": "Forum Auctions",
     "techBucket": "Lithograph",
     "bracket": "300-499",
-    "saleId": "1196",
-    "lotNumber": 179,
-    "listingUrl": "https://www.forumauctions.co.uk/bidding/1196-modern-contemporary-urban-art-1090/179-paul-delvaux-1897-1994chapeau-1900-jacob-61-160855",
+    "saleId": "2246",
+    "lotNumber": 21,
+    "listingUrl": "https://www.forumauctions.co.uk/bidding/2246-forum-auctions-artsy-summer-editions-488/21-jim-dine-b-1935entrada-drive-95844",
+    "auctionInternalId": 488,
     "estimateLow": 400.0,
     "estimateHigh": 600.0,
-    "artistName": "Paul Delvaux",
-    "title": "Chapeau 1900 (Jacob 61)"
+    "artistName": "Jim Dine",
+    "title": "Entrada Drive",
+    "datePeriod": "2005",
+    "imageUrl": "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/forum/prod/lot_images/xlarge/893f6824-9b90-ee11-b864-d4548b6f1f2f/8f10e1c2-4791-ee11-817a-6045bdf13ce0.webp",
+    "techniques": [
+      "Lithograph"
+    ],
+    "papers": [],
+    "rawMedium": "The deluxe book comprising one lithograph printed in colours",
+    "dimensions": "30.0x32.0cm",
+    "dimKind": "sheet",
+    "copyType": "numbered",
+    "editionSize": 140,
+    "signed": true,
+    "catalogueRefsRaw": null,
+    "provenanceNote": null
   }
 ]
