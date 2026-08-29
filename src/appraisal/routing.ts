@@ -105,14 +105,22 @@ export function countCompetitive(candidateArtists: TriageResult["candidateArtist
  * (src/appraisal/knowledge_graph/types.ts AckgCandidate) is never persisted onto
  * TriageResult — it only exists transiently inside Stage 2a's live query_ackg tool loop.
  * This classifier only receives the finalized TriageResult, so it uses the closest available
- * proxy instead: institutional-layer ACKG support is matched against specific catalogued
- * works, so its presence is a reasonable stand-in for "a work-level match exists." Weaker
- * than the ADR's ideal (title/dimensions weren't actually compared) — documented here, not
- * silently substituted. See ADR-0006's implementation note addendum.
+ * proxy instead: real ACKG support (from either provenance layer) is a reasonable stand-in
+ * for "a work-level match exists." Weaker than the ADR's ideal (title/dimensions weren't
+ * actually compared) — documented here, not silently substituted. See ADR-0006's
+ * implementation note addendum.
+ *
+ * Broadened 2026-08-26: originally required institutional-layer support specifically, on the
+ * theory that institutional records map more reliably to a specific catalogued work. On
+ * reflection this didn't hold up — ackgSupportCount is already an artist/technique/period
+ * population-support signal, not a verified title match, regardless of which layer it comes
+ * from. Restricting to institutional-only bought a source-trust distinction, not real
+ * specificity, and needlessly narrowed how often Scenario 1 could ever be reached. Any real
+ * support now counts.
  */
 export function hasWorkLevelMatch(candidate: TriageResult["candidateArtists"][number] | undefined): boolean {
   if (!candidate) return false;
-  return (candidate.ackgSupportCount ?? 0) > 0 && (candidate.ackgProvenanceTags ?? []).includes("institutional");
+  return (candidate.ackgSupportCount ?? 0) > 0 && (candidate.ackgProvenanceTags ?? []).length > 0;
 }
 
 export function matchSpecialistConfig(triage: TriageResult): { key: string; matchedOn: RoutingPlan["specialistConfigMatchedOn"] } {
@@ -147,8 +155,13 @@ export function classifyTriageOutcome(triage: TriageResult): RoutingPlan {
 
   let scenario: Scenario;
 
-  const elevatedRisk = riskFlags.forgeryRisk || riskFlags.misattributionRisk || riskFlags.authenticationBodyExists;
-  trace.push(`riskFlags.forgeryRisk=${riskFlags.forgeryRisk} misattributionRisk=${riskFlags.misattributionRisk} authenticationBodyExists=${riskFlags.authenticationBodyExists} → elevatedRisk=${elevatedRisk}`);
+  // authenticationBodyExists deliberately excluded (2026-08-26) — redefined as a fact flag
+  // (does a catalogue raisonné/foundation exist for this artist), not a risk signal. It was
+  // found true in 7 of 8 real backtest lots regardless of actual outcome, because most
+  // historically documented printmakers have one — including it here made Scenario 2 fire
+  // near-universally rather than discriminating. See ADR-0006's implementation note.
+  const elevatedRisk = riskFlags.forgeryRisk || riskFlags.misattributionRisk;
+  trace.push(`riskFlags.forgeryRisk=${riskFlags.forgeryRisk} misattributionRisk=${riskFlags.misattributionRisk} (authenticationBodyExists=${riskFlags.authenticationBodyExists}, excluded from trigger — fact flag, not risk) → elevatedRisk=${elevatedRisk}`);
   if (elevatedRisk) {
     scenario = Scenario.ElevatedAuthenticationRisk;
   } else {

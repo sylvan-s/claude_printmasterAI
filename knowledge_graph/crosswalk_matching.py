@@ -41,10 +41,21 @@ TECHNIQUE_KEYWORDS = [
     ("Giclée", ["giclee", "giclée"]),
     ("Engraving", ["engraving"]),      # generic — must stay after Wood engraving above
     ("Lithograph", ["lithograph"]),    # generic — must stay after Offset/Photolithograph above
+    ("Intaglio", ["intaglio"]),        # umbrella process term — see TECHNIQUE_SUPPRESSES;
+                                        # found missing 2026-08-26 investigating why Agathe
+                                        # Sorel (real Tate intaglio prints, medium literally
+                                        # "Intaglio print on paper") had no Artist node —
+                                        # 832 Tate rows / 107 artists were silently excluded
+                                        # by has_print_technique() for this exact reason.
 ]
 TECHNIQUE_SUPPRESSES = {
     "Engraving": ["Wood engraving"],
     "Lithograph": ["Offset lithograph", "Photolithograph"],
+    # A medium string naming a specific intaglio method ("Etching and aquatint") shouldn't
+    # ALSO get the generic "Intaglio" tag — only bare "Intaglio print on paper" (no named
+    # method) should resolve to the umbrella term itself.
+    "Intaglio": ["Etching", "Drypoint", "Aquatint", "Mezzotint", "Photogravure", "Engraving",
+                 "Wood engraving"],
 }
 
 # Aligned to doc 01's paperSurfaceType enum (wove, laid, japanese, BFK, vellum, card,

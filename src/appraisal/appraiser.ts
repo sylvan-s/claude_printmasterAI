@@ -822,28 +822,47 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const MAX_ROUNDS = 4;
     let data: any = null;
 
+    let roundsUsed = 0;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       data = await post(messages, false);
       if (data.stop_reason === "max_tokens") {
         throw new Error("Claude (ACKG tool) hit max_tokens limit — response was truncated.");
       }
       const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use" && b.name === "query_ackg");
-      if (clientToolUses.length === 0) break;
+      if (clientToolUses.length === 0) {
+        console.log(`[Stage 2a ACKG loop] round ${round + 1}: no query_ackg call — stopping loop (${roundsUsed} round(s) used)`);
+        break;
+      }
+      roundsUsed = round + 1;
+
+      // Log any reasoning text Claude produced alongside the tool call(s) this round —
+      // the closest thing to "why" it's querying, since the API doesn't otherwise expose it.
+      const reasoningText = (data.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").trim();
+      if (reasoningText) {
+        console.log(`[Stage 2a ACKG loop] round ${round + 1} reasoning: ${reasoningText.slice(0, 400)}${reasoningText.length > 400 ? "…" : ""}`);
+      }
 
       messages.push({ role: "assistant", content: data.content });
       const toolResults = await Promise.all(
         clientToolUses.map(async (b: any) => {
+          console.log(`[Stage 2a ACKG loop] round ${round + 1} query_ackg call: ${JSON.stringify(b.input || {})}`);
           let content: string;
           try {
             const result = await queryAckg(b.input || {});
             content = this.formatAckgResultForClaude(result);
+            console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}`);
           } catch (err: any) {
             content = `ACKG query failed: ${err.message}`;
+            console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ERROR — ${err.message}`);
           }
           return { type: "tool_result", tool_use_id: b.id, content };
         }),
       );
       messages.push({ role: "user", content: toolResults });
+
+      if (round === MAX_ROUNDS - 1) {
+        console.log(`[Stage 2a ACKG loop] hit MAX_ROUNDS=${MAX_ROUNDS} — finalizing with whatever evidence was gathered`);
+      }
     }
 
     // Finalise: force the schema tool call, carrying the full reasoning + tool-result

@@ -123,8 +123,11 @@ export const riskMasksConfidentMatch = baseTriage({
   evidenceCorroboration: { stage1bAgreement: true, ackgAgreement: true, conflicts: [] },
 });
 
-// Scenario 3 — Artist confirmed, work unresolved: high confidence, but no institutional
-// ACKG support (auction_history only counts as weaker per the documented proxy).
+// Scenario 3 — Artist confirmed, work unresolved: high confidence from physical/textual
+// evidence alone, but ACKG has no real support at all (broadened 2026-08-26: any real
+// support, institutional or auction_history, now counts as a work-level match — see
+// hasWorkLevelMatch's doc comment — so this fixture must have genuinely zero support to
+// still exercise Scenario 3, not just auction_history-only as before the broadening).
 export const scenario3ArtistConfirmedWorkUnresolved = baseTriage({
   candidateArtists: [
     {
@@ -133,10 +136,35 @@ export const scenario3ArtistConfirmedWorkUnresolved = baseTriage({
       candidateProbability: 0.72,
       supportingEvidence: ["Style and signature consistent"],
       contradictingEvidence: [],
-      ackgSupportCount: 3,
-      ackgProvenanceTags: ["auction_history"],
+      ackgSupportCount: 0,
+      ackgProvenanceTags: [],
     },
   ],
+});
+
+// Regression fixture (2026-08-26): authenticationBodyExists alone, with no forgeryRisk/
+// misattributionRisk, must NOT trigger Scenario 2 — it was redefined as a fact flag, not a
+// risk signal, after being found true in 7/8 real backtest lots regardless of outcome.
+export const authBodyExistsAloneDoesNotTriggerScenario2 = baseTriage({
+  candidateArtists: [
+    {
+      rank: 1,
+      artistName: "Georges Rouault",
+      candidateProbability: 0.85,
+      supportingEvidence: ["Signature and technique consistent"],
+      contradictingEvidence: [],
+      ackgSupportCount: 5,
+      ackgProvenanceTags: ["institutional"],
+    },
+  ],
+  riskFlags: {
+    forgeryRisk: false,
+    reprintRisk: false,
+    editionComplexityRisk: false,
+    misattributionRisk: false,
+    authenticationBodyExists: true,
+    physicalExaminationRequired: false,
+  },
 });
 
 // Scenario 4 — Movement only: no confident candidate, but tradition confidence is high.

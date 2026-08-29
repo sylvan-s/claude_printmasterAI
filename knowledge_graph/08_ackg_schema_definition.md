@@ -369,6 +369,52 @@ averaged away" rule) alongside the graph's existing text/provenance evidence, no
 standalone artist classifier — a real attribution-specific signal would need calibration
 against known-artist pairs, not just a bigger off-the-shelf checkpoint.
 
+## 8. Schema addition: `Period` and `Region` nodes
+
+Added 2026-08-26 for the ADR-0009 (`docs/adr/0009-graph-analytics-precomputed-confidence.md`)
+similarity-index prototype (`knowledge_graph/gds_prototype.py`). This directly reverses § 5's
+"Period and Region as nodes" deferral — that deferral was explicitly conditioned on "no
+identified cross-cutting query need yet," and the similarity prototype is exactly that need:
+node-similarity/FastRP require graph *neighbours* to compare artists by, and a bare property
+can't be a shared neighbour two different artists both point to. Confirmed the alternative
+doesn't work before reaching for this: `apoc.create.vNode({bucket: 1970})` called three times
+in the same session returned three different internal ids, so a virtual-node workaround would
+give every artist a *private* period node sharing nothing — no tie-breaking signal at all.
+
+```
+Period { decade: INTEGER, label: STRING }     -- e.g. {decade: 1970, label: "1970s"}
+Region { name: STRING }                        -- e.g. {name: "British"}
+
+ConceptualWork -[:DATED_TO]-> Period
+Artist -[:FROM_REGION]-> Region                -- multi-valued, see below
+```
+
+Built by `add_period_region_nodes.py`, idempotent (`MERGE` on both node and edge), run once
+against the live graph: **52 `Period` nodes / 35,485 `DATED_TO` edges**, **134 `Region` nodes /
+3,354 `FROM_REGION` edges**. Against the pre-run budget of 190,225/200,000 nodes and
+292,939/400,000 relationships, this is a small, deliberate write, not a rounding error to wave
+away — flagged and confirmed against headroom before running, not assumed safe.
+
+`Period` binning is `floor(dateCreated_year / 10) * 10`; `dateCreated_year == 0` (21 records —
+a placeholder for "unknown," never a real year, same pattern as other "don't fabricate a value"
+rules throughout this doc) is excluded rather than binned into a bogus "0s" decade.
+
+`Region` needed real cleanup, not a direct `MERGE` on `Artist.nationality` — that property is
+unstructured free text, not a controlled vocabulary (unlike `Technique`/`Paper`/`Subject`,
+which are). A live query against this project's actual data returned 211 distinct raw values,
+including plain typos (`AMerican`, `Britsh`, `Brtitish`, `Japanse`, `Ukranian`), compound
+dual-nationality strings (`American/British`, `American, born Australia`, `Swiss, born
+France`), and at least one outright data-entry error (`Bristol` — a UK city, not a nationality,
+excluded outright). `add_period_region_nodes.py` splits each raw value on `/`, `,`, and the
+literal `" born "` marker, applies a small explicit typo-correction map for the misspellings
+actually observed, and drops the one confirmed-junk value — collapsing 211 raw strings to 134
+real `Region` names. Compound values become **multiple** `FROM_REGION` edges (a genuinely
+dual-nationality artist keeps both), the same multi-valued pattern `USES_TECHNIQUE` already
+established, not a forced pick-one. Nothing else is silently dropped: an unrecognized fragment
+still becomes its own `Region` node — this is a documented judgment call, not a verified
+crosswalk in the § 1 principle-6 sense, since nationality has no equivalent live-checkable
+authority list the way AAT does for technique/paper terms.
+
 ## Next steps
 
 Per doc 07 §5's roadmap, this doc completes step 2 ("define the ACKG schema and a minimal seed

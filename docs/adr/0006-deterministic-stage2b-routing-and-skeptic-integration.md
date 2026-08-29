@@ -231,3 +231,47 @@ Implemented as planned, with one correction and one addition found during implem
   Stage 2a's own LLM call produced in each case.
 - Not yet exercised in a real run: Scenarios 1, 3, 4, 5, 6. Worth a wider backtest pass before
   fully trusting the untuned placeholder thresholds at volume.
+
+## Implementation note 2 (2026-08-26) — the wider backtest pass found a real bug, fixed
+
+A 5-lot backtest batch (Roseberys A0777, lots 1–5) found what the note above asked for: not
+just more Scenario 2 hits, but a *diagnosable* reason for it. Combined with the earlier 3-lot
+sample, **8 of 8 real backtest lots routed to Scenario 2** — not because these were all
+genuinely high-risk transactions, but because `riskFlags` themselves weren't discriminating.
+Pulling the raw flags (not just the derived scenario) showed **all six flags true in 6 of 8
+lots**, across genuinely different artists (Braque, Villon, Nash, Gauguin ×2, Maillol, Munch
+×2) and genuinely different real outcomes (some clean against the catalogue, some with real
+title/estimate misses). That uniformity across a diverse, differently-outcomed sample is the
+signature of non-discrimination, not of every lot actually being equally risky.
+
+**Root cause, found by reading the actual prompt text, not by guessing**: Section 2D of
+`ATTRIBUTION_TRIAGE_SYSTEM_PROMPT` was one line — `"Assess: FORGERY_RISK, REPRINT_RISK,
+EDITION_COMPLEXITY_RISK, MISATTRIBUTION_RISK, AUTHENTICATION_BODY_EXISTS,
+PHYSICAL_EXAMINATION_REQUIRED."` — no criteria for what makes any flag true vs. false, unlike
+2A's detailed tradition taxonomy elsewhere in the same prompt. Given zero discriminating
+guidance, defaulting to maximal caution on every flag is a plausible, unforced model response,
+not a sign the model is malfunctioning.
+
+**Two fixes, both implemented and verified:**
+
+1. **Section 2D rewritten** with explicit, falsifiable per-flag criteria (default FALSE,
+   require citable evidence, explicitly reject "generic reasoning about the artist's fame").
+   `AUTHENTICATION_BODY_EXISTS` is redefined as a **fact flag** ("does a catalogue raisonné
+   exist"), not a risk signal — it was true for nearly every historically documented
+   printmaker in this catalogue regardless of actual outcome, which is exactly what a fact
+   about the artist's documentation status would look like, not a risk signal about this
+   transaction. `MISATTRIBUTION_RISK`'s criteria now explicitly excludes a low Stage 1b
+   similarity score against a Wikipedia *artist portrait* (a known, separate Stage 1b coverage
+   gap — comparing against the wrong kind of reference image entirely) from counting as
+   evidence of misattribution.
+2. **`classifyTriageOutcome`'s Scenario 2 trigger drops `authenticationBodyExists`** — now
+   `forgeryRisk || misattributionRisk` only, matching the flag's redefinition. Also broadened
+   `hasWorkLevelMatch` (Scenario 1's trigger) to count ACKG support from *either* provenance
+   layer, not institutional-only — that restriction bought a source-trust distinction, not
+   real work-specificity, given `ackgSupportCount` was already a population-support proxy
+   rather than a verified title match regardless of source.
+
+Both changes are covered by new/updated tests in `tests/routing/` (21/21 passing, including a
+named regression test asserting `authenticationBodyExists` alone can no longer trigger
+Scenario 2). A second backtest pass on the same 5 lots follows this note to confirm the fix
+actually produces varied risk profiles rather than a different constant.

@@ -61,11 +61,21 @@ test("CRITICAL ORDERING: risk flag masks an otherwise-Scenario-1-looking match",
   );
 });
 
-test("Scenario 3: artist confirmed, work unresolved (auction_history-only support, no institutional)", () => {
+test("Scenario 3: artist confirmed, work unresolved (zero ACKG support of any kind)", () => {
   const plan = classifyTriageOutcome(fixtures.scenario3ArtistConfirmedWorkUnresolved);
   assert.equal(plan.scenario, Scenario.ArtistConfirmedWorkUnresolved);
   assert.equal(plan.tier, 2);
   assert.equal(plan.skepticModeEngaged, false);
+});
+
+test("REGRESSION: authenticationBodyExists alone (no forgeryRisk/misattributionRisk) does NOT trigger Scenario 2", () => {
+  const plan = classifyTriageOutcome(fixtures.authBodyExistsAloneDoesNotTriggerScenario2);
+  assert.notEqual(
+    plan.scenario,
+    Scenario.ElevatedAuthenticationRisk,
+    `authenticationBodyExists is a fact flag, not a risk trigger, as of 2026-08-26 — got Scenario ${plan.scenario} (${plan.scenarioName})`
+  );
+  assert.equal(plan.scenario, Scenario.ConfirmedClean);
 });
 
 test("Scenario 4: movement only", () => {
@@ -146,10 +156,11 @@ test("countCompetitive returns 0 for an empty list", () => {
   assert.equal(countCompetitive([]), 0);
 });
 
-test("hasWorkLevelMatch requires BOTH ackgSupportCount>0 AND an institutional tag", () => {
-  assert.equal(hasWorkLevelMatch({ rank: 1, artistName: "x", candidateProbability: 0.9, supportingEvidence: [], contradictingEvidence: [], ackgSupportCount: 5, ackgProvenanceTags: ["auction_history"] }), false);
+test("hasWorkLevelMatch requires ackgSupportCount>0 AND any real provenance tag (broadened 2026-08-26)", () => {
+  assert.equal(hasWorkLevelMatch({ rank: 1, artistName: "x", candidateProbability: 0.9, supportingEvidence: [], contradictingEvidence: [], ackgSupportCount: 5, ackgProvenanceTags: ["auction_history"] }), true);
   assert.equal(hasWorkLevelMatch({ rank: 1, artistName: "x", candidateProbability: 0.9, supportingEvidence: [], contradictingEvidence: [], ackgSupportCount: 0, ackgProvenanceTags: ["institutional"] }), false);
   assert.equal(hasWorkLevelMatch({ rank: 1, artistName: "x", candidateProbability: 0.9, supportingEvidence: [], contradictingEvidence: [], ackgSupportCount: 5, ackgProvenanceTags: ["institutional"] }), true);
+  assert.equal(hasWorkLevelMatch({ rank: 1, artistName: "x", candidateProbability: 0.9, supportingEvidence: [], contradictingEvidence: [], ackgSupportCount: 5, ackgProvenanceTags: [] }), false);
   assert.equal(hasWorkLevelMatch(undefined), false);
 });
 

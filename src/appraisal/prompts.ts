@@ -1122,8 +1122,54 @@ Use paper type (laid/wove/machine-made), ink pigment evidence, edition conventio
 2C. CANDIDATE ARTIST SHORTLISTING
 Produce ranked shortlist of 1–5 candidate artists or tradition-level groupings. Weight: legible text/title cartouches > signature characters > publisher marks > style. Style alone is INSUFFICIENT to name an individual.
 
-2D. KNOWN RISK FLAGS
-Assess: FORGERY_RISK, REPRINT_RISK, EDITION_COMPLEXITY_RISK, MISATTRIBUTION_RISK, AUTHENTICATION_BODY_EXISTS, PHYSICAL_EXAMINATION_REQUIRED.
+2D. RISK FLAGS — DEFAULT FALSE, EACH ONE REQUIRES SPECIFIC CITED EVIDENCE
+
+Every flag below defaults to FALSE. Set a flag TRUE only if you can cite the specific VEA
+observation, appraiser claim, Stage 1b result, or ACKG finding that supports it. Never set a
+flag TRUE from generic reasoning about the artist's fame, market value, or the fact that
+forgeries/reprints exist somewhere in the art world for artists at this level — that reasoning
+applies to nearly every artist in this pipeline's scope and produces no discrimination between
+lots. If you cannot name the specific evidence, the flag is FALSE.
+
+FORGERY_RISK — TRUE only when: VEA's observed signature/technique/paper characteristics
+  actively CONFLICT with the candidate artist's documented conventions (not merely "unverified
+  from a scan"), OR Stage 1b/ACKG surfaces a documented facsimile/reproduction line matching
+  THIS composition specifically (not a general "this artist has been forged" fact), OR the
+  appraiser's claimed marks conflict with VEA's physical reading in a way suggestive of an
+  added/altered signature. Otherwise FALSE.
+
+REPRINT_RISK — TRUE only when: paper, ink, or edition-marking conventions VEA observes are
+  inconsistent with the period this impression is claimed or estimated to be from, OR the
+  piece matches a documented posthumous/later-edition pattern for this specific work (not just
+  "this artist has posthumous editions in general"). Otherwise FALSE.
+
+EDITION_COMPLEXITY_RISK — TRUE only when: edition numbering/state is illegible or absent AND
+  multiple genuinely different documented states/editions exist for this specific work (per
+  ACKG or specialist knowledge) such that identification is actually ambiguous. A single-edition
+  work with clear, legible numbering is FALSE even if the artist's broader oeuvre includes
+  complex editions elsewhere.
+
+MISATTRIBUTION_RISK — TRUE only when: VEA's physical evidence (signature, technique, style)
+  itself conflicts with the leading candidate, OR two or more candidates have genuinely
+  comparable supporting evidence, OR Stage 1b's visual match is against a real REFERENCE
+  ARTWORK IMAGE (not an artist portrait) with low similarity. Explicitly NOT triggered by: a
+  low Stage 1b similarity score where the comparison was against a Wikipedia artist portrait or
+  no reference image was found at all — that is a known coverage gap in the search step, not
+  evidence about this attribution. A missing or weak Stage 1b result with otherwise-consistent
+  VEA physical evidence is FALSE.
+
+AUTHENTICATION_BODY_EXISTS — a FACT flag, not a risk flag: TRUE when a specific catalogue
+  raisonné, foundation, or authentication committee exists for the candidate artist (name it in
+  supportingEvidence) — this is true for most historically documented printmakers and is
+  informational for routing to the right specialist resource, not itself a signal of elevated
+  risk for this lot. Do not treat this flag as evidence something is wrong with the piece.
+
+PHYSICAL_EXAMINATION_REQUIRED — TRUE only when there is a SPECIFIC, named unresolved question
+  that only hands-on inspection (not further remote research) could settle — e.g. paper texture
+  or a watermark that can't be read from the scan, suspected relining, drypoint burr condition,
+  a signature whose medium (plate vs. hand) is ambiguous from the image. General caution about
+  print appraisal is not sufficient grounds — name the specific unresolved question or the flag
+  is FALSE.
 
 2E. ESCALATION ASSESSMENT
 Set humanEscalationRequired: true when PHYSICAL_EXAMINATION_REQUIRED is true AND AUTHENTICATION_BODY_EXISTS AND FORGERY_RISK, OR VEA overallExtractionConfidence < 0.35, OR appraiser input and algorithmic evidence disagree materially (see 2F).
