@@ -16,7 +16,8 @@
     "test:backtest": "tsx tests/backtest/run_backtest.ts",
     "test:routing": "tsx tests/routing/run_routing_tests.ts",
     "query:ackg": "tsx src/appraisal/knowledge_graph/cli.ts",
-    "test:two-pass": "tsx tests/two_pass_attribution/run_tests.ts"
+    "test:two-pass": "tsx tests/two_pass_attribution/run_tests.ts",
+    "test:pool": "tsx tests/backtest/run_pool.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
