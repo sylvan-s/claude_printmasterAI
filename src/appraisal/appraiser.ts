@@ -63,6 +63,9 @@ export interface VisualSearchResult {
   bestMatchImageMimeType?: string | null;
   visualSimilarityScore?: number | null;   // 0.0–1.0
   visualSimilarityRationale?: string | null;
+  /** How close the retrieved reference image's composition is to the submission,
+   *  per the search step's own side-by-side read. */
+  compositionMatch?: "identical" | "very_close" | "loose" | "none" | null;
   matchConfidence?: "HIGH" | "MEDIUM" | "LOW" | null;
   /** Self-reported by the model: was this match confirmed against an actual
    *  reference image ("visual"), inferred from a page's written attribution
@@ -904,7 +907,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
   private async fetchReferenceImageViaWikimedia(
     artist: string,
     title: string | null
-  ): Promise<{ base64: string; mimeType: string; sourceUrl: string } | null> {
+  ): Promise<{ base64: string; mimeType: string; sourceUrl: string; isArtistPortrait: boolean } | null> {
     const WIKIMEDIA_UA = "PrintMasterAI/1.0 (https://github.com/printmaster-ai; sylvansitkey07@gmail.com) node-fetch/3";
     const fullQuery = [artist, title].filter(Boolean).join(" ");
 
@@ -974,20 +977,21 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         }
       }
 
-      // Prefer Commons (specific work match) over Wikipedia artist page
+      // Prefer Commons (a specific-work match) over the Wikipedia artist page (a portrait).
       const finalUrl = commonsThumbUrl || wikiArtistThumbUrl;
+      const isArtistPortrait = !commonsThumbUrl && !!wikiArtistThumbUrl;
       if (!finalUrl) {
         console.log(`[Stage 1b] Wikimedia: no image found for "${fullQuery}"`);
         return null;
       }
 
-      console.log(`[Stage 1b] Wikimedia thumbnail: ${finalUrl}`);
+      console.log(`[Stage 1b] Wikimedia thumbnail: ${finalUrl}${isArtistPortrait ? " (artist-page lead image — likely a portrait)" : ""}`);
       const fetched = await this.fetchImageAsBase64(finalUrl);
       if (!fetched) {
         console.warn(`[Stage 1b] Wikimedia thumbnail fetch failed`);
         return null;
       }
-      return { ...fetched, sourceUrl: finalUrl };
+      return { ...fetched, sourceUrl: finalUrl, isArtistPortrait };
     } catch (err: any) {
       console.warn(`[Stage 1b] Wikimedia lookup error: ${err.message}`);
       return null;
@@ -1009,15 +1013,25 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         console.warn(`[Stage 1b] Image fetch failed: HTTP ${response.status} from ${url}`);
         return null;
       }
-      const contentType = response.headers.get("content-type") || "image/jpeg";
-      const mimeType = contentType.split(";")[0].trim();
-      if (!mimeType.startsWith("image/")) {
-        console.warn(`[Stage 1b] Image fetch returned non-image content-type: ${mimeType}`);
+      const contentType = (response.headers.get("content-type") || "").split(";")[0].trim();
+      const buf = Buffer.from(await response.arrayBuffer());
+      // Sniff magic bytes — museum/CDN image APIs and S3 buckets often serve images as
+      // application/octet-stream or with no Content-Type, and many valid image URLs
+      // (Met IIIF /main-image, Artsy's proxy) have no file extension.
+      const sniff = (): string | null => {
+        if (buf.length < 12) return null;
+        if (buf[0] === 0xff && buf[1] === 0xd8) return "image/jpeg";
+        if (buf.toString("ascii", 0, 8) === "\x89PNG\r\n\x1a\n") return "image/png";
+        if (buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+        if (buf.toString("ascii", 0, 3) === "GIF") return "image/gif";
+        return null;
+      };
+      const mimeType = contentType.startsWith("image/") ? contentType : sniff();
+      if (!mimeType) {
+        console.warn(`[Stage 1b] Not an image (content-type "${contentType || "none"}", bytes don't match): ${url}`);
         return null;
       }
-      const arrayBuffer = await response.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
-      return { base64, mimeType };
+      return { base64: buf.toString("base64"), mimeType };
     } catch (err: any) {
       console.warn(`[Stage 1b] Image fetch error: ${err.message}`);
       return null;
@@ -1034,17 +1048,19 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
   ): Promise<{ score: number; rationale: string }> {
     const prompt = `You are a fine art visual similarity expert. Compare these two images — the first is the submitted artwork, the second is a candidate match found via reverse image search (${candidateLabel}).
 
-Score their visual similarity from 0.0 to 1.0 using this scale:
-  1.0 — Identical work, same impression, indistinguishable
-  0.9 — Same work, minor photographic differences (angle, lighting)
-  0.8 — Very likely same work or direct variant (same series, different state)
-  0.7 — Strong visual match — same artist, same period, highly similar composition
-  0.6 — Probable match — similar style and technique, plausible same artist
-  0.5 — Possible match — shared tradition and technique but significant differences
-  0.3 — Weak match — similar tradition only
-  0.0 — No meaningful visual similarity
+The question is whether these are the SAME WORK — not whether the two photographs are framed the same way. A tight crop, a different angle, different lighting, a border cropped off, or one being a catalogue scan and the other a phone photo are NOT reasons to lower the score if the composition is the same.
 
-Focus on: composition, subject matter, colour palette, technique markers (line quality, ink texture), and signature/inscription placement.
+Score their visual similarity from 0.0 to 1.0 using this scale:
+  1.0 — Same work, near-identical reproduction
+  0.9 — Clearly the same work — same composition and forms; differs only in photography (angle, lighting, crop, colour cast)
+  0.8 — Very likely the same work or a direct variant (same image, different state / edition / colourway)
+  0.7 — Strong match — same artist and composition family, but a genuine compositional difference remains
+  0.6 — Probable match — similar style and technique, plausibly the same artist, composition only loosely aligned
+  0.5 — Possible match — shared tradition and technique, significant compositional differences
+  0.3 — Weak match — similar tradition only
+  0.0 — No meaningful visual similarity  (e.g. one image is a photo of a person, a gallery interior, or an unrelated work)
+
+Focus on: composition and layout, the forms and their placement, subject matter, colour relationships, and technique markers (line quality, ink texture, screen/plate registration). Ignore differences that are purely photographic.
 
 Return ONLY a JSON object:
 {
@@ -1093,36 +1109,36 @@ Return ONLY a JSON object:
     const ai = new GoogleGenAI({ apiKey: geminiKey });
     const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
-    const searchPrompt = `You are a fine art REVERSE IMAGE search assistant. Your job is to identify this print by matching it against actual reference images of known artworks — never by reading text about what it might be.
+    const searchPrompt = `You are a fine-art REVERSE IMAGE search engine. You are given ONE image of a print or work on paper.
 
-HOW TO WORK — in this order:
-1. Examine the submitted image itself: composition, mark-making, technique (etching/woodblock/lithograph characteristics), and any text physically inscribed ON the artwork — a signature, title, or edition number visible IN the print. That's evidence from the object itself, not external text, and is fine to use.
-2. Form a visual hypothesis from step 1 alone.
-3. Use Google Search ONLY to locate candidate REFERENCE IMAGES of specific artworks that might match — search image-hosting pages on Artnet, MutualArt, Catawiki, Christie's, Sotheby's, Bonhams, British Museum, V&A, Met, MoMA, Invaluable, or similar — and extract a direct image file URL you can visually compare the submission against.
-4. Confirm or reject each candidate by comparing the ACTUAL IMAGES — composition, proportions, mark placement, technique. Do this comparison yourself; do not take a page's caption or description as confirmation.
+YOUR SINGLE DELIVERABLE: the direct URL of the reference image on the public web that is VISUALLY CLOSEST to this submission — ideally a photograph of the same work. Everything else you report is metadata describing that image.
 
-STRICTLY FORBIDDEN AS EVIDENCE: a page's prose — an auction lot description, gallery caption, article text, or any other written attribution — is NEVER grounds for identifying the artist or title on its own, no matter how authoritative the source looks (an auction house's own catalogue text included). If a search result's text states "this is by [artist]" but you have not visually confirmed that claim against an actual image of that specific work, you have not identified the artwork — you have only found someone else's unverified claim about it.
+You are NOT being asked to name an artist. Do not go looking for who made this. If the closest-matching image you find happens to come with a reliable artist/title, report them — but an artist name with no matching image is a FAILURE, not a result, and must be returned with artist/title still filled only if the image match itself supports them.
+
+METHOD — in this order:
+1. Look at the submitted image only: overall composition and layout, subject, colour palette, the print technique (etching / drypoint / aquatint / lithograph / screenprint / woodblock characteristics), and any signature, title, date or edition number physically inscribed IN the print. Those inscriptions are evidence from the object and are fine to use.
+2. Use Google Search to find pages HOSTING REFERENCE IMAGES of prints with that composition — auction archives (Artnet, MutualArt, Christie's, Sotheby's, Bonhams, Phillips, Invaluable), museum collections (British Museum, V&A, Met, MoMA, Tate, NGA, Art Institute of Chicago), and dealer/gallery sites. Open several candidates.
+3. Compare the ACTUAL IMAGES side by side. Pick the one whose composition, proportions and mark placement match the submission most closely.
+4. Return the DIRECT image-file URL of that best match — the file itself (…/foo.jpg, …/bar.webp), not the webpage it sits on.
+
+STRICTLY FORBIDDEN: identifying the work from a page's PROSE — an auction lot description, gallery caption or article — without visually confirming it against an actual image of that specific work. A confident-sounding written attribution you have NOT visually verified is not a match; it is someone else's unverified claim, and must not raise compositionMatch above "loose".
+
+If no candidate genuinely matches the composition, return closestReferenceImageUrl: null and compositionMatch: "none". Do NOT return a loosely-related image, or a portrait of an artist, just to have something.
 
 Return a single JSON object:
 {
-  "bestMatch": {
-    "artist": "artist name or null",
-    "title": "artwork title or null",
-    "technique": "e.g. lithograph, etching, woodblock",
-    "period": "e.g. 1960s or null",
-    "confidence": "HIGH / MEDIUM / LOW",
-    "evidenceBasis": "visual — you genuinely compared the submission against a real reference image of the claimed work | textual — based on a page's written attribution without a confirmed image match | mixed — some genuine image comparison plus some text-only claims | none — no match found",
-    "reasoning": "Cite ONLY specific visual evidence — what you can see in the submitted image, and, if applicable, what you saw when comparing it against a specific reference image. Never cite what a webpage's text said as if it were visual evidence.",
-    "bestImageUrl": "direct image file URL ending in .jpg, .jpeg, .png, or .webp — must be the URL of the image file itself, NOT a webpage or homepage URL. Example: https://www.bonhams.com/lots/123/images/main.jpg — required if you found and visually compared against a matching image, null otherwise",
-    "sourceUrl": "URL of the page where that reference image was found"
-  },
-  "webEntities": ["key identifying terms found"],
-  "pagesWithMatchingImages": ["up to 5 relevant page URLs"],
-  "matchedUrls": [],
-  "visuallySimilarUrls": []
-}
-
-If you cannot find and visually compare against an actual reference image, set evidenceBasis to "textual" or "none" and cap confidence at LOW — text-only attribution, however confident-sounding, is never grounds for HIGH or MEDIUM confidence. Include only real URLs you retrieved from search results.`;
+  "closestReferenceImageUrl": "direct image-file URL (.jpg/.jpeg/.png/.webp) of the closest match, or null",
+  "sourcePageUrl": "the page that image was found on, or null",
+  "compositionMatch": "identical | very_close | loose | none",
+  "whatMatches": "specific visual features shared by the two images (composition, forms, palette, technique markers)",
+  "whatDiffers": "specific visual features that differ, or 'none'",
+  "artist": "artist name ONLY if the image match itself supports it, else null",
+  "title": "work title ONLY if the image match itself supports it, else null",
+  "technique": "etching / lithograph / screenprint / woodblock / ...",
+  "period": "e.g. 1960s, or null",
+  "webEntities": ["key identifying terms you saw"],
+  "pagesWithMatchingImages": ["up to 5 page URLs you actually opened"]
+}`;
 
     try {
       const response = await ai.models.generateContent({
@@ -1148,82 +1164,112 @@ If you cannot find and visually compare against an actual reference image, set e
         return EMPTY;
       }
 
-      const best = parsed.bestMatch || {};
-      const evidenceBasis: string = best.evidenceBasis || "unspecified";
-      console.log(`[Stage 1b] Best match: ${best.artist} — "${best.title}" (${best.confidence}, evidence: ${evidenceBasis})`);
-      console.log(`[Stage 1b] Reasoning: ${best.reasoning || "(none given)"}`);
-      console.log(`[Stage 1b] Gemini image URL: ${best.bestImageUrl || "none"} — source: ${best.sourceUrl || "none"}`);
-      console.log(`[Stage 1b] Pages cited: ${(parsed.pagesWithMatchingImages || []).join(", ") || "none"}`);
-      if (evidenceBasis !== "visual" && (best.confidence === "HIGH" || best.confidence === "MEDIUM")) {
-        console.warn(
-          `[Stage 1b] ⚠️ ${best.confidence} confidence but evidenceBasis="${evidenceBasis}" — this match was NOT confirmed against an actual reference image. Treat as an unverified text-sourced hypothesis, not a genuine reverse-image match.`
-        );
-      }
+      const refUrl: string | null = parsed.closestReferenceImageUrl || null;
+      const sourcePage: string | null = parsed.sourcePageUrl || null;
+      const compositionMatch: VisualSearchResult["compositionMatch"] =
+        ["identical", "very_close", "loose", "none"].includes(parsed.compositionMatch) ? parsed.compositionMatch : "none";
+      const artist: string | null = parsed.artist || null;
+      const title: string | null = parsed.title || null;
+      console.log(`[Stage 1b] closest ref image : ${refUrl || "none"}   (compositionMatch=${compositionMatch})`);
+      console.log(`[Stage 1b] source page       : ${sourcePage || "none"}`);
+      console.log(`[Stage 1b] matches / differs : ${parsed.whatMatches || "-"}  //  ${parsed.whatDiffers || "-"}`);
+      console.log(`[Stage 1b] metadata          : ${artist || "?"} — "${title || "?"}" (${parsed.technique || "?"}, ${parsed.period || "?"})`);
 
-      // Fetch a reference image via Wikimedia for visual similarity scoring.
-      // Wikimedia is bot-friendly, no auth needed, and covers all major artists in this collection.
-      // NOTE: Strategy 1 below (Wikipedia's pageimages lookup keyed on the artist's own name)
-      // returns that article's LEAD image, which for a biography article is normally a
-      // PORTRAIT of the artist, not a picture of any specific artwork. When that's what gets
-      // used, the resulting similarity score is comparing the submission against a photo of a
-      // person, not against a candidate artwork — a low score there says nothing about whether
-      // the attribution is right, and isn't the "genuine reverse-image match" this stage is
-      // meant to produce. Logged explicitly below so it's never mistaken for a real match.
+      // Score against the reference image the SEARCH step actually found (this is the
+      // reverse-image-match). Only if it gave no usable image do we fall back to
+      // Wikimedia Commons for the WORK by title — and never score against an
+      // artist-portrait fallback, which is a meaningless comparison.
       let matchBase64: string | null = null;
       let matchMimeType: string | null = null;
-      let matchIsArtistPortraitFallback = false;
+      let matchSource: "search" | "commons_work" | "none" = "none";
       let similarityScore: number | null = null;
       let similarityRationale: string | null = null;
 
-      if (best.artist && best.confidence !== "LOW") {
-        const wikimedia = await this.fetchReferenceImageViaWikimedia(best.artist, best.title);
-        if (wikimedia) {
-          matchBase64 = wikimedia.base64;
-          matchMimeType = wikimedia.mimeType;
-          matchIsArtistPortraitFallback = true;
+      // Try to fetch whatever URL the search returned — don't pre-filter on the
+      // extension (museum IIIF endpoints and CDN proxies have none). fetchImageAsBase64
+      // validates by response Content-Type + magic bytes.
+      if (refUrl && /^https?:\/\//i.test(refUrl)) {
+        const fetched = await this.fetchImageAsBase64(refUrl);
+        if (fetched) {
+          matchBase64 = fetched.base64;
+          matchMimeType = fetched.mimeType;
+          matchSource = "search";
+        } else {
+          console.warn(`[Stage 1b] could not fetch the search result's image URL: ${refUrl}`);
         }
       }
 
-      // Fall back to Gemini's suggested URL if Wikimedia found nothing and URL looks like an image file
-      if (!matchBase64 && best.bestImageUrl) {
-        const isImageUrl = /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(best.bestImageUrl);
-        if (isImageUrl) {
-          console.log("[Stage 1b] Wikimedia found nothing — trying Gemini's suggested image URL");
-          const fetched = await this.fetchImageAsBase64(best.bestImageUrl);
-          if (fetched) { matchBase64 = fetched.base64; matchMimeType = fetched.mimeType; matchIsArtistPortraitFallback = false; }
-        } else {
-          console.log(`[Stage 1b] Gemini URL rejected (not a direct image file): ${best.bestImageUrl}`);
+      if (!matchBase64 && artist && title && compositionMatch !== "none") {
+        const wm = await this.fetchReferenceImageViaWikimedia(artist, title);
+        if (wm && !wm.isArtistPortrait) {
+          matchBase64 = wm.base64;
+          matchMimeType = wm.mimeType;
+          matchSource = "commons_work";
+        } else if (wm?.isArtistPortrait) {
+          console.log(`[Stage 1b] Wikimedia only had the artist's portrait — not scoring against it`);
         }
       }
 
       if (matchBase64 && matchMimeType) {
-        const label = `${best.artist || "Unknown"} — "${best.title || "Untitled"}"`;
+        const label = `${artist || "Unknown"} — "${title || "Untitled"}"`;
         const sim = await this.scoreVisualSimilarity(ai, cleanBase64, mimeType, matchBase64, matchMimeType, label);
         similarityScore = sim.score;
         similarityRationale = sim.rationale;
-        if (matchIsArtistPortraitFallback) {
-          console.log(`[Stage 1b] Visual similarity score: ${similarityScore} — ${similarityRationale} (⚠️ compared against a Wikipedia ARTIST PORTRAIT, not a reference image of the artwork — this score is not a genuine artwork-to-artwork comparison)`);
-        } else {
-          console.log(`[Stage 1b] Visual similarity score: ${similarityScore} — ${similarityRationale}`);
-        }
+        console.log(`[Stage 1b] visual similarity : ${similarityScore} (vs ${matchSource} image) — ${similarityRationale}`);
       } else {
-        console.warn("[Stage 1b] Could not fetch reference image — similarity scoring skipped");
+        console.warn(`[Stage 1b] no artwork reference image to score against — similarity skipped`);
+        if (parsed.whatMatches || parsed.whatDiffers) {
+          similarityRationale = `not scored (no reference image retrieved). compositionMatch=${compositionMatch}; matches: ${parsed.whatMatches || "-"}; differs: ${parsed.whatDiffers || "-"}`;
+        }
+      }
+
+      // The search step over-claims "identical" then sometimes returns a different work
+      // by the same artist. When the actual score contradicts its self-report, trust
+      // the score.
+      let effectiveCompositionMatch = compositionMatch;
+      if (similarityScore != null) {
+        if (similarityScore < 0.5 && compositionMatch !== "none") effectiveCompositionMatch = "loose";
+        else if (similarityScore < 0.7 && compositionMatch === "identical") effectiveCompositionMatch = "very_close";
+      }
+      if (effectiveCompositionMatch !== compositionMatch) {
+        console.log(`[Stage 1b] compositionMatch "${compositionMatch}" -> "${effectiveCompositionMatch}" (similarity ${similarityScore} contradicts the search step's read)`);
+      }
+
+      // Authoritative evidenceBasis + confidence, derived HERE from what actually
+      // happened — not the model's self-report (which over-claims "visual").
+      const evidenceBasis: VisualSearchResult["evidenceBasis"] =
+        similarityScore != null ? "visual" : artist || title ? "textual" : "none";
+      const matchConfidence: VisualSearchResult["matchConfidence"] =
+        similarityScore == null
+          ? artist || title
+            ? "LOW"
+            : null
+          : similarityScore >= 0.85
+            ? "HIGH"
+            : similarityScore >= 0.7
+              ? "MEDIUM"
+              : "LOW";
+      if (evidenceBasis === "textual") {
+        console.warn(
+          `[Stage 1b] ⚠️ metadata present but NO reference image was scored — evidenceBasis=textual, confidence capped at LOW. Downstream must treat this as an unverified name, not a visual match.`,
+        );
       }
 
       return {
         webEntities: parsed.webEntities || [],
-        matchedUrls: parsed.matchedUrls || [],
-        visuallySimilarUrls: parsed.visuallySimilarUrls || [],
+        matchedUrls: [],
+        visuallySimilarUrls: [],
         pagesWithMatchingImages: parsed.pagesWithMatchingImages || [],
-        bestMatchArtist: best.artist || null,
-        bestMatchTitle: best.title || null,
-        bestMatchImageUrl: best.bestImageUrl || null,
-        bestMatchImageBase64: matchBase64,
-        bestMatchImageMimeType: matchMimeType,
+        bestMatchArtist: artist,
+        bestMatchTitle: title,
+        bestMatchImageUrl: refUrl,
+        bestMatchImageBase64: matchSource === "search" ? matchBase64 : null,
+        bestMatchImageMimeType: matchSource === "search" ? matchMimeType : null,
         visualSimilarityScore: similarityScore,
         visualSimilarityRationale: similarityRationale,
-        matchConfidence: best.confidence || null,
-        evidenceBasis: (best.evidenceBasis as VisualSearchResult["evidenceBasis"]) || null,
+        compositionMatch: effectiveCompositionMatch,
+        matchConfidence,
+        evidenceBasis,
         hypothesisWarning: HYPOTHESIS_WARNING,
       };
     } catch (err: any) {
@@ -1479,11 +1525,12 @@ INSTRUCTION: If any claim above conflicts with VEA's physical observations, reco
 STAGE 1b VISUAL SEARCH RESULT (Gemini ${this.config.stage1bModel || DEFAULT_STAGE1B_MODEL} reverse image search):
   Best match artist : ${vs?.bestMatchArtist || "No match found"}
   Best match title  : ${vs?.bestMatchTitle || "No match found"}
+  Composition match : ${vs?.compositionMatch || "n/a"} (search step's own read of how close the retrieved reference image is)
   Confidence        : ${vs?.matchConfidence || "N/A"}
-  Evidence basis    : ${vs?.evidenceBasis || "unspecified"} (visual = confirmed against an actual reference image; textual = only a page's written attribution, not visually confirmed)
-  Visual similarity : ${vs?.visualSimilarityScore != null ? `${(vs.visualSimilarityScore * 100).toFixed(0)}% — ${vs.visualSimilarityRationale}` : "Not scored (image not retrieved)"}
+  Evidence basis    : ${vs?.evidenceBasis || "unspecified"} (visual = a reference image of the work was retrieved and scored; textual = only a name/title, no image scored; none = no match)
+  Visual similarity : ${vs?.visualSimilarityScore != null ? `${(vs.visualSimilarityScore * 100).toFixed(0)}% — ${vs.visualSimilarityRationale}` : (vs?.visualSimilarityRationale || "Not scored (no reference image retrieved)")}
 
-INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCorroboration, never as confirmed attribution. A visual-basis match with similarity >= 0.7 that agrees with VEA signature/technique evidence is corroboration; any disagreement with VEA's physical evidence must be recorded in evidenceCorroboration.conflicts, not silently resolved. A "textual" basis or similarity below 0.6 should be treated with high scepticism.\n`
+INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCorroboration, never as confirmed attribution. A visual-basis match with similarity >= 0.7 that agrees with VEA signature/technique evidence is corroboration; any disagreement with VEA's physical evidence must be recorded in evidenceCorroboration.conflicts, not silently resolved. A "textual" basis (a name with no scored image) is an unverified hypothesis only — do not let it drive a candidate above a low probability on its own.\n`
       : "";
 
     const veaSlim = this.projectVeaForAttribution(vea);
@@ -1565,9 +1612,10 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
 STAGE 1b VISUAL SEARCH RESULT (Gemini ${this.config.stage1bModel || DEFAULT_STAGE1B_MODEL} reverse image search):
   Best match artist : ${vs?.bestMatchArtist || "No match found"}
   Best match title  : ${vs?.bestMatchTitle || "No match found"}
+  Composition match : ${vs?.compositionMatch || "n/a"}
   Confidence        : ${vs?.matchConfidence || "N/A"}
-  Evidence basis    : ${vs?.evidenceBasis || "unspecified"} (visual = confirmed against an actual reference image; textual = only a page's written attribution, not visually confirmed)
-  Visual similarity : ${vs?.visualSimilarityScore != null ? `${(vs.visualSimilarityScore * 100).toFixed(0)}% — ${vs.visualSimilarityRationale}` : "Not scored (image not retrieved)"}
+  Evidence basis    : ${vs?.evidenceBasis || "unspecified"} (visual = a reference image of the work was retrieved and scored; textual = only a name/title, no image scored; none = no match)
+  Visual similarity : ${vs?.visualSimilarityScore != null ? `${(vs.visualSimilarityScore * 100).toFixed(0)}% — ${vs.visualSimilarityRationale}` : (vs?.visualSimilarityRationale || "Not scored (no reference image retrieved)")}
   Best image URL    : ${vs?.bestMatchImageUrl || "None"}
   Other pages       : ${vs?.pagesWithMatchingImages?.slice(0, 5).join(", ") || "None"}
 
