@@ -506,13 +506,19 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
     if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
 
+    // Prompt caching: `tools` and `system` render before `messages`, so a breakpoint on
+    // the system block caches the (static) tool schema + system prompt together. Big win
+    // for batch runs and repeated evaluations against a fixed pool — every lot after the
+    // first reads the schema+prompt from cache (~0.1x) instead of re-sending it. The
+    // per-lot content (image, notes) sits in `messages`, after the breakpoint, so it
+    // never poisons the cache. 5-minute TTL is enough while a batch is actively running.
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
       body: JSON.stringify({
         model: modelName,
         max_tokens: 4096,
-        system: systemInstruction,
+        system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: contentBlocks }],
         tools: [{ name: toolName, description: toolDescription, input_schema: translateSchemaToStandardJsonSchema(inputSchema) }],
         tool_choice: { type: "tool", name: toolName },
@@ -609,7 +615,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         body: JSON.stringify({
           model: modelName,
           max_tokens: maxTokens,
-          system: systemInstruction,
+          // Cache the specialist system prompt (+ injected config). Reused verbatim for
+          // every lot routed to the same specialist config; the web_search tool renders
+          // before it and is cached alongside.
+          system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
           messages,
           tools,
           ...(forceFinal ? { tool_choice: { type: "none" } } : {}),
@@ -797,7 +806,14 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         body: JSON.stringify({
           model: modelName,
           max_tokens: maxTokens,
-          system: systemInstruction,
+          // Cache the triage system prompt (it is large and identical for every lot). Across
+          // a pool run — and across repeated triage-version evaluations against that pool —
+          // this is the single biggest input-token saving: only the first lot writes it,
+          // every lot after reads it at ~0.1x. The query_ackg tool schema (rendered before
+          // `system`) is cached alongside it. The growing tool-loop `messages` sit after the
+          // breakpoint. On the final forced call the extra report tool changes `tools`, so
+          // that one call rewrites — one rewrite per lot, still cheap.
+          system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
           messages,
           tools: forceFinalTool
             ? [...tools, { name: finalToolName, description: "Report the structured attribution triage and routing decision.", input_schema: translateSchemaToStandardJsonSchema(TRIAGE_SCHEMA) }]
