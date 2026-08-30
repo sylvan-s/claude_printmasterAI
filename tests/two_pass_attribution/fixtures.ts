@@ -21,6 +21,7 @@ export function artistEv(o: Partial<ArtistEvidence> = {}): ArtistEvidence {
     kId: "unknown",
     kOeuvreMatchCount: null,
     kSubject: "UNASSESSABLE",
+    ackgWorkAnchor: null,
     ...o,
   };
 }

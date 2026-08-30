@@ -200,6 +200,19 @@ export function evidenceToTwoPassInput(ev: EvidenceAgentOutput, veaHaltRecommend
 
   const titleSrc = (s: string): TitleSource => (s ? { kind: "names", raw: s } : { kind: "silent" });
 
+  // ACKG work-level anchor (ADR-0010 Decision 4a amendment): a catalogued work whose title
+  // matches an observed title AND is attributed to one artist. The agent puts that artist in
+  // kWorkBackPropArtist and the title-match strength in kWorkTitleSim. This VOTES.
+  const anchorArtist = w.kWorkBackPropArtist || "";
+  const ackgWorkAnchor =
+    anchorArtist && w.kWorkTitleSim >= 0
+      ? {
+          artist: anchorArtist,
+          identityKey: identityKeyFor(anchorArtist, dom, domKey),
+          titleSim: w.kWorkTitleSim,
+        }
+      : null;
+
   const imp = ev.impressionEvidence;
   const impressionEvidence = imp?.assessable
     ? {
@@ -229,6 +242,7 @@ export function evidenceToTwoPassInput(ev: EvidenceAgentOutput, veaHaltRecommend
       kOeuvreMatchCount: num(a.kOeuvreMatchCount),
       kSubject,
       kSubjectNote: a.kSubjectNote || "",
+      ackgWorkAnchor,
     },
     workEvidence: {
       titleVea: titleSrc(w.veaTitle),
@@ -304,7 +318,11 @@ export function assembleTriageResult(ev: EvidenceAgentOutput, tp: TwoPassResult)
     ? art.agreementSet.includes("R")
     : null;
   const ackgAgreement: boolean | null =
-    art.kOeuvreMatchCount == null ? null : art.kOeuvreMatchCount >= 1 || art.kId === "true";
+    art.agreementSet.includes("K")
+      ? true
+      : art.kOeuvreMatchCount == null
+        ? null
+        : art.kOeuvreMatchCount >= 1 || art.kId === "true";
 
   const scenario = tp.scenario;
   const partial = {

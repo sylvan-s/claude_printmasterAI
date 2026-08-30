@@ -920,7 +920,7 @@ export const ATTRIBUTION_EVIDENCE_SCHEMA = {
         kWorkTitleSim: { type: Type.NUMBER, description: "Best title similarity 0-1 between the observed title and a catalogued work by the dominant candidate; -1 if not assessed." },
         kWorkTechniqueMatch: { type: Type.STRING, description: '"true" | "false" | "unassessable" — does the catalogued work\'s technique match VEA\'s observed technique? "unassessable" when the ACKG does not carry a per-work technique you can compare.' },
         kWorkDimensionMatch: { type: Type.STRING, description: '"true" | "false" | "UNASSESSABLE" — plate mark (intaglio) or image size, never sheet. UNASSESSABLE when VEA had no scale reference or the two records report different dimension types.' },
-        kWorkBackPropArtist: { type: Type.STRING, description: 'In-image-title mode only: if the observed title is catalogued consistently to ONE artist, name them here (ADR-0010 Decision 6 back-propagation); else "".' },
+        kWorkBackPropArtist: { type: Type.STRING, description: 'If ANY observed title (VEA text, Stage 1b, or appraiser) matches a work the ACKG catalogues to exactly ONE artist, name that artist here (set kWorkTitleSim to the match strength). Votes for the artist when kWorkTitleSim >= 0.8 (ADR-0010 Decision 4a) and drives Decision 6 back-propagation. "" if the title is not in the ACKG, is catalogued to several artists, or no title was observed.' },
       },
       required: [
         "veaTitle", "veaInImageTitleLegible", "reverseImageTitle", "reverseImageTitleSimilarity",

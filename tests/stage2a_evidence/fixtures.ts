@@ -194,6 +194,34 @@ export const reproductionDivergence = evOut({
   },
 });
 
+/** VEA signature name illegible, Stage 1b hit inconsistent — but the ACKG holds the
+ *  Stage-1b title catalogued to exactly one artist. Decision 4a amendment: K votes. */
+export const ackgWorkAnchorPromotes = evOut({
+  artistEvidence: {
+    veaNamesArtist: false,
+    veaArtistName: "",
+    veaAuthorshipSignalLegible: false,
+    veaSignatureConfidence: 0.45,
+    reverseImageNamesArtist: true,
+    reverseImageArtistName: "Rembrandt van Rijn",
+    reverseImageSimilarity: 0.4,
+    reverseImageConsistentWithVea: false,
+    reverseImageConsistencyRationale: "loose composition match only",
+    dominantCandidateName: "Rembrandt van Rijn",
+    dominantCandidateIdentityKey: "http://vocab.getty.edu/ulan/500011051",
+    kId: "true",
+    kOeuvreMatchCount: 240,
+    kOeuvreProvenanceTags: ["auction_history"],
+  },
+  workEvidence: {
+    reverseImageTitle: "The Death of the Virgin",
+    reverseImageTitleSimilarity: 0.9,
+    kWorkQueried: true,
+    kWorkTitleSim: 0.95,
+    kWorkBackPropArtist: "Rembrandt van Rijn",
+  },
+});
+
 /** Stage 1b names a famous artist but the hit is inconsistent with VEA — must not vote. */
 export const stage1bInconsistent = evOut({
   artistEvidence: {

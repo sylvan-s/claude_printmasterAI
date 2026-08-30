@@ -134,7 +134,11 @@ export function titleSimilarity(a: string, b: string): number {
 // ───────────────────────────────────────────────────────────────────────────────
 // PASS 1 — ARTIST
 // ───────────────────────────────────────────────────────────────────────────────
-export type SourceTag = "V" | "R" | "A";
+// V = VEA, R = reverse image search, A = appraiser input. K = ACKG work-level anchor —
+// see ADR-0010 Decision 4a amendment (2026-08-29): an ACKG work whose title matches an
+// observed title AND is catalogued to a single artist is independent enough to VOTE.
+// K_oeuvre population COUNTS still only corroborate (never vote).
+export type SourceTag = "V" | "R" | "A" | "K";
 
 /** One naming source's state. `identityKey` is a ULAN/Wikidata URI when the model
  *  resolved one; otherwise agreement falls back to normalizeName/nameSimilarity. */
@@ -169,6 +173,11 @@ export interface ArtistEvidence {
   kOeuvreMatchCount: number | null; // null = not queried
   kSubject: "TYPICAL" | "OCCASIONAL" | "ATYPICAL" | "UNASSESSABLE";
   kSubjectNote?: string;
+  /** ADR-0010 Decision 4a amendment: the ACKG holds a work whose title matches an observed
+   *  title (V_t / R_t / A_t) AND is catalogued to exactly one artist. This VOTES in the
+   *  artist pass (titleSim >= TAU_TITLE), unlike the K_oeuvre population count. null when
+   *  there is no such work-level artist+title match. */
+  ackgWorkAnchor: { artist: string; identityKey?: string | null; titleSim: number } | null;
 }
 
 export interface ArtistVerdict {
@@ -222,6 +231,19 @@ function eligibleVotes(ev: ArtistEvidence, trace: string[]): { votes: Vote[]; ap
       appraiserHypothesis = ev.appraiser;
       trace.push(`A is a hypothesis — corroborates / breaks ties, but is not a vote`);
     }
+  }
+
+  // K — ACKG work-level anchor (Decision 4a amendment). Only a title match at or above
+  // TAU_TITLE, catalogued to a named artist, is independent enough to count.
+  if (ev.ackgWorkAnchor && ev.ackgWorkAnchor.artist && ev.ackgWorkAnchor.titleSim >= TAU_TITLE) {
+    votes.push({ source: "K", raw: ev.ackgWorkAnchor.artist, identityKey: ev.ackgWorkAnchor.identityKey ?? null });
+    trace.push(
+      `K votes: ACKG holds "${ev.ackgWorkAnchor.artist}" for a title-matched work (titleSim=${ev.ackgWorkAnchor.titleSim.toFixed(2)} >= ${TAU_TITLE})`,
+    );
+  } else if (ev.ackgWorkAnchor) {
+    trace.push(
+      `K dropped: ackgWorkAnchor titleSim=${(ev.ackgWorkAnchor.titleSim ?? 0).toFixed(2)} < ${TAU_TITLE} or no artist — corroboration only`,
+    );
   }
 
   return { votes, appraiserHypothesis };
@@ -358,6 +380,10 @@ export function classifyArtistPass(ev: ArtistEvidence): ArtistVerdict {
       const sim = ev.reverseImageSearch.kind === "names" ? ev.reverseImageSearch.sim ?? 0 : 0;
       if (sim >= SIM_ARTIST_STRONG) v = base("candidate", only.raw, "MEDIUM", "A6", ["singleSourceImageMatch"]);
       else v = base("candidate", only.raw, "LOW", "A7", ["weakImageMatchOnly"]);
+    } else if (only.source === "K") {
+      // ADR-0010 Decision 4a amendment: an ACKG work-level artist+title match, alone,
+      // makes a MEDIUM candidate (never "attributed" without a direct V/R/A signal).
+      v = base("candidate", only.raw, "MEDIUM", "A8K", ["ackgWorkAnchor"]);
     } else {
       // A: only a documented_fact appraiser claim
       v = base("candidate", only.raw, "MEDIUM", "A8", ["appraiserDocumentedOnly"]);

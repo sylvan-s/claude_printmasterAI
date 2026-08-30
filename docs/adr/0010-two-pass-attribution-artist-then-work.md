@@ -2,8 +2,9 @@
 
 **Date:** 2026-08-29
 **Status:** Accepted, implemented behind a config flag; thresholds untuned.
-- The deterministic classifier (Decisions 3, 3b, 5, 5b, 6, 8, 9.1) — `src/appraisal/two_pass_attribution.ts`, `npm run test:two-pass` (59 cases).
-- The Sonnet **Attribution Evidence Agent** (Decision 9.2) — `ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT` / `ATTRIBUTION_EVIDENCE_SCHEMA` (one Claude call + the `query_ackg` loop, fills observation cells only), plus `src/appraisal/stage2a_evidence.ts` (`evidenceToTwoPassInput` → `classifyTwoPass` → `assembleTriageResult`) and `FourStageAppraiser.runStage2aEvidence`. `npm run test:stage2a-evidence` (16 cases).
+- The deterministic classifier (Decisions 3, 3b, 4a-amendment, 5, 5b, 6, 8, 9.1) — `src/appraisal/two_pass_attribution.ts`, `npm run test:two-pass` (63 cases).
+- The Sonnet **Attribution Evidence Agent** (Decision 9.2) — `ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT` / `ATTRIBUTION_EVIDENCE_SCHEMA` (one Claude call + the `query_ackg` loop, fills observation cells only), plus `src/appraisal/stage2a_evidence.ts` (`evidenceToTwoPassInput` → `classifyTwoPass` → `assembleTriageResult`) and `FourStageAppraiser.runStage2aEvidence`. `npm run test:stage2a-evidence` (17 cases).
+- **First backtest** (`npm run test:pool:triage -- --evidence`, 10 lots, 2026-08-29) drove three fixes: the `misattributionRisk` criterion no longer fires on a weak/low-similarity Stage 1b hit (the reworked Stage 1b retrieves the *closest* work and scores it honestly — that is normal, not a misattribution signal); an unscaled VEA dimension is `UNASSESSABLE` and never a `conflicts[]` entry (dimensions come from Stage 1c); and the Decision 4a amendment above (ACKG work-level artist+title match votes).
 - **Opt-in:** `config.stage2aMode === "evidence"` (Claude only — needs the tool loop; Gemini falls back to classic triage). Config `claude-4stage-evidence`. Classic `runStage2aTriage` / `classifyTriageOutcome` are otherwise unchanged. Exercise against the fixture with `npm run test:pool:triage -- --evidence`.
 - Every numeric threshold is still a named placeholder flagged for tuning against `tests/backtest/` before production trust (see *Not addressed*). `K_work` per-work technique/dimension comparison (Decision 9.1 embeddings) is not built — the agent reports `unassessable` rather than guessing, so Pass 2 lands on T4 not T3 in the common case.
 
@@ -75,7 +76,8 @@ Three sources can **name** an artist or a title. They vote.
 | `R` | Reverse image search (Stage 1b) | `NAMES(x, sim)` \| `NO_MATCH` |
 | `A` | Appraiser input (Stage 1c) `claimedAttribution` | `NAMES(x, trust)`, `trust ∈ {documented_fact, hypothesis}` \| `ABSENT` |
 
-One layer **corroborates** — it never votes (Decision 4a):
+The ACKG **corroborates** — its *population counts* never vote (Decision 4a), but see the
+Decision 4a amendment below for the one work-level signal that does:
 
 | Sym | Query | Returns |
 |---|---|---|
@@ -83,6 +85,19 @@ One layer **corroborates** — it never votes (Decision 4a):
 | `K_oeuvre(x, {technique, paper, period})` | count of works by `x` in the ACKG whose technique + paper + period overlap the VEA reading | `matchCount`, `provenanceTags[]` |
 | `K_subject(x, VEA.subjectElements[])` | works by `x` in the ACKG depicting each observed subject, as a share of `x`'s catalogued output | `TYPICAL` \| `OCCASIONAL` \| `ATYPICAL` \| `UNASSESSABLE` — **annotation only, never a vote or a confidence input** (Decision 3b) |
 | `K_work(x, t, {technique, dims})` | works by `x` whose title fuzzy-matches `t` | `titleSim`, `techniqueMatch`, `dimensionMatch ∈ {true, false, UNASSESSABLE}` |
+
+**Decision 4a amendment (2026-08-29, from the first evidence-agent backtest).** A `K_work`
+result where an *observed title* (from `V_t` / `R_t` / `A_t`) matches a work the ACKG
+catalogues to **exactly one artist** at `titleSim ≥ TAU_TITLE` is a fourth voting source,
+`K`. Rationale: unlike a population count ("Rembrandt has 240 etchings"), a work-level
+artist+title match is a specific, independently-verifiable fact — the ACKG confirms both
+*that titled work exists* and *who made it* — and in the backtest it was the difference
+between routing a legible-title Rembrandt to `A11 → movement only` and to a real candidate.
+Guardrails: `K` alone (n=1) tops out at `candidate / MEDIUM` (row **A8K**) — never
+`attributed` without a direct V/R/A signal; `K` naming a different identity than a voting
+source is a normal `A10` conflict; the title-match strength gate (`TAU_TITLE`) is the same
+one `K_work` already owes tuning on. `K_id` / `K_oeuvre` / `K_subject` are unchanged —
+still corroboration only.
 
 **Agreement** is identity-level, not string-level: two sources agree iff they resolve to the
 same artist identity — ULAN/Wikidata ID match first, else normalized-name match ≥ `TAU_NAME`.
@@ -102,7 +117,8 @@ matching a reproduction of the work) all produce a confident, high-`sim` hypothe
 
 ### 3. Artist pass — decision table
 
-`agree(S) → x*`, `n = |agree(S)|`. Evaluate top to bottom; first match wins.
+`agree(S) → x*`, `n = |agree(S)|`, `S ⊆ {V, R, A, K}` (Decision 4a amendment adds `K`).
+Evaluate top to bottom; first match wins.
 
 | # | Condition | Verdict | Confidence | Flag |
 |---|---|---|---|---|
@@ -114,9 +130,12 @@ matching a reproduction of the work) all produce a confident, high-`sim` hypothe
 | A6 | `n = 1` = `R`, `sim ≥ SIM_ARTIST_STRONG` | CANDIDATE `x*` | MEDIUM | `singleSourceImageMatch` |
 | A7 | `n = 1` = `R`, `SIM_ARTIST_VOTE ≤ sim < SIM_ARTIST_STRONG` | CANDIDATE `x*` | LOW | `weakImageMatchOnly` |
 | A8 | `n = 1` = `A`, `documented_fact` | CANDIDATE `x*` | MEDIUM | `appraiserDocumentedOnly` |
+| A8K | `n = 1` = `K` (ACKG work-level artist+title match, `titleSim ≥ TAU_TITLE`) | CANDIDATE `x*` | MEDIUM | `ackgWorkAnchor` |
 | A9 | `n = 1` = `A`, `hypothesis` | not attributed | LOW | `appraiserHypothesisUncorroborated` |
 | A10 | ≥ 2 sources name **different** identities, none dominant | not attributed | — | `attributionConflict` → `conflicts[]` |
 | A11 | all `SILENT` / `ABSENT` / `NO_MATCH` | not attributed → tradition-level grouping | — | — |
+
+`K` also participates in `n = 2` / `n = 3` (rows A1–A4) like any other vote.
 
 Rules layered on top:
 

@@ -122,6 +122,7 @@ function reportToTwoPassInput(report: any): { input: TwoPassInput; notes: string
       kId,
       kOeuvreMatchCount: kOeuvre,
       kSubject: "UNASSESSABLE",
+      ackgWorkAnchor: null,
     },
     workEvidence: {
       titleVea,

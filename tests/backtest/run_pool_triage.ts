@@ -115,6 +115,7 @@ function toTwoPassInput(vea: any, vs: any, aia: any, triage: TriageResult): { in
       kId,
       kOeuvreMatchCount: kOeuvre,
       kSubject: "UNASSESSABLE",
+      ackgWorkAnchor: null,
     },
     workEvidence: {
       titleVea: veaTitle ? { kind: "names", raw: veaTitle } : { kind: "silent" },

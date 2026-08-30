@@ -110,6 +110,17 @@ test("photomechanical technique where an original is expected → reproduction �
   assert.equal(triage.routingDecision.tier, SCENARIO_TO_TIER[Scenario.ElevatedAuthenticationRisk]);
 });
 
+test("ACKG work-level artist+title match promotes an otherwise-unattributed lot → candidate (A8K)", () => {
+  const inp = evidenceToTwoPassInput(f.ackgWorkAnchorPromotes, false);
+  assert.equal(inp.artistEvidence.ackgWorkAnchor?.artist, "Rembrandt van Rijn");
+  assert.equal(inp.artistEvidence.ackgWorkAnchor?.identityKey, "http://vocab.getty.edu/ulan/500011051");
+  const { twoPass } = runEvidenceTree(f.ackgWorkAnchorPromotes, false);
+  assert.equal(twoPass.artistAttribution.verdict, "candidate");
+  assert.equal(twoPass.artistAttribution.evidenceBasis, "A8K");
+  assert.equal(twoPass.artistAttribution.artistName, "Rembrandt van Rijn");
+  assert.equal(twoPass.pass2Ran, true);
+});
+
 test("inconsistent Stage 1b hit does not become a vote → not attributed", () => {
   const { twoPass } = runEvidenceTree(f.stage1bInconsistent, false);
   assert.equal(twoPass.artistAttribution.verdict, "not_attributed");

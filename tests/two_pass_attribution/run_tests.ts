@@ -185,6 +185,55 @@ test("Tate reversed-name form still agrees (n=3 -> A1)", () => {
   assert.equal(v.evidenceBasis, "A1");
 });
 
+// ── K vote — ADR-0010 Decision 4a amendment ──────────────────────────────────
+
+test("K alone (ACKG work-level artist+title match) lifts NOT ATTRIBUTED -> CANDIDATE MEDIUM (A8K)", () => {
+  const v = classifyArtistPass(
+    f.artistEv({ ackgWorkAnchor: { artist: "Rembrandt van Rijn", titleSim: 0.95 } }),
+  );
+  assert.equal(v.evidenceBasis, "A8K");
+  assert.equal(v.verdict, "candidate");
+  assert.equal(v.confidence, "MEDIUM");
+  assert.equal(v.artistName, "Rembrandt van Rijn");
+  assert.deepEqual(v.agreementSet, ["K"]);
+});
+
+test("K below TAU_TITLE does not vote (stays NOT ATTRIBUTED)", () => {
+  const v = classifyArtistPass(
+    f.artistEv({ ackgWorkAnchor: { artist: "Rembrandt van Rijn", titleSim: 0.5 } }),
+  );
+  assert.equal(v.evidenceBasis, "A11");
+  assert.equal(v.verdict, "not_attributed");
+});
+
+test("K + a consistent single VEA signature -> n=2 (A2/A3/A4 depending on K_oeuvre)", () => {
+  const v = classifyArtistPass(
+    f.artistEv({
+      vea: { kind: "names", raw: "Rembrandt van Rijn" },
+      veaAuthorshipSignalLegible: true,
+      veaSignatureConfidence: 0.8,
+      kOeuvreMatchCount: 240,
+      ackgWorkAnchor: { artist: "Rembrandt van Rijn", titleSim: 0.95 },
+    }),
+  );
+  assert.equal(v.verdict, "attributed");
+  assert.ok(["A2", "A3", "A4"].includes(v.evidenceBasis));
+  assert.ok(v.agreementSet.includes("K") && v.agreementSet.includes("V"));
+});
+
+test("K naming a different identity than VEA -> CONFLICT (A10)", () => {
+  const v = classifyArtistPass(
+    f.artistEv({
+      vea: { kind: "names", raw: "Joan Miró" },
+      veaAuthorshipSignalLegible: true,
+      veaSignatureConfidence: 0.8,
+      ackgWorkAnchor: { artist: "Marc Chagall", titleSim: 0.9 },
+    }),
+  );
+  assert.equal(v.verdict, "conflict");
+  assert.equal(v.evidenceBasis, "A10");
+});
+
 // ── GATE ─────────────────────────────────────────────────────────────────────
 console.log("\nPass-2 gate\n");
 
