@@ -435,19 +435,24 @@ Code takes it from there.
   `TAU_TITLE` / `TAU_TITLE_ANCHOR` are calibrated from ~10 pairs, not the backtest.
   romaji↔English does not bridge (ukiyo-e). Source-vs-source title clustering
   (`TAU_TITLE_AGREE`) is still the token overlap-coefficient.
-- **Artist-name canonical resolution — ROADMAP.** Decision 2 wants identity-level agreement
-  ("ULAN/Wikidata ID match first, else normalized-name match ≥ `TAU_NAME`"), but only ~18% of
-  ACKG `Artist` nodes carry a ULAN id (907 / 5,056) and the pipeline has no resolver, so the
-  V/R/A/K agreement check is string-based for ~80% of artists. Embeddings are the *wrong* tool
-  here — names are named entities with little semantic content, and ULAN already stores every
-  variant form (incl. non-Latin scripts) deterministically. The right build: a
-  `resolve_artist(observedName) → { canonicalName, ulanUrl, ackgArtistId, confidence }` step
-  = Getty ULAN reconciliation (`services.getty.edu/vocab/reconcile/`) + Jaro-Winkler /
-  token-overlap against the ACKG `Artist.name` list + a small curated transliteration table
-  for recurring ukiyo-e names. This is the "greenfield half" of `resolve_artist_identity.py`.
-  A one-time ULAN backfill over the 5,056 `Artist` nodes would also fill most missing ids and
-  surface the dedup/noise problems ("George Braque" vs "Georges Braque",
-  "Henry Moore OM CH FBA", mangled multi-artist strings) for the ACKG Curator (ADR-0008).
+- **Artist-name canonical resolution — TOOLING BUILT, full backfill not yet run.** Decision 2
+  wants identity-level agreement ("ULAN/Wikidata ID match first, else normalized-name match ≥
+  `TAU_NAME`"), but only ~18% of ACKG `Artist` nodes carried a ULAN id (907 / 5,056).
+  `knowledge_graph/resolve_artist_identity.py` now does **Wikidata-first** resolution
+  (`wbsearchentities` + P31=human + P106 in an artist-occupation set — typo-tolerant, reliable
+  where Getty's endpoint is not, and it carries the ULAN id via P245 so one hit yields both
+  authority ids) with an ULAN `luc:term` fill, a Jaro-Winkler + fuzzy per-token name score,
+  and comma-separated mid-name honorific stripping. `backfill_artist_ulan.py` writes
+  `ulanUrl` / `wikidataUrl` only on a `high_confidence_auto` result (one dominant match ≥ 0.92,
+  runner-up ≥ 0.15 lower), never auto-merges, and logs a ULAN-already-on-another-node as a
+  merge candidate (the Artist uniqueness constraint — the `met_ingest` lesson). `--dedup-scan`
+  groups Artist nodes by normalized name — the first scan found **143 collision groups /
+  307 nodes**, incl. Picasso (3 nodes, 612 works), Dalí (2, 773), Hirst (2, 635), Miró (3,
+  289) fragmented with most missing an id — a report for the ACKG Curator (ADR-0008). Dry-run
+  auto-rate ~65% on the ≥5-works tranche. Not embeddings — names are named entities. Still
+  open: run the full `--min-works 2` backfill (~1,970 artists, ~2-3 h); a curated ukiyo-e
+  transliteration table; bio-keyword disambiguation for the famous-name collisions
+  (Moore / Piper / Miró, which each also need a curator merge).
 - **VEA free-text technique/paper/subject — mostly handled; one small reconciliation item.**
   Technique and paper are absorbed by the ingest-time crosswalk
   (`knowledge_graph/crosswalk_matching.py` — priority-ordered keyword lists aligned to VEA's
