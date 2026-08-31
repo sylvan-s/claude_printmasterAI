@@ -430,9 +430,34 @@ Code takes it from there.
 
 - The actual constant values — deferred to a `tests/backtest/` pass against the
   known-attribution corpus with these rules in place, exactly as ADR-0006 deferred its own.
-- The fuzzy-match implementation for names and titles (library, algorithm, series-qualifier
-  parsing) — Decision 9.1 commits to embeddings over an LLM call, but not to a specific model
-  or index.
+- Titles: the embedding matcher is built (Part B — `gemini-embedding-001` on
+  `ConceptualWork.name`, `scoreWorkTitleMatches`). The `titleSimFromCosine` floor/ceiling and
+  `TAU_TITLE` / `TAU_TITLE_ANCHOR` are calibrated from ~10 pairs, not the backtest.
+  romaji↔English does not bridge (ukiyo-e). Source-vs-source title clustering
+  (`TAU_TITLE_AGREE`) is still the token overlap-coefficient.
+- **Artist-name canonical resolution — ROADMAP.** Decision 2 wants identity-level agreement
+  ("ULAN/Wikidata ID match first, else normalized-name match ≥ `TAU_NAME`"), but only ~18% of
+  ACKG `Artist` nodes carry a ULAN id (907 / 5,056) and the pipeline has no resolver, so the
+  V/R/A/K agreement check is string-based for ~80% of artists. Embeddings are the *wrong* tool
+  here — names are named entities with little semantic content, and ULAN already stores every
+  variant form (incl. non-Latin scripts) deterministically. The right build: a
+  `resolve_artist(observedName) → { canonicalName, ulanUrl, ackgArtistId, confidence }` step
+  = Getty ULAN reconciliation (`services.getty.edu/vocab/reconcile/`) + Jaro-Winkler /
+  token-overlap against the ACKG `Artist.name` list + a small curated transliteration table
+  for recurring ukiyo-e names. This is the "greenfield half" of `resolve_artist_identity.py`.
+  A one-time ULAN backfill over the 5,056 `Artist` nodes would also fill most missing ids and
+  surface the dedup/noise problems ("George Braque" vs "Georges Braque",
+  "Henry Moore OM CH FBA", mangled multi-artist strings) for the ACKG Curator (ADR-0008).
+- **VEA free-text technique/paper/subject — mostly handled; one small reconciliation item.**
+  Technique and paper are absorbed by the ingest-time crosswalk
+  (`knowledge_graph/crosswalk_matching.py` — priority-ordered keyword lists aligned to VEA's
+  vocabulary, e.g. `["screenprint", "serigraphy", "silk screen", …] → "Screenprint / Serigraphy"`)
+  and by this ADR's own `TECH_FAMILY_KEYWORDS` regex in `two_pass_attribution.ts` for the
+  impression comparison. **Two keyword tables that can drift** — worth reconciling to one
+  source of truth and exposing it to the TS query path so the agent's `query_ackg` `technique`
+  param is normalized before the `CONTAINS` match. Subject (`composition.subjectMatter`) is
+  genuinely ungrounded (no AAT/Iconclass backing — `resolve_vea_composition.py` notes this),
+  but low-stakes: K_subject is annotation-only (Decision 3b), it never votes.
 - The exact Stage 2a model tier — Decision 9 commits to *one* call at Sonnet-class now, with
   the `stage2aModel` config field kept; whether Haiku is sufficient for the residual
   judgement after ADR-0006/0009/0010 codification is a backtest question, not decided here.
