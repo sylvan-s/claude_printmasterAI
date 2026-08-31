@@ -36,8 +36,9 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches } from "./knowledge_graph/index.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
+import { techniqueFamily } from "./two_pass_attribution";
 import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../shared/text_extraction";
 
 // Resolved from the process working directory, not import.meta.url / __dirname:
@@ -852,8 +853,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       type: "object" as const,
       properties: {
         artist: { type: "string" as const, description: "Artist name, substring — strongly recommended." },
-        workTitle: { type: "string" as const, description: "Distinctive title fragment, e.g. \"Death of the Virgin\", \"Wu Zetian\", \"Le Taureau\"." },
-        technique: { type: "string" as const, description: "Optional technique narrowing." },
+        workTitle: { type: "string" as const, description: "Distinctive title fragment for the substring pre-filter, e.g. \"Death of the Virgin\", \"Wu Zetian\", \"Le Taureau\". Keep it short." },
+        observedTitle: { type: "string" as const, description: "The FULL observed title as best you have it (from VEA text / Stage 1b / the appraiser). Used for an embedding similarity rank — the result reports a 'computed title similarity' per work; transcribe the best one into kWorkTitleSim." },
+        observedTechnique: { type: "string" as const, description: "VEA's observed printing technique, e.g. \"Etching\", \"Lithograph\", \"Screenprint\". Used to break ties between same-titled works of different media." },
+        technique: { type: "string" as const, description: "Optional hard technique filter on the returned works." },
         periodStartYear: { type: "integer" as const, description: "Optional inclusive lower bound on creation year." },
         periodEndYear: { type: "integer" as const, description: "Optional inclusive upper bound on creation year." },
       },
@@ -890,11 +893,15 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     }
     const dl = (label: string, ds: { w: number; h: number }[]) =>
       ds.length ? `${label}=${[...new Set(ds.map((d) => `${d.w}x${d.h}mm`))].join(", ")}` : "";
-    const lines = [`${works.length} catalogued row(s) (merge near-identical titles):`];
+    const scored = works.some((w) => w.titleSim != null);
+    const lines = [
+      `${works.length} catalogued row(s)${scored ? ", ranked by computed title similarity (merge near-identical titles)" : " (merge near-identical titles)"}:`,
+    ];
     for (const w of works) {
       const dims = [dl("plate", w.plateDimsMm), dl("image", w.imageDimsMm), dl("sheet", w.sheetDimsMm)].filter(Boolean).join("  ");
       lines.push(
         `\n"${w.workTitle}" — ${w.artistName}${w.dateLabel ? ` (${w.dateLabel})` : ""} [${w.impressionCount} impr., ${w.provenanceLayers.join("+") || "?"}]` +
+          (w.titleSim != null ? `\n  computed title similarity: ${w.titleSim.toFixed(2)} (${w.titleSimBasis})` : "") +
           `\n  techniques: ${w.techniques.join(", ") || "—"}` +
           (w.rawMediums.length ? `\n  media: ${w.rawMediums.join(" | ")}` : "") +
           (dims ? `\n  dims: ${dims}` : "\n  dims: — (none catalogued)") +
@@ -990,9 +997,23 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           let content: string;
           try {
             if (b.name === "query_ackg_work") {
-              const works = await queryAckgWorks(b.input || {});
+              const inp = b.input || {};
+              let works = await queryAckgWorks(inp);
+              if (works.length === 0 && inp.workTitle && inp.artist) {
+                works = await queryAckgWorks({ ...inp, workTitle: undefined }); // retry: drop the substring pre-filter
+              }
+              const observed = inp.observedTitle || inp.workTitle;
+              if (observed && works.length) {
+                const obsFam = inp.observedTechnique ? techniqueFamily(inp.observedTechnique) : null;
+                works = await scoreWorkTitleMatches(observed, works, {
+                  techniqueIncompatible: obsFam
+                    ? (w) => w.techniques.length > 0 && !w.techniques.some((t) => techniqueFamily(t) === obsFam)
+                    : undefined,
+                });
+              }
               content = this.formatAckgWorksForClaude(works);
-              console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${works.length} work row(s)${works.length ? ` — ${[...new Set(works.map((w) => w.workTitle))].slice(0, 3).join(" | ")}` : ""}`);
+              const best = works[0];
+              console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${works.length} work row(s)${best ? ` — best: "${best.workTitle}" titleSim=${best.titleSim ?? "n/a"}` : ""}`);
             } else {
               const result = await queryAckg(b.input || {});
               content = this.formatAckgResultForClaude(result);

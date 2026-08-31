@@ -1,11 +1,12 @@
 /**
- * Unit tests for src/appraisal/knowledge_graph/dimension_parse.ts.
- * No Neo4j, no network. Plain node:assert via tsx.
+ * Unit tests for the ACKG parsing / normalization helpers (no Neo4j, no network).
  *
  * Run: npm run test:kg-parse
  */
 import assert from "node:assert/strict";
 import { parseAckgDimMm } from "../../src/appraisal/knowledge_graph/dimension_parse";
+import { normalizeTitleForEmbedding, isLowInformationTitle } from "../../src/appraisal/knowledge_graph/title_normalize";
+import { titleSimFromCosine, COSINE_FLOOR, COSINE_CEIL } from "../../src/appraisal/knowledge_graph/embed_text";
 
 let passed = 0;
 let failed = 0;
@@ -57,6 +58,53 @@ test("null / empty / junk -> null", () => {
   assert.equal(parseAckgDimMm(null), null);
   assert.equal(parseAckgDimMm(""), null);
   assert.equal(parseAckgDimMm("dimensions not recorded"), null);
+});
+
+// ── title normalization ─────────────────────────────────────────────────────
+
+test("strips a trailing catalogue-raisonné ref", () => {
+  assert.equal(normalizeTitleForEmbedding("Le Taureau (Bloch 330, Baer 377/II/B/a)"), "le taureau");
+  assert.equal(normalizeTitleForEmbedding("Heath with Juniper (Herdman 5202)"), "heath with juniper");
+  assert.equal(normalizeTitleForEmbedding("Académie des Beaux Arts (Field 75-7M&L 514a)"), "académie des beaux arts");
+});
+
+test("strips a trailing year and a leading list ordinal", () => {
+  assert.equal(normalizeTitleForEmbedding("A Dangerous Idea (Box set), 2019"), "a dangerous idea (box set)");
+  assert.equal(normalizeTitleForEmbedding("4. White Horizontal, Black Verticals"), "white horizontal, black verticals");
+});
+
+test("keeps a leading fraction (not a list ordinal)", () => {
+  assert.equal(normalizeTitleForEmbedding("1/4 Black Diagonal"), "1/4 black diagonal");
+});
+
+test("keeps series suffixes (the embedding tolerates them)", () => {
+  assert.equal(
+    normalizeTitleForEmbedding("Nur Jahan. H10-2, from The Empresses"),
+    "nur jahan. h10-2, from the empresses",
+  );
+});
+
+test("strips wrapping smart quotes; blank input -> empty string, not a crash", () => {
+  assert.equal(normalizeTitleForEmbedding("“The Great Wave”"), "the great wave");
+  assert.equal(normalizeTitleForEmbedding("   "), "");
+});
+
+test("isLowInformationTitle flags Untitled / bare composition", () => {
+  assert.equal(isLowInformationTitle("Untitled"), true);
+  assert.equal(isLowInformationTitle("Untitled composition"), true);
+  assert.equal(isLowInformationTitle("Sans titre"), true);
+  assert.equal(isLowInformationTitle("The Great Wave off Kanagawa"), false);
+});
+
+// ── cosine rescale ──────────────────────────────────────────────────────────
+
+test("titleSimFromCosine maps the empirical band to 0..1", () => {
+  assert.equal(titleSimFromCosine(COSINE_FLOOR), 0);
+  assert.equal(titleSimFromCosine(COSINE_CEIL), 1);
+  assert.ok(titleSimFromCosine(0.6) === 0); // clamped
+  assert.ok(titleSimFromCosine(0.99) === 1); // clamped
+  const mid = titleSimFromCosine((COSINE_FLOOR + COSINE_CEIL) / 2);
+  assert.ok(Math.abs(mid - 0.5) < 1e-9);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

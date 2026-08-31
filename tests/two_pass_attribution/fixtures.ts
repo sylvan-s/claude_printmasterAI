@@ -268,13 +268,7 @@ export const t1_allTitlesAgree = workEv({
 export const t2_twoAgreeKworkFullMatch = workEv({
   titleVea: { kind: "names", raw: "Bacchante au tambourin" },
   titleAppraiser: { kind: "names", raw: "Bacchante au tambourin, Suite Vollard" },
-  kWork: { titleSim: 0.95, techniqueMatch: true, dimensionMatch: "true" },
-});
-
-export const t3_twoAgreeTechniqueDiverges = workEv({
-  titleVea: { kind: "names", raw: "La Minotauromachie" },
-  titleAppraiser: { kind: "names", raw: "La Minotauromachie" },
-  kWork: { titleSim: 0.9, techniqueMatch: false, dimensionMatch: "false" },
+  kWork: { titleSim: 0.95, matchedWorkTitle: "Bacchante au tambourin", backPropArtist: "Pablo Picasso" },
 });
 
 export const t4_twoAgreeNoKwork = workEv({
@@ -283,15 +277,22 @@ export const t4_twoAgreeNoKwork = workEv({
   kWork: null,
 });
 
-export const t4_twoAgreeDimUnassessable = workEv({
+export const t4_twoAgreeWeakKwork = workEv({
   titleVea: { kind: "names", raw: "Farm at Watendlath" },
   titleAppraiser: { kind: "names", raw: "Farm at Watendlath" },
-  kWork: { titleSim: 0.92, techniqueMatch: true, dimensionMatch: "UNASSESSABLE" },
+  kWork: { titleSim: 0.55, matchedWorkTitle: "A Farm in Cumbria" },
 });
 
 export const t5_singleTitleSource = workEv({
   titleVea: { kind: "names", raw: "Untitled Abstract" },
-  kWork: { titleSim: 0.4, techniqueMatch: true, dimensionMatch: "true" },
+  kWork: { titleSim: 0.4, matchedWorkTitle: "Abstraction No. 3" },
+});
+
+// n=0 (sources conflict), but a strong ACKG embedding match anchors the work — T8K
+export const t8k_kworkAnchorNoConsensus = workEv({
+  titleVea: { kind: "names", raw: "Wu Zetian" },
+  titleReverseImageSearch: { kind: "names", raw: "Nur Jahan H10-2", sim: 0.9 },
+  kWork: { titleSim: 0.94, matchedWorkTitle: "H10-1 Wu Zetian, from The Empresses", backPropArtist: "Damien Hirst" },
 });
 
 export const t6_titlesConflict = workEv({
@@ -315,8 +316,7 @@ export const backProp_workIdentifiesArtist = twoPass({
     titleReverseImageSearch: { kind: "names", raw: "Fine Wind Clear Morning, 36 Views of Mount Fuji", sim: 0.9 },
     kWork: {
       titleSim: 0.95,
-      techniqueMatch: true,
-      dimensionMatch: "true",
+      matchedWorkTitle: "Fine Wind, Clear Morning (Gaifū kaisei)",
       backPropArtist: "Katsushika Hokusai",
     },
   }),
@@ -395,7 +395,7 @@ export const e2e_confirmedClean = twoPass({
 
 export const e2e_reproductionRoutesToScenario2 = twoPass({
   artistEvidence: a2_twoAgreeAckgSupport,
-  workEvidence: t3_twoAgreeTechniqueDiverges,
+  workEvidence: t2_twoAgreeKworkFullMatch,
   impressionEvidence: imp_reproduction,
   traditionConfidence: 0.7,
 });

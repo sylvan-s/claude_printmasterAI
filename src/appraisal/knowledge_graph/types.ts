@@ -69,6 +69,11 @@ export interface AckgWorkMatch {
   impressionCount: number;
   /** "institutional" and/or "auction_history". */
   provenanceLayers: AckgProvenanceTag[];
+  /** gemini-embedding-001 vector for the (normalized) title — null until backfilled. */
+  titleEmbedding: number[] | null;
+  /** Populated by scoreWorkTitleMatches: rescaled 0..1 similarity to the observed title. */
+  titleSim?: number;
+  titleSimBasis?: "embedding" | "token" | "none";
 }
 
 export interface AckgCandidate {

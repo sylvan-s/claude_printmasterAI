@@ -48,8 +48,7 @@ export function evOut(o: DeepPartial<EvidenceAgentOutput> = {}): EvidenceAgentOu
       appraiserTitle: "",
       kWorkQueried: false,
       kWorkTitleSim: -1,
-      kWorkTechniqueMatch: "unassessable",
-      kWorkDimensionMatch: "UNASSESSABLE",
+      kWorkMatchedTitle: "",
       kWorkBackPropArtist: "",
     },
     impressionEvidence: {
@@ -124,8 +123,8 @@ export const confirmedClean = evOut({
     appraiserTitle: "Le Taureau",
     kWorkQueried: true,
     kWorkTitleSim: 0.95,
-    kWorkTechniqueMatch: "true",
-    kWorkDimensionMatch: "true",
+    kWorkMatchedTitle: "Le Taureau (Bloch 330)",
+    kWorkBackPropArtist: "Pablo Picasso",
   },
   impressionEvidence: {
     assessable: true,

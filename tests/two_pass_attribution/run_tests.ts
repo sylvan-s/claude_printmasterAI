@@ -267,16 +267,9 @@ test("T1 — all three title sources agree -> IDENTIFIED HIGH", () => {
   assert.equal(v.confidence, "HIGH");
 });
 
-test("T2 — 2 agree + K_work full match -> IDENTIFIED HIGH", () => {
+test("T2 — 2 agree + K_work title match -> IDENTIFIED HIGH", () => {
   const v = classifyWorkPass(f.t2_twoAgreeKworkFullMatch);
   assert.equal(v.evidenceBasis, "T2");
-  assert.equal(v.confidence, "HIGH");
-});
-
-test("T3 — 2 agree + K_work title match but technique/dimension diverges -> IDENTIFIED HIGH + T3", () => {
-  const v = classifyWorkPass(f.t3_twoAgreeTechniqueDiverges);
-  assert.equal(v.evidenceBasis, "T3");
-  assert.equal(v.verdict, "identified");
   assert.equal(v.confidence, "HIGH");
 });
 
@@ -286,8 +279,8 @@ test("T4 — 2 agree, no K_work hit -> IDENTIFIED MEDIUM", () => {
   assert.equal(v.confidence, "MEDIUM");
 });
 
-test("T4 — 2 agree, dimensionMatch UNASSESSABLE -> IDENTIFIED MEDIUM", () => {
-  const v = classifyWorkPass(f.t4_twoAgreeDimUnassessable);
+test("T4 — 2 agree, weak K_work titleSim -> IDENTIFIED MEDIUM (not T2)", () => {
+  const v = classifyWorkPass(f.t4_twoAgreeWeakKwork);
   assert.equal(v.evidenceBasis, "T4");
 });
 
@@ -295,6 +288,14 @@ test("T5 — single title source -> CANDIDATE", () => {
   const v = classifyWorkPass(f.t5_singleTitleSource);
   assert.equal(v.evidenceBasis, "T5");
   assert.equal(v.verdict, "candidate");
+});
+
+test("T8K — no source consensus but a strong K_work embedding match -> IDENTIFIED MEDIUM", () => {
+  const v = classifyWorkPass(f.t8k_kworkAnchorNoConsensus);
+  assert.equal(v.evidenceBasis, "T8K");
+  assert.equal(v.verdict, "identified");
+  assert.equal(v.confidence, "MEDIUM");
+  assert.equal(v.conceptualWorkTitle, "H10-1 Wu Zetian, from The Empresses");
 });
 
 test("T6 — title sources conflict -> CONFLICT", () => {
@@ -467,7 +468,7 @@ test("attributed HIGH but only A3 (not A1/A2) + work identified HIGH -> Scenario
 test("medium_divergence -> Scenario 2 (elevated authentication risk), checked before a clean match", () => {
   const s = mapTwoPassToScenario({
     artist: classifyArtistPass(f.a2_twoAgreeAckgSupport),
-    work: classifyWorkPass(f.t3_twoAgreeTechniqueDiverges),
+    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch),
     impression: classifyImpression(f.imp_mediumDivergence),
     traditionConfidence: 0.8,
   });

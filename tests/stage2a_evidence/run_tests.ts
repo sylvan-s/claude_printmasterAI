@@ -66,16 +66,17 @@ test("appraiser trust maps documented_fact vs hypothesis", () => {
   assert.equal((evidenceToTwoPassInput(hyp, false).artistEvidence.appraiser as any).trust, "hypothesis");
 });
 
-test("kWork is null when neither technique nor dimension nor titleSim was assessed", () => {
+test("kWork is null when query_ackg_work was not called", () => {
   const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false);
   assert.equal(inp.workEvidence.kWork, null);
 });
 
-test("kWork is passed through when technique/dimension were assessed", () => {
+test("kWork carries the embedding titleSim + matched title when query_ackg_work was called", () => {
   const inp = evidenceToTwoPassInput(f.confirmedClean, false);
   assert.ok(inp.workEvidence.kWork);
-  assert.equal(inp.workEvidence.kWork!.techniqueMatch, true);
-  assert.equal(inp.workEvidence.kWork!.dimensionMatch, "true");
+  assert.equal(inp.workEvidence.kWork!.titleSim, 0.95);
+  assert.equal(inp.workEvidence.kWork!.matchedWorkTitle, "Le Taureau (Bloch 330)");
+  assert.equal(inp.workEvidence.kWork!.backPropArtist, "Pablo Picasso");
 });
 
 test("impressionEvidence is null when the agent marked it not assessable", () => {

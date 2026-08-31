@@ -19,6 +19,8 @@ import neo4j from "neo4j-driver";
 import { getDriver, getDatabase } from "./client.js";
 import type { AckgQueryParams, AckgCandidate, AckgWorkQueryParams, AckgWorkMatch, AckgProvenanceTag } from "./types.js";
 import { parseAckgDimMm, type DimMm } from "./dimension_parse.js";
+import { normalizeTitleForEmbedding } from "./title_normalize.js";
+import { embedText, cosine, titleSimFromCosine } from "./embed_text.js";
 
 const QUERY = `
 MATCH (a:Artist)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)
@@ -109,7 +111,7 @@ WHERE ($technique IS NULL OR any(x IN techniques WHERE toLower(x) CONTAINS toLow
 RETURN cw.name AS workTitle, a.name AS artistName, a.ulanUrl AS artistUlanUrl,
        cw.dateCreated_displayLabel AS dateLabel,
        techniques, rawMediums, plateDims, imageDims, sheetDims, editionSizes, sourceTypes,
-       impressionCount
+       impressionCount, cw.titleEmbedding AS titleEmbedding
 ORDER BY impressionCount DESC
 LIMIT $limit
 `;
@@ -156,9 +158,63 @@ export async function queryAckgWorks(params: AckgWorkQueryParams): Promise<AckgW
           .filter((n: number) => n > 0),
         impressionCount: toInt(record.get("impressionCount")),
         provenanceLayers,
+        titleEmbedding: (record.get("titleEmbedding") as number[] | null) ?? null,
       };
     });
   } finally {
     await session.close();
   }
+}
+
+// ---------------------------------------------------------------------------
+// scoreWorkTitleMatches — ADR-0010 Decision 9.1, Part B. Embed the observed title
+// (gemini-embedding-001) and rank the catalogued works by cosine, rescaled to an
+// interpretable 0..1 titleSim. Falls back to a token overlap when embeddings are
+// unavailable (no API key, or the work has no titleEmbedding yet). Optionally
+// nudges works whose technique family is incompatible with the observed technique
+// DOWN, so "Le Taureau (etching)" wins over "Taureau (lithograph)" for an intaglio object.
+// ---------------------------------------------------------------------------
+function tokenOverlap(a: string, b: string): number {
+  const norm = (s: string) =>
+    new Set(
+      s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/).filter((t) => t.length > 2),
+    );
+  const ta = norm(a), tb = norm(b);
+  if (ta.size === 0 || tb.size === 0) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  return inter / Math.min(ta.size, tb.size);
+}
+
+export async function scoreWorkTitleMatches(
+  observedTitle: string,
+  works: AckgWorkMatch[],
+  opts: { techniqueIncompatible?: (w: AckgWorkMatch) => boolean } = {},
+): Promise<AckgWorkMatch[]> {
+  if (works.length === 0) return works;
+  const obsNorm = normalizeTitleForEmbedding(observedTitle);
+
+  let obsVec: number[] | null = null;
+  try {
+    obsVec = await embedText(obsNorm);
+  } catch (err: any) {
+    console.warn(`[scoreWorkTitleMatches] embedding unavailable (${err?.message ?? err}) — token fallback`);
+  }
+
+  const scored = works.map((w) => {
+    let sim: number;
+    let basis: AckgWorkMatch["titleSimBasis"];
+    if (obsVec && w.titleEmbedding && w.titleEmbedding.length === obsVec.length) {
+      sim = titleSimFromCosine(cosine(obsVec, w.titleEmbedding));
+      basis = "embedding";
+    } else {
+      sim = tokenOverlap(obsNorm, w.workTitle);
+      basis = obsVec ? "token" : "none";
+    }
+    if (opts.techniqueIncompatible?.(w)) sim *= 0.6; // demote a technique-incompatible work
+    return { ...w, titleSim: Math.round(sim * 1000) / 1000, titleSimBasis: basis };
+  });
+  scored.sort((a, b) => (b.titleSim ?? 0) - (a.titleSim ?? 0));
+  return scored;
 }

@@ -1314,11 +1314,12 @@ query_ackg queries a real graph of ingested print records (Met, Roseberys, Forum
 
 - kWork title check: whenever you have an observed title (VEA text, Stage 1b, or the appraiser), call query_ackg with the workTitle parameter set to that title (a short distinctive fragment works best — "Death of the Virgin", not "The Death of the Virgin, first state"). If exactly one artist comes back, record kWorkBackPropArtist = that artist and kWorkTitleSim = how well the titles match (see STEP 4). If several artists have a work by that title, or none do, leave kWorkBackPropArtist "". This is a real, independent corroboration and — unlike the population counts — it VOTES (ADR-0010 Decision 4a). Example: workTitle "Death of the Virgin" returns only Rembrandt van Rijn → kWorkBackPropArtist = "Rembrandt van Rijn", kWorkTitleSim ≈ 0.95.
 
-query_ackg_work looks up a SPECIFIC catalogued work (pass artist AND a distinctive workTitle fragment) and returns its catalogued technique(s), medium string, plate/image/sheet dimensions in mm, and edition sizes — aggregated across every ingested impression.
+query_ackg_work looks up a SPECIFIC catalogued work and returns, per matching Conceptual Work, its catalogued technique(s), medium string, plate/image/sheet dimensions in mm, edition sizes, AND a "computed title similarity" (an embedding match, 0..1) between your observed title and each catalogued title.
 
-- Call it ONCE you have a leading artist + a candidate title, to fill impressionEvidence (STEP 4). It is the only way to check the physical object against the catalogued record.
-- Near-duplicate title rows are un-merged re-ingests — merge their techniques and dimensions.
-- Empty result = the work is not in this graph's sources → leave catalogueTechniques [] and the catalogue*Mm pairs 0/0. That is not evidence the object is fake.
+- Call it ONCE you have a leading artist + a candidate title. Pass: artist; workTitle (a short distinctive fragment for the pre-filter); observedTitle (the FULL observed title, for the similarity rank); observedTechnique (VEA's read, e.g. "Etching" — breaks ties between same-titled works of different media).
+- The rows come back ranked by computed title similarity. Take the top row. Transcribe its "computed title similarity" into kWorkTitleSim, its catalogued title into kWorkMatchedTitle, and the artist it is catalogued to into kWorkBackPropArtist (only when that is exactly one artist). Do NOT estimate a similarity of your own.
+- Near-duplicate title rows are un-merged re-ingests — merge their techniques and dimensions when filling impressionEvidence.
+- Empty result = the work is not in this graph's sources → kWorkTitleSim -1, kWorkMatchedTitle "", catalogueTechniques [], catalogue*Mm 0/0. That is not evidence the object is fake.
 
 ═══════════════════════════════════════════════════════════════════════
 STEP 4 — FILL THE CELLS
@@ -1329,7 +1330,7 @@ artistEvidence — one cell per naming source (V = VEA, R = Stage 1b, A = Stage 
 - dominantCandidateName / dominantCandidateIdentityKey: your single best identity and its ULAN/Wikidata URI if query_ackg gave one.
 
 workEvidence — one cell per title source. veaTitle only from text within the image. veaInImageTitleLegible: is there a legible in-image title/series cartouche (this alone triggers Pass 2 downstream even with no artist — set it accurately).
-- kWorkBackPropArtist / kWorkTitleSim: whenever ANY observed title (VEA text, Stage 1b, or appraiser) matches a work the ACKG catalogues to exactly one artist, name that artist and set kWorkTitleSim to how closely the titles match (0–1). This VOTES for that artist downstream (ADR-0010 Decision 4a) when kWorkTitleSim ≥ 0.8 — it can lift an otherwise unattributed lot to a candidate. Leave kWorkBackPropArtist "" when the title is not in the ACKG, or is catalogued to several different artists, or no title was observed at all.
+- kWorkTitleSim / kWorkMatchedTitle / kWorkBackPropArtist: TRANSCRIBE these from query_ackg_work's top row (see STEP 3). kWorkTitleSim ≥ 0.8 makes kWorkBackPropArtist VOTE for that artist (ADR-0010 Decision 4a) — it can lift an otherwise unattributed lot to a candidate, and (≥ 0.85) can identify the work even when the title SOURCES disagree. Leave kWorkBackPropArtist "" when the matched work is catalogued to several artists, or no confident match, or you did not call query_ackg_work.
 
 impressionEvidence — set assessable = false unless a Conceptual Work was identified or is a candidate. When assessable, call query_ackg_work for that work and TRANSCRIBE (do not judge) both sides; deterministic code does the comparison and the divergence call.
 - observedTechniques: VEA's printingTechniques verbatim, e.g. ["Etching","Drypoint"]. observedIsPhotomechanical: VEA saw halftone dots / offset / giclée / digital-pigment.

@@ -25,8 +25,9 @@ export const TAU_NAME = 0.9; // normalized-name similarity to count two sources 
 export const SIM_ARTIST_VOTE = 0.75; // Stage 1b sim floor to count as an artist vote
 export const SIM_ARTIST_STRONG = 0.85; // Stage 1b sim for a MEDIUM (vs LOW) single-source artist candidate
 export const SIM_WORK_VOTE = 0.85; // Stage 1b sim floor to count as a Conceptual Work (title) vote
-export const TAU_TITLE = 0.8; // K_work.titleSim floor (a value the model/embedding supplies) for a K_work hit to count
-export const TAU_TITLE_AGREE = 0.5; // local token-set-Jaccard floor for two title sources to "agree" — deliberately loose; the placeholder matcher (ADR-0010 Decision 9.1 commits to embeddings) is weaker than production will be
+export const TAU_TITLE = 0.8; // K_work.titleSim floor for a K_work hit to count / vote — on the rescaled 0..1 title-similarity from embed_text.titleSimFromCosine (gemini-embedding-001)
+export const TAU_TITLE_ANCHOR = 0.85; // higher floor for a standalone K_work-anchored work identification (T8K) when the title SOURCES give no consensus
+export const TAU_TITLE_AGREE = 0.5; // local token-set-Jaccard floor for two title SOURCES to "agree" — still token-based (embeddings score the catalogue match, not source-vs-source; Part B follow-up)
 export const TAU_DIM_PLATE_PCT = 0.03; // plate-mark dimension tolerance
 export const TAU_DIM_PLATE_MM = 2; // ...with an absolute floor
 export const TAU_DIM_IMAGE_PCT = 0.05; // image/composition dimension tolerance
@@ -351,8 +352,8 @@ export function classifyArtistPass(ev: ArtistEvidence): ArtistVerdict {
     return base("conflict", null, null, "A10", ["attributionConflict"]);
   }
 
-  // A1 — n = 3
-  if (ag.n === 3) {
+  // A1 — n >= 3 (all of V/R/A, or three of V/R/A/K, agree — Decision 4a amendment adds K)
+  if (ag.n >= 3) {
     const f = ev.kOeuvreMatchCount === 0 ? ["noMatchingOeuvre"] : [];
     if (f.length) trace.push(`K_oeuvre = 0 — noted, not downgraded (A1)`);
     return base("attributed", ag.dominantRaw, "HIGH", "A1", f);
@@ -461,10 +462,12 @@ export type TitleSourceTag = "V_t" | "R_t" | "A_t";
 export type TitleSource = { kind: "names"; raw: string } | { kind: "silent" };
 
 export interface KWorkResult {
+  /** Rescaled 0..1 title similarity between the observed title and the best-matching
+   *  catalogued ConceptualWork (embed_text.titleSimFromCosine over gemini-embedding-001). */
   titleSim: number;
-  techniqueMatch: boolean;
-  dimensionMatch: "true" | "false" | "UNASSESSABLE";
-  /** Decision 6 back-prop: when K_work-by-title returned works consistently by one artist. */
+  /** The catalogued title the observed title matched. */
+  matchedWorkTitle?: string | null;
+  /** Decision 6 back-prop: when the matched work is catalogued to exactly one artist. */
   backPropArtist?: string | null;
 }
 
@@ -547,26 +550,15 @@ export function classifyWorkPass(ev: WorkEvidence): WorkVerdict {
     };
   };
 
-  // T6 — title sources conflict
-  if (ag.distinct >= 2 && ag.dominantRaw === null) return mk("conflict", null, null, "T6");
-
-  // T7 — nothing
-  if (votes.length === 0) return mk("unresolved", null, null, "T7");
-
-  // T1 — all three agree
+  // T1 — all three sources agree
   if (ag.n === 3) return mk("identified", ag.dominantRaw, "HIGH", "T1");
 
-  // T2 / T3 / T4 — two agree
+  // T2 / T4 — two agree. The physical-vs-catalogued divergence that used to split T2/T3
+  // is now entirely the impression layer's job (Decision 5b, Part A): classifyImpression
+  // runs after this for any identified/candidate work and sets impressionAssessment.
   if (ag.n === 2) {
-    if (k && k.titleSim >= TAU_TITLE && k.techniqueMatch && k.dimensionMatch === "true") {
-      return mk("identified", ag.dominantRaw, "HIGH", "T2");
-    }
-    if (k && k.titleSim >= TAU_TITLE && (!k.techniqueMatch || k.dimensionMatch === "false")) {
-      trace.push(`K_work title match but technique/dimension diverges -> T3 (impression diverges)`);
-      return mk("identified", ag.dominantRaw, "HIGH", "T3");
-    }
-    // no K_work hit, or dimensionMatch UNASSESSABLE
-    return mk("identified", ag.dominantRaw, "MEDIUM", "T4");
+    if (k && k.titleSim >= TAU_TITLE) return mk("identified", ag.dominantRaw, "HIGH", "T2");
+    return mk("identified", ag.dominantRaw, "MEDIUM", "T4"); // no / weak K_work corroboration
   }
 
   // T5 — single source
@@ -575,6 +567,19 @@ export function classifyWorkPass(ev: WorkEvidence): WorkVerdict {
     return mk("candidate", ag.dominantRaw, conf, "T5");
   }
 
+  // ── ag.n === 0: sources conflict or are all silent ────────────────────────────
+  // T8K (Part B) — a strong ACKG embedding match to a specific catalogued work
+  // identifies it even when the title SOURCES give no consensus. This is what rescues
+  // the "same series, sources name different works" case (e.g. Hirst Empresses).
+  if (k && k.titleSim >= TAU_TITLE_ANCHOR) {
+    trace.push(`T8K: K_work embedding match (titleSim=${k.titleSim.toFixed(2)} >= ${TAU_TITLE_ANCHOR}) identifies the work despite no source consensus`);
+    return mk("identified", k.matchedWorkTitle ?? ag.dominantRaw, "MEDIUM", "T8K");
+  }
+
+  // T6 — title sources present but pointing at different works, none dominant
+  if (votes.length > 0 && ag.distinct >= 2 && ag.dominantRaw === null) return mk("conflict", null, null, "T6");
+
+  // T7 — no usable title evidence
   return mk("unresolved", null, null, "T7");
 }
 
@@ -748,7 +753,7 @@ export interface ImpressionAssessment {
   ruleTrace: string[];
 }
 
-/** ADR-0010 Decision 5b. Only meaningful once Pass 2 returned T2/T3/T4 with a K_work. */
+/** ADR-0010 Decision 5b. Runs after Pass 2 for any identified/candidate work. */
 export function classifyImpression(ev: ImpressionEvidence): ImpressionAssessment {
   const trace: string[] = [];
   const tech = classifyTechniqueMatch({

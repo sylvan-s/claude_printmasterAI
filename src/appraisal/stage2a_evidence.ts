@@ -88,9 +88,10 @@ export interface EvidenceAgentOutput {
     reverseImageTitleSimilarity: number;
     appraiserTitle: string;
     kWorkQueried: boolean;
+    /** query_ackg_work's computed title similarity (0..1, embedding-based) for the best match. -1 if not queried. */
     kWorkTitleSim: number;
-    kWorkTechniqueMatch: "true" | "false" | "unassessable" | string;
-    kWorkDimensionMatch: "true" | "false" | "UNASSESSABLE" | string;
+    /** The catalogued title the observed title matched, "" if none. */
+    kWorkMatchedTitle: string;
     kWorkBackPropArtist: string;
   };
   impressionEvidence: {
@@ -188,19 +189,13 @@ export function evidenceToTwoPassInput(ev: EvidenceAgentOutput, veaHaltRecommend
       ? (a.kSubject as "TYPICAL" | "OCCASIONAL" | "ATYPICAL")
       : ("UNASSESSABLE" as const);
 
-  // K_work: only hand the tree a concrete result when at least one of technique /
-  // dimension was actually assessed. All-unassessable -> null -> T4 (not T3).
-  const techAssessed = w.kWorkTechniqueMatch === "true" || w.kWorkTechniqueMatch === "false";
-  const dimAssessed = w.kWorkDimensionMatch === "true" || w.kWorkDimensionMatch === "false";
+  // K_work (Part B): the embedding-scored title match to a catalogued work. Technique /
+  // dimension comparison moved to impressionEvidence (Part A).
   const kWork: KWorkResult | null =
-    w.kWorkQueried && (techAssessed || dimAssessed || w.kWorkTitleSim >= 0)
+    w.kWorkQueried && w.kWorkTitleSim >= 0
       ? {
-          titleSim: w.kWorkTitleSim >= 0 ? w.kWorkTitleSim : 0,
-          techniqueMatch: w.kWorkTechniqueMatch === "true",
-          dimensionMatch:
-            w.kWorkDimensionMatch === "true" || w.kWorkDimensionMatch === "false"
-              ? (w.kWorkDimensionMatch as "true" | "false")
-              : "UNASSESSABLE",
+          titleSim: w.kWorkTitleSim,
+          matchedWorkTitle: w.kWorkMatchedTitle || null,
           backPropArtist: w.kWorkBackPropArtist || null,
         }
       : null;
@@ -469,8 +464,7 @@ export function emptyEvidenceOutput(
     },
     workEvidence: {
       veaTitle: "", veaInImageTitleLegible: false, reverseImageTitle: "", reverseImageTitleSimilarity: -1,
-      appraiserTitle: "", kWorkQueried: false, kWorkTitleSim: -1, kWorkTechniqueMatch: "unassessable",
-      kWorkDimensionMatch: "UNASSESSABLE", kWorkBackPropArtist: "",
+      appraiserTitle: "", kWorkQueried: false, kWorkTitleSim: -1, kWorkMatchedTitle: "", kWorkBackPropArtist: "",
     },
     impressionEvidence: {
       assessable: false, observedTechniques: [], observedIsPhotomechanical: false,
