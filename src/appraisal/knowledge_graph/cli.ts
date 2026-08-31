@@ -14,7 +14,7 @@ function parseArgs(argv: string[]): AckgQueryParams {
     if (!key || value === undefined) continue;
     if (key === "periodStartYear" || key === "periodEndYear" || key === "limit") {
       (params as any)[key] = Number(value);
-    } else if (key === "technique" || key === "paper" || key === "subject" || key === "region") {
+    } else if (key === "technique" || key === "paper" || key === "subject" || key === "region" || key === "workTitle") {
       (params as any)[key] = value;
     }
   }

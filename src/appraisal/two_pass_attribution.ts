@@ -732,13 +732,21 @@ export function mapTwoPassToScenario(input: {
   if (artist.verdict === "conflict" || work?.verdict === "conflict" || (input.competingTitleCount ?? 0) >= 2)
     return pick(Scenario.CompetingCandidates, "artist or work verdict = conflict / competing candidates");
 
+  // Scenario 1 is the ONLY no-skeptic, tier-1 route — reachable only by the strict pair:
+  // a real attribution (A1/A2 — i.e. >= 2 independent voting sources) at HIGH, a Conceptual
+  // Work IDENTIFIED at HIGH, and no impression divergence. Everything short of that (a lone
+  // MEDIUM candidate, a LOW/MEDIUM work verdict, an A3/A5/A6/A8K single-source read) is
+  // "specialist confirms" = Scenario 3. ADR-0006's core warning is that a thinly-corroborated
+  // attribution must not be fast-pathed as clean.
   if (
     (artist.evidenceBasis === "A1" || artist.evidenceBasis === "A2") &&
+    artist.verdict === "attributed" &&
     artist.confidence === "HIGH" &&
-    work?.confidence === "HIGH" &&
+    work?.verdict === "identified" &&
+    work.confidence === "HIGH" &&
     (!impression || impression.divergence === "none")
   )
-    return pick(Scenario.ConfirmedClean, "artist HIGH + work HIGH + no impression divergence");
+    return pick(Scenario.ConfirmedClean, "A1/A2 attributed HIGH + work IDENTIFIED HIGH + no impression divergence");
 
   if (artist.flags.includes("recognisedArtist_noMatchingOeuvre"))
     return pick(Scenario.ArtistConfirmedWorkUnresolved, "A3 recognisedArtist_noMatchingOeuvre -> Scenario 3 + mandatory oeuvre check");
@@ -750,7 +758,10 @@ export function mapTwoPassToScenario(input: {
     return pick(Scenario.ArtistConfirmedWorkUnresolved, "artist ok, work unresolved");
 
   if (artistOk && work && (work.verdict === "identified" || work.verdict === "candidate"))
-    return pick(Scenario.ConfirmedClean, "artist ok + work identified/candidate, no divergence");
+    return pick(
+      Scenario.ArtistConfirmedWorkUnresolved,
+      "artist ok + work identified/candidate but not the strict clean pair -> specialist confirms",
+    );
 
   if (artist.verdict === "not_attributed" && traditionConfidence >= MOVEMENT_THRESHOLD)
     return pick(Scenario.MovementOnly, `not attributed, traditionConfidence ${traditionConfidence} >= ${MOVEMENT_THRESHOLD}`);

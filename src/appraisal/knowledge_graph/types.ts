@@ -19,6 +19,11 @@ export interface AckgQueryParams {
   region?: string;
   /** Depicted subject, e.g. "Portraits", "Horses". Substring match, case-insensitive. */
   subject?: string;
+  /** A specific work title to look for, e.g. "Death of the Virgin". Substring match against
+   *  ConceptualWork.name, case-insensitive. When given, supportCount and sampleWorks reflect
+   *  ONLY each artist's works whose title matches — this is the ADR-0010 Decision 4a K_work
+   *  probe: "does the ACKG catalogue a work by this title, and to whom?" */
+  workTitle?: string;
   /** Max candidates returned, ranked by supportCount descending. Defaults to 10. */
   limit?: number;
 }

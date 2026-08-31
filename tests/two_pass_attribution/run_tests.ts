@@ -364,6 +364,26 @@ test("artist HIGH (A2) + work HIGH + no divergence -> Scenario 1", () => {
   assert.equal(s.scenario, Scenario.ConfirmedClean);
 });
 
+test("single-source MEDIUM candidate (A5) + weak work candidate (T5) -> Scenario 3, NOT Scenario 1", () => {
+  const s = mapTwoPassToScenario({
+    artist: classifyArtistPass(f.a5_singleVeaSignature), // A5 candidate/MEDIUM
+    work: classifyWorkPass(f.t5_singleTitleSource), // T5 candidate/LOW-MEDIUM
+    impression: null,
+    traditionConfidence: 0.7,
+  });
+  assert.equal(s.scenario, Scenario.ArtistConfirmedWorkUnresolved);
+});
+
+test("attributed HIGH but only A3 (not A1/A2) + work identified HIGH -> Scenario 3, not clean-fast-pathed", () => {
+  const s = mapTwoPassToScenario({
+    artist: classifyArtistPass(f.a3_recognisedNoOeuvre),
+    work: classifyWorkPass(f.t1_allTitlesAgree),
+    impression: null,
+    traditionConfidence: 0.7,
+  });
+  assert.equal(s.scenario, Scenario.ArtistConfirmedWorkUnresolved);
+});
+
 test("medium_divergence -> Scenario 2 (elevated authentication risk), checked before a clean match", () => {
   const s = mapTwoPassToScenario({
     artist: classifyArtistPass(f.a2_twoAgreeAckgSupport),

@@ -761,6 +761,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         paper: { type: "string" as const, description: "Paper type, e.g. \"wove\", \"laid\"." },
         region: { type: "string" as const, description: "Artist nationality/region hint, e.g. \"British\", \"Japanese\"." },
         subject: { type: "string" as const, description: "Depicted subject, e.g. \"Portraits\", \"Horses\"." },
+        workTitle: { type: "string" as const, description: "A specific work title to look for, e.g. \"Death of the Virgin\". Substring, case-insensitive, against catalogued work names. Use this to check whether a title from VEA text / Stage 1b / the appraiser is catalogued in the graph and to which artist — supportCount and sample works then reflect only that artist's title-matching works." },
       },
       required: [],
     },

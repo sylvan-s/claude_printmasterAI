@@ -30,12 +30,13 @@ WHERE ($technique IS NULL OR toLower(t.name) CONTAINS toLower($technique))
   AND ($paper IS NULL OR toLower(p.name) CONTAINS toLower($paper))
   AND ($subject IS NULL OR toLower(s.name) CONTAINS toLower($subject))
   AND ($region IS NULL OR toLower(a.nationality) CONTAINS toLower($region))
+  AND ($workTitle IS NULL OR toLower(cw.name) CONTAINS toLower($workTitle))
   AND ($periodStart IS NULL OR cw.dateCreated_year >= $periodStart)
   AND ($periodEnd IS NULL OR cw.dateCreated_year <= $periodEnd)
 WITH a, count(DISTINCT cw) AS supportCount,
      count(DISTINCT CASE WHEN src.sourceType = 'institutional' THEN cw END) AS institutionalSupportCount,
      count(DISTINCT CASE WHEN src.sourceType = 'auction' THEN cw END) AS auctionSupportCount,
-     collect(DISTINCT cw.name)[0..3] AS sampleWorks
+     collect(DISTINCT cw.name)[0..6] AS sampleWorks
 RETURN a.name AS artistName, a.ulanUrl AS ulanUrl, a.wikidataUrl AS wikidataUrl,
        supportCount, institutionalSupportCount, auctionSupportCount, sampleWorks
 ORDER BY supportCount DESC
@@ -60,6 +61,7 @@ export async function queryAckg(params: AckgQueryParams): Promise<AckgCandidate[
       paper: params.paper ?? null,
       subject: params.subject ?? null,
       region: params.region ?? null,
+      workTitle: params.workTitle ?? null,
       periodStart: params.periodStartYear ?? null,
       periodEnd: params.periodEndYear ?? null,
       limit: neo4j.int(params.limit ?? 10),
