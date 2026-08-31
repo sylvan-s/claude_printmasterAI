@@ -998,11 +998,22 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           try {
             if (b.name === "query_ackg_work") {
               const inp = b.input || {};
-              let works = await queryAckgWorks(inp);
-              if (works.length === 0 && inp.workTitle && inp.artist) {
-                works = await queryAckgWorks({ ...inp, workTitle: undefined }); // retry: drop the substring pre-filter
+              const observed = inp.observedTitle || inp.workTitle || "";
+              // Derive a substring pre-filter from the observed title when the agent
+              // didn't supply one — a raw artist-only query is ORDER BY impressionCount
+              // and would drop a low-impression target work before scoring.
+              const preFilter =
+                inp.workTitle ||
+                (observed
+                  .toLowerCase()
+                  .replace(/[^a-z0-9\s]/g, " ")
+                  .split(/\s+/)
+                  .filter((w: string) => w.length >= 4)
+                  .sort((a: string, b: string) => b.length - a.length)[0] || undefined);
+              let works = await queryAckgWorks({ ...inp, workTitle: preFilter });
+              if (works.length === 0 && preFilter) {
+                works = await queryAckgWorks({ ...inp, workTitle: undefined }); // last resort: artist only
               }
-              const observed = inp.observedTitle || inp.workTitle;
               if (observed && works.length) {
                 const obsFam = inp.observedTechnique ? techniqueFamily(inp.observedTechnique) : null;
                 works = await scoreWorkTitleMatches(observed, works, {

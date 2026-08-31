@@ -130,13 +130,17 @@ export async function queryAckgWorks(params: AckgWorkQueryParams): Promise<AckgW
   const driver = getDriver();
   const session = driver.session({ database: getDatabase() });
   try {
+    // A title substring rarely matches many works, so widen the cap when one is given —
+    // ORDER BY impressionCount would otherwise drop a low-impression target work (e.g. a
+    // single-impression Rembrandt state) before scoreWorkTitleMatches ever sees it.
+    const limit = params.limit ?? (params.workTitle ? 60 : 30);
     const result = await session.run(WORKS_QUERY, {
       artist: params.artist ?? null,
       workTitle: params.workTitle ?? null,
       technique: params.technique ?? null,
       periodStart: params.periodStartYear ?? null,
       periodEnd: params.periodEndYear ?? null,
-      limit: neo4j.int(params.limit ?? 8),
+      limit: neo4j.int(limit),
     });
     return result.records.map((record) => {
       const sourceTypes: string[] = (record.get("sourceTypes") ?? []).filter(Boolean);

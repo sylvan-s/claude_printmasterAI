@@ -77,11 +77,19 @@ test("keeps a leading fraction (not a list ordinal)", () => {
   assert.equal(normalizeTitleForEmbedding("1/4 Black Diagonal"), "1/4 black diagonal");
 });
 
-test("keeps series suffixes (the embedding tolerates them)", () => {
+test("strips series/collection suffixes so the distinctive title carries the embedding", () => {
+  assert.equal(normalizeTitleForEmbedding("Nur Jahan, from The Empresses"), "nur jahan");
+  assert.equal(normalizeTitleForEmbedding("H10-1. Wu Zetian, from the Empresses"), "wu zetian");
+  assert.equal(normalizeTitleForEmbedding("Taureau et Cheval, from La Suite Vollard"), "taureau et cheval");
+  assert.equal(normalizeTitleForEmbedding("Blue Nude, Portfolio II"), "blue nude");
+});
+
+test("does NOT strip a colon-prefixed series (different shape) or a bare title", () => {
   assert.equal(
-    normalizeTitleForEmbedding("Nur Jahan. H10-2, from The Empresses"),
-    "nur jahan. h10-2, from the empresses",
+    normalizeTitleForEmbedding("Thirty-six Views of Mount Fuji: Fine Wind, Clear Morning"),
+    "thirty-six views of mount fuji: fine wind, clear morning",
   );
+  assert.equal(normalizeTitleForEmbedding("The Great Wave off Kanagawa"), "the great wave off kanagawa");
 });
 
 test("strips wrapping smart quotes; blank input -> empty string, not a crash", () => {
