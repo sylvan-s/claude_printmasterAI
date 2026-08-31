@@ -17,7 +17,8 @@
  */
 import neo4j from "neo4j-driver";
 import { getDriver, getDatabase } from "./client.js";
-import type { AckgQueryParams, AckgCandidate } from "./types.js";
+import type { AckgQueryParams, AckgCandidate, AckgWorkQueryParams, AckgWorkMatch, AckgProvenanceTag } from "./types.js";
+import { parseAckgDimMm, type DimMm } from "./dimension_parse.js";
 
 const QUERY = `
 MATCH (a:Artist)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)
@@ -75,6 +76,88 @@ export async function queryAckg(params: AckgQueryParams): Promise<AckgCandidate[
       auctionSupportCount: toInt(record.get("auctionSupportCount")),
       sampleWorks: record.get("sampleWorks") ?? [],
     }));
+  } finally {
+    await session.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// queryAckgWorks — ADR-0010 Decision 9.1 K_work probe. Aggregates per
+// ConceptualWork and returns catalogued technique + dimension facts, so the
+// two-pass classifier can compare the physical object against the catalogued
+// record (impression divergence, Decision 5b) rather than guessing.
+// ---------------------------------------------------------------------------
+const WORKS_QUERY = `
+MATCH (a:Artist)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)
+      -[:INCLUDES]->(imp:Impression)
+MATCH (src:SourceRecord)-[:DOCUMENTS]->(imp)
+WHERE ($artist IS NULL OR toLower(a.name) CONTAINS toLower($artist))
+  AND ($workTitle IS NULL OR toLower(cw.name) CONTAINS toLower($workTitle))
+  AND ($periodStart IS NULL OR cw.dateCreated_year >= $periodStart)
+  AND ($periodEnd IS NULL OR cw.dateCreated_year <= $periodEnd)
+OPTIONAL MATCH (imp)-[:USES_TECHNIQUE]->(t:Technique)
+WITH cw, a,
+     count(DISTINCT imp) AS impressionCount,
+     collect(DISTINCT t.name) AS techniques,
+     collect(DISTINCT imp.rawMedium)[0..3] AS rawMediums,
+     collect(DISTINCT imp.plateDimensions) AS plateDims,
+     collect(DISTINCT imp.imageDimensions) AS imageDims,
+     collect(DISTINCT imp.sheetDimensions) AS sheetDims,
+     collect(DISTINCT er.declaredSize) AS editionSizes,
+     collect(DISTINCT src.sourceType) AS sourceTypes
+WHERE ($technique IS NULL OR any(x IN techniques WHERE toLower(x) CONTAINS toLower($technique)))
+RETURN cw.name AS workTitle, a.name AS artistName, a.ulanUrl AS artistUlanUrl,
+       cw.dateCreated_displayLabel AS dateLabel,
+       techniques, rawMediums, plateDims, imageDims, sheetDims, editionSizes, sourceTypes,
+       impressionCount
+ORDER BY impressionCount DESC
+LIMIT $limit
+`;
+
+function parseDimList(raw: unknown): DimMm[] {
+  if (!Array.isArray(raw)) return [];
+  const out: DimMm[] = [];
+  for (const s of raw) {
+    const d = parseAckgDimMm(typeof s === "string" ? s : null);
+    if (d) out.push(d);
+  }
+  return out;
+}
+
+export async function queryAckgWorks(params: AckgWorkQueryParams): Promise<AckgWorkMatch[]> {
+  const driver = getDriver();
+  const session = driver.session({ database: getDatabase() });
+  try {
+    const result = await session.run(WORKS_QUERY, {
+      artist: params.artist ?? null,
+      workTitle: params.workTitle ?? null,
+      technique: params.technique ?? null,
+      periodStart: params.periodStartYear ?? null,
+      periodEnd: params.periodEndYear ?? null,
+      limit: neo4j.int(params.limit ?? 8),
+    });
+    return result.records.map((record) => {
+      const sourceTypes: string[] = (record.get("sourceTypes") ?? []).filter(Boolean);
+      const provenanceLayers: AckgProvenanceTag[] = [];
+      if (sourceTypes.includes("institutional")) provenanceLayers.push("institutional");
+      if (sourceTypes.includes("auction")) provenanceLayers.push("auction_history");
+      return {
+        workTitle: record.get("workTitle"),
+        artistName: record.get("artistName"),
+        artistUlanUrl: record.get("artistUlanUrl") ?? null,
+        dateLabel: record.get("dateLabel") ?? null,
+        techniques: (record.get("techniques") ?? []).filter(Boolean),
+        rawMediums: (record.get("rawMediums") ?? []).filter(Boolean),
+        plateDimsMm: parseDimList(record.get("plateDims")),
+        imageDimsMm: parseDimList(record.get("imageDims")),
+        sheetDimsMm: parseDimList(record.get("sheetDims")),
+        editionSizes: (record.get("editionSizes") ?? [])
+          .map((v: unknown) => toInt(v))
+          .filter((n: number) => n > 0),
+        impressionCount: toInt(record.get("impressionCount")),
+        provenanceLayers,
+      };
+    });
   } finally {
     await session.close();
   }

@@ -38,13 +38,14 @@ export function workEv(o: Partial<WorkEvidence> = {}): WorkEvidence {
 
 export function impressionEv(o: Partial<ImpressionEvidence> = {}): ImpressionEvidence {
   return {
-    techniqueMatch: true,
-    veaTechniqueIsPhotomechanical: false,
-    catalogueExpectsOriginalPrintmaking: true,
+    observedTechniques: ["Etching"],
+    observedIsPhotomechanical: false,
+    catalogueTechniques: ["Etching"],
+    catalogueMediumRaw: "etching",
     dimensions: {
-      hadScaleScan: true,
+      observedSource: "appraiser",
       workIsIntaglio: true,
-      veaPlateMm: { w: 320, h: 240 },
+      observedPlateMm: { w: 320, h: 240 },
       cataloguePlateMm: { w: 320, h: 240 },
     },
     ...o,
@@ -328,55 +329,56 @@ export const backProp_workIdentifiesArtist = twoPass({
 export const imp_none = impressionEv();
 
 export const imp_laterEdition = impressionEv({
-  techniqueMatch: true,
   dimensions: {
-    hadScaleScan: true,
+    observedSource: "appraiser",
     workIsIntaglio: true,
-    veaPlateMm: { w: 360, h: 270 },
+    observedPlateMm: { w: 360, h: 270 },
     cataloguePlateMm: { w: 320, h: 240 },
   },
 });
 
 export const imp_variantSheetMinor = impressionEv({
-  techniqueMatch: true,
   dimensions: {
-    hadScaleScan: true,
+    observedSource: "appraiser",
     workIsIntaglio: true,
     // dw=15 (>9.6 tol), dh=10 (>7.2 tol) => beyond tolerance; relMax ~4.7% (<10%) => "minor"
-    veaPlateMm: { w: 335, h: 250 },
+    observedPlateMm: { w: 335, h: 250 },
     cataloguePlateMm: { w: 320, h: 240 },
   },
 });
 
+// screenprint object, catalogue says lithograph -> different family, not photomechanical
 export const imp_mediumDivergence = impressionEv({
-  techniqueMatch: false,
-  veaTechniqueIsPhotomechanical: false,
+  observedTechniques: ["Screenprint / Serigraphy"],
+  observedIsPhotomechanical: false,
+  catalogueTechniques: ["Lithograph"],
+  catalogueMediumRaw: "lithograph in colours",
   dimensions: {
-    hadScaleScan: true,
+    observedSource: "appraiser",
     workIsIntaglio: false,
-    veaImageMm: { w: 300, h: 400 },
+    observedImageMm: { w: 300, h: 400 },
     catalogueImageMm: { w: 300, h: 400 },
   },
 });
 
+// halftone/giclée object, catalogue says etching -> reproduction of a hand-pulled original
 export const imp_reproduction = impressionEv({
-  techniqueMatch: false,
-  veaTechniqueIsPhotomechanical: true,
-  catalogueExpectsOriginalPrintmaking: true,
-  dimensions: { hadScaleScan: false, workIsIntaglio: false },
+  observedTechniques: ["Offset lithograph"],
+  observedIsPhotomechanical: true,
+  catalogueTechniques: ["Etching"],
+  catalogueMediumRaw: "etching with drypoint",
+  dimensions: { observedSource: "none", workIsIntaglio: false },
 });
 
 export const imp_noScaleScanUnassessable = impressionEv({
-  techniqueMatch: true,
-  dimensions: { hadScaleScan: false, workIsIntaglio: true },
+  dimensions: { observedSource: "none", workIsIntaglio: true },
 });
 
 export const imp_plateVsSheetNoComparison = impressionEv({
-  techniqueMatch: true,
   dimensions: {
-    hadScaleScan: true,
+    observedSource: "appraiser",
     workIsIntaglio: true,
-    veaPlateMm: { w: 320, h: 240 },
+    observedPlateMm: { w: 320, h: 240 },
     cataloguePlateMm: null,
     catalogueImageMm: null,
   },

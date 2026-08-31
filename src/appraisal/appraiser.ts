@@ -36,8 +36,8 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg } from "./knowledge_graph/index.js";
-import type { AckgCandidate } from "./knowledge_graph/types.js";
+import { queryAckg, queryAckgWorks } from "./knowledge_graph/index.js";
+import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
 import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../shared/text_extraction";
 
 // Resolved from the process working directory, not import.meta.url / __dirname:
@@ -836,6 +836,31 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     },
   };
 
+  private static readonly QUERY_ACKG_WORK_TOOL = {
+    name: "query_ackg_work",
+    description:
+      "Look up a SPECIFIC catalogued work in the Art Context Knowledge Graph and return its " +
+      "catalogued technique(s), medium description, plate/image/sheet dimensions (in mm), and " +
+      "edition sizes — aggregated per Conceptual Work across every ingested impression. Use " +
+      "this once you have a leading artist and a candidate title, to fill the impressionEvidence " +
+      "cells: it tells you what the catalogued record says the work's medium and size are, so " +
+      "the physical object in hand can be checked against it (later edition, restrike, " +
+      "photomechanical reproduction, medium variant). Pass `artist` AND `workTitle` (a short " +
+      "distinctive fragment). Near-duplicate title rows are un-merged re-ingests — merge them. " +
+      "An empty result is absence-of-coverage, not evidence the work is fake.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        artist: { type: "string" as const, description: "Artist name, substring — strongly recommended." },
+        workTitle: { type: "string" as const, description: "Distinctive title fragment, e.g. \"Death of the Virgin\", \"Wu Zetian\", \"Le Taureau\"." },
+        technique: { type: "string" as const, description: "Optional technique narrowing." },
+        periodStartYear: { type: "integer" as const, description: "Optional inclusive lower bound on creation year." },
+        periodEndYear: { type: "integer" as const, description: "Optional inclusive upper bound on creation year." },
+      },
+      required: [],
+    },
+  };
+
   /** Cap what reaches the model — ranked facts, not a raw graph dump. */
   private formatAckgResultForClaude(candidates: AckgCandidate[]): string {
     if (candidates.length === 0) {
@@ -851,6 +876,30 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         `${c.ulanUrl ? ` [ULAN: ${c.ulanUrl}]` : ""}`
       );
       if (c.sampleWorks.length) lines.push(`  sample works: ${c.sampleWorks.join(" | ")}`);
+    }
+    return lines.join("\n");
+  }
+
+  /** Merge near-duplicate ConceptualWork rows (un-merged re-ingests) and render the
+   *  catalogued technique + dimension facts the impression check needs. */
+  private formatAckgWorksForClaude(works: AckgWorkMatch[]): string {
+    if (works.length === 0) {
+      return "No catalogued work matches this artist + title in the graph's current sources. " +
+        "This is absence-of-coverage, not evidence the work is fake — leave impressionEvidence " +
+        "catalogueTechniques [] and observedDimSource per what the appraiser/VEA gave you.";
+    }
+    const dl = (label: string, ds: { w: number; h: number }[]) =>
+      ds.length ? `${label}=${[...new Set(ds.map((d) => `${d.w}x${d.h}mm`))].join(", ")}` : "";
+    const lines = [`${works.length} catalogued row(s) (merge near-identical titles):`];
+    for (const w of works) {
+      const dims = [dl("plate", w.plateDimsMm), dl("image", w.imageDimsMm), dl("sheet", w.sheetDimsMm)].filter(Boolean).join("  ");
+      lines.push(
+        `\n"${w.workTitle}" — ${w.artistName}${w.dateLabel ? ` (${w.dateLabel})` : ""} [${w.impressionCount} impr., ${w.provenanceLayers.join("+") || "?"}]` +
+          `\n  techniques: ${w.techniques.join(", ") || "—"}` +
+          (w.rawMediums.length ? `\n  media: ${w.rawMediums.join(" | ")}` : "") +
+          (dims ? `\n  dims: ${dims}` : "\n  dims: — (none catalogued)") +
+          (w.editionSizes.length ? `\n  editions: ${w.editionSizes.join(", ")}` : ""),
+      );
     }
     return lines.join("\n");
   }
@@ -877,12 +926,14 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       name: "report_attribution_triage",
       description: "Report the structured attribution triage and routing decision.",
       schema: TRIAGE_SCHEMA,
-    }
+    },
+    opts: { extraTools?: any[]; maxRounds?: number } = {}
   ): Promise<any> {
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
     if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
 
-    const tools = [MultiStageAppraiser.QUERY_ACKG_TOOL];
+    const tools = [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
+    const graphToolNames = new Set(tools.map((t: any) => t.name));
     const finalToolName = finalTool.name;
 
     const post = (messages: any[], forceFinalTool: boolean) =>
@@ -909,7 +960,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       );
 
     const messages: any[] = [{ role: "user", content: userText }];
-    const MAX_ROUNDS = 4;
+    const MAX_ROUNDS = opts.maxRounds ?? 4;
     let data: any = null;
 
     let roundsUsed = 0;
@@ -918,9 +969,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       if (data.stop_reason === "max_tokens") {
         throw new Error("Claude (ACKG tool) hit max_tokens limit — response was truncated.");
       }
-      const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use" && b.name === "query_ackg");
+      const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use" && graphToolNames.has(b.name));
       if (clientToolUses.length === 0) {
-        console.log(`[Stage 2a ACKG loop] round ${round + 1}: no query_ackg call — stopping loop (${roundsUsed} round(s) used)`);
+        console.log(`[Stage 2a ACKG loop] round ${round + 1}: no graph query — stopping loop (${roundsUsed} round(s) used)`);
         break;
       }
       roundsUsed = round + 1;
@@ -935,12 +986,18 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       messages.push({ role: "assistant", content: data.content });
       const toolResults = await Promise.all(
         clientToolUses.map(async (b: any) => {
-          console.log(`[Stage 2a ACKG loop] round ${round + 1} query_ackg call: ${JSON.stringify(b.input || {})}`);
+          console.log(`[Stage 2a ACKG loop] round ${round + 1} ${b.name} call: ${JSON.stringify(b.input || {})}`);
           let content: string;
           try {
-            const result = await queryAckg(b.input || {});
-            content = this.formatAckgResultForClaude(result);
-            console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}`);
+            if (b.name === "query_ackg_work") {
+              const works = await queryAckgWorks(b.input || {});
+              content = this.formatAckgWorksForClaude(works);
+              console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${works.length} work row(s)${works.length ? ` — ${[...new Set(works.map((w) => w.workTitle))].slice(0, 3).join(" | ")}` : ""}`);
+            } else {
+              const result = await queryAckg(b.input || {});
+              content = this.formatAckgResultForClaude(result);
+              console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}`);
+            }
           } catch (err: any) {
             content = `ACKG query failed: ${err.message}`;
             console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ERROR — ${err.message}`);
@@ -1712,11 +1769,12 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     };
     const buildUserText = (slim: unknown) =>
       `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(slim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
+    const evidenceOpts = { extraTools: [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL], maxRounds: 5 };
 
     let ev: EvidenceAgentOutput;
     try {
       ev = (await this.callClaudeWithAckgTool(
-        stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(veaSlim), 8192, evidenceTool,
+        stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(veaSlim), 8192, evidenceTool, evidenceOpts,
       )) as EvidenceAgentOutput;
     } catch (err) {
       if (!(err instanceof AnthropicContentFilterError)) throw err;
@@ -1727,7 +1785,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       console.warn(`[Stage 2a evidence] content-filtered — retrying with VEA prose trimmed`);
       try {
         ev = (await this.callClaudeWithAckgTool(
-          stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(trimVeaProse(veaSlim)), 8192, evidenceTool,
+          stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(trimVeaProse(veaSlim)), 8192, evidenceTool, evidenceOpts,
         )) as EvidenceAgentOutput;
       } catch (err2) {
         if (!(err2 instanceof AnthropicContentFilterError)) throw err2;

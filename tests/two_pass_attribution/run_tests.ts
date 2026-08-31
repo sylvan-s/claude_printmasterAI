@@ -13,6 +13,8 @@ import {
   classifyWorkPass,
   classifyImpression,
   classifyDimensionMatch,
+  classifyTechniqueMatch,
+  techniqueFamily,
   classifyTwoPass,
   mapTwoPassToScenario,
   normalizeName,
@@ -310,9 +312,19 @@ test("T7 — no title evidence -> UNRESOLVED", () => {
 // ── IMPRESSION ──────────────────────────────────────────────────────────────
 console.log("\nImpression divergence (5b) + dimension rules\n");
 
-test("dimensions: no SCALE_SCAN -> UNASSESSABLE (not a mismatch)", () => {
-  const d = classifyDimensionMatch({ hadScaleScan: false, workIsIntaglio: true });
+test("dimensions: no usable observed measurement -> UNASSESSABLE (not a mismatch)", () => {
+  const d = classifyDimensionMatch({ observedSource: "none", workIsIntaglio: true });
   assert.equal(d.match, "UNASSESSABLE");
+});
+
+test("dimensions: VEA-scaled widens tolerance to swallow ±15-20% noise", () => {
+  const d = classifyDimensionMatch({
+    observedSource: "vea_scaled",
+    workIsIntaglio: true,
+    observedPlateMm: { w: 352, h: 264 }, // +10% — a real mismatch at 3% tol, within the 18% VEA-scaled band
+    cataloguePlateMm: { w: 320, h: 240 },
+  });
+  assert.equal(d.match, "true");
 });
 
 test("dimensions: plate mark is the primary comparison for intaglio", () => {
@@ -349,6 +361,74 @@ test("impression: photomechanical vs expected original -> reproduction", () => {
 
 test("impression: no scale scan, technique matches -> none (UNASSESSABLE dims don't create divergence)", () => {
   assert.equal(classifyImpression(f.imp_noScaleScanUnassessable).divergence, "none");
+});
+
+// ── technique family matching (Decision 9.1 rules table) ─────────────────────
+
+test("techniqueFamily buckets the common processes", () => {
+  assert.equal(techniqueFamily("Etching"), "intaglio");
+  assert.equal(techniqueFamily("soft-ground etching and engraving"), "intaglio");
+  assert.equal(techniqueFamily("Lithograph"), "planographic");
+  assert.equal(techniqueFamily("Offset lithograph"), "photomechanical");
+  assert.equal(techniqueFamily("Woodcut"), "relief");
+  assert.equal(techniqueFamily("Screenprint / Serigraphy"), "screen");
+  assert.equal(techniqueFamily("Giclée"), "photomechanical");
+  assert.equal(techniqueFamily("laminated giclée print"), "photomechanical");
+  assert.equal(techniqueFamily("something odd"), "other");
+});
+
+test("classifyTechniqueMatch: same family -> true", () => {
+  const r = classifyTechniqueMatch({
+    observedTechniques: ["Etching", "Drypoint"],
+    observedIsPhotomechanical: false,
+    catalogueTechniques: ["Etching", "Aquatint", "Drypoint"],
+  });
+  assert.equal(r.match, "true");
+});
+
+test("classifyTechniqueMatch: no catalogue technique -> unassessable", () => {
+  const r = classifyTechniqueMatch({ observedTechniques: ["Etching"], observedIsPhotomechanical: false, catalogueTechniques: [] });
+  assert.equal(r.match, "unassessable");
+});
+
+test("classifyTechniqueMatch: observed photomechanical vs catalogued etching -> false + catalogueIsOriginalProcess", () => {
+  const r = classifyTechniqueMatch({
+    observedTechniques: ["Offset lithograph"],
+    observedIsPhotomechanical: true,
+    catalogueTechniques: ["Etching"],
+    catalogueMediumRaw: "etching with drypoint",
+  });
+  assert.equal(r.match, "false");
+  assert.equal(r.catalogueIsOriginalProcess, true);
+});
+
+test("classifyTechniqueMatch: giclée observed AND giclée catalogued (Hirst Empresses) -> true, no divergence", () => {
+  const r = classifyTechniqueMatch({
+    observedTechniques: [],
+    observedIsPhotomechanical: true,
+    catalogueTechniques: ["Giclée"],
+    catalogueMediumRaw: "laminated giclée print",
+  });
+  assert.equal(r.match, "true");
+  assert.equal(r.catalogueIsOriginalProcess, false);
+  const imp = classifyImpression({
+    observedTechniques: [],
+    observedIsPhotomechanical: true,
+    catalogueTechniques: ["Giclée"],
+    catalogueMediumRaw: "laminated giclée print",
+    dimensions: { observedSource: "none", workIsIntaglio: false },
+  });
+  assert.equal(imp.divergence, "none");
+});
+
+test("classifyDimensionMatch: parses via the real ACKG-style values (appraiser cm vs catalogue mm)", () => {
+  const d = classifyDimensionMatch({
+    observedSource: "appraiser",
+    workIsIntaglio: true,
+    observedPlateMm: { w: 410, h: 324 },
+    cataloguePlateMm: { w: 412, h: 322 },
+  });
+  assert.equal(d.match, "true");
 });
 
 // ── SCENARIO MAPPING ────────────────────────────────────────────────────────

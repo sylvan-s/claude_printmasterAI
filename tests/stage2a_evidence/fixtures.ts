@@ -54,14 +54,15 @@ export function evOut(o: DeepPartial<EvidenceAgentOutput> = {}): EvidenceAgentOu
     },
     impressionEvidence: {
       assessable: false,
-      techniqueMatch: true,
-      veaTechniqueIsPhotomechanical: false,
-      catalogueExpectsOriginalPrintmaking: true,
-      hadScaleScan: false,
+      observedTechniques: [],
+      observedIsPhotomechanical: false,
+      catalogueTechniques: [],
+      catalogueMediumRaw: "",
       workIsIntaglio: false,
-      veaPlateMm: Z,
+      observedDimSource: "none",
+      observedPlateMm: Z,
+      observedImageMm: Z,
       cataloguePlateMm: Z,
-      veaImageMm: Z,
       catalogueImageMm: Z,
     },
     riskFlags: {
@@ -126,7 +127,19 @@ export const confirmedClean = evOut({
     kWorkTechniqueMatch: "true",
     kWorkDimensionMatch: "true",
   },
-  impressionEvidence: { assessable: true, techniqueMatch: true, workIsIntaglio: true, hadScaleScan: true },
+  impressionEvidence: {
+    assessable: true,
+    observedTechniques: ["Etching", "Aquatint"],
+    observedIsPhotomechanical: false,
+    catalogueTechniques: ["Etching", "Aquatint", "Drypoint"],
+    catalogueMediumRaw: "Etching with aquatint and drypoint",
+    workIsIntaglio: true,
+    observedDimSource: "appraiser",
+    observedPlateMm: { width: 320, height: 240 },
+    observedImageMm: Z,
+    cataloguePlateMm: { width: 322, height: 241 },
+    catalogueImageMm: Z,
+  },
 });
 
 /** Two sources agree on a real artist; ACKG shows zero matching oeuvre but kId true → A3. */
@@ -160,7 +173,8 @@ export const attributionConflict = evOut({
   },
 });
 
-/** Photomechanical technique where an original is expected → reproduction divergence. */
+/** Observed technique is photomechanical, catalogued work is a hand-pulled screenprint
+ *  → reproduction divergence. */
 export const reproductionDivergence = evOut({
   artistEvidence: {
     veaNamesArtist: true,
@@ -182,15 +196,53 @@ export const reproductionDivergence = evOut({
     veaInImageTitleLegible: true,
     reverseImageTitle: "Crak!",
     reverseImageTitleSimilarity: 0.9,
+    appraiserTitle: "Crak!",
     kWorkQueried: true,
     kWorkTitleSim: 0.95,
-    kWorkTechniqueMatch: "false",
+    kWorkBackPropArtist: "Roy Lichtenstein",
   },
   impressionEvidence: {
     assessable: true,
-    techniqueMatch: false,
-    veaTechniqueIsPhotomechanical: true,
-    catalogueExpectsOriginalPrintmaking: true,
+    observedTechniques: ["Offset lithograph"],
+    observedIsPhotomechanical: true,
+    catalogueTechniques: ["Screenprint / Serigraphy"],
+    catalogueMediumRaw: "screenprint in colours",
+    workIsIntaglio: false,
+    observedDimSource: "none",
+  },
+});
+
+/** Damien Hirst "Wu Zetian" (Empresses) — a giclée edition BY DESIGN. Observed giclée
+ *  vs catalogued giclée = same medium, NOT a reproduction. The huge edition informs
+ *  Stage 3 valuation, not authenticity. */
+export const giclEditionNotReproduction = evOut({
+  artistEvidence: {
+    veaNamesArtist: true,
+    veaArtistName: "Damien Hirst",
+    veaAuthorshipSignalLegible: true,
+    veaSignatureConfidence: 0.7,
+    dominantCandidateName: "Damien Hirst",
+    dominantCandidateIdentityKey: "http://vocab.getty.edu/ulan/500115228",
+    kId: "true",
+    kOeuvreMatchCount: 40,
+    kOeuvreProvenanceTags: ["auction_history"],
+  },
+  workEvidence: {
+    veaTitle: "Wu Zetian",
+    veaInImageTitleLegible: true,
+    appraiserTitle: "Wu Zetian",
+    kWorkQueried: true,
+    kWorkTitleSim: 0.95,
+    kWorkBackPropArtist: "Damien Hirst",
+  },
+  impressionEvidence: {
+    assessable: true,
+    observedTechniques: [],
+    observedIsPhotomechanical: true,
+    catalogueTechniques: ["Giclée"],
+    catalogueMediumRaw: "laminated giclée print in colours on aluminium composite panel",
+    workIsIntaglio: false,
+    observedDimSource: "none",
   },
 });
 

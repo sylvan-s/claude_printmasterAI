@@ -579,37 +579,123 @@ export function classifyWorkPass(ev: WorkEvidence): WorkVerdict {
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// IMPRESSION — ADR-0010 Decision 5b + dimension rules (Decision 5 / 9.1)
+// IMPRESSION — ADR-0010 Decision 5b + Decision 9.1 (K_work: real catalogued
+// technique + dimensions from queryAckgWorks, compared here in code)
 // ───────────────────────────────────────────────────────────────────────────────
+
+/** Printmaking process families — the bucket a technique belongs to. Two techniques
+ *  match iff they share a family. */
+export type TechFamily = "intaglio" | "planographic" | "relief" | "screen" | "photomechanical" | "other";
+
+const TECH_FAMILY_KEYWORDS: Array<[TechFamily, RegExp]> = [
+  ["photomechanical", /giclee|giclée|inkjet|digital pigment|digital print|iris print|halftone|photogravure|photolith|collotype|offset|photo-?mechanical|c-?print|chromogenic|laser|dye sublimation|pigment print/i],
+  ["intaglio", /etch|engrav|drypoint|dry-point|aquatint|mezzotint|burin|intaglio|soft-?ground|roulette|stipple|sugar-?lift/i],
+  ["planographic", /lithograph|litho|planograph|zincograph|transfer litho|chromolith/i],
+  ["relief", /woodcut|wood engrav|linocut|lino cut|linoleum|relief|xylograph|chiaroscuro woodcut|metalcut/i],
+  ["screen", /screenprint|screen print|serigraph|silkscreen|silk-?screen|pochoir|stencil/i],
+];
+
+export function techniqueFamily(name: string): TechFamily {
+  const s = (name || "").toLowerCase();
+  for (const [fam, re] of TECH_FAMILY_KEYWORDS) if (re.test(s)) return fam;
+  return "other";
+}
+
+/** Map a set of technique names + a free-text medium string to the families present. */
+function familiesOf(names: string[], rawMedium = ""): TechFamily[] {
+  const fams = new Set<TechFamily>();
+  for (const n of names) {
+    const f = techniqueFamily(n);
+    if (f !== "other") fams.add(f);
+  }
+  // rawMedium often carries the process where the Technique node is missing/coarse
+  for (const [fam, re] of TECH_FAMILY_KEYWORDS) if (rawMedium && re.test(rawMedium)) fams.add(fam);
+  return [...fams];
+}
+
+export interface TechniqueComparison {
+  match: "true" | "false" | "unassessable";
+  observedFamilies: TechFamily[];
+  catalogueFamilies: TechFamily[];
+  /** The catalogued work is itself a hand-pulled original process (so an observed
+   *  photomechanical read means a reproduction, not just this medium). */
+  catalogueIsOriginalProcess: boolean;
+  note: string;
+}
+
+/** Decision 9.1's "technique/period-incompatibility rules table". Pure; no model. */
+export function classifyTechniqueMatch(input: {
+  observedTechniques: string[];
+  observedIsPhotomechanical: boolean;
+  catalogueTechniques: string[];
+  catalogueMediumRaw?: string;
+}): TechniqueComparison {
+  const obs = new Set(familiesOf(input.observedTechniques));
+  if (input.observedIsPhotomechanical) obs.add("photomechanical");
+  const cat = familiesOf(input.catalogueTechniques, input.catalogueMediumRaw ?? "");
+  const catSet = new Set(cat);
+  const catalogueIsOriginalProcess = cat.some((f) => f !== "photomechanical" && f !== "other");
+
+  if (cat.length === 0)
+    return {
+      match: "unassessable",
+      observedFamilies: [...obs],
+      catalogueFamilies: cat,
+      catalogueIsOriginalProcess: false,
+      note: "no catalogued technique to compare against",
+    };
+  if (obs.size === 0)
+    return {
+      match: "unassessable",
+      observedFamilies: [],
+      catalogueFamilies: cat,
+      catalogueIsOriginalProcess,
+      note: `catalogue is ${cat.join("/")}, but the observed technique is unread`,
+    };
+
+  const overlap = [...obs].some((f) => catSet.has(f));
+  return {
+    match: overlap ? "true" : "false",
+    observedFamilies: [...obs],
+    catalogueFamilies: cat,
+    catalogueIsOriginalProcess,
+    note: `observed ${[...obs].join("/")} vs catalogue ${cat.join("/")} -> ${overlap ? "same family" : "different family"}`,
+  };
+}
+
 export interface DimensionEvidence {
-  /** VEA had a SCALE_SCAN — without it, dimensions are ±15-20% and the comparison is noise. */
-  hadScaleScan: boolean;
+  /** Where the "observed" measurement comes from. "appraiser" = Stage 1c stated
+   *  dimensions (the pipeline's dimension source of record). "vea_scaled" = VEA with a
+   *  scale reference (±15-20%, compared with a note). "none" = nothing usable → UNASSESSABLE. */
+  observedSource: "appraiser" | "vea_scaled" | "none";
   workIsIntaglio: boolean;
-  veaPlateMm?: { w: number; h: number } | null;
+  observedPlateMm?: { w: number; h: number } | null;
+  observedImageMm?: { w: number; h: number } | null;
   cataloguePlateMm?: { w: number; h: number } | null;
-  veaImageMm?: { w: number; h: number } | null;
   catalogueImageMm?: { w: number; h: number } | null;
 }
 
 export interface DimensionComparison {
   match: "true" | "false" | "UNASSESSABLE";
   comparedOn: "plate" | "image" | null;
-  direction: "larger" | "smaller" | "equal" | null; // VEA vs catalogue
+  direction: "larger" | "smaller" | "equal" | null; // observed vs catalogue
   severity: "within_tolerance" | "minor" | "material" | null;
   note: string;
 }
 
 function compareDims(
-  vea: { w: number; h: number },
+  obs: { w: number; h: number },
   cat: { w: number; h: number },
   pct: number,
   mmFloor: number,
   on: "plate" | "image",
+  scaledCaveat: boolean,
 ): DimensionComparison {
-  const dw = vea.w - cat.w;
-  const dh = vea.h - cat.h;
-  const tolW = Math.max(cat.w * pct, mmFloor);
-  const tolH = Math.max(cat.h * pct, mmFloor);
+  const dw = obs.w - cat.w;
+  const dh = obs.h - cat.h;
+  const effPct = scaledCaveat ? Math.max(pct, 0.18) : pct; // VEA-scaled: widen to swallow ±15-20% noise
+  const tolW = Math.max(cat.w * effPct, mmFloor);
+  const tolH = Math.max(cat.h * effPct, mmFloor);
   const within = Math.abs(dw) <= tolW && Math.abs(dh) <= tolH;
   const relMax = Math.max(Math.abs(dw) / cat.w, Math.abs(dh) / cat.h);
   const direction = dw + dh > 0.5 ? "larger" : dw + dh < -0.5 ? "smaller" : "equal";
@@ -619,61 +705,76 @@ function compareDims(
     comparedOn: on,
     direction,
     severity,
-    note: `${on}: VEA ${vea.w}x${vea.h}mm vs catalogue ${cat.w}x${cat.h}mm (rel diff ${(relMax * 100).toFixed(1)}%, tol ${(pct * 100).toFixed(0)}%/${mmFloor}mm) -> ${within ? "within" : severity}`,
+    note: `${on}: observed ${obs.w}x${obs.h}mm vs catalogue ${cat.w}x${cat.h}mm (rel diff ${(relMax * 100).toFixed(1)}%, tol ${(effPct * 100).toFixed(0)}%/${mmFloor}mm${scaledCaveat ? ", VEA-scaled" : ""}) -> ${within ? "within" : severity}`,
   };
 }
 
-/** Plate mark primary; image fallback; sheet never; UNASSESSABLE without a scale scan or
- *  without a like-for-like pair. */
+/** Plate mark primary; image fallback; sheet never; UNASSESSABLE without an observed
+ *  measurement or without a like-for-like pair. */
 export function classifyDimensionMatch(d: DimensionEvidence): DimensionComparison {
-  if (!d.hadScaleScan)
-    return { match: "UNASSESSABLE", comparedOn: null, direction: null, severity: null, note: "no SCALE_SCAN — VEA dimensions ±15-20%" };
-  if (d.workIsIntaglio && d.veaPlateMm && d.cataloguePlateMm)
-    return compareDims(d.veaPlateMm, d.cataloguePlateMm, TAU_DIM_PLATE_PCT, TAU_DIM_PLATE_MM, "plate");
-  if (d.veaImageMm && d.catalogueImageMm)
-    return compareDims(d.veaImageMm, d.catalogueImageMm, TAU_DIM_IMAGE_PCT, TAU_DIM_IMAGE_MM, "image");
+  if (d.observedSource === "none")
+    return { match: "UNASSESSABLE", comparedOn: null, direction: null, severity: null, note: "no usable observed dimension (Stage 1c silent, no VEA scale reference)" };
+  const scaled = d.observedSource === "vea_scaled";
+  if (d.workIsIntaglio && d.observedPlateMm && d.cataloguePlateMm)
+    return compareDims(d.observedPlateMm, d.cataloguePlateMm, TAU_DIM_PLATE_PCT, TAU_DIM_PLATE_MM, "plate", scaled);
+  if (d.observedImageMm && d.catalogueImageMm)
+    return compareDims(d.observedImageMm, d.catalogueImageMm, TAU_DIM_IMAGE_PCT, TAU_DIM_IMAGE_MM, "image", scaled);
   return {
     match: "UNASSESSABLE",
     comparedOn: null,
     direction: null,
     severity: null,
-    note: "no like-for-like dimension pair (plate vs sheet, or a side missing)",
+    note: "no like-for-like dimension pair (only sheet on one side, or a side missing)",
   };
 }
 
 export interface ImpressionEvidence {
-  techniqueMatch: boolean;
-  /** VEA read the technique as photomechanical (halftone / offset / giclée). */
-  veaTechniqueIsPhotomechanical: boolean;
-  /** The catalogued work / this tradition expects an original hand-pulled print. */
-  catalogueExpectsOriginalPrintmaking: boolean;
+  /** VEA's observed printing technique name(s). */
+  observedTechniques: string[];
+  /** VEA read the technique as photomechanical (halftone dots / offset / giclée). */
+  observedIsPhotomechanical: boolean;
+  /** Catalogued technique(s) for the identified work, from queryAckgWorks. */
+  catalogueTechniques: string[];
+  /** The most informative catalogued rawMedium string, if any. */
+  catalogueMediumRaw?: string;
   dimensions: DimensionEvidence;
 }
 
 export interface ImpressionAssessment {
   divergence: "none" | "variant_sheet" | "later_edition" | "medium_divergence" | "reproduction";
   dimensionMatch: "true" | "false" | "UNASSESSABLE";
-  techniqueMatch: boolean;
+  techniqueMatch: "true" | "false" | "unassessable";
   notes: string;
   ruleTrace: string[];
 }
 
-/** ADR-0010 Decision 5b. Only meaningful once Pass 2 returned T3 (or T2/T4 with a K_work). */
+/** ADR-0010 Decision 5b. Only meaningful once Pass 2 returned T2/T3/T4 with a K_work. */
 export function classifyImpression(ev: ImpressionEvidence): ImpressionAssessment {
   const trace: string[] = [];
+  const tech = classifyTechniqueMatch({
+    observedTechniques: ev.observedTechniques,
+    observedIsPhotomechanical: ev.observedIsPhotomechanical,
+    catalogueTechniques: ev.catalogueTechniques,
+    catalogueMediumRaw: ev.catalogueMediumRaw,
+  });
+  trace.push(tech.note);
   const dim = classifyDimensionMatch(ev.dimensions);
   trace.push(dim.note);
 
   let divergence: ImpressionAssessment["divergence"];
-  if (ev.veaTechniqueIsPhotomechanical && ev.catalogueExpectsOriginalPrintmaking) {
+  if (
+    tech.match === "false" &&
+    ev.observedIsPhotomechanical &&
+    tech.catalogueIsOriginalProcess
+  ) {
     divergence = "reproduction";
-    trace.push("VEA technique is photomechanical but an original print is expected -> reproduction / poster");
-  } else if (!ev.techniqueMatch) {
+    trace.push("observed technique is photomechanical, catalogued work is a hand-pulled original -> reproduction / poster");
+  } else if (tech.match === "false") {
     divergence = "medium_divergence";
-    trace.push("technique differs from the catalogued record -> different production (reproduction after / other medium)");
-  } else if (dim.match === "true" || dim.match === "UNASSESSABLE") {
+    trace.push("observed technique family differs from the catalogued record -> different production (reproduction after / other medium)");
+  } else if (dim.match === "true" || dim.match === "UNASSESSABLE" || tech.match === "unassessable") {
     divergence = "none";
-    trace.push(`technique matches; dimensions ${dim.match} -> no divergence`);
+    trace.push(`technique ${tech.match}; dimensions ${dim.match} -> no divergence`);
   } else if (dim.severity === "minor") {
     divergence = "variant_sheet";
     trace.push("technique matches; dimensions off but minor -> trimmed / variant sheet");
@@ -688,7 +789,7 @@ export function classifyImpression(ev: ImpressionEvidence): ImpressionAssessment
   return {
     divergence,
     dimensionMatch: dim.match,
-    techniqueMatch: ev.techniqueMatch,
+    techniqueMatch: tech.match,
     notes: trace.join(" | "),
     ruleTrace: trace,
   };
@@ -885,7 +986,10 @@ export function classifyTwoPass(input: TwoPassInput): TwoPassResult {
       }
     }
 
-    if (input.impressionEvidence && (work.evidenceBasis === "T3" || work.evidenceBasis === "T2" || work.evidenceBasis === "T4")) {
+    // Impression check runs whenever Pass 2 landed on a real work (identified or candidate)
+    // and there is catalogued evidence to compare the object against — the divergence is
+    // about the physical object vs the record, independent of which T-row fired.
+    if (input.impressionEvidence && (work.verdict === "identified" || work.verdict === "candidate")) {
       impression = classifyImpression(input.impressionEvidence);
       trace.push(`IMPRESSION: ${impression.divergence} (dimMatch=${impression.dimensionMatch}, techMatch=${impression.techniqueMatch})`);
     }

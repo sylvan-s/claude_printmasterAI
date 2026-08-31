@@ -1,3 +1,11 @@
-export { queryAckg } from "./query.js";
+export { queryAckg, queryAckgWorks } from "./query.js";
 export { closeDriver } from "./client.js";
-export type { AckgQueryParams, AckgCandidate, AckgProvenanceTag } from "./types.js";
+export { parseAckgDimMm } from "./dimension_parse.js";
+export type { DimMm } from "./dimension_parse.js";
+export type {
+  AckgQueryParams,
+  AckgCandidate,
+  AckgProvenanceTag,
+  AckgWorkQueryParams,
+  AckgWorkMatch,
+} from "./types.js";

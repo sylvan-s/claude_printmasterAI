@@ -5,6 +5,7 @@
  * exists: candidate-artist probabilities grounded in real ingested records
  * (Met, Roseberys, Forum Auctions) rather than an LLM's unexaminable prior.
  */
+import type { DimMm } from "./dimension_parse.js";
 
 export interface AckgQueryParams {
   /** Printing technique name, e.g. "Etching", "Screenprint / Serigraphy". Substring match, case-insensitive. */
@@ -29,6 +30,46 @@ export interface AckgQueryParams {
 }
 
 export type AckgProvenanceTag = "institutional" | "auction_history";
+
+/** Parameters for queryAckgWorks — the ADR-0010 Decision 9.1 K_work probe. Unlike
+ *  AckgQueryParams (an artist-population query), this aggregates per ConceptualWork and
+ *  returns catalogued technique + dimension facts for a specific work. */
+export interface AckgWorkQueryParams {
+  /** Artist name, substring, case-insensitive. Strongly recommended — without it the
+   *  title match ranges across every artist. */
+  artist?: string;
+  /** Work title fragment, substring, case-insensitive. A short distinctive core phrase
+   *  matches best ("Death of the Virgin", not "The Death of the Virgin, first state"). */
+  workTitle?: string;
+  /** Optional technique / period narrowing (same semantics as AckgQueryParams). */
+  technique?: string;
+  periodStartYear?: number;
+  periodEndYear?: number;
+  /** Max works returned, ranked by impression count descending. Default 8. */
+  limit?: number;
+}
+
+/** One catalogued ConceptualWork with its aggregated impression facts. Near-duplicate
+ *  title nodes (the graph has un-merged re-ingests) come back as separate rows — the
+ *  caller merges them. */
+export interface AckgWorkMatch {
+  workTitle: string;
+  artistName: string;
+  artistUlanUrl: string | null;
+  dateLabel: string | null;
+  /** Technique node names on this work's impressions, e.g. ["Etching", "Drypoint"]. */
+  techniques: string[];
+  /** Free-text media strings (Impression.rawMedium), deduped, capped at 3. */
+  rawMediums: string[];
+  plateDimsMm: DimMm[];
+  imageDimsMm: DimMm[];
+  sheetDimsMm: DimMm[];
+  /** EditionRun.declaredSize values seen for this work. */
+  editionSizes: number[];
+  impressionCount: number;
+  /** "institutional" and/or "auction_history". */
+  provenanceLayers: AckgProvenanceTag[];
+}
 
 export interface AckgCandidate {
   artistName: string;

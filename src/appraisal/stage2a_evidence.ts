@@ -95,14 +95,21 @@ export interface EvidenceAgentOutput {
   };
   impressionEvidence: {
     assessable: boolean;
-    techniqueMatch: boolean;
-    veaTechniqueIsPhotomechanical: boolean;
-    catalogueExpectsOriginalPrintmaking: boolean;
-    hadScaleScan: boolean;
+    /** VEA's observed printing technique name(s). */
+    observedTechniques: string[];
+    /** VEA read halftone dots / offset / giclée. */
+    observedIsPhotomechanical: boolean;
+    /** Catalogued technique(s) for the identified work, from query_ackg_work. */
+    catalogueTechniques: string[];
+    /** Most informative catalogued rawMedium string, "" if none. */
+    catalogueMediumRaw: string;
     workIsIntaglio: boolean;
-    veaPlateMm: WH;
+    /** Where the observed measurement comes from: "appraiser" (Stage 1c, preferred) |
+     *  "vea_scaled" (VEA had a scale reference) | "none". */
+    observedDimSource: "appraiser" | "vea_scaled" | "none" | string;
+    observedPlateMm: WH;
+    observedImageMm: WH;
     cataloguePlateMm: WH;
-    veaImageMm: WH;
     catalogueImageMm: WH;
   };
   riskFlags: {
@@ -214,17 +221,29 @@ export function evidenceToTwoPassInput(ev: EvidenceAgentOutput, veaHaltRecommend
       : null;
 
   const imp = ev.impressionEvidence;
-  const impressionEvidence = imp?.assessable
+  const observedDimSource: "appraiser" | "vea_scaled" | "none" =
+    imp?.observedDimSource === "appraiser" || imp?.observedDimSource === "vea_scaled"
+      ? imp.observedDimSource
+      : "none";
+  // Only run the impression layer when there's something concrete to compare — a catalogued
+  // technique or a like-for-like dimension pair. Otherwise it's noise (T4 world).
+  const impressionAssessable =
+    !!imp?.assessable &&
+    ((imp.catalogueTechniques ?? []).length > 0 ||
+      (observedDimSource !== "none" &&
+        (!!wh(imp.cataloguePlateMm) || !!wh(imp.catalogueImageMm))));
+  const impressionEvidence = impressionAssessable && imp
     ? {
-        techniqueMatch: imp.techniqueMatch,
-        veaTechniqueIsPhotomechanical: imp.veaTechniqueIsPhotomechanical,
-        catalogueExpectsOriginalPrintmaking: imp.catalogueExpectsOriginalPrintmaking,
+        observedTechniques: imp.observedTechniques ?? [],
+        observedIsPhotomechanical: !!imp.observedIsPhotomechanical,
+        catalogueTechniques: imp.catalogueTechniques ?? [],
+        catalogueMediumRaw: imp.catalogueMediumRaw || "",
         dimensions: {
-          hadScaleScan: imp.hadScaleScan,
-          workIsIntaglio: imp.workIsIntaglio,
-          veaPlateMm: wh(imp.veaPlateMm),
+          observedSource: observedDimSource,
+          workIsIntaglio: !!imp.workIsIntaglio,
+          observedPlateMm: wh(imp.observedPlateMm),
+          observedImageMm: wh(imp.observedImageMm),
           cataloguePlateMm: wh(imp.cataloguePlateMm),
-          veaImageMm: wh(imp.veaImageMm),
           catalogueImageMm: wh(imp.catalogueImageMm),
         },
       }
@@ -454,9 +473,10 @@ export function emptyEvidenceOutput(
       kWorkDimensionMatch: "UNASSESSABLE", kWorkBackPropArtist: "",
     },
     impressionEvidence: {
-      assessable: false, techniqueMatch: false, veaTechniqueIsPhotomechanical: false,
-      catalogueExpectsOriginalPrintmaking: true, hadScaleScan: false, workIsIntaglio: false,
-      veaPlateMm: ZERO_WH, cataloguePlateMm: ZERO_WH, veaImageMm: ZERO_WH, catalogueImageMm: ZERO_WH,
+      assessable: false, observedTechniques: [], observedIsPhotomechanical: false,
+      catalogueTechniques: [], catalogueMediumRaw: "", workIsIntaglio: false,
+      observedDimSource: "none", observedPlateMm: ZERO_WH, observedImageMm: ZERO_WH,
+      cataloguePlateMm: ZERO_WH, catalogueImageMm: ZERO_WH,
     },
     riskFlags: {
       forgeryRisk: false, reprintRisk: false, editionComplexityRisk: false, misattributionRisk: false,

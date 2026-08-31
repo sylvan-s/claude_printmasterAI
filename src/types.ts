@@ -543,7 +543,7 @@ export interface TriageResult {
   impressionAssessment?: {
     divergence: "none" | "variant_sheet" | "later_edition" | "medium_divergence" | "reproduction";
     dimensionMatch: "true" | "false" | "UNASSESSABLE";
-    techniqueMatch: boolean;
+    techniqueMatch: "true" | "false" | "unassessable";
     notes: string;
   } | null;
 }

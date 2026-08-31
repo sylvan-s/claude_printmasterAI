@@ -126,6 +126,13 @@ test("photomechanical technique where an original is expected → reproduction �
   assert.equal(triage.routingDecision.tier, SCENARIO_TO_TIER[Scenario.ElevatedAuthenticationRisk]);
 });
 
+test("giclée observed AND giclée catalogued (Hirst Empresses) → NOT a reproduction, not Scenario 2", () => {
+  const { triage, twoPass } = runEvidenceTree(f.giclEditionNotReproduction, false);
+  assert.equal(twoPass.impressionAssessment?.divergence, "none");
+  assert.notEqual(triage.routingDecision.scenario, Scenario.ElevatedAuthenticationRisk);
+  assert.equal(twoPass.artistAttribution.artistName, "Damien Hirst");
+});
+
 test("ACKG work-level artist+title match promotes an otherwise-unattributed lot → candidate (A8K)", () => {
   const inp = evidenceToTwoPassInput(f.ackgWorkAnchorPromotes, false);
   assert.equal(inp.artistEvidence.ackgWorkAnchor?.artist, "Rembrandt van Rijn");
