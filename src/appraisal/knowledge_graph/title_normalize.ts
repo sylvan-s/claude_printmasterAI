@@ -9,10 +9,10 @@
  * collapsing genuinely distinct works.
  */
 
-/** A trailing "(Word 123…)" that looks like a catalogue-raisonné reference:
- *  a capitalised author token, then a number, optionally with more refs after a
- *  ";" or ",". e.g. "(Bloch 330, Baer 377/II/B/a)", "(Herdman 5202)", "(Field 75-7M&L 514a)". */
-const TRAILING_CAT_REF = /\s*\((?:[A-Z][A-Za-z&.'-]+\.?\s+)+[\dIVXLC][\w./&\s,;-]*\)\s*$/;
+/** A trailing "(…)" that is a catalogue-raisonné / series reference rather than part of
+ *  the title: contains a digit or a series/state marker. Catches "(Bloch 330, Baer 377/II/B/a)",
+ *  "(Herdman 5202)", "(Field 75-7M&L 514a)", "(H10-2, from The Empresses)", "(pl. 3)". */
+const TRAILING_CAT_REF = /\s*\([^()]*(?:\d|\bfrom\b|\bplate\b|\bpl\.\b|\bstate\b|\bed\.\b)[^()]*\)\s*$/i;
 /** Trailing ", 2019" / " 2019" / "(2019)" year. */
 const TRAILING_YEAR = /[\s,(]+(?:circa\s+|c\.?\s*)?(1[5-9]\d{2}|20[0-4]\d)\)?\s*$/i;
 /** Leading list ordinal "4. " / "12) " (but NOT a fraction like "1/4 "). */
@@ -27,7 +27,7 @@ const TRAILING_SERIES = /[,;:]?\s+(from|in|part of|plate\s+\d+\s+(from|of))\s+(t
 const TRAILING_PORTFOLIO = /[,;:]?\s+(portfolio|suite|series|set)\b[A-Za-z0-9\s'&.-]{0,30}$/i;
 
 export function normalizeTitleForEmbedding(raw: string): string {
-  let s = (raw ?? "").normalize("NFC");
+  let s = (raw ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC");
   // unify quotes / dashes
   s = s
     .replace(/[‘’‛′]/g, "'")

@@ -62,10 +62,12 @@ test("null / empty / junk -> null", () => {
 
 // ── title normalization ─────────────────────────────────────────────────────
 
-test("strips a trailing catalogue-raisonné ref", () => {
+test("strips a trailing catalogue-raisonné ref and folds diacritics", () => {
   assert.equal(normalizeTitleForEmbedding("Le Taureau (Bloch 330, Baer 377/II/B/a)"), "le taureau");
   assert.equal(normalizeTitleForEmbedding("Heath with Juniper (Herdman 5202)"), "heath with juniper");
-  assert.equal(normalizeTitleForEmbedding("Académie des Beaux Arts (Field 75-7M&L 514a)"), "académie des beaux arts");
+  assert.equal(normalizeTitleForEmbedding("Académie des Beaux Arts (Field 75-7M&L 514a)"), "academie des beaux arts");
+  assert.equal(normalizeTitleForEmbedding("Nūr Jahān (H10-2, from The Empresses)"), "nur jahan");
+  assert.equal(normalizeTitleForEmbedding("Composition (pl. 3)"), "composition");
 });
 
 test("strips a trailing year and a leading list ordinal", () => {

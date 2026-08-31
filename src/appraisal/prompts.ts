@@ -1316,7 +1316,7 @@ query_ackg queries a real graph of ingested print records (Met, Roseberys, Forum
 
 query_ackg_work looks up a SPECIFIC catalogued work and returns, per matching Conceptual Work, its catalogued technique(s), medium string, plate/image/sheet dimensions in mm, edition sizes, AND a "computed title similarity" (an embedding match, 0..1) between your observed title and each catalogued title.
 
-- Call it ONCE you have a leading artist + a candidate title. Pass: artist; workTitle (a short distinctive fragment for the pre-filter); observedTitle (the FULL observed title, for the similarity rank); observedTechnique (VEA's read, e.g. "Etching" — breaks ties between same-titled works of different media).
+- Call it ONCE you have a leading artist + a candidate title. Pass: artist; workTitle (a short distinctive fragment for the pre-filter); observedTitle (the CORE title only — strip catalogue refs, "(H10-2, …)", "from The <Series>", parentheticals and diacritics: "Nūr Jahān (H10-2, from The Empresses)" → "Nur Jahan"); observedTechnique (VEA's read, e.g. "Etching" — breaks ties between same-titled works of different media).
 - The rows come back ranked by computed title similarity. Take the top row. Transcribe its "computed title similarity" into kWorkTitleSim, its catalogued title into kWorkMatchedTitle, and the artist it is catalogued to into kWorkBackPropArtist (only when that is exactly one artist). Do NOT estimate a similarity of your own.
 - Near-duplicate title rows are un-merged re-ingests — merge their techniques and dimensions when filling impressionEvidence.
 - Empty result = the work is not in this graph's sources → kWorkTitleSim -1, kWorkMatchedTitle "", catalogueTechniques [], catalogue*Mm 0/0. That is not evidence the object is fake.
