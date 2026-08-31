@@ -15,3 +15,7 @@ __pycache__/
 *.pyc
 knowledge_graph/venv-embeddings/
 knowledge_graph/embed_dinov2_failures.json
+
+# ULAN backfill reports (regenerate on demand)
+knowledge_graph/artist_ulan_report.csv
+knowledge_graph/artist_dedup_candidates.csv
