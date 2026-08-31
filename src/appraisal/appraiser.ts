@@ -219,6 +219,99 @@ function parseCleanJson(text: string): any {
   throw new SyntaxError("No valid JSON object found in response");
 }
 
+// ---------------------------------------------------------------------------
+// Anthropic Messages API — shared POST with retry + content-filter typing.
+// Replaces the ad-hoc "retry once on 5xx" blocks. Retries: undici network
+// failures ("fetch failed" / ECONNRESET / ETIMEDOUT — which surface as thrown
+// TypeErrors, not HTTP statuses, so the old `response.status >= 500` guard never
+// saw them), plus 429 / 529 / 5xx, with exponential backoff and `retry-after`
+// honoured. A 400 whose body names the content policy is surfaced as a distinct
+// error type so callers can strip prose / degrade gracefully rather than crash.
+// ---------------------------------------------------------------------------
+export class AnthropicContentFilterError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AnthropicContentFilterError";
+  }
+}
+
+const sleepMs = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const anthropicBackoffMs = (attempt: number) =>
+  Math.min(30_000, 1000 * 2 ** attempt) + Math.floor(Math.random() * 500);
+
+export async function postAnthropicMessages(
+  apiKey: string,
+  body: Record<string, unknown>,
+  opts: { betaHeader?: string; label?: string; maxAttempts?: number } = {},
+): Promise<any> {
+  const { betaHeader, label = "Anthropic", maxAttempts = 4 } = opts;
+  const headers: Record<string, string> = {
+    "x-api-key": apiKey,
+    "anthropic-version": "2023-06-01",
+    "content-type": "application/json",
+  };
+  if (betaHeader) headers["anthropic-beta"] = betaHeader;
+  const payload = JSON.stringify(body);
+
+  let lastNetworkErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let response: Response;
+    try {
+      response = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: payload });
+    } catch (err: any) {
+      lastNetworkErr = err;
+      if (attempt >= maxAttempts) break;
+      const wait = anthropicBackoffMs(attempt);
+      console.warn(`[${label}] network error "${err?.message ?? err}" — retry ${attempt}/${maxAttempts - 1} in ${Math.round(wait)}ms`);
+      await sleepMs(wait);
+      continue;
+    }
+
+    if (response.ok) return response.json();
+
+    const errorText = await response.text();
+
+    if (response.status === 400 && /content[ _-]?filter|content policy|blocked by .*polic/i.test(errorText)) {
+      throw new AnthropicContentFilterError(`${label}: output blocked by content filtering — ${errorText.slice(0, 300)}`);
+    }
+
+    const retryable = response.status === 429 || response.status === 529 || response.status >= 500;
+    if (retryable && attempt < maxAttempts) {
+      const retryAfter = Number(response.headers.get("retry-after"));
+      const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : anthropicBackoffMs(attempt);
+      console.warn(`[${label}] transient ${response.status} — retry ${attempt}/${maxAttempts - 1} in ${Math.round(wait)}ms`);
+      await sleepMs(wait);
+      continue;
+    }
+
+    throw new Error(`${label} request failed: ${response.status}: ${errorText.slice(0, 500)}`);
+  }
+  throw new Error(`${label} request failed after ${maxAttempts} attempts: ${(lastNetworkErr as any)?.message ?? lastNetworkErr}`);
+}
+
+/** Trim VEA's free-text prose to its factual core for a content-filter retry. Keeps
+ *  every structured field (technique names, dimensions, booleans, confidences, and
+ *  short text like signature transcriptions / in-image titles) — only long descriptive
+ *  strings and known prose fields get shortened, since those are what a content filter
+ *  most often trips on when the model echoes them back. Deep-clones; never mutates input. */
+const VEA_PROSE_FIELDS = new Set([
+  "observationNotes", "visualSimilarityRationale", "description", "compositionSummary",
+  "sceneDescription", "narrativeDescription", "analysisDetails",
+]);
+export function trimVeaProse(value: any, key?: string): any {
+  if (typeof value === "string") {
+    if (key && VEA_PROSE_FIELDS.has(key)) return value.length > 80 ? value.slice(0, 80) + "… [trimmed]" : value;
+    return value.length > 180 ? value.slice(0, 180) + "… [trimmed]" : value;
+  }
+  if (Array.isArray(value)) return value.map((v) => trimVeaProse(v));
+  if (value && typeof value === "object") {
+    const out: any = {};
+    for (const [k, v] of Object.entries(value)) out[k] = trimVeaProse(v, k);
+    return out;
+  }
+  return value;
+}
+
 function loadSpecialistConfig(configKey: string): object {
   for (const key of [configKey, "general_print_fallback"]) {
     const filePath = join(SPECIALIST_CONFIGS_DIR, `${key}.json`);
@@ -523,25 +616,19 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     // first reads the schema+prompt from cache (~0.1x) instead of re-sending it. The
     // per-lot content (image, notes) sits in `messages`, after the breakpoint, so it
     // never poisons the cache. 5-minute TTL is enough while a batch is actively running.
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
+    const data = await postAnthropicMessages(
+      apiKey,
+      {
         model: modelName,
         max_tokens: 4096,
         system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: contentBlocks }],
         tools: [{ name: toolName, description: toolDescription, input_schema: translateSchemaToStandardJsonSchema(inputSchema) }],
         tool_choice: { type: "tool", name: toolName },
-      }),
-    });
+      },
+      { label: `Claude ${toolName}` },
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude API request failed with status ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
     const toolUseBlock = data.content?.find((b: any) => b.type === "tool_use");
     if (!toolUseBlock?.input) throw new Error(`Claude did not return a valid structured tool call for ${toolName}.`);
     return toolUseBlock.input;
@@ -614,16 +701,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
 
     const tools = [{ type: "web_search_20250305", name: "web_search" }, MultiStageAppraiser.MUSEUM_LOOKUP_TOOL];
 
-    const post = async (messages: any[], forceFinal: boolean) => {
-      const doRequest = () => fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey!,
-          "anthropic-version": "2023-06-01",
-          "anthropic-beta": "web-search-2025-03-05",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
+    const post = (messages: any[], forceFinal: boolean) =>
+      postAnthropicMessages(
+        apiKey!,
+        {
           model: modelName,
           max_tokens: maxTokens,
           // Cache the specialist system prompt (+ injected config). Reused verbatim for
@@ -633,21 +714,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           messages,
           tools,
           ...(forceFinal ? { tool_choice: { type: "none" } } : {}),
-        }),
-      });
-      let response = await doRequest();
-      // Retry once on transient 5xx (e.g. Cloudflare 520)
-      if (response.status >= 500) {
-        console.warn(`[Claude web-search] Transient ${response.status} — retrying in 5s`);
-        await new Promise(r => setTimeout(r, 5000));
-        response = await doRequest();
-      }
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Claude web-search API request failed: ${response.status}: ${errorText}`);
-      }
-      return response.json();
-    };
+        },
+        { label: "Claude web-search", betaHeader: "web-search-2025-03-05" },
+      );
 
     // Loop while Claude is still requesting client-executed tools (lookup_museum_collections).
     // Crucially, tools stay AVAILABLE (not forced to none) between rounds — Anthropic's
@@ -816,11 +885,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const tools = [MultiStageAppraiser.QUERY_ACKG_TOOL];
     const finalToolName = finalTool.name;
 
-    const post = async (messages: any[], forceFinalTool: boolean) => {
-      const doRequest = () => fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "x-api-key": apiKey!, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-        body: JSON.stringify({
+    const post = (messages: any[], forceFinalTool: boolean) =>
+      postAnthropicMessages(
+        apiKey!,
+        {
           model: modelName,
           max_tokens: maxTokens,
           // Cache the triage system prompt (it is large and identical for every lot). Across
@@ -836,20 +904,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
             ? [...tools, { name: finalToolName, description: finalTool.description, input_schema: translateSchemaToStandardJsonSchema(finalTool.schema) }]
             : tools,
           ...(forceFinalTool ? { tool_choice: { type: "tool", name: finalToolName } } : {}),
-        }),
-      });
-      let response = await doRequest();
-      if (response.status >= 500) {
-        console.warn(`[Stage 2a ACKG tool] Transient ${response.status} — retrying in 5s`);
-        await new Promise(r => setTimeout(r, 5000));
-        response = await doRequest();
-      }
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Claude ACKG-tool API request failed: ${response.status}: ${errorText}`);
-      }
-      return response.json();
-    };
+        },
+        { label: "Stage 2a ACKG tool" },
+      );
 
     const messages: any[] = [{ role: "user", content: userText }];
     const MAX_ROUNDS = 4;
@@ -1648,19 +1705,40 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
 
     const { notesBlock, appraiserInputBlock, visualSearchBlock, veaSlim } =
       this.buildStage2aContext(vea, userNotes, appraiserInput, visualSearch);
-    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(veaSlim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
+    const evidenceTool = {
+      name: "report_attribution_evidence",
+      description: "Report the observed attribution evidence cells (no verdicts, no routing).",
+      schema: ATTRIBUTION_EVIDENCE_SCHEMA,
+    };
+    const buildUserText = (slim: unknown) =>
+      `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(slim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
 
-    const ev = (await this.callClaudeWithAckgTool(
-      stage2aModel,
-      ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT,
-      userText,
-      8192,
-      {
-        name: "report_attribution_evidence",
-        description: "Report the observed attribution evidence cells (no verdicts, no routing).",
-        schema: ATTRIBUTION_EVIDENCE_SCHEMA,
+    let ev: EvidenceAgentOutput;
+    try {
+      ev = (await this.callClaudeWithAckgTool(
+        stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(veaSlim), 8192, evidenceTool,
+      )) as EvidenceAgentOutput;
+    } catch (err) {
+      if (!(err instanceof AnthropicContentFilterError)) throw err;
+      // Content filter tripped — most often on lurid free-text prose the model echoes back
+      // (surrealist / figurative descriptions). Retry once with VEA's long prose fields
+      // trimmed to their factual core; if it still fails, degrade to escalate rather than
+      // crash the lot.
+      console.warn(`[Stage 2a evidence] content-filtered — retrying with VEA prose trimmed`);
+      try {
+        ev = (await this.callClaudeWithAckgTool(
+          stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(trimVeaProse(veaSlim)), 8192, evidenceTool,
+        )) as EvidenceAgentOutput;
+      } catch (err2) {
+        if (!(err2 instanceof AnthropicContentFilterError)) throw err2;
+        console.warn(`[Stage 2a evidence] still content-filtered — emitting escalate-only result`);
+        const degraded = emptyEvidenceOutput(vea.overallExtractionConfidence ?? 0, {
+          reason: "Stage 2a evidence agent output blocked by content filtering on both attempts — needs manual triage.",
+          narrative: "The evidence agent could not complete: its output was blocked by content-filtering policy twice. No automated attribution was produced; route to a human.",
+        });
+        return runEvidenceTree(degraded, false).triage;
       }
-    )) as EvidenceAgentOutput;
+    }
 
     const { triage, twoPass } = runEvidenceTree(ev, false);
     const rd = triage.routingDecision;

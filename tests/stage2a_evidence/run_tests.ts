@@ -12,6 +12,11 @@ import {
   emptyEvidenceOutput,
 } from "../../src/appraisal/stage2a_evidence";
 import { Scenario, SCENARIO_TO_TIER } from "../../src/appraisal/routing";
+import {
+  postAnthropicMessages,
+  trimVeaProse,
+  AnthropicContentFilterError,
+} from "../../src/appraisal/appraiser";
 import * as f from "./fixtures";
 
 let passed = 0;
@@ -19,6 +24,17 @@ let failed = 0;
 function test(name: string, fn: () => void) {
   try {
     fn();
+    passed++;
+    console.log(`  ok  - ${name}`);
+  } catch (err: any) {
+    failed++;
+    console.error(`  FAIL - ${name}`);
+    console.error(`         ${err.message}`);
+  }
+}
+async function atest(name: string, fn: () => Promise<void>) {
+  try {
+    await fn();
     passed++;
     console.log(`  ok  - ${name}`);
   } catch (err: any) {
@@ -159,6 +175,97 @@ test("assembler does not mutate the input evidence object", () => {
   const tp = runEvidenceTree(ev, false).twoPass;
   assembleTriageResult(ev, tp);
   assert.equal(JSON.stringify(ev), snap);
+});
+
+// ── content-filter degradation ───────────────────────────────────────────────
+
+test("emptyEvidenceOutput override → not_attributed, escalate, Scenario 6 (no crash)", () => {
+  const degraded = emptyEvidenceOutput(0.5, { reason: "blocked twice", narrative: "manual triage" });
+  const { triage, twoPass } = runEvidenceTree(degraded, false);
+  assert.equal(twoPass.artistAttribution.verdict, "not_attributed");
+  assert.equal(triage.routingDecision.scenario, Scenario.LowSignalEverywhere);
+  assert.equal(triage.routingDecision.humanEscalationRequired, true);
+  assert.equal(triage.routingDecision.humanEscalationReason, "blocked twice");
+  assert.equal(triage.candidateArtists.length, 0);
+});
+
+test("trimVeaProse keeps structured fields, shortens long prose, deep-clones", () => {
+  const vea = {
+    printingTechniques: [{ technique: "Lithograph", confidence: 0.5 }],
+    signatures: [{ transcription: "Picasso", signatureConfidence: 0.9 }],
+    composition: { textWithinImage: "Le Taureau", description: "x".repeat(400) },
+    plateMark: { observationNotes: "y".repeat(200), present: true },
+  };
+  const snap = JSON.stringify(vea);
+  const t = trimVeaProse(vea);
+  assert.equal(JSON.stringify(vea), snap, "input not mutated");
+  assert.equal(t.printingTechniques[0].technique, "Lithograph");
+  assert.equal(t.signatures[0].transcription, "Picasso");
+  assert.equal(t.composition.textWithinImage, "Le Taureau");
+  assert.ok(t.composition.description.length < 200 && t.composition.description.endsWith("… [trimmed]"));
+  assert.ok(t.plateMark.observationNotes.length <= 100 && t.plateMark.observationNotes.endsWith("… [trimmed]"));
+  assert.equal(t.plateMark.present, true);
+});
+
+// ── postAnthropicMessages retry / content-filter typing ───────────────────────
+// Stub global fetch; assert the helper's control flow without a real network call.
+
+const realFetch = globalThis.fetch;
+function stubFetch(responders: Array<() => Response | Promise<Response>>) {
+  let i = 0;
+  globalThis.fetch = (async () => {
+    const r = responders[Math.min(i, responders.length - 1)];
+    i++;
+    return r();
+  }) as typeof fetch;
+  return () => {
+    globalThis.fetch = realFetch;
+    return i;
+  };
+}
+const jsonResponse = (obj: unknown, status = 200) =>
+  new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json" } });
+
+await atest("retries a 529 then succeeds", async () => {
+  const restore = stubFetch([
+    () => new Response("overloaded", { status: 529 }),
+    () => jsonResponse({ ok: true, content: [] }),
+  ]);
+  const data = await postAnthropicMessages("k", { model: "m" }, { label: "test", maxAttempts: 3 });
+  const calls = restore();
+  assert.equal(calls, 2);
+  assert.deepEqual(data, { ok: true, content: [] });
+});
+
+await atest("retries a thrown network error ('fetch failed') then succeeds", async () => {
+  const restore = stubFetch([
+    () => { throw new TypeError("fetch failed"); },
+    () => jsonResponse({ recovered: true }),
+  ]);
+  const data = await postAnthropicMessages("k", { model: "m" }, { label: "test", maxAttempts: 3 });
+  restore();
+  assert.equal(data.recovered, true);
+});
+
+await atest("a content-filter 400 throws AnthropicContentFilterError (not retried)", async () => {
+  const restore = stubFetch([
+    () => new Response("Output blocked by content filtering policy", { status: 400 }),
+    () => jsonResponse({ shouldNotReach: true }),
+  ]);
+  await assert.rejects(
+    postAnthropicMessages("k", { model: "m" }, { label: "test", maxAttempts: 3 }),
+    (e: any) => e instanceof AnthropicContentFilterError,
+  );
+  assert.equal(restore(), 1, "not retried");
+});
+
+await atest("a plain 400 throws a generic error, not the content-filter type", async () => {
+  const restore = stubFetch([() => new Response("bad request: missing field", { status: 400 })]);
+  await assert.rejects(
+    postAnthropicMessages("k", { model: "m" }, { label: "test", maxAttempts: 2 }),
+    (e: any) => !(e instanceof AnthropicContentFilterError) && /400/.test(e.message),
+  );
+  restore();
 });
 
 // ── summary ──────────────────────────────────────────────────────────────────

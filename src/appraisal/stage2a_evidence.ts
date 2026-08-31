@@ -424,10 +424,16 @@ export function assembleTriageResult(ev: EvidenceAgentOutput, tp: TwoPassResult)
 
 const ZERO_WH: WH = { width: 0, height: 0 };
 
-/** An all-empty evidence set — used when VEA already halted (reproduction / catalogue
- *  scan): there is no call to make and no work to attribute. classifyTwoPass short-
- *  circuits on veaHaltRecommended regardless of these values. */
-export function emptyEvidenceOutput(veaExtractionConfidence: number): EvidenceAgentOutput {
+/** An all-empty evidence set. Two uses, both bypassing the model:
+ *  - VEA already halted (reproduction / catalogue scan): no work to attribute.
+ *    classifyTwoPass short-circuits on veaHaltRecommended regardless of these values.
+ *  - the evidence-agent call could not be completed (content-filtered twice, or a hard
+ *    error): degrade to a "not attributed, escalate" result instead of crashing the lot.
+ *  Override `reason` / `narrative` for the second case. */
+export function emptyEvidenceOutput(
+  veaExtractionConfidence: number,
+  override?: { reason?: string; narrative?: string },
+): EvidenceAgentOutput {
   return {
     schemaVersion: "AEA-1.0",
     evidenceTimestamp: new Date().toISOString(),
@@ -448,7 +454,7 @@ export function emptyEvidenceOutput(veaExtractionConfidence: number): EvidenceAg
       kWorkDimensionMatch: "UNASSESSABLE", kWorkBackPropArtist: "",
     },
     impressionEvidence: {
-      assessable: false, techniqueMatch: false, veaTechniqueIsPhotomechanical: true,
+      assessable: false, techniqueMatch: false, veaTechniqueIsPhotomechanical: false,
       catalogueExpectsOriginalPrintmaking: true, hadScaleScan: false, workIsIntaglio: false,
       veaPlateMm: ZERO_WH, cataloguePlateMm: ZERO_WH, veaImageMm: ZERO_WH, catalogueImageMm: ZERO_WH,
     },
@@ -458,8 +464,9 @@ export function emptyEvidenceOutput(veaExtractionConfidence: number): EvidenceAg
     },
     conflicts: [],
     humanEscalationRequired: true,
-    humanEscalationReason: "VEA halted — digital reproduction / not an original print.",
-    evidenceNarrative: "VEA flagged this as a reproduction or catalogue scan; no original work to attribute.",
+    humanEscalationReason: override?.reason ?? "VEA halted — digital reproduction / not an original print.",
+    evidenceNarrative:
+      override?.narrative ?? "VEA flagged this as a reproduction or catalogue scan; no original work to attribute.",
   };
 }
 
