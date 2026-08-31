@@ -174,10 +174,16 @@ export async function queryAckgWorks(params: AckgWorkQueryParams): Promise<AckgW
 // scoreWorkTitleMatches — ADR-0010 Decision 9.1, Part B. Embed the observed title
 // (gemini-embedding-001) and rank the catalogued works by cosine, rescaled to an
 // interpretable 0..1 titleSim. Falls back to a token overlap when embeddings are
-// unavailable (no API key, or the work has no titleEmbedding yet). Optionally
-// nudges works whose technique family is incompatible with the observed technique
-// DOWN, so "Le Taureau (etching)" wins over "Taureau (lithograph)" for an intaglio object.
+// unavailable (no API key, or the work has no titleEmbedding yet).
+//
+// A technique-incompatible work is only DEMOTED as a tie-break — when another
+// candidate is within TIE_BAND of it AND is technique-compatible. A clear title
+// winner is never penalised for its medium (the impression layer does the real
+// technique-vs-catalogue comparison; e.g. a giclée Empresses work must not be
+// demoted just because VEA read "screenprint").
 // ---------------------------------------------------------------------------
+const TITLE_TIE_BAND = 0.08;
+const TITLE_TIE_DEMOTION = 0.85;
 function tokenOverlap(a: string, b: string): number {
   const norm = (s: string) =>
     new Set(
@@ -206,7 +212,7 @@ export async function scoreWorkTitleMatches(
     console.warn(`[scoreWorkTitleMatches] embedding unavailable (${err?.message ?? err}) — token fallback`);
   }
 
-  const scored = works.map((w) => {
+  const raw = works.map((w) => {
     let sim: number;
     let basis: AckgWorkMatch["titleSimBasis"];
     if (obsVec && w.titleEmbedding && w.titleEmbedding.length === obsVec.length) {
@@ -216,8 +222,15 @@ export async function scoreWorkTitleMatches(
       sim = tokenOverlap(obsNorm, w.workTitle);
       basis = obsVec ? "token" : "none";
     }
-    if (opts.techniqueIncompatible?.(w)) sim *= 0.6; // demote a technique-incompatible work
-    return { ...w, titleSim: Math.round(sim * 1000) / 1000, titleSimBasis: basis };
+    return { w, sim, basis, incompatible: !!opts.techniqueIncompatible?.(w) };
+  });
+
+  const topCompatible = Math.max(0, ...raw.filter((r) => !r.incompatible).map((r) => r.sim));
+  const scored = raw.map(({ w, sim, basis, incompatible }) => {
+    // tie-break only: an incompatible work that a compatible one is within TIE_BAND of
+    const demote = incompatible && topCompatible - sim <= TITLE_TIE_BAND && topCompatible > 0;
+    const finalSim = demote ? sim * TITLE_TIE_DEMOTION : sim;
+    return { ...w, titleSim: Math.round(finalSim * 1000) / 1000, titleSimBasis: basis };
   });
   scored.sort((a, b) => (b.titleSim ?? 0) - (a.titleSim ?? 0));
   return scored;
