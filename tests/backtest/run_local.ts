@@ -32,7 +32,7 @@ import { fileURLToPath } from "url";
 import { GoogleGenAI } from "@google/genai";
 import { getAppraiserFromConfig, appraiserConfigs, type AppraisalInput } from "../../src/appraisal/appraiser";
 import { parseDescription } from "../../benchmark/src/roseberys/parse";
-import { compareArtistNames, compareTitles as _unused } from "./compare";
+import { compareArtistNames } from "./compare";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_METHOD = "claude-4stage";

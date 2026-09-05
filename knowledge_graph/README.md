@@ -32,5 +32,25 @@ set -a; source knowledge_graph/.env; set +a
 - `met_ingest.py`, `roseberys_ingest.py`, `forum_ingest.py`, `tate_ingest.py` — bulk ingestion adapters for the Met Open Access, Roseberys, Forum Auctions, and Tate Collection catalogue extracts respectively. Each is self-contained; run with `--all` or `--sale`/`--object-ids`/`--artists`/`--accession-numbers` for a scoped load. See each file's module docstring for source-specific data-quality handling.
 - `bm_ingest.py` — pilot-scale adapter for the British Museum Collection Online (31 genuine Rembrandt etchings so far). Loads from a local JSON cache, not a live fetch — the site is behind a Cloudflare managed challenge with no scriptable bulk access; see doc 09 §7 for the full access-method and licensing (CC BY-NC-SA, non-commercial) write-up before extending this one.
 - `bm_embed_images.py` — pure DINOv2-Large/CLIP embedding pass over `DigitalImage` nodes already in the graph (`bm_ingest.py` creates them directly, same pattern as `forum_ingest.py`'s `LOAD_QUERY` — the graph is the handoff, not a shared cache file). Unlike the main site, BM's image files are served from an unprotected CDN subdomain (`media.britishmuseum.org`) — plain `requests` works for the download step even though the catalogue scrape needs a browser. See doc 09 §7.1/§7.3/§7.4.
-- `embed_images_dinov2.py` — writes DINOv2-small visual-similarity embeddings onto Roseberys/Forum `DigitalImage` nodes (Tate and Met have none to embed — see the script's own docstring). Needs its own isolated venv (`requirements-embeddings.txt`), not this toolkit's base `neo4j`/`pandas` env — see the script's docstring for why.
+- `embed_images_dinov2.py` — writes DINOv2-small visual-similarity embeddings onto Roseberys/Forum `DigitalImage` nodes (Tate and Met have none to embed — see the script's own docstring). Needs its own isolated venv (`requirements-embeddings.txt`), not this toolkit's base `neo4j`/`pandas` env — see the script's docstring for why. **Deprecated** as of ADR-0013: the graph has standardized on DINOv2-Large; any node this script embedded on DINOv2-small has since had those properties stripped, pending re-embedding on DINOv2-Large instead.
+- `embedding_service.py` — Stage 1d's request-time inference microservice (docs/adr/0013-stage1d-image-embedding-evidence.md): loads DINOv2-Large + CLIP once and serves embeddings for a single submission image over localhost HTTP, so the TypeScript pipeline can get a query vector without shelling out to Python per request. Same isolated venv as the two scripts above. See "Running the embedding service" below.
+- `setup_vector_index.py` — one-time (idempotent) creation of the two Neo4j native vector indexes Stage 1d queries against (`digitalImageDinov2Embedding`, `digitalImageClipEmbedding`). Plain `neo4j`-driver script, runs in the toolkit's base env, no venv-embeddings/torch needed.
 - `aat_crosswalk.json` — verified Getty AAT ID lookup table (never LLM-generated — see `resolve_artist_identity.py`'s docstring for why that matters).
+
+## Running the embedding service
+
+Stage 1d (the TypeScript appraisal pipeline) calls this over localhost HTTP at request time —
+it needs to be running alongside the Node server for Stage 1d to produce a result (it degrades
+to an empty/skipped result, not a crash, if the service is down — see `embedding_client.ts`).
+
+```
+knowledge_graph/venv-embeddings/bin/pip install -r knowledge_graph/requirements-embeddings.txt
+knowledge_graph/venv-embeddings/bin/uvicorn embedding_service:app --app-dir knowledge_graph --host 127.0.0.1 --port 8008
+curl http://127.0.0.1:8008/health
+```
+
+One-time setup of the Neo4j vector indexes it queries against:
+```
+set -a; source knowledge_graph/.env; set +a
+python3 knowledge_graph/setup_vector_index.py
+```

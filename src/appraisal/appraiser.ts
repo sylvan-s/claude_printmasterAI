@@ -5,6 +5,8 @@ import {
   AttributionResearchResult,
   TriageResult,
   AppraiserInputResult,
+  Stage1dResult,
+  EmbeddingMatchCandidate,
 } from "../types";
 import {
   getPrompt,
@@ -36,8 +38,9 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryImageEmbeddingMatches } from "./knowledge_graph/index.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
+import { getImageEmbeddings } from "./embedding_client.js";
 import { techniqueFamily } from "./two_pass_attribution";
 import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../shared/text_extraction";
 
@@ -140,6 +143,9 @@ export interface AppraisalMethodConfig {
   stage1Model?: string;
   stage1bModel?: string;       // model for Stage 1b visual search (FourStageAppraiser only)
   enableVisualSearch?: boolean; // set false to skip Stage 1b entirely (default: true)
+  /** ADR-0013: set false to skip Stage 1d (image-embedding match) entirely (default: true).
+   *  Shadow-run only — its result is attached to the report but never read by Stage 2a/2b/3. */
+  enableEmbeddingMatch?: boolean;
   stage2aModel?: string;
   /** ADR-0010: "triage" (default) = the classic Attribution Triage Agent + classifyTriageOutcome.
    *  "evidence" = the Attribution Evidence Agent — one Claude call fills observation cells, the
@@ -533,6 +539,20 @@ const DEFAULT_STAGE1B_MODEL = "gemini-3.7-flash";
 const HYPOTHESIS_WARNING =
   "⚠️ HYPOTHESIS ONLY — Stage 1b reverse image search result. Must be verified against VEA visual evidence (signatures, inscriptions, technique) before use in attribution. Do not treat as confirmed attribution.";
 const STAGE1C_MODEL = "claude-haiku-4-5";
+
+// ---------------------------------------------------------------------------
+// Stage 1d — image-embedding match (ADR-0013). Shadow-run only: computed and
+// attached to the report for visibility, never read by Stage 2a/2b/3 this pass.
+// ---------------------------------------------------------------------------
+
+const STAGE1D_INDEX_COVERAGE_NOTE =
+  "ACKG image index currently covers British Museum + Tate only (~12k images, DINOv2-Large/CLIP). " +
+  "Forum Auctions and Roseberys are not yet embedded — a weak or absent match reflects this coverage gap, not evidence against attribution.";
+const STAGE1D_ATTRIBUTION_CAVEAT =
+  "DINOv2/CLIP similarity reflects visual/stylistic closeness, not verified authorship — one corroborating " +
+  "evidence point, never a standalone attribution (see ADR-0002, ADR-0013).";
+const STAGE1D_HYPOTHESIS_WARNING =
+  "⚠️ HYPOTHESIS ONLY — Stage 1d image-embedding match. Shadow-run: not yet used in attribution. DINOv2/CLIP visual similarity, not verified authorship. Do not treat as confirmed attribution.";
 
 // ---------------------------------------------------------------------------
 // MultiStageAppraiser — base class with shared callers and stage runners
@@ -1438,6 +1458,69 @@ Return a single JSON object:
     }
   }
 
+  // ---- Stage 1d — image-embedding match (ADR-0013) ---------------------------
+  // Shadow-run only: computed and attached to the report for visibility, but
+  // deliberately NOT threaded into runStage2aTriage/runStage2bSpecialist this
+  // pass (see FourStageAppraiser.appraise()). Same "degrade to empty, never
+  // throw" discipline as Stage 1b — a down/slow embedding service or a Neo4j
+  // query failure must never fail the appraisal.
+
+  protected async runStage1dEmbeddingMatch(imageBase64: string, mimeType: string = "image/jpeg"): Promise<Stage1dResult> {
+    const EMPTY: Stage1dResult = {
+      schemaVersion: "IES-1.0",
+      embeddingModelsUsed: { dinov2: null, clip: null },
+      indexCoverageNote: STAGE1D_INDEX_COVERAGE_NOTE,
+      candidateMatches: [],
+      attributionCaveat: STAGE1D_ATTRIBUTION_CAVEAT,
+      hypothesisWarning: STAGE1D_HYPOTHESIS_WARNING,
+    };
+    const t = Date.now();
+    const vectors = await getImageEmbeddings(imageBase64, mimeType);
+    if (!vectors || (!vectors.dinov2 && !vectors.clip)) {
+      console.warn("[Stage 1d] embedding service unavailable or returned no vectors — skipping");
+      return EMPTY;
+    }
+    try {
+      const candidates: EmbeddingMatchCandidate[] = await queryImageEmbeddingMatches(
+        vectors.dinov2?.vector ?? null,
+        vectors.clip?.vector ?? null,
+        { limit: 10 },
+      );
+      const best = candidates[0];
+      // Provisional threshold, NOT calibrated against a backtest set — ADR-0013's "Not
+      // addressed" section explicitly flags this. Low-stakes to leave uncalibrated since
+      // nothing downstream reads it this pass.
+      const matchConfidence: Stage1dResult["matchConfidence"] = !best
+        ? null
+        : (best.dinov2Similarity ?? 0) >= 0.90 && (best.clipSimilarity ?? 0) >= 0.80
+          ? "HIGH"
+          : (best.dinov2Similarity ?? 0) >= 0.80
+            ? "MEDIUM"
+            : "LOW";
+      console.log(
+        `[Stage 1d] done — ${((Date.now() - t) / 1000).toFixed(1)}s, ${candidates.length} candidate(s), ` +
+        `top: ${best?.artistName ?? "none"} — "${best?.conceptualWorkTitle ?? "?"}" ` +
+        `(dino=${best?.dinov2Similarity ?? "—"}, clip=${best?.clipSimilarity ?? "—"})`
+      );
+      return {
+        schemaVersion: "IES-1.0",
+        embeddingModelsUsed: { dinov2: vectors.dinov2?.model ?? null, clip: vectors.clip?.model ?? null },
+        indexCoverageNote: STAGE1D_INDEX_COVERAGE_NOTE,
+        candidateMatches: candidates,
+        bestMatchArtist: best?.artistName ?? null,
+        bestMatchConceptualWorkTitle: best?.conceptualWorkTitle ?? null,
+        dinov2SimilarityScore: best?.dinov2Similarity ?? null,
+        clipSimilarityScore: best?.clipSimilarity ?? null,
+        matchConfidence,
+        attributionCaveat: STAGE1D_ATTRIBUTION_CAVEAT,
+        hypothesisWarning: STAGE1D_HYPOTHESIS_WARNING,
+      };
+    } catch (err: any) {
+      console.warn(`[Stage 1d] Neo4j vector query failed — skipping: ${err.message}`);
+      return EMPTY;
+    }
+  }
+
   // ---- Stage 1c — Appraiser Input Agent (AIA) --------------------------------
   // See ADR-0004. Text-only, no vision, runs independently in parallel with
   // Stage 1a/1b — advisory evidence for Stage 2a, same discipline as Stage 1b:
@@ -2132,21 +2215,31 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const stage2bModel = this.config.stage2bModel || stage2aModel;
     const stage3Model = this.config.stage3Model || defaultModel;
     const runVisualSearch = this.config.enableVisualSearch !== false;
+    const runEmbeddingMatch = this.config.enableEmbeddingMatch !== false;
 
     const emit = input.onProgress ?? (() => {});
     const t0 = Date.now();
 
-    // Stage 1b (Visual Search) and Stage 1c (Appraiser Input Agent) both have
-    // zero dependency on VEA — 1b only needs the primary image, 1c only needs
-    // the appraiser's text — so both launch immediately, fully concurrent
-    // with Stage 1a rather than waiting for VEA to finish first. (Stage 2a
-    // still needs VEA's output, so that one genuinely can't start yet.)
-    // Neither promise can reject — both wrap their own errors internally and
-    // resolve to an empty/default result — so no unhandled-rejection risk
-    // from starting them before anything awaits them.
+    // Stage 1b (Visual Search), Stage 1c (Appraiser Input Agent), and Stage 1d
+    // (image-embedding match) all have zero dependency on VEA — 1b/1d only need
+    // the primary image, 1c only needs the appraiser's text — so all three
+    // launch immediately, fully concurrent with Stage 1a rather than waiting
+    // for VEA to finish first. (Stage 2a still needs VEA's output, so that one
+    // genuinely can't start yet.) None of these three promises can reject —
+    // each wraps its own errors internally and resolves to an empty/default
+    // result — so no unhandled-rejection risk from starting them before
+    // anything awaits them.
     emit({ stage: "stage1b", status: "start", message: "Searching global image databases for visual matches…", percent: 5 });
     const visualSearchPromise = runVisualSearch
       ? this.runStage1bVisionSearch(input.imageBase64, input.mimeType)
+      : Promise.resolve(undefined);
+
+    // ADR-0013, shadow-run only: this result is captured and attached to the
+    // report below for visibility, but — unlike visualSearchPromise — it is
+    // deliberately never passed into runStage2aTriage/runStage2bSpecialist.
+    emit({ stage: "stage1d", status: "start", message: "Matching image embeddings against internal art graph…", percent: 5 });
+    const embeddingMatchPromise = runEmbeddingMatch
+      ? this.runStage1dEmbeddingMatch(input.imageBase64, input.mimeType)
       : Promise.resolve(undefined);
 
     emit({ stage: "stage1c", status: "start", message: "Extracting structured claims from appraiser notes…", percent: 5 });
@@ -2177,7 +2270,7 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     // parallel as before) in exchange for Triage actually being able to weigh a
     // strong reverse-image match instead of it only reaching Stage 2b afterward.
     emit({ stage: "stage2a", status: "start", message: "Triaging attribution complexity and routing to specialist…", percent: 24 });
-    const [visualSearch, triageResult, appraiserInput] = await Promise.all([
+    const [visualSearch, triageResult, appraiserInput, stage1d] = await Promise.all([
       visualSearchPromise,
       (async () => {
         const [appraiserInputResult, visualSearchResult] = await Promise.all([appraiserInputPromise, visualSearchPromise]);
@@ -2189,9 +2282,13 @@ export class FourStageAppraiser extends MultiStageAppraiser {
         return r;
       })(),
       appraiserInputPromise,
+      // Independent 4th member, NOT inside the Stage 2a block above — this is what keeps
+      // Stage 1d's result out of runStage2aTriage's inputs (shadow-run scope, ADR-0013).
+      embeddingMatchPromise,
     ]);
     emit({ stage: "stage1b", status: "done", message: "Visual search complete", percent: 42 });
     emit({ stage: "stage1c", status: "done", message: "Appraiser notes extraction complete", percent: 42 });
+    emit({ stage: "stage1d", status: "done", message: "Image-embedding match complete", percent: 42 });
 
     const t2b = Date.now();
     emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
@@ -2211,10 +2308,11 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const report = this.assembleReport(vea, attr, valuation, currency);
     report.stage1Result = vea;
     report.stage1cResult = appraiserInput;
+    report.stage1dResult = stage1d;
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
-    report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${stage3Model}]`;
+    report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${stage3Model}]`;
     report.promptVersion = "4stage";
     return report;
   }

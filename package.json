@@ -16,6 +16,7 @@
     "test:backtest": "tsx tests/backtest/run_backtest.ts",
     "test:routing": "tsx tests/routing/run_routing_tests.ts",
     "query:ackg": "tsx src/appraisal/knowledge_graph/cli.ts",
+    "query:image-match": "tsx src/appraisal/knowledge_graph/image_similarity_cli.ts",
     "test:two-pass": "tsx tests/two_pass_attribution/run_tests.ts",
     "test:stage2a-evidence": "tsx tests/stage2a_evidence/run_tests.ts",
     "test:kg-parse": "tsx tests/knowledge_graph/parse_tests.ts",

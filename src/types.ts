@@ -45,6 +45,7 @@ export interface PrintAnalysisReport {
   promptVersion?: string;
   stage1Result?: VisualExtractionResult;
   stage1cResult?: AppraiserInputResult;
+  stage1dResult?: Stage1dResult;
   stage2aResult?: TriageResult;
   stage2Result?: AttributionResearchResult;
   pipelineMeta?: {
@@ -433,6 +434,44 @@ export interface ASAAttributionResult {
 
 // Discriminated on schemaVersion: undefined → legacy 3-stage, "ASA-1.0" → 4-stage specialist.
 export type AttributionResearchResult = LegacyAttributionResult | ASAAttributionResult;
+
+// Stage 1d — DINOv2/CLIP image-embedding match against the ACKG's own image index
+// (docs/adr/0013-stage1d-image-embedding-evidence.md). Shadow-run only for now: computed
+// and attached to the report for visibility, but not yet read by Stage 2a/2b/3 — see that
+// ADR's cautious phase-in and the "Not addressed" section on why this doesn't vote yet.
+export type EmbeddingModelKey = 'dinov2-large' | 'clip-vit-b32' | string;
+
+export interface EmbeddingMatchCandidate {
+  artistName: string;
+  conceptualWorkTitle: string | null;
+  /** Resolved Impression/ConceptualWork/DigitalImage id — provenance/debugging only, not shown to the end user. */
+  impressionId: string | null;
+  dinov2Similarity: number | null;
+  clipSimilarity: number | null;
+  // Inlined rather than imported from knowledge_graph/types.ts's AckgProvenanceTag — this
+  // file has zero imports today (every other stage-result type lives here for the same
+  // reason: appraiser.ts imports FROM here, so importing back would cycle) and the literal
+  // union costs nothing to duplicate.
+  provenanceLayer: 'institutional' | 'auction_history';
+}
+
+export interface Stage1dResult {
+  schemaVersion: 'IES-1.0';
+  embeddingModelsUsed: { dinov2: EmbeddingModelKey | null; clip: EmbeddingModelKey | null };
+  indexCoverageNote: string;
+  candidateMatches: EmbeddingMatchCandidate[];
+  bestMatchArtist?: string | null;
+  bestMatchConceptualWorkTitle?: string | null;
+  dinov2SimilarityScore?: number | null;
+  clipSimilarityScore?: number | null;
+  matchConfidence?: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+  /** Structural, not just documentary (ADR-0013): DINOv2/CLIP similarity reflects
+   *  visual/stylistic closeness, not verified authorship — never a standalone attribution
+   *  signal on its own (see ADR-0002's documented false-positive: two different artists
+   *  sharing style). */
+  attributionCaveat: string;
+  hypothesisWarning: string;
+}
 
 export interface TriageResult {
   schemaVersion: string;
