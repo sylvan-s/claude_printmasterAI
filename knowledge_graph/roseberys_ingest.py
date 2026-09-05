@@ -31,6 +31,27 @@ here (Getty's SPARQL endpoint has demonstrated real unreliability even at the sm
 scale already tested — see resolve_artist_identity.py's docstring). Backfilling
 identity for these artists is a separate, deliberately lower-volume follow-up step.
 
+`ConceptualWork` identity keying (built 2026-09-06, doc 09 §7.6/§7.7): this source has
+the identical duplicate-ConceptualWork gap Forum's adapter had before its own fix — the
+same catalogue-raisonné entry cited by multiple lots (a common real occurrence: the
+same edition print resold across different Roseberys sales) previously got a fresh
+ConceptualWork per lot (`ConceptualWork.id = row.objectId`) instead of sharing one.
+`catalogue_refs` was also only ever stored as a raw, unparsed string
+(`catalogueRefsRaw`) — never instantiated as real `CatalogueRaisonne`/`CatalogueEntry`
+nodes, unlike Forum. Both are fixed here from the start using the shared
+`catalogue_matching.py` module (also used by forum_ingest.py), built specifically so a
+second adapter wouldn't have to re-learn the two real corruption incidents documented
+in that module's own docstring: catalogue-name prefixes reused across different
+artists, and portfolio-level citations covering several genuinely different plates —
+which is why the identity key requires an artist match AND an exact normalized-title
+match, not just catalogue+entry. `genuine_refs()` is applied once in `map_row()` before
+either identity-keying or CatalogueRaisonne/CatalogueEntry storage, so confirmed-junk
+"catalogue" text (edition numbers like "No. 458", nationality/life-date fragments like
+"American 1928-1987") never becomes real catalogue nodes in the first place — a gap
+that turned out to still exist in forum_ingest.py's own LOAD_QUERY (it stores the raw,
+unfiltered ref list for CatalogueRaisonne/CatalogueEntry creation even after the
+identity-key fix), flagged for separate cleanup there rather than carried over here.
+
 Usage:
     python3 roseberys_ingest.py --sale A0777
     python3 roseberys_ingest.py --all
@@ -48,6 +69,7 @@ from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
 from resolve_artist_identity import strip_honorifics
+from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id
 
 def _require_env(name):
     value = os.environ.get(name)
@@ -193,8 +215,23 @@ def map_row(row):
         v = row.get(field)
         return float(v) if pd.notna(v) else None
 
+    title = _clean(row.get("title")) or f"Untitled ({sale_code} lot {lot_number})"
+    # genuine_refs() applied once, up front — the same filtered list feeds both
+    # identity-keying and CatalogueRaisonne/CatalogueEntry creation below, per
+    # catalogue_matching.py's own docstring contract (see module docstring above for
+    # why forum_ingest.py's LOAD_QUERY skipping this for storage was a real bug).
+    catalogue_refs = genuine_refs(parse_catalogue_refs(_clean(row.get("catalogue_refs"))))
+    conceptual_work_id = build_conceptual_work_id(
+        source_prefix="roseberys",
+        artist_name=stripped_name,
+        title=title,
+        catalogue_refs=catalogue_refs,
+        fallback_id=base_id,
+    )
+
     return {
         "objectId": base_id,
+        "conceptualWorkId": conceptual_work_id,
         "saleId": sale_code,
         "auctionInternalId": int(row["auction_id"]) if pd.notna(row.get("auction_id")) else None,
         "lotNumber": lot_number,
@@ -204,7 +241,7 @@ def map_row(row):
         "artistBeginYear": begin_year,
         "artistEndYear": end_year,
         "qualifier": qualifier,
-        "title": _clean(row.get("title")) or f"Untitled ({sale_code} lot {lot_number})",
+        "title": title,
         "dateYear": year_val,
         "rawMedium": medium or None,
         "techniques": techniques,
@@ -217,7 +254,7 @@ def map_row(row):
         "signed": (str(row.get("signed", "")).strip().lower() == "yes"),
         "printer": _clean(row.get("printer")),
         "publisher": _clean(row.get("publisher")),
-        "catalogueRefsRaw": _clean(row.get("catalogue_refs")),
+        "catalogueRefs": catalogue_refs,
         "provenanceNote": _clean(row.get("provenance")),
         "listingUrl": row.get("lot_url") if pd.notna(row.get("lot_url")) else None,
         "imageUrl": _fix_lot_image_url(row.get("image_url")),
@@ -248,11 +285,14 @@ SET artist.nationality = coalesce(row.artistNationality, artist.nationality),
         ELSE artist.alternateNames
     END
 
-MERGE (cw:ConceptualWork {id: row.objectId})
-SET cw.name = row.title,
-    cw.dateCreated_year = row.dateYear,
-    cw.dateCreated_precision = "exact",
-    cw.catalogueRefsRaw = row.catalogueRefsRaw
+// row.conceptualWorkId is shared across multiple lots that cite the same catalogue-
+// raisonné entry (see map_row's comment) — coalesce() on every SET so a second lot
+// merging into an already-created node doesn't clobber it with its own (equivalent,
+// but not necessarily identically-worded) title/date.
+MERGE (cw:ConceptualWork {id: row.conceptualWorkId})
+SET cw.name = coalesce(cw.name, row.title),
+    cw.dateCreated_year = coalesce(cw.dateCreated_year, row.dateYear),
+    cw.dateCreated_precision = coalesce(cw.dateCreated_precision, "exact")
 MERGE (artist)-[:CREATED]->(cw)
 
 MERGE (er:EditionRun {id: row.objectId + "-er"})
@@ -306,19 +346,27 @@ FOREACH (_ IN CASE WHEN row.imageUrl IS NOT NULL THEN [1] ELSE [] END |
   MERGE (img)-[:SHOWS]->(imp)
 )
 
-WITH row, imp
+WITH row, imp, cw
 UNWIND row.techniques AS tech
 MERGE (t:Technique {name: tech.name})
 FOREACH (_ IN CASE WHEN tech.aatId IS NOT NULL THEN [1] ELSE [] END | SET t.aatId = tech.aatId)
 MERGE (imp)-[:USES_TECHNIQUE]->(t)
 
-WITH row, imp
+WITH row, imp, cw
 UNWIND (CASE WHEN size(row.papers) = 0 THEN [null] ELSE row.papers END) AS paper
 FOREACH (_ IN CASE WHEN paper IS NOT NULL THEN [1] ELSE [] END |
   MERGE (p:Paper {name: paper.name})
   MERGE (imp)-[:PRINTED_ON]->(p)
   SET p.aatId = CASE WHEN paper.aatId IS NOT NULL THEN paper.aatId ELSE p.aatId END
 )
+
+WITH row, cw
+UNWIND row.catalogueRefs AS ref
+MERGE (cr:CatalogueRaisonne {numberingPrefix: ref.catalogueName})
+MERGE (ce:CatalogueEntry {id: ref.catalogueName + "-" + ref.entryNumber})
+SET ce.number = ref.entryNumber
+MERGE (cr)-[:CONTAINS]->(ce)
+MERGE (ce)-[:DOCUMENTS]->(cw)
 """
 
 

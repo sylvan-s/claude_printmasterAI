@@ -38,7 +38,29 @@ TECHNIQUE_KEYWORDS = [
     ("Aquatint", ["aquatint"]),
     ("Mezzotint", ["mezzotint"]),
     ("Photogravure", ["photogravure"]),
+    ("Photomechanical print", ["photomechanical print", "photomechanical prints"]),  # found missing
+                                        # 2026-09-06 investigating a 14/76-record [EXCLUDED] result in
+                                        # a Richard Hamilton BM test pull — see aat_crosswalk.json note.
+    ("Inkjet print", ["inkjet", "ink jet", "ink-jet"]),  # found missing 2026-09-06 in the same
+                                        # Hamilton pull as Photomechanical print above (7 more
+                                        # excluded records) — must stay before Digital print below,
+                                        # see TECHNIQUE_SUPPRESSES.
+    ("Dye sublimation print", ["dye sublimation", "dye diffusion thermal transfer"]),  # same pull —
+                                        # must stay before Digital print below, see TECHNIQUE_SUPPRESSES.
+    ("Digital print", ["digital print", "digitally generated", "digital photographic process"]),
+                                        # generic/umbrella — same pull as Inkjet/Dye sublimation
+                                        # print above; unmapped at process level, see
+                                        # aat_crosswalk.json note. Must stay after the two specific
+                                        # entries above — see TECHNIQUE_SUPPRESSES.
     ("Giclée", ["giclee", "giclée"]),
+    ("Monotype", ["monotype"]),        # found missing 2026-09-06 investigating an 11/22-record
+                                        # silent [EXCLUDED] result in a Sidney Nolan BM test pull
+                                        # — same has_print_technique()-style silent-exclusion
+                                        # failure mode as Intaglio/Sorel below, just never
+                                        # triggered before since no prior artist tested had
+                                        # monotype-technique prints. AAT id verified live
+                                        # (300053277, "monotype (planographic process)") before
+                                        # adding, not guessed — see aat_crosswalk.json.
     ("Engraving", ["engraving"]),      # generic — must stay after Wood engraving above
     ("Lithograph", ["lithograph"]),    # generic — must stay after Offset/Photolithograph above
     ("Intaglio", ["intaglio"]),        # umbrella process term — see TECHNIQUE_SUPPRESSES;
@@ -47,10 +69,30 @@ TECHNIQUE_KEYWORDS = [
                                         # "Intaglio print on paper") had no Artist node —
                                         # 832 Tate rows / 107 artists were silently excluded
                                         # by has_print_technique() for this exact reason.
+    ("Stencil printing", ["stencil printing"]),  # found missing 2026-09-06 investigating a
+                                        # 1-record [EXCLUDED] result in a Michael Rothenstein
+                                        # BM pull (10-artist priority-list batch #2) — see
+                                        # aat_crosswalk.json note.
+    ("Photorelief", ["photorelief", "photo relief", "photo-relief"]),  # same Rothenstein
+                                        # record as Stencil printing above — see
+                                        # aat_crosswalk.json note.
+    ("Relief printing", ["relief"]),   # bare word, matching BM's own bare Technique value
+                                        # ("relief") on two genuine cork relief-prints —
+                                        # found missing 2026-09-06 investigating a Josef
+                                        # Albers BM pull (10-artist priority-list batch #2)
+                                        # — see aat_crosswalk.json note. Generic — must stay
+                                        # after Photorelief above and suppressed by
+                                        # TECHNIQUE_SUPPRESSES against it, since "photorelief"
+                                        # itself contains the substring "relief".
 ]
 TECHNIQUE_SUPPRESSES = {
     "Engraving": ["Wood engraving"],
     "Lithograph": ["Offset lithograph", "Photolithograph"],
+    "Relief printing": ["Photorelief"],
+    # Same reasoning as Intaglio below: a medium string naming a specific digital process
+    # ("Colour Epson inkjet digital print") shouldn't ALSO get the generic "Digital print"
+    # tag — only a bare "digitally generated"/"digital print" (no named process) should.
+    "Digital print": ["Inkjet print", "Dye sublimation print"],
     # A medium string naming a specific intaglio method ("Etching and aquatint") shouldn't
     # ALSO get the generic "Intaglio" tag — only bare "Intaglio print on paper" (no named
     # method) should resolve to the umbrella term itself.

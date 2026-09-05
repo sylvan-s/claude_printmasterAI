@@ -15,7 +15,52 @@ __pycache__/
 *.pyc
 knowledge_graph/venv-embeddings/
 knowledge_graph/embed_dinov2_failures.json
+knowledge_graph/tmp_tate_images/
+knowledge_graph/resolve_tate_images_failures.json
+knowledge_graph/embed_tate_images_failures.json
 
 # ULAN backfill reports (regenerate on demand)
 knowledge_graph/artist_ulan_report.csv
 knowledge_graph/artist_dedup_candidates.csv
+knowledge_graph/artist_ulan_report_session1.csv
+knowledge_graph/artist_verification_report.csv
+knowledge_graph/artist_verification_report_haiku.csv
+
+# Local working DB / caches — regenerate from source, never commit (166MB+)
+knowledge_graph/ulan_local.sqlite
+
+# Roseberys/Forum ULAN-resolution pass-2 disambiguation working files (regenerate on demand)
+knowledge_graph/at_risk_wd_resolver_nodes.json
+knowledge_graph/complete_name_dob_nat_disambig.json
+knowledge_graph/forum_excluded_rows.csv
+knowledge_graph/free_auto_names.json
+knowledge_graph/middle_name_matches.json
+knowledge_graph/middle_name_matches_full.json
+knowledge_graph/nationality_dob_disambig.json
+knowledge_graph/near_match_dob_check.json
+knowledge_graph/no_printmaker_candidate_names.json
+knowledge_graph/only_one_complete_match.json
+knowledge_graph/only_one_dob_check.json
+knowledge_graph/only_one_nationality_check.json
+knowledge_graph/pass2_population*.json
+knowledge_graph/pass2_v2_classification.json
+knowledge_graph/pass2_v2_node_context.json
+knowledge_graph/pass2_v3_excluded_breakdown.json
+knowledge_graph/pass2_v3_namedob_matches.json
+knowledge_graph/pass2_v4_excluded_breakdown.json
+knowledge_graph/printmaker_filter_analysis.json
+knowledge_graph/roseberys_dob_tiebreak_report.csv
+knowledge_graph/roseberys_dob_tiebreak_rerun_report.csv
+knowledge_graph/roseberys_excluded_rows.csv
+knowledge_graph/roseberys_multiple_candidates_detail.json
+knowledge_graph/roseberys_pass1_report.csv
+knowledge_graph/roseberys_pass1_report_prefix.csv.bak
+knowledge_graph/roseberys_pass2_*_report.csv
+knowledge_graph/roseberys_unresolved_ge2_raw*.json
+knowledge_graph/suspicious_wd_auto_writes.json
+knowledge_graph/wd_auto_bug_remediation_report.csv
+knowledge_graph/wikidata_coverage_for_no_printmaker.json
+
+# Embedding/image-resolution failure logs (regenerate on demand)
+knowledge_graph/bm_embed_images_failures.json
+resolve_tate_images_failures.json

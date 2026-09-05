@@ -39,6 +39,44 @@
       "aatId": "300256021",
       "aatLabel": "chine collé (process)",
       "note": "Moved here from paperSurfaceType — AAT classifies this as a process ('strengthening, stabilizing'), not a paper material, and doc 01 §2C/§2E were updated to match. An additive/compound process, not a standalone technique family: record family: 'mixed' alongside whatever primary technique it was combined with."
+    },
+    "Monotype": {
+      "aatId": "300053277",
+      "aatLabel": "monotype (planographic process)",
+      "note": "Found missing 2026-09-06 investigating an 11/22-record silent exclusion in a Sidney Nolan BM test pull — 'monotype' was absent from BOTH this crosswalk AND TECHNIQUE_KEYWORDS entirely (not merely unmapped to an aatId), the same has_print_technique()-style silent-exclusion failure mode already documented above for Intaglio/Agathe Sorel, just never triggered before since no prior artist tested (Rembrandt/Trevelyan/Hayter/Sorel) had monotype-technique prints. Verified live against vocab.getty.edu before adding, not guessed."
+    },
+    "Photomechanical print": {
+      "aatId": null,
+      "note": "Found missing 2026-09-06 investigating a 14/76-record [EXCLUDED] result in a Richard Hamilton BM pull (10-artist priority-list run) — BM's own structured Technique field says 'photomechanical print' on 7 of his 'artist postcard' records (Object Type still includes 'print'), which extract_techniques() didn't recognize at all, the same has_print_technique()-style silent-exclusion failure mode as Monotype/Intaglio above. UNMAPPED at process level, same discipline as Giclée above: only an object-type concept was confirmed live — 'photomechanical prints' (300041424) — no separate 'photomechanical printing (process)' entry was found distinct from it, so this is recorded as a recognized technique (rescues these records from silent exclusion) without forcing an uncertain process-level aatId. Covered the FIRST of two technique gaps found in the same Hamilton pull; the other — 'digitally generated'/'digital print'/'inkjet'/'dye sublimation print' (7 more excluded records) — is covered by Inkjet print / Dye sublimation print / Digital print below."
+    },
+    "Inkjet print": {
+      "aatId": "300235748",
+      "aatLabel": "inkjet printing",
+      "note": "Found missing 2026-09-06 in the same Richard Hamilton BM pull that surfaced Photomechanical print above — e.g. Description 'Colour Epson inkjet digital print' on a record whose Object Type still includes 'print'. Unlike Giclée/Photomechanical print, a distinct PROCESS-level AAT concept exists here (Activities facet, broader term 'printing (process)' 300053319) rather than only an object-type 'prints' concept — verified live against vocab.getty.edu, not guessed."
+    },
+    "Dye sublimation print": {
+      "aatId": "300412044",
+      "aatLabel": "dye diffusion thermal transfer printing",
+      "note": "AAT's PREFERRED label is 'dye diffusion thermal transfer printing'; 'dye sublimation printing' and 'dye sublimation' are confirmed registered alternate (Used For) labels under the same concept, verified live. A process-level concept (Activities facet, broader term 'printing (process)' 300053319), like Inkjet print above. Found missing 2026-09-06 in the same Richard Hamilton BM pull — e.g. Description 'Digital dye sublimation print'."
+    },
+    "Digital print": {
+      "aatId": null,
+      "note": "UNMAPPED at process level, same discipline as Giclée/Photomechanical print above: no 'digital printing (process)' entry exists in AAT's Activities facet distinct from Inkjet printing / Dye diffusion thermal transfer printing above. Only an object-type concept was confirmed live — 'digital prints' (300312222) — covering BM's generic Technique values 'digitally generated' and 'digital photographic process' where no more specific inkjet/dye-sublimation process is named. Recorded as a recognized technique (rescues these records from silent exclusion) without forcing an uncertain process-level aatId. Found missing 2026-09-06 in the same Richard Hamilton BM pull as Inkjet print and Dye sublimation print above; suppressed by TECHNIQUE_SUPPRESSES whenever a more specific digital technique also matches."
+    },
+    "Stencil printing": {
+      "aatId": "300435282",
+      "aatLabel": "stencil printing",
+      "note": "Found missing 2026-09-06 investigating a 1-record [EXCLUDED] result in a Michael Rothenstein BM pull (10-artist priority-list batch #2) — BM's structured Technique field says 'stencil printing' (Object Type still includes 'print'; the work is a real edition print, 'The love machine', using stencil plus photorelief), which extract_techniques() didn't recognize at all — same has_print_technique()-style silent-exclusion failure mode as Monotype/Photomechanical print above. A distinct PROCESS-level AAT concept exists (Activities Facet, parent 'printing (process)') — verified live against vocab.getty.edu (search 'stencil printing', 3 results, exact term match), not guessed."
+    },
+    "Photorelief": {
+      "aatId": "300155634",
+      "aatLabel": "relief photomechanical processes",
+      "note": "Found missing in the same Michael Rothenstein BM pull/record as Stencil printing above — BM's Technique field says 'photorelief' (bare, no separate 'photo relief printing' term found under that exact name). Verified live against vocab.getty.edu (search 'photo relief'): no exact-string 'photorelief'/'photo relief printing' concept exists, but 'relief photomechanical processes' (300155634, Activities Facet, scope note 'Photomechanical processes using relief printing surfaces') is a genuine process-level concept matching what BM's own abbreviation denotes — used rather than an object-type-only fallback (the Giclée/Digital print pattern) since a process-level match was actually confirmed, not guessed."
+    },
+    "Relief printing": {
+      "aatId": "300053285",
+      "aatLabel": "relief printing",
+      "note": "Found missing 2026-09-06 investigating a 2/17-record [EXCLUDED] result in a Josef Albers BM pull (10-artist priority-list batch #2) — BM's Technique field says bare 'relief' on two genuine, editioned cork relief-prints ('Inscribed'/'Involute', Danilowitz cat. nos. 114/115, editions of 25), which extract_techniques() didn't recognize at all — same has_print_technique()-style silent-exclusion failure mode as Monotype/Photomechanical print/Stencil printing above. A distinct PROCESS-level AAT concept exists (Activities Facet, direct parent 'printing (process)') — verified live against vocab.getty.edu (search 'relief print', 11 results, exact term match), not guessed. Keyword deliberately kept to the single bare word 'relief' (not 'relief print' or 'relief printing') to match BM's own bare Technique value; TECHNIQUE_SUPPRESSES not needed since no more specific technique in this crosswalk collides with the bare word."
     }
   },
 

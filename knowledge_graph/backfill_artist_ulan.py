@@ -113,15 +113,25 @@ def backfill(session, min_works, limit, resume, dry_run):
 
         if r["confidence"] == "high_confidence_auto" and r.get("resolvedUlanUrl"):
             uid = r["resolvedUlanUrl"]
+            wd_new = r.get("resolvedWikidataUrl")
             clash = session.run(
                 "MATCH (o:Artist {ulanUrl: $u}) RETURN o.name AS name LIMIT 1", u=uid
             ).single()
-            if clash:
+            wd_clash = None
+            if not clash and wd_new:
+                wd_clash = session.run(
+                    "MATCH (o:Artist {wikidataUrl: $wd}) WHERE elementId(o) <> $eid "
+                    "RETURN o.name AS name LIMIT 1",
+                    wd=wd_new, eid=a["eid"],
+                ).single()
+            if clash or wd_clash:
+                other = clash or wd_clash
+                reason = "ulan" if clash else "wikidata"
                 counts["collision"] += 1
-                print(f"  [{i}/{len(artists)}] {name!r}: -> {uid} but already on {clash['name']!r} — MERGE CANDIDATE")
+                print(f"  [{i}/{len(artists)}] {name!r}: -> {uid} but already on {other['name']!r} ({reason}) — MERGE CANDIDATE")
                 rw.writerow([name, "collision", uid, r["resolvedUlanName"], top["matchScore"],
-                             runner_score, r.get("resolvedWikidataUrl") or "",
-                             f"ulan already on node '{clash['name']}'",
+                             runner_score, wd_new or "",
+                             f"{reason} already on node '{other['name']}'",
                              datetime.now(timezone.utc).isoformat()])
             elif dry_run:
                 counts["written"] += 1

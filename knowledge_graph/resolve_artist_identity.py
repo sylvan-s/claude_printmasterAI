@@ -29,7 +29,9 @@ Usage:
     # -> {"query": ..., "strippedName": ..., "candidates": [...], "confidence": ...}
 """
 
+import os
 import re
+import sqlite3
 import time
 import urllib.parse
 import urllib.request
@@ -108,13 +110,59 @@ def _sparql_query(query, retries=5, backoff_seconds=10.0):
     raise RuntimeError(f"SPARQL query failed after {retries} attempts: {last_error}")
 
 
+_LOCAL_ULAN_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ulan_local.sqlite")
+_local_ulan_conn = None
+
+
+def _local_ulan_db():
+    """Lazy singleton connection to the local ULAN mirror (see build_ulan_index.py,
+    docs/adr/0012-local-ulan-mirror.md). Falls back to None (caller then falls back to
+    live SPARQL) if the mirror hasn't been built yet, so this module still works
+    standalone on a fresh checkout."""
+    global _local_ulan_conn
+    if _local_ulan_conn is None and os.path.exists(_LOCAL_ULAN_DB_PATH):
+        _local_ulan_conn = sqlite3.connect(_LOCAL_ULAN_DB_PATH, check_same_thread=False)
+    return _local_ulan_conn
+
+
+def _fts_query(name):
+    toks = [t for t in re.sub(r'[^\w\s]', ' ', name).split() if len(t) > 1]
+    return " OR ".join(f'"{t}"' for t in toks[:8]) if toks else None
+
+
 def _search_ulan(name):
-    # Deliberately does NOT join biography in this query. An earlier version joined
-    # `foaf:focus/gvp:biographyPreferred/schema:description` here and it was confirmed
-    # to make the endpoint take 60+ seconds (timed out) even though the equivalent
-    # query without that join reliably returns in under a second. Fetch bio
-    # separately, only for the candidate(s) actually worth showing — see
-    # _fetch_bio(), called just on the top-ranked result.
+    """Local-mirror-backed (see docs/adr/0012-local-ulan-mirror.md) — replaced the live
+    vocab.getty.edu SPARQL `luc:term` search 2026-08-31. Same return shape as the old
+    SPARQL JSON-binding format ([{"ulan": {"value": url}, "name": {"value": name}}, ...])
+    so resolve_artist()'s scoring/confidence logic downstream is unchanged. Falls back to
+    the original live SPARQL query if the local mirror isn't present (e.g. a fresh
+    checkout that hasn't run build_ulan_index.py yet)."""
+    conn = _local_ulan_db()
+    if conn is None:
+        return _search_ulan_live(name)
+    q = _fts_query(name)
+    if not q:
+        return []
+    try:
+        rows = conn.execute("""
+            SELECT DISTINCT p.ulan_id, p.pref_name
+            FROM ulan_name_fts f JOIN ulan_person p ON p.ulan_id = f.ulan_id
+            WHERE ulan_name_fts MATCH ? AND p.pref_name IS NOT NULL
+            ORDER BY bm25(ulan_name_fts)
+            LIMIT 30
+        """, (q,)).fetchall()
+    except sqlite3.OperationalError:
+        return []
+    return [
+        {"ulan": {"value": f"http://vocab.getty.edu/ulan/{uid}"}, "name": {"value": pname}}
+        for uid, pname in rows
+    ]
+
+
+def _search_ulan_live(name):
+    """Original live-SPARQL path — kept as a fallback for when the local mirror (see
+    docs/adr/0012-local-ulan-mirror.md) hasn't been built. Deliberately does NOT join
+    biography in this query; see _fetch_bio_live()'s docstring for why."""
     escaped = name.replace('"', '\\"')
     query = f"""
         SELECT ?ulan ?name WHERE {{
@@ -127,7 +175,26 @@ def _search_ulan(name):
 
 
 def _fetch_bio(ulan_url):
-    """Separate, cheap, single-record lookup — not joined into the bulk search."""
+    """Local-mirror-backed; falls back to live SPARQL if the mirror isn't present."""
+    conn = _local_ulan_db()
+    if conn is None:
+        return _fetch_bio_live(ulan_url)
+    m = re.search(r"/ulan/(\d+)$", ulan_url)
+    if not m:
+        return None
+    row = conn.execute(
+        "SELECT bio FROM ulan_person WHERE ulan_id = ?", (m.group(1),)
+    ).fetchone()
+    return row[0] if row else None
+
+
+def _fetch_bio_live(ulan_url):
+    """Original live-SPARQL path — separate, cheap, single-record lookup, not joined
+    into the bulk search. An earlier version joined
+    `foaf:focus/gvp:biographyPreferred/schema:description` into the main search query
+    and it was confirmed to make the endpoint take 60+ seconds (timed out), even though
+    the equivalent query without that join reliably returns in under a second — that's
+    why this stayed a separate per-candidate lookup rather than a join."""
     query = f"""
         SELECT ?bio WHERE {{
           <{ulan_url}> foaf:focus/gvp:biographyPreferred/schema:description ?bio .
@@ -341,10 +408,21 @@ def resolve_artist(raw_name):
     best_wd = wd_top["matchScore"] if wd_top else 0.0
     runner_wd = wikidata[1]["matchScore"] if len(wikidata) > 1 else 0.0
 
-    auto = (
-        (best_ulan >= 0.92 and best_ulan - runner_ulan >= 0.15)
-        or (best_wd >= 0.92 and best_wd - runner_wd >= 0.15)
-    )
+    ulan_auto = best_ulan >= 0.92 and best_ulan - runner_ulan >= 0.15
+    wd_auto = best_wd >= 0.92 and best_wd - runner_wd >= 0.15
+    # BUG FIX (found 2026-09-01, "Alexander King" / "Alexander Yakut" case): wd_auto
+    # confirms the WIKIDATA identity is unambiguous — it says nothing about whether any
+    # particular ULAN candidate is that same person. The old `auto = ulan_auto or
+    # wd_auto` let a confirmed-but-ULAN-less Wikidata match auto-write candidates[0],
+    # which is just whatever the ULAN search ranked first — observed writing "Karther,
+    # Alexander" (score 0.84, an unrelated landscape architect) for the query "Alexander
+    # Yakut" this way. wd_auto may only contribute to `auto` when Wikidata itself pairs
+    # a ULAN id (wd_top["ulanIdFromWikidata"]) — i.e. Wikidata is vouching for THIS
+    # specific ULAN record, not just that the person exists. Confirmed found via a
+    # local re-triage of 992 already-written nodes: 104 had a stored ULAN scoring
+    # < 0.92 against the query name under this exact failure mode.
+    wd_auto_with_ulan = wd_auto and bool(wd_top and wd_top.get("ulanIdFromWikidata"))
+    auto = ulan_auto or wd_auto_with_ulan
     strong = (best_ulan >= 0.82 and best_ulan - runner_ulan >= 0.10) or (
         best_wd >= 0.85 and best_wd - runner_wd >= 0.10
     )
@@ -356,6 +434,33 @@ def resolve_artist(raw_name):
         confidence = "multiple_candidates"
     else:
         confidence = "unresolved"
+
+    # BUG FIX (found 2026-08-31, "Sidney Nolan" case): a Wikidata match with no
+    # runner-up (runner_wd defaults to 0.0 when Wikidata returns a single hit) can
+    # satisfy wd_auto even while the ULAN side is a genuine unresolved tie between
+    # DIFFERENT real people who happen to share a name (e.g. three distinct ULAN
+    # records all literally named "Nolan, Sidney" — an Australian painter, a
+    # Russian sculptor, and an American filmmaker). When that happens,
+    # candidates[0] is whatever the tied ULAN search returned first — NOT
+    # necessarily the person Wikidata actually confirmed. If wd_auto is what
+    # drove "auto" (not ulan_auto), the Wikidata-linked ULAN id must be moved to
+    # candidates[0] unconditionally — not only when it was previously absent from
+    # the ULAN list — since a same-name-different-person collision means it's
+    # very likely present, just not necessarily first.
+    if wd_auto and not ulan_auto and wd_top and wd_top.get("ulanIdFromWikidata"):
+        uid = wd_top["ulanIdFromWikidata"]
+        idx = next((i for i, c in enumerate(candidates) if c["ulanId"] == uid), None)
+        if idx is not None and idx != 0:
+            candidates.insert(0, candidates.pop(idx))
+        elif idx is None:
+            candidates.insert(0, {
+                "ulanId": uid,
+                "ulanUrl": f"http://vocab.getty.edu/ulan/{uid}",
+                "ulanName": wd_top["label"],
+                "bio": None,
+                "matchScore": wd_top["matchScore"],
+                "viaWikidata": True,
+            })
 
     if candidates and confidence in ("high_confidence_auto", "single_candidate_strong") and not candidates[0].get("viaWikidata"):
         candidates[0]["bio"] = _fetch_bio(candidates[0]["ulanUrl"])
@@ -371,6 +476,77 @@ def resolve_artist(raw_name):
         "resolvedUlanName": candidates[0]["ulanName"] if candidates else None,
         "resolvedWikidataUrl": f"http://www.wikidata.org/entity/{wd_top['qid']}" if wd_top else None,
     }
+
+
+# ── DOB tie-break for genuine name-twins ────────────────────────────────────────
+# "multiple_candidates" is frequently NOT ambiguity about which real person is meant
+# (the graph's source record is unambiguous) — it's several distinct ULAN records that
+# happen to share the exact same full name (e.g. 11 different "Taylor, John" entries).
+# When the query's dateBorn_year lands on exactly one of the complete-name-matched
+# (score >= 0.92) candidates' bios, that's a safe, free resolution — verified against
+# 21 real Roseberys cases (2026-09-01), including several with 3-11 tied candidates,
+# with zero false positives on spot-check.
+#
+# The birth-year extraction is deliberately strict, three patterns only, ordered so a
+# "YYYY-YYYY" range is read as (birth, death) and never confused with a death year —
+# this fixes a real bug found in this project's history: a looser "any 4-digit year in
+# the bio" check matched a bio's DEATH year and produced a false corroboration
+# ("Donald Smith" -> a candidate who merely died in the query's birth year, wrong
+# person, wrong name too). Do not loosen these patterns without re-testing that case.
+_BIRTH_YEAR_PATTERNS = [
+    re.compile(r'\bborn\s+(?:in\s+)?(\d{4})\b', re.I),
+    re.compile(r'\bb\.\s*(\d{4})\b'),
+    re.compile(r',\s*(\d{4})\s*-\s*(?:\d{4}|present|\.\.\.|\?)?\b'),  # "1904-1982" / "1954-": first year is birth
+]
+
+
+def _extract_birth_year(bio):
+    """Strict birth-year extraction from a ULAN bio string — see the module note above
+    for why this can't be loosened to "any year in the bio"."""
+    if not bio:
+        return None
+    for pat in _BIRTH_YEAR_PATTERNS:
+        m = pat.search(bio)
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def resolve_artist_with_dob(raw_name, dob_year):
+    """resolve_artist() plus a DOB tie-break for the "multiple_candidates" case where
+    several ULAN records share the exact same full name (score >= 0.92 "complete
+    match"). If dob_year uniquely corroborates exactly one of the tied candidates'
+    birth years (via _extract_birth_year, never the death year — see module note), the
+    result is upgraded to confidence "dob_tiebreak_auto" with that candidate moved to
+    candidates[0] and its bio attached. If dob_year is absent, or doesn't uniquely
+    resolve the tie (0 or 2+ matches), the original resolve_artist() result is returned
+    unchanged — this never downgrades or overrides an existing auto/strong result.
+    """
+    r = resolve_artist(raw_name)
+    if not dob_year or r["confidence"] != "multiple_candidates":
+        return r
+
+    complete = [c for c in r["candidates"] if c["matchScore"] >= 0.92]
+    if len(complete) < 2:
+        return r
+
+    matches = []
+    for c in complete:
+        bio = c.get("bio") or _fetch_bio(c["ulanUrl"])
+        if _extract_birth_year(bio) == dob_year:
+            matches.append({**c, "bio": bio})
+
+    if len(matches) != 1:
+        return r
+
+    winner = matches[0]
+    r = dict(r)
+    r["confidence"] = "dob_tiebreak_auto"
+    r["candidates"] = [winner] + [c for c in r["candidates"] if c["ulanId"] != winner["ulanId"]]
+    r["resolvedUlanUrl"] = winner["ulanUrl"]
+    r["resolvedUlanName"] = winner["ulanName"]
+    r["dobTiebreakEvidence"] = {"dobYear": dob_year, "tiedCandidates": len(complete), "bio": winner["bio"]}
+    return r
 
 
 if __name__ == "__main__":

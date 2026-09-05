@@ -41,6 +41,19 @@ from a ratio Forum's own data doesn't supply. Only hammer price is known.
 Artist identity: same policy as Roseberys — no ULAN/Wikidata authority ID supplied, so
 every artist merges by (cleaned) name with identityConfidence "unresolved".
 
+**`ConceptualWork` identity keying, corrected 2026-09-06 (doc 09 §7.6/§7.7)**: multiple
+lots citing the identical catalogue entry share one `ConceptualWork` instead of each
+creating their own — the original bug this replaces let re-sold lots of the identical
+print sit as separate `ConceptualWork` nodes forever. The actual key logic (artist +
+catalogue + entry + normalized title, `NON_CATALOGUE_NAMES` exclusions) now lives in
+`catalogue_matching.py`, shared with `roseberys_ingest.py` — see that module's own
+docstring for the two real corruption incidents (a cross-artist catalogue-name
+collision, and a portfolio-level citation covering several genuinely different plates)
+that make every part of that key strict, not just artist+catalogue+entry as first
+shipped. A live backfill of this graph's already-loaded data needed a real repair after
+the first, looser version of this fix — re-verify with a live query after ever
+extending or re-running this adapter, don't trust a clean exit.
+
 Usage:
     python3 forum_ingest.py --sale 1012
     python3 forum_ingest.py --all
@@ -57,6 +70,7 @@ import pandas as pd
 from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
+from catalogue_matching import parse_catalogue_refs, build_conceptual_work_id
 
 def _require_env(name):
     value = os.environ.get(name)
@@ -197,26 +211,6 @@ def _lot_id_from_url(url):
 # (the other 110 rows in sale 4510 are cleanly split). Excluded rather than guessed at.
 _ARTIST_TITLE_CONFLATED_RE = re.compile(r"\)\.\s+\S")
 
-_CATALOGUE_REF_RE = re.compile(r"^(.+?)\s+(\S+)$")
-
-
-def parse_catalogue_refs(raw):
-    """'Delteil 2' -> [("Delteil", "2")]. Multiple refs are ';'-separated
-    ('Lugt 3439; De Vesme 732'). A value with no letters before the last token
-    ('Set of 8') doesn't match doc 08's numbering-system-prefix model and is skipped."""
-    if not raw:
-        return []
-    refs = []
-    for part in raw.split(";"):
-        part = part.strip()
-        if not part:
-            continue
-        m = _CATALOGUE_REF_RE.match(part)
-        if m and re.search(r"[A-Za-z]", m.group(1)):
-            refs.append({"catalogueName": m.group(1).strip(), "entryNumber": m.group(2).strip()})
-    return refs
-
-
 _SHEET_DIM_KINDS = {"sheet", "overall", "size", "the full sheet", ""}
 _PLATE_DIM_KINDS = {"plate", "block"}
 
@@ -249,8 +243,25 @@ def map_row(row):
         v = row.get(field)
         return float(v) if pd.notna(v) else None
 
+    title = _clean(row.get("title")) or f"Untitled ({row['sale_code']} lot {row.get('lot_number')})"
+    catalogue_refs = parse_catalogue_refs(_clean(row.get("catalogue_refs")))
+    # Identity keying delegated to catalogue_matching.build_conceptual_work_id() — see
+    # that module's own docstring for why artist+catalogue+entry alone is unsafe (two
+    # confirmed real corruption incidents during this fix's own backfill: a cross-artist
+    # catalogue-name collision, and a portfolio-level citation covering several
+    # genuinely different plates) and why the normalized title is part of the key
+    # itself, not a post-hoc similarity check.
+    conceptual_work_id = build_conceptual_work_id(
+        source_prefix="forum",
+        artist_name=clean_name,
+        title=title,
+        catalogue_refs=catalogue_refs,
+        fallback_id=base_id,
+    )
+
     return {
         "objectId": base_id,
+        "conceptualWorkId": conceptual_work_id,
         "saleId": str(row["sale_code"]),
         "auctionInternalId": int(row["auction_id"]) if pd.notna(row.get("auction_id")) else None,
         "lotNumber": int(row["lot_number"]) if pd.notna(row.get("lot_number")) else None,
@@ -259,7 +270,7 @@ def map_row(row):
         "artistBeginYear": begin_year,
         "artistEndYear": end_year,
         "qualifier": qualifier,
-        "title": _clean(row.get("title")) or f"Untitled ({row['sale_code']} lot {row.get('lot_number')})",
+        "title": title,
         "dateYear": year_val,
         "rawMedium": medium or None,
         "techniques": techniques,
@@ -273,7 +284,7 @@ def map_row(row):
         "framed": (str(row.get("framed", "")).strip().lower() == "yes"),
         "printer": _clean(row.get("printer")),
         "publisher": _clean(row.get("publisher")),
-        "catalogueRefs": parse_catalogue_refs(_clean(row.get("catalogue_refs"))),
+        "catalogueRefs": catalogue_refs,
         "provenanceNote": _clean(row.get("provenance")),
         "listingUrl": row.get("lot_url") if pd.notna(row.get("lot_url")) else None,
         "imageUrl": _fix_lot_image_url(row.get("image_url")),
@@ -302,10 +313,14 @@ SET artist.dateBorn_year = coalesce(row.artistBeginYear, artist.dateBorn_year),
         ELSE artist.alternateNames
     END
 
-MERGE (cw:ConceptualWork {id: row.objectId})
-SET cw.name = row.title,
-    cw.dateCreated_year = row.dateYear,
-    cw.dateCreated_precision = "exact"
+// row.conceptualWorkId is shared across multiple lots that cite the same catalogue-
+// raisonné entry (see map_row's comment) — coalesce() on every SET so a second lot
+// merging into an already-created node doesn't clobber it with its own (equivalent,
+// but not necessarily identically-worded) title/date.
+MERGE (cw:ConceptualWork {id: row.conceptualWorkId})
+SET cw.name = coalesce(cw.name, row.title),
+    cw.dateCreated_year = coalesce(cw.dateCreated_year, row.dateYear),
+    cw.dateCreated_precision = coalesce(cw.dateCreated_precision, "exact")
 MERGE (artist)-[:CREATED]->(cw)
 
 MERGE (er:EditionRun {id: row.objectId + "-er"})
