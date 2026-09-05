@@ -12,16 +12,21 @@ import {
   resolveCustomPrompt,
   VISUAL_EXTRACTION_SYSTEM_PROMPT,
   ATTRIBUTION_TRIAGE_SYSTEM_PROMPT,
+  ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT,
   ATTRIBUTION_RESEARCH_SYSTEM_PROMPT,
   VALUATION_REPORT_SYSTEM_PROMPT,
   APPRAISER_INPUT_SYSTEM_PROMPT,
   injectSpecialistConfig,
+  injectTaskProfile,
 } from "./prompts";
+import { classifyTriageOutcome, Scenario } from "./routing";
+import { runEvidenceTree, emptyEvidenceOutput, type EvidenceAgentOutput } from "./stage2a_evidence";
 import {
   translateSchemaToStandardJsonSchema,
   VISUAL_EXTRACTION_SCHEMA,
   ATTRIBUTION_RESEARCH_SCHEMA,
   TRIAGE_SCHEMA,
+  ATTRIBUTION_EVIDENCE_SCHEMA,
   SPECIALIST_ATTRIBUTION_SCHEMA,
   FINAL_REPORT_RESPONSE_SCHEMA,
   FINAL_REPORT_CLAUDE_SCHEMA,
@@ -31,6 +36,9 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches } from "./knowledge_graph/index.js";
+import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
+import { techniqueFamily } from "./two_pass_attribution";
 import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../shared/text_extraction";
 
 // Resolved from the process working directory, not import.meta.url / __dirname:
@@ -59,6 +67,9 @@ export interface VisualSearchResult {
   bestMatchImageMimeType?: string | null;
   visualSimilarityScore?: number | null;   // 0.0–1.0
   visualSimilarityRationale?: string | null;
+  /** How close the retrieved reference image's composition is to the submission,
+   *  per the search step's own side-by-side read. */
+  compositionMatch?: "identical" | "very_close" | "loose" | "none" | null;
   matchConfidence?: "HIGH" | "MEDIUM" | "LOW" | null;
   /** Self-reported by the model: was this match confirmed against an actual
    *  reference image ("visual"), inferred from a page's written attribution
@@ -130,6 +141,11 @@ export interface AppraisalMethodConfig {
   stage1bModel?: string;       // model for Stage 1b visual search (FourStageAppraiser only)
   enableVisualSearch?: boolean; // set false to skip Stage 1b entirely (default: true)
   stage2aModel?: string;
+  /** ADR-0010: "triage" (default) = the classic Attribution Triage Agent + classifyTriageOutcome.
+   *  "evidence" = the Attribution Evidence Agent — one Claude call fills observation cells, the
+   *  deterministic two-pass tree (src/appraisal/two_pass_attribution.ts) evaluates them. Claude
+   *  only (needs the query_ackg tool loop); a Gemini stage2aModel falls back to "triage". */
+  stage2aMode?: "triage" | "evidence";
   stage2bModel?: string;
   stage2Model?: string;
   stage3Model?: string;
@@ -202,6 +218,99 @@ function parseCleanJson(text: string): any {
   }
 
   throw new SyntaxError("No valid JSON object found in response");
+}
+
+// ---------------------------------------------------------------------------
+// Anthropic Messages API — shared POST with retry + content-filter typing.
+// Replaces the ad-hoc "retry once on 5xx" blocks. Retries: undici network
+// failures ("fetch failed" / ECONNRESET / ETIMEDOUT — which surface as thrown
+// TypeErrors, not HTTP statuses, so the old `response.status >= 500` guard never
+// saw them), plus 429 / 529 / 5xx, with exponential backoff and `retry-after`
+// honoured. A 400 whose body names the content policy is surfaced as a distinct
+// error type so callers can strip prose / degrade gracefully rather than crash.
+// ---------------------------------------------------------------------------
+export class AnthropicContentFilterError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AnthropicContentFilterError";
+  }
+}
+
+const sleepMs = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const anthropicBackoffMs = (attempt: number) =>
+  Math.min(30_000, 1000 * 2 ** attempt) + Math.floor(Math.random() * 500);
+
+export async function postAnthropicMessages(
+  apiKey: string,
+  body: Record<string, unknown>,
+  opts: { betaHeader?: string; label?: string; maxAttempts?: number } = {},
+): Promise<any> {
+  const { betaHeader, label = "Anthropic", maxAttempts = 4 } = opts;
+  const headers: Record<string, string> = {
+    "x-api-key": apiKey,
+    "anthropic-version": "2023-06-01",
+    "content-type": "application/json",
+  };
+  if (betaHeader) headers["anthropic-beta"] = betaHeader;
+  const payload = JSON.stringify(body);
+
+  let lastNetworkErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let response: Response;
+    try {
+      response = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: payload });
+    } catch (err: any) {
+      lastNetworkErr = err;
+      if (attempt >= maxAttempts) break;
+      const wait = anthropicBackoffMs(attempt);
+      console.warn(`[${label}] network error "${err?.message ?? err}" — retry ${attempt}/${maxAttempts - 1} in ${Math.round(wait)}ms`);
+      await sleepMs(wait);
+      continue;
+    }
+
+    if (response.ok) return response.json();
+
+    const errorText = await response.text();
+
+    if (response.status === 400 && /content[ _-]?filter|content policy|blocked by .*polic/i.test(errorText)) {
+      throw new AnthropicContentFilterError(`${label}: output blocked by content filtering — ${errorText.slice(0, 300)}`);
+    }
+
+    const retryable = response.status === 429 || response.status === 529 || response.status >= 500;
+    if (retryable && attempt < maxAttempts) {
+      const retryAfter = Number(response.headers.get("retry-after"));
+      const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : anthropicBackoffMs(attempt);
+      console.warn(`[${label}] transient ${response.status} — retry ${attempt}/${maxAttempts - 1} in ${Math.round(wait)}ms`);
+      await sleepMs(wait);
+      continue;
+    }
+
+    throw new Error(`${label} request failed: ${response.status}: ${errorText.slice(0, 500)}`);
+  }
+  throw new Error(`${label} request failed after ${maxAttempts} attempts: ${(lastNetworkErr as any)?.message ?? lastNetworkErr}`);
+}
+
+/** Trim VEA's free-text prose to its factual core for a content-filter retry. Keeps
+ *  every structured field (technique names, dimensions, booleans, confidences, and
+ *  short text like signature transcriptions / in-image titles) — only long descriptive
+ *  strings and known prose fields get shortened, since those are what a content filter
+ *  most often trips on when the model echoes them back. Deep-clones; never mutates input. */
+const VEA_PROSE_FIELDS = new Set([
+  "observationNotes", "visualSimilarityRationale", "description", "compositionSummary",
+  "sceneDescription", "narrativeDescription", "analysisDetails",
+]);
+export function trimVeaProse(value: any, key?: string): any {
+  if (typeof value === "string") {
+    if (key && VEA_PROSE_FIELDS.has(key)) return value.length > 80 ? value.slice(0, 80) + "… [trimmed]" : value;
+    return value.length > 180 ? value.slice(0, 180) + "… [trimmed]" : value;
+  }
+  if (Array.isArray(value)) return value.map((v) => trimVeaProse(v));
+  if (value && typeof value === "object") {
+    const out: any = {};
+    for (const [k, v] of Object.entries(value)) out[k] = trimVeaProse(v, k);
+    return out;
+  }
+  return value;
 }
 
 function loadSpecialistConfig(configKey: string): object {
@@ -502,25 +611,25 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
     if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-      body: JSON.stringify({
+    // Prompt caching: `tools` and `system` render before `messages`, so a breakpoint on
+    // the system block caches the (static) tool schema + system prompt together. Big win
+    // for batch runs and repeated evaluations against a fixed pool — every lot after the
+    // first reads the schema+prompt from cache (~0.1x) instead of re-sending it. The
+    // per-lot content (image, notes) sits in `messages`, after the breakpoint, so it
+    // never poisons the cache. 5-minute TTL is enough while a batch is actively running.
+    const data = await postAnthropicMessages(
+      apiKey,
+      {
         model: modelName,
         max_tokens: 4096,
-        system: systemInstruction,
+        system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: contentBlocks }],
         tools: [{ name: toolName, description: toolDescription, input_schema: translateSchemaToStandardJsonSchema(inputSchema) }],
         tool_choice: { type: "tool", name: toolName },
-      }),
-    });
+      },
+      { label: `Claude ${toolName}` },
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude API request failed with status ${response.status}: ${errorText}`);
-    }
-
-    const data = await response.json();
     const toolUseBlock = data.content?.find((b: any) => b.type === "tool_use");
     if (!toolUseBlock?.input) throw new Error(`Claude did not return a valid structured tool call for ${toolName}.`);
     return toolUseBlock.input;
@@ -593,37 +702,22 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
 
     const tools = [{ type: "web_search_20250305", name: "web_search" }, MultiStageAppraiser.MUSEUM_LOOKUP_TOOL];
 
-    const post = async (messages: any[], forceFinal: boolean) => {
-      const doRequest = () => fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey!,
-          "anthropic-version": "2023-06-01",
-          "anthropic-beta": "web-search-2025-03-05",
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
+    const post = (messages: any[], forceFinal: boolean) =>
+      postAnthropicMessages(
+        apiKey!,
+        {
           model: modelName,
           max_tokens: maxTokens,
-          system: systemInstruction,
+          // Cache the specialist system prompt (+ injected config). Reused verbatim for
+          // every lot routed to the same specialist config; the web_search tool renders
+          // before it and is cached alongside.
+          system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
           messages,
           tools,
           ...(forceFinal ? { tool_choice: { type: "none" } } : {}),
-        }),
-      });
-      let response = await doRequest();
-      // Retry once on transient 5xx (e.g. Cloudflare 520)
-      if (response.status >= 500) {
-        console.warn(`[Claude web-search] Transient ${response.status} — retrying in 5s`);
-        await new Promise(r => setTimeout(r, 5000));
-        response = await doRequest();
-      }
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Claude web-search API request failed: ${response.status}: ${errorText}`);
-      }
-      return response.json();
-    };
+        },
+        { label: "Claude web-search", betaHeader: "web-search-2025-03-05" },
+      );
 
     // Loop while Claude is still requesting client-executed tools (lookup_museum_collections).
     // Crucially, tools stay AVAILABLE (not forced to none) between rounds — Anthropic's
@@ -707,6 +801,263 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     }
   }
 
+  // ---- ACKG (Art Context Knowledge Graph) query tool (Stage 2a) --------------
+  // See docs/adr/0003-knowledge-graph-grounded-triage.md item 4 and
+  // src/appraisal/knowledge_graph/. Deliberately a tool call, not embedded in
+  // the prompt: an LLM asked to emit vocabulary URIs or population statistics
+  // from memory, without a live lookup, is a real hallucination risk.
+
+  private static readonly QUERY_ACKG_TOOL = {
+    name: "query_ackg",
+    description:
+      "Query the Art Context Knowledge Graph — a Neo4j graph built from real ingested " +
+      "print records (Metropolitan Museum of Art, Roseberys, Forum Auctions; ~4,800 " +
+      "artists, ~33,700 works) — for artists whose actual catalogued output matches the " +
+      "given technique/period/paper/region/subject combination. Returns candidates ranked " +
+      "by supportCount (how many real matching works exist), split into institutional vs. " +
+      "auction-history provenance. All parameters are optional — supply whichever you " +
+      "currently have evidence for from VEA, and narrow with a second call once your " +
+      "hypothesis sharpens. IMPORTANT: a zero or low supportCount is real absence-of-" +
+      "population-data for that combination in this graph's current sources — it is NOT " +
+      "evidence against a candidate. Coverage is strong for Western 19th-20th century " +
+      "prints and currently thin-to-absent for ukiyo-e specifically; treat a zero result " +
+      "for an East Asian candidate as a coverage gap, never as disqualifying.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        technique: { type: "string" as const, description: "Printing technique, e.g. \"Etching\", \"Screenprint\"." },
+        periodStartYear: { type: "integer" as const, description: "Inclusive lower bound on creation year." },
+        periodEndYear: { type: "integer" as const, description: "Inclusive upper bound on creation year." },
+        paper: { type: "string" as const, description: "Paper type, e.g. \"wove\", \"laid\"." },
+        region: { type: "string" as const, description: "Artist nationality/region hint, e.g. \"British\", \"Japanese\"." },
+        subject: { type: "string" as const, description: "Depicted subject, e.g. \"Portraits\", \"Horses\"." },
+        workTitle: { type: "string" as const, description: "A specific work title to look for, e.g. \"Death of the Virgin\". Substring, case-insensitive, against catalogued work names. Use this to check whether a title from VEA text / Stage 1b / the appraiser is catalogued in the graph and to which artist — supportCount and sample works then reflect only that artist's title-matching works." },
+      },
+      required: [],
+    },
+  };
+
+  private static readonly QUERY_ACKG_WORK_TOOL = {
+    name: "query_ackg_work",
+    description:
+      "Look up a SPECIFIC catalogued work in the Art Context Knowledge Graph and return its " +
+      "catalogued technique(s), medium description, plate/image/sheet dimensions (in mm), and " +
+      "edition sizes — aggregated per Conceptual Work across every ingested impression. Use " +
+      "this once you have a leading artist and a candidate title, to fill the impressionEvidence " +
+      "cells: it tells you what the catalogued record says the work's medium and size are, so " +
+      "the physical object in hand can be checked against it (later edition, restrike, " +
+      "photomechanical reproduction, medium variant). Pass `artist` AND `workTitle` (a short " +
+      "distinctive fragment). Near-duplicate title rows are un-merged re-ingests — merge them. " +
+      "An empty result is absence-of-coverage, not evidence the work is fake.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        artist: { type: "string" as const, description: "Artist name, substring — strongly recommended." },
+        workTitle: { type: "string" as const, description: "Distinctive title fragment for the substring pre-filter, e.g. \"Death of the Virgin\", \"Wu Zetian\", \"Le Taureau\". Keep it short." },
+        observedTitle: { type: "string" as const, description: "The FULL observed title as best you have it (from VEA text / Stage 1b / the appraiser). Used for an embedding similarity rank — the result reports a 'computed title similarity' per work; transcribe the best one into kWorkTitleSim." },
+        observedTechnique: { type: "string" as const, description: "VEA's observed printing technique, e.g. \"Etching\", \"Lithograph\", \"Screenprint\". Used to break ties between same-titled works of different media." },
+        technique: { type: "string" as const, description: "Optional hard technique filter on the returned works." },
+        periodStartYear: { type: "integer" as const, description: "Optional inclusive lower bound on creation year." },
+        periodEndYear: { type: "integer" as const, description: "Optional inclusive upper bound on creation year." },
+      },
+      required: [],
+    },
+  };
+
+  /** Cap what reaches the model — ranked facts, not a raw graph dump. */
+  private formatAckgResultForClaude(candidates: AckgCandidate[]): string {
+    if (candidates.length === 0) {
+      return "No candidates found for this filter combination — this is an absence-of-" +
+        "population-data signal for this graph's current sources, not evidence against " +
+        "any specific artist. Try broadening or dropping a filter, or proceed with other evidence.";
+    }
+    const lines = [`${candidates.length} candidate(s), ranked by support count:`];
+    for (const c of candidates) {
+      lines.push(
+        `\n${c.artistName} — supportCount=${c.supportCount} ` +
+        `(institutional=${c.institutionalSupportCount}, auction_history=${c.auctionSupportCount})` +
+        `${c.ulanUrl ? ` [ULAN: ${c.ulanUrl}]` : ""}`
+      );
+      if (c.sampleWorks.length) lines.push(`  sample works: ${c.sampleWorks.join(" | ")}`);
+    }
+    return lines.join("\n");
+  }
+
+  /** Merge near-duplicate ConceptualWork rows (un-merged re-ingests) and render the
+   *  catalogued technique + dimension facts the impression check needs. */
+  private formatAckgWorksForClaude(works: AckgWorkMatch[]): string {
+    if (works.length === 0) {
+      return "No catalogued work matches this artist + title in the graph's current sources. " +
+        "This is absence-of-coverage, not evidence the work is fake — leave impressionEvidence " +
+        "catalogueTechniques [] and observedDimSource per what the appraiser/VEA gave you.";
+    }
+    const dl = (label: string, ds: { w: number; h: number }[]) =>
+      ds.length ? `${label}=${[...new Set(ds.map((d) => `${d.w}x${d.h}mm`))].join(", ")}` : "";
+    const scored = works.some((w) => w.titleSim != null);
+    const lines = [
+      `${works.length} catalogued row(s)${scored ? ", ranked by computed title similarity (merge near-identical titles)" : " (merge near-identical titles)"}:`,
+    ];
+    for (const w of works) {
+      const dims = [dl("plate", w.plateDimsMm), dl("image", w.imageDimsMm), dl("sheet", w.sheetDimsMm)].filter(Boolean).join("  ");
+      lines.push(
+        `\n"${w.workTitle}" — ${w.artistName}${w.dateLabel ? ` (${w.dateLabel})` : ""} [${w.impressionCount} impr., ${w.provenanceLayers.join("+") || "?"}]` +
+          (w.titleSim != null ? `\n  computed title similarity: ${w.titleSim.toFixed(2)} (${w.titleSimBasis})` : "") +
+          `\n  techniques: ${w.techniques.join(", ") || "—"}` +
+          (w.rawMediums.length ? `\n  media: ${w.rawMediums.join(" | ")}` : "") +
+          (dims ? `\n  dims: ${dims}` : "\n  dims: — (none catalogued)") +
+          (w.editionSizes.length ? `\n  editions: ${w.editionSizes.join(", ")}` : ""),
+      );
+    }
+    return lines.join("\n");
+  }
+
+  /**
+   * Bounded tool loop for Stage 2a (Triage), scoped to only the query_ackg tool —
+   * no native web_search, since Triage classifies and routes, it doesn't browse
+   * the web (that's Stage 2b's job via callClaudeWithWebSearch below). A new,
+   * dedicated function rather than a modification of callClaudeWithWebSearch:
+   * that function is Stage 2b's already-shipped, tested tool loop and stays
+   * untouched here to carry zero regression risk.
+   *
+   * Finalises with a forced tool_choice matching the target schema (the same
+   * mechanism callClaude uses) rather than callClaudeWithWebSearch's free-text-
+   * JSON-then-parse finalisation — more robust, and the full tool-call history
+   * carries over into that final request at no extra cost.
+   */
+  protected async callClaudeWithAckgTool(
+    modelName: string,
+    systemInstruction: string,
+    userText: string,
+    maxTokens: number = 8192,
+    finalTool: { name: string; description: string; schema: any } = {
+      name: "report_attribution_triage",
+      description: "Report the structured attribution triage and routing decision.",
+      schema: TRIAGE_SCHEMA,
+    },
+    opts: { extraTools?: any[]; maxRounds?: number } = {}
+  ): Promise<any> {
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
+
+    const tools = [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
+    const graphToolNames = new Set(tools.map((t: any) => t.name));
+    const finalToolName = finalTool.name;
+
+    const post = (messages: any[], forceFinalTool: boolean) =>
+      postAnthropicMessages(
+        apiKey!,
+        {
+          model: modelName,
+          max_tokens: maxTokens,
+          // Cache the triage system prompt (it is large and identical for every lot). Across
+          // a pool run — and across repeated triage-version evaluations against that pool —
+          // this is the single biggest input-token saving: only the first lot writes it,
+          // every lot after reads it at ~0.1x. The query_ackg tool schema (rendered before
+          // `system`) is cached alongside it. The growing tool-loop `messages` sit after the
+          // breakpoint. On the final forced call the extra report tool changes `tools`, so
+          // that one call rewrites — one rewrite per lot, still cheap.
+          system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
+          messages,
+          tools: forceFinalTool
+            ? [...tools, { name: finalToolName, description: finalTool.description, input_schema: translateSchemaToStandardJsonSchema(finalTool.schema) }]
+            : tools,
+          ...(forceFinalTool ? { tool_choice: { type: "tool", name: finalToolName } } : {}),
+        },
+        { label: "Stage 2a ACKG tool" },
+      );
+
+    const messages: any[] = [{ role: "user", content: userText }];
+    const MAX_ROUNDS = opts.maxRounds ?? 4;
+    let data: any = null;
+
+    let roundsUsed = 0;
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      data = await post(messages, false);
+      if (data.stop_reason === "max_tokens") {
+        throw new Error("Claude (ACKG tool) hit max_tokens limit — response was truncated.");
+      }
+      const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use" && graphToolNames.has(b.name));
+      if (clientToolUses.length === 0) {
+        console.log(`[Stage 2a ACKG loop] round ${round + 1}: no graph query — stopping loop (${roundsUsed} round(s) used)`);
+        break;
+      }
+      roundsUsed = round + 1;
+
+      // Log any reasoning text Claude produced alongside the tool call(s) this round —
+      // the closest thing to "why" it's querying, since the API doesn't otherwise expose it.
+      const reasoningText = (data.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").trim();
+      if (reasoningText) {
+        console.log(`[Stage 2a ACKG loop] round ${round + 1} reasoning: ${reasoningText.slice(0, 400)}${reasoningText.length > 400 ? "…" : ""}`);
+      }
+
+      messages.push({ role: "assistant", content: data.content });
+      const toolResults = await Promise.all(
+        clientToolUses.map(async (b: any) => {
+          console.log(`[Stage 2a ACKG loop] round ${round + 1} ${b.name} call: ${JSON.stringify(b.input || {})}`);
+          let content: string;
+          try {
+            if (b.name === "query_ackg_work") {
+              const inp = b.input || {};
+              const observed = inp.observedTitle || inp.workTitle || "";
+              // Derive a substring pre-filter from the observed title when the agent
+              // didn't supply one — a raw artist-only query is ORDER BY impressionCount
+              // and would drop a low-impression target work before scoring.
+              const preFilter =
+                inp.workTitle ||
+                (observed
+                  .toLowerCase()
+                  .replace(/[^a-z0-9\s]/g, " ")
+                  .split(/\s+/)
+                  .filter((w: string) => w.length >= 4)
+                  .sort((a: string, b: string) => b.length - a.length)[0] || undefined);
+              let works = await queryAckgWorks({ ...inp, workTitle: preFilter });
+              if (works.length === 0 && preFilter) {
+                works = await queryAckgWorks({ ...inp, workTitle: undefined }); // last resort: artist only
+              }
+              if (observed && works.length) {
+                const obsFam = inp.observedTechnique ? techniqueFamily(inp.observedTechnique) : null;
+                works = await scoreWorkTitleMatches(observed, works, {
+                  techniqueIncompatible: obsFam
+                    ? (w) => w.techniques.length > 0 && !w.techniques.some((t) => techniqueFamily(t) === obsFam)
+                    : undefined,
+                });
+              }
+              content = this.formatAckgWorksForClaude(works);
+              const best = works[0];
+              console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${works.length} work row(s)${best ? ` — best: "${best.workTitle}" titleSim=${best.titleSim ?? "n/a"}` : ""}`);
+            } else {
+              const result = await queryAckg(b.input || {});
+              content = this.formatAckgResultForClaude(result);
+              console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}`);
+            }
+          } catch (err: any) {
+            content = `ACKG query failed: ${err.message}`;
+            console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ERROR — ${err.message}`);
+          }
+          return { type: "tool_result", tool_use_id: b.id, content };
+        }),
+      );
+      messages.push({ role: "user", content: toolResults });
+
+      if (round === MAX_ROUNDS - 1) {
+        console.log(`[Stage 2a ACKG loop] hit MAX_ROUNDS=${MAX_ROUNDS} — finalizing with whatever evidence was gathered`);
+      }
+    }
+
+    // Finalise: force the schema tool call, carrying the full reasoning + tool-result
+    // history from above into it.
+    messages.push({
+      role: "user",
+      content: `Now report your final structured result via the ${finalToolName} tool.`,
+    });
+    const finalData = await post(messages, true);
+    const toolUseBlock = finalData.content?.find((b: any) => b.type === "tool_use" && b.name === finalToolName);
+    if (!toolUseBlock?.input) {
+      throw new Error(`Claude (ACKG tool) did not return a valid structured tool call for ${finalToolName}.`);
+    }
+    return toolUseBlock.input;
+  }
+
   // ---- Stage 1b — Gemini Visual Search ----------------------------------------
 
   // Uses Google Custom Search API (image search) to retrieve a direct image URL for a
@@ -716,7 +1067,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
   private async fetchReferenceImageViaWikimedia(
     artist: string,
     title: string | null
-  ): Promise<{ base64: string; mimeType: string; sourceUrl: string } | null> {
+  ): Promise<{ base64: string; mimeType: string; sourceUrl: string; isArtistPortrait: boolean } | null> {
     const WIKIMEDIA_UA = "PrintMasterAI/1.0 (https://github.com/printmaster-ai; sylvansitkey07@gmail.com) node-fetch/3";
     const fullQuery = [artist, title].filter(Boolean).join(" ");
 
@@ -786,20 +1137,21 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         }
       }
 
-      // Prefer Commons (specific work match) over Wikipedia artist page
+      // Prefer Commons (a specific-work match) over the Wikipedia artist page (a portrait).
       const finalUrl = commonsThumbUrl || wikiArtistThumbUrl;
+      const isArtistPortrait = !commonsThumbUrl && !!wikiArtistThumbUrl;
       if (!finalUrl) {
         console.log(`[Stage 1b] Wikimedia: no image found for "${fullQuery}"`);
         return null;
       }
 
-      console.log(`[Stage 1b] Wikimedia thumbnail: ${finalUrl}`);
+      console.log(`[Stage 1b] Wikimedia thumbnail: ${finalUrl}${isArtistPortrait ? " (artist-page lead image — likely a portrait)" : ""}`);
       const fetched = await this.fetchImageAsBase64(finalUrl);
       if (!fetched) {
         console.warn(`[Stage 1b] Wikimedia thumbnail fetch failed`);
         return null;
       }
-      return { ...fetched, sourceUrl: finalUrl };
+      return { ...fetched, sourceUrl: finalUrl, isArtistPortrait };
     } catch (err: any) {
       console.warn(`[Stage 1b] Wikimedia lookup error: ${err.message}`);
       return null;
@@ -821,15 +1173,25 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         console.warn(`[Stage 1b] Image fetch failed: HTTP ${response.status} from ${url}`);
         return null;
       }
-      const contentType = response.headers.get("content-type") || "image/jpeg";
-      const mimeType = contentType.split(";")[0].trim();
-      if (!mimeType.startsWith("image/")) {
-        console.warn(`[Stage 1b] Image fetch returned non-image content-type: ${mimeType}`);
+      const contentType = (response.headers.get("content-type") || "").split(";")[0].trim();
+      const buf = Buffer.from(await response.arrayBuffer());
+      // Sniff magic bytes — museum/CDN image APIs and S3 buckets often serve images as
+      // application/octet-stream or with no Content-Type, and many valid image URLs
+      // (Met IIIF /main-image, Artsy's proxy) have no file extension.
+      const sniff = (): string | null => {
+        if (buf.length < 12) return null;
+        if (buf[0] === 0xff && buf[1] === 0xd8) return "image/jpeg";
+        if (buf.toString("ascii", 0, 8) === "\x89PNG\r\n\x1a\n") return "image/png";
+        if (buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WEBP") return "image/webp";
+        if (buf.toString("ascii", 0, 3) === "GIF") return "image/gif";
+        return null;
+      };
+      const mimeType = contentType.startsWith("image/") ? contentType : sniff();
+      if (!mimeType) {
+        console.warn(`[Stage 1b] Not an image (content-type "${contentType || "none"}", bytes don't match): ${url}`);
         return null;
       }
-      const arrayBuffer = await response.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString("base64");
-      return { base64, mimeType };
+      return { base64: buf.toString("base64"), mimeType };
     } catch (err: any) {
       console.warn(`[Stage 1b] Image fetch error: ${err.message}`);
       return null;
@@ -846,17 +1208,19 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
   ): Promise<{ score: number; rationale: string }> {
     const prompt = `You are a fine art visual similarity expert. Compare these two images — the first is the submitted artwork, the second is a candidate match found via reverse image search (${candidateLabel}).
 
-Score their visual similarity from 0.0 to 1.0 using this scale:
-  1.0 — Identical work, same impression, indistinguishable
-  0.9 — Same work, minor photographic differences (angle, lighting)
-  0.8 — Very likely same work or direct variant (same series, different state)
-  0.7 — Strong visual match — same artist, same period, highly similar composition
-  0.6 — Probable match — similar style and technique, plausible same artist
-  0.5 — Possible match — shared tradition and technique but significant differences
-  0.3 — Weak match — similar tradition only
-  0.0 — No meaningful visual similarity
+The question is whether these are the SAME WORK — not whether the two photographs are framed the same way. A tight crop, a different angle, different lighting, a border cropped off, or one being a catalogue scan and the other a phone photo are NOT reasons to lower the score if the composition is the same.
 
-Focus on: composition, subject matter, colour palette, technique markers (line quality, ink texture), and signature/inscription placement.
+Score their visual similarity from 0.0 to 1.0 using this scale:
+  1.0 — Same work, near-identical reproduction
+  0.9 — Clearly the same work — same composition and forms; differs only in photography (angle, lighting, crop, colour cast)
+  0.8 — Very likely the same work or a direct variant (same image, different state / edition / colourway)
+  0.7 — Strong match — same artist and composition family, but a genuine compositional difference remains
+  0.6 — Probable match — similar style and technique, plausibly the same artist, composition only loosely aligned
+  0.5 — Possible match — shared tradition and technique, significant compositional differences
+  0.3 — Weak match — similar tradition only
+  0.0 — No meaningful visual similarity  (e.g. one image is a photo of a person, a gallery interior, or an unrelated work)
+
+Focus on: composition and layout, the forms and their placement, subject matter, colour relationships, and technique markers (line quality, ink texture, screen/plate registration). Ignore differences that are purely photographic.
 
 Return ONLY a JSON object:
 {
@@ -905,36 +1269,36 @@ Return ONLY a JSON object:
     const ai = new GoogleGenAI({ apiKey: geminiKey });
     const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
 
-    const searchPrompt = `You are a fine art REVERSE IMAGE search assistant. Your job is to identify this print by matching it against actual reference images of known artworks — never by reading text about what it might be.
+    const searchPrompt = `You are a fine-art REVERSE IMAGE search engine. You are given ONE image of a print or work on paper.
 
-HOW TO WORK — in this order:
-1. Examine the submitted image itself: composition, mark-making, technique (etching/woodblock/lithograph characteristics), and any text physically inscribed ON the artwork — a signature, title, or edition number visible IN the print. That's evidence from the object itself, not external text, and is fine to use.
-2. Form a visual hypothesis from step 1 alone.
-3. Use Google Search ONLY to locate candidate REFERENCE IMAGES of specific artworks that might match — search image-hosting pages on Artnet, MutualArt, Catawiki, Christie's, Sotheby's, Bonhams, British Museum, V&A, Met, MoMA, Invaluable, or similar — and extract a direct image file URL you can visually compare the submission against.
-4. Confirm or reject each candidate by comparing the ACTUAL IMAGES — composition, proportions, mark placement, technique. Do this comparison yourself; do not take a page's caption or description as confirmation.
+YOUR SINGLE DELIVERABLE: the direct URL of the reference image on the public web that is VISUALLY CLOSEST to this submission — ideally a photograph of the same work. Everything else you report is metadata describing that image.
 
-STRICTLY FORBIDDEN AS EVIDENCE: a page's prose — an auction lot description, gallery caption, article text, or any other written attribution — is NEVER grounds for identifying the artist or title on its own, no matter how authoritative the source looks (an auction house's own catalogue text included). If a search result's text states "this is by [artist]" but you have not visually confirmed that claim against an actual image of that specific work, you have not identified the artwork — you have only found someone else's unverified claim about it.
+You are NOT being asked to name an artist. Do not go looking for who made this. If the closest-matching image you find happens to come with a reliable artist/title, report them — but an artist name with no matching image is a FAILURE, not a result, and must be returned with artist/title still filled only if the image match itself supports them.
+
+METHOD — in this order:
+1. Look at the submitted image only: overall composition and layout, subject, colour palette, the print technique (etching / drypoint / aquatint / lithograph / screenprint / woodblock characteristics), and any signature, title, date or edition number physically inscribed IN the print. Those inscriptions are evidence from the object and are fine to use.
+2. Use Google Search to find pages HOSTING REFERENCE IMAGES of prints with that composition — auction archives (Artnet, MutualArt, Christie's, Sotheby's, Bonhams, Phillips, Invaluable), museum collections (British Museum, V&A, Met, MoMA, Tate, NGA, Art Institute of Chicago), and dealer/gallery sites. Open several candidates.
+3. Compare the ACTUAL IMAGES side by side. Pick the one whose composition, proportions and mark placement match the submission most closely.
+4. Return the DIRECT image-file URL of that best match — the file itself (…/foo.jpg, …/bar.webp), not the webpage it sits on.
+
+STRICTLY FORBIDDEN: identifying the work from a page's PROSE — an auction lot description, gallery caption or article — without visually confirming it against an actual image of that specific work. A confident-sounding written attribution you have NOT visually verified is not a match; it is someone else's unverified claim, and must not raise compositionMatch above "loose".
+
+If no candidate genuinely matches the composition, return closestReferenceImageUrl: null and compositionMatch: "none". Do NOT return a loosely-related image, or a portrait of an artist, just to have something.
 
 Return a single JSON object:
 {
-  "bestMatch": {
-    "artist": "artist name or null",
-    "title": "artwork title or null",
-    "technique": "e.g. lithograph, etching, woodblock",
-    "period": "e.g. 1960s or null",
-    "confidence": "HIGH / MEDIUM / LOW",
-    "evidenceBasis": "visual — you genuinely compared the submission against a real reference image of the claimed work | textual — based on a page's written attribution without a confirmed image match | mixed — some genuine image comparison plus some text-only claims | none — no match found",
-    "reasoning": "Cite ONLY specific visual evidence — what you can see in the submitted image, and, if applicable, what you saw when comparing it against a specific reference image. Never cite what a webpage's text said as if it were visual evidence.",
-    "bestImageUrl": "direct image file URL ending in .jpg, .jpeg, .png, or .webp — must be the URL of the image file itself, NOT a webpage or homepage URL. Example: https://www.bonhams.com/lots/123/images/main.jpg — required if you found and visually compared against a matching image, null otherwise",
-    "sourceUrl": "URL of the page where that reference image was found"
-  },
-  "webEntities": ["key identifying terms found"],
-  "pagesWithMatchingImages": ["up to 5 relevant page URLs"],
-  "matchedUrls": [],
-  "visuallySimilarUrls": []
-}
-
-If you cannot find and visually compare against an actual reference image, set evidenceBasis to "textual" or "none" and cap confidence at LOW — text-only attribution, however confident-sounding, is never grounds for HIGH or MEDIUM confidence. Include only real URLs you retrieved from search results.`;
+  "closestReferenceImageUrl": "direct image-file URL (.jpg/.jpeg/.png/.webp) of the closest match, or null",
+  "sourcePageUrl": "the page that image was found on, or null",
+  "compositionMatch": "identical | very_close | loose | none",
+  "whatMatches": "specific visual features shared by the two images (composition, forms, palette, technique markers)",
+  "whatDiffers": "specific visual features that differ, or 'none'",
+  "artist": "artist name ONLY if the image match itself supports it, else null",
+  "title": "work title ONLY if the image match itself supports it, else null",
+  "technique": "etching / lithograph / screenprint / woodblock / ...",
+  "period": "e.g. 1960s, or null",
+  "webEntities": ["key identifying terms you saw"],
+  "pagesWithMatchingImages": ["up to 5 page URLs you actually opened"]
+}`;
 
     try {
       const response = await ai.models.generateContent({
@@ -960,82 +1324,112 @@ If you cannot find and visually compare against an actual reference image, set e
         return EMPTY;
       }
 
-      const best = parsed.bestMatch || {};
-      const evidenceBasis: string = best.evidenceBasis || "unspecified";
-      console.log(`[Stage 1b] Best match: ${best.artist} — "${best.title}" (${best.confidence}, evidence: ${evidenceBasis})`);
-      console.log(`[Stage 1b] Reasoning: ${best.reasoning || "(none given)"}`);
-      console.log(`[Stage 1b] Gemini image URL: ${best.bestImageUrl || "none"} — source: ${best.sourceUrl || "none"}`);
-      console.log(`[Stage 1b] Pages cited: ${(parsed.pagesWithMatchingImages || []).join(", ") || "none"}`);
-      if (evidenceBasis !== "visual" && (best.confidence === "HIGH" || best.confidence === "MEDIUM")) {
-        console.warn(
-          `[Stage 1b] ⚠️ ${best.confidence} confidence but evidenceBasis="${evidenceBasis}" — this match was NOT confirmed against an actual reference image. Treat as an unverified text-sourced hypothesis, not a genuine reverse-image match.`
-        );
-      }
+      const refUrl: string | null = parsed.closestReferenceImageUrl || null;
+      const sourcePage: string | null = parsed.sourcePageUrl || null;
+      const compositionMatch: VisualSearchResult["compositionMatch"] =
+        ["identical", "very_close", "loose", "none"].includes(parsed.compositionMatch) ? parsed.compositionMatch : "none";
+      const artist: string | null = parsed.artist || null;
+      const title: string | null = parsed.title || null;
+      console.log(`[Stage 1b] closest ref image : ${refUrl || "none"}   (compositionMatch=${compositionMatch})`);
+      console.log(`[Stage 1b] source page       : ${sourcePage || "none"}`);
+      console.log(`[Stage 1b] matches / differs : ${parsed.whatMatches || "-"}  //  ${parsed.whatDiffers || "-"}`);
+      console.log(`[Stage 1b] metadata          : ${artist || "?"} — "${title || "?"}" (${parsed.technique || "?"}, ${parsed.period || "?"})`);
 
-      // Fetch a reference image via Wikimedia for visual similarity scoring.
-      // Wikimedia is bot-friendly, no auth needed, and covers all major artists in this collection.
-      // NOTE: Strategy 1 below (Wikipedia's pageimages lookup keyed on the artist's own name)
-      // returns that article's LEAD image, which for a biography article is normally a
-      // PORTRAIT of the artist, not a picture of any specific artwork. When that's what gets
-      // used, the resulting similarity score is comparing the submission against a photo of a
-      // person, not against a candidate artwork — a low score there says nothing about whether
-      // the attribution is right, and isn't the "genuine reverse-image match" this stage is
-      // meant to produce. Logged explicitly below so it's never mistaken for a real match.
+      // Score against the reference image the SEARCH step actually found (this is the
+      // reverse-image-match). Only if it gave no usable image do we fall back to
+      // Wikimedia Commons for the WORK by title — and never score against an
+      // artist-portrait fallback, which is a meaningless comparison.
       let matchBase64: string | null = null;
       let matchMimeType: string | null = null;
-      let matchIsArtistPortraitFallback = false;
+      let matchSource: "search" | "commons_work" | "none" = "none";
       let similarityScore: number | null = null;
       let similarityRationale: string | null = null;
 
-      if (best.artist && best.confidence !== "LOW") {
-        const wikimedia = await this.fetchReferenceImageViaWikimedia(best.artist, best.title);
-        if (wikimedia) {
-          matchBase64 = wikimedia.base64;
-          matchMimeType = wikimedia.mimeType;
-          matchIsArtistPortraitFallback = true;
+      // Try to fetch whatever URL the search returned — don't pre-filter on the
+      // extension (museum IIIF endpoints and CDN proxies have none). fetchImageAsBase64
+      // validates by response Content-Type + magic bytes.
+      if (refUrl && /^https?:\/\//i.test(refUrl)) {
+        const fetched = await this.fetchImageAsBase64(refUrl);
+        if (fetched) {
+          matchBase64 = fetched.base64;
+          matchMimeType = fetched.mimeType;
+          matchSource = "search";
+        } else {
+          console.warn(`[Stage 1b] could not fetch the search result's image URL: ${refUrl}`);
         }
       }
 
-      // Fall back to Gemini's suggested URL if Wikimedia found nothing and URL looks like an image file
-      if (!matchBase64 && best.bestImageUrl) {
-        const isImageUrl = /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(best.bestImageUrl);
-        if (isImageUrl) {
-          console.log("[Stage 1b] Wikimedia found nothing — trying Gemini's suggested image URL");
-          const fetched = await this.fetchImageAsBase64(best.bestImageUrl);
-          if (fetched) { matchBase64 = fetched.base64; matchMimeType = fetched.mimeType; matchIsArtistPortraitFallback = false; }
-        } else {
-          console.log(`[Stage 1b] Gemini URL rejected (not a direct image file): ${best.bestImageUrl}`);
+      if (!matchBase64 && artist && title && compositionMatch !== "none") {
+        const wm = await this.fetchReferenceImageViaWikimedia(artist, title);
+        if (wm && !wm.isArtistPortrait) {
+          matchBase64 = wm.base64;
+          matchMimeType = wm.mimeType;
+          matchSource = "commons_work";
+        } else if (wm?.isArtistPortrait) {
+          console.log(`[Stage 1b] Wikimedia only had the artist's portrait — not scoring against it`);
         }
       }
 
       if (matchBase64 && matchMimeType) {
-        const label = `${best.artist || "Unknown"} — "${best.title || "Untitled"}"`;
+        const label = `${artist || "Unknown"} — "${title || "Untitled"}"`;
         const sim = await this.scoreVisualSimilarity(ai, cleanBase64, mimeType, matchBase64, matchMimeType, label);
         similarityScore = sim.score;
         similarityRationale = sim.rationale;
-        if (matchIsArtistPortraitFallback) {
-          console.log(`[Stage 1b] Visual similarity score: ${similarityScore} — ${similarityRationale} (⚠️ compared against a Wikipedia ARTIST PORTRAIT, not a reference image of the artwork — this score is not a genuine artwork-to-artwork comparison)`);
-        } else {
-          console.log(`[Stage 1b] Visual similarity score: ${similarityScore} — ${similarityRationale}`);
-        }
+        console.log(`[Stage 1b] visual similarity : ${similarityScore} (vs ${matchSource} image) — ${similarityRationale}`);
       } else {
-        console.warn("[Stage 1b] Could not fetch reference image — similarity scoring skipped");
+        console.warn(`[Stage 1b] no artwork reference image to score against — similarity skipped`);
+        if (parsed.whatMatches || parsed.whatDiffers) {
+          similarityRationale = `not scored (no reference image retrieved). compositionMatch=${compositionMatch}; matches: ${parsed.whatMatches || "-"}; differs: ${parsed.whatDiffers || "-"}`;
+        }
+      }
+
+      // The search step over-claims "identical" then sometimes returns a different work
+      // by the same artist. When the actual score contradicts its self-report, trust
+      // the score.
+      let effectiveCompositionMatch = compositionMatch;
+      if (similarityScore != null) {
+        if (similarityScore < 0.5 && compositionMatch !== "none") effectiveCompositionMatch = "loose";
+        else if (similarityScore < 0.7 && compositionMatch === "identical") effectiveCompositionMatch = "very_close";
+      }
+      if (effectiveCompositionMatch !== compositionMatch) {
+        console.log(`[Stage 1b] compositionMatch "${compositionMatch}" -> "${effectiveCompositionMatch}" (similarity ${similarityScore} contradicts the search step's read)`);
+      }
+
+      // Authoritative evidenceBasis + confidence, derived HERE from what actually
+      // happened — not the model's self-report (which over-claims "visual").
+      const evidenceBasis: VisualSearchResult["evidenceBasis"] =
+        similarityScore != null ? "visual" : artist || title ? "textual" : "none";
+      const matchConfidence: VisualSearchResult["matchConfidence"] =
+        similarityScore == null
+          ? artist || title
+            ? "LOW"
+            : null
+          : similarityScore >= 0.85
+            ? "HIGH"
+            : similarityScore >= 0.7
+              ? "MEDIUM"
+              : "LOW";
+      if (evidenceBasis === "textual") {
+        console.warn(
+          `[Stage 1b] ⚠️ metadata present but NO reference image was scored — evidenceBasis=textual, confidence capped at LOW. Downstream must treat this as an unverified name, not a visual match.`,
+        );
       }
 
       return {
         webEntities: parsed.webEntities || [],
-        matchedUrls: parsed.matchedUrls || [],
-        visuallySimilarUrls: parsed.visuallySimilarUrls || [],
+        matchedUrls: [],
+        visuallySimilarUrls: [],
         pagesWithMatchingImages: parsed.pagesWithMatchingImages || [],
-        bestMatchArtist: best.artist || null,
-        bestMatchTitle: best.title || null,
-        bestMatchImageUrl: best.bestImageUrl || null,
-        bestMatchImageBase64: matchBase64,
-        bestMatchImageMimeType: matchMimeType,
+        bestMatchArtist: artist,
+        bestMatchTitle: title,
+        bestMatchImageUrl: refUrl,
+        bestMatchImageBase64: matchSource === "search" ? matchBase64 : null,
+        bestMatchImageMimeType: matchSource === "search" ? matchMimeType : null,
         visualSimilarityScore: similarityScore,
         visualSimilarityRationale: similarityRationale,
-        matchConfidence: best.confidence || null,
-        evidenceBasis: (best.evidenceBasis as VisualSearchResult["evidenceBasis"]) || null,
+        compositionMatch: effectiveCompositionMatch,
+        matchConfidence,
+        evidenceBasis,
         hypothesisWarning: HYPOTHESIS_WARNING,
       };
     } catch (err: any) {
@@ -1159,6 +1553,7 @@ CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
         paperConfidence: vea.paper?.paperConfidence,
       },
       dimensions: {
+        sourceImage: vea.dimensions?.sourceImage,
         printedImageMM: vea.dimensions?.printedImageMM,
         fullSheetMM: vea.dimensions?.fullSheetMM,
         dimensionsConfidence: vea.dimensions?.dimensionsConfidence,
@@ -1232,13 +1627,18 @@ CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
     };
   }
 
-  protected async runStage2aTriage(
+  /**
+   * The shared Stage 2a input context — VEA projection + the Stage 1c and Stage 1b
+   * hand-off blocks. Used by both runStage2aTriage (classic) and runStage2aEvidence
+   * (ADR-0010). Kept identical between the two so a triage-vs-evidence A/B compares
+   * the classifier, not the framing.
+   */
+  protected buildStage2aContext(
     vea: VisualExtractionResult,
-    stage2aModel: string,
-    ai: GoogleGenAI,
     userNotes?: string,
-    appraiserInput?: AppraiserInputResult
-  ): Promise<TriageResult> {
+    appraiserInput?: AppraiserInputResult,
+    visualSearch?: VisualSearchResult
+  ): { notesBlock: string; appraiserInputBlock: string; visualSearchBlock: string; veaSlim: any } {
     const notesBlock = userNotes?.trim()
       ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for tradition identification and artist candidates):\n"${userNotes.trim()}"\n\n`
       : "";
@@ -1277,13 +1677,169 @@ CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
 INSTRUCTION: If any claim above conflicts with VEA's physical observations, record the conflict explicitly (e.g. in traditionNotes or a risk flag) rather than picking one silently.\n`
       : "";
 
+    // Stage 1b (Visual Search) — see docs/adr/0003 item 2. Previously reached only
+    // Stage 2b; now also available here so a strong reverse-image hit can influence
+    // routing/candidates rather than surfacing only after a specialist config is
+    // already picked. Same hypothesis-warning framing Stage 2b already uses below.
+    const vs = visualSearch;
+    const hasMatch = vs?.bestMatchArtist || vs?.bestMatchTitle;
+    const hasPages = vs && (vs.webEntities.length > 0 || vs.pagesWithMatchingImages.length > 0);
+    const visualSearchBlock = (hasMatch || hasPages)
+      ? `\n\n${vs?.hypothesisWarning || ""}
+
+STAGE 1b VISUAL SEARCH RESULT (Gemini ${this.config.stage1bModel || DEFAULT_STAGE1B_MODEL} reverse image search):
+  Best match artist : ${vs?.bestMatchArtist || "No match found"}
+  Best match title  : ${vs?.bestMatchTitle || "No match found"}
+  Composition match : ${vs?.compositionMatch || "n/a"} (search step's own read of how close the retrieved reference image is)
+  Confidence        : ${vs?.matchConfidence || "N/A"}
+  Evidence basis    : ${vs?.evidenceBasis || "unspecified"} (visual = a reference image of the work was retrieved and scored; textual = only a name/title, no image scored; none = no match)
+  Visual similarity : ${vs?.visualSimilarityScore != null ? `${(vs.visualSimilarityScore * 100).toFixed(0)}% — ${vs.visualSimilarityRationale}` : (vs?.visualSimilarityRationale || "Not scored (no reference image retrieved)")}
+
+INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCorroboration, never as confirmed attribution. A visual-basis match with similarity >= 0.7 that agrees with VEA signature/technique evidence is corroboration; any disagreement with VEA's physical evidence must be recorded in evidenceCorroboration.conflicts, not silently resolved. A "textual" basis (a name with no scored image) is an unverified hypothesis only — do not let it drive a candidate above a low probability on its own.\n`
+      : "";
+
     const veaSlim = this.projectVeaForAttribution(vea);
-    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and route to the correct specialist config.\n\n${JSON.stringify(veaSlim, null, 2)}${appraiserInputBlock}`;
-    if (isClaude(stage2aModel)) {
-      return this.callClaude(stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ type: "text", text: userText }], "report_attribution_triage", "Report the structured attribution triage and routing decision.", TRIAGE_SCHEMA);
-    } else {
-      return this.callGemini(ai, stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ text: userText }], TRIAGE_SCHEMA, 0.1);
+    return { notesBlock, appraiserInputBlock, visualSearchBlock, veaSlim };
+  }
+
+  protected async runStage2aTriage(
+    vea: VisualExtractionResult,
+    stage2aModel: string,
+    ai: GoogleGenAI,
+    userNotes?: string,
+    appraiserInput?: AppraiserInputResult,
+    visualSearch?: VisualSearchResult
+  ): Promise<TriageResult> {
+    // ADR-0010: the Attribution Evidence Agent replaces the whole classic triage path
+    // (LLM verdicts + classifyTriageOutcome) with observation cells + the deterministic
+    // two-pass tree. Claude only — it needs the query_ackg tool loop.
+    if (this.config.stage2aMode === "evidence") {
+      if (isClaude(stage2aModel)) {
+        return this.runStage2aEvidence(vea, stage2aModel, userNotes, appraiserInput, visualSearch);
+      }
+      console.warn(`[Stage 2a] stage2aMode="evidence" needs a Claude model for the query_ackg loop — got "${stage2aModel}"; using classic triage.`);
     }
+
+    const { notesBlock, appraiserInputBlock, visualSearchBlock, veaSlim } =
+      this.buildStage2aContext(vea, userNotes, appraiserInput, visualSearch);
+    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and candidate artists.\n\n${JSON.stringify(veaSlim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
+
+    let raw: TriageResult;
+    if (isClaude(stage2aModel)) {
+      // Claude gets the live query_ackg tool — see callClaudeWithAckgTool above.
+      raw = await this.callClaudeWithAckgTool(stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, userText);
+    } else {
+      // Gemini has no user-defined function-calling loop in this codebase (same
+      // existing limitation as the Claude-only lookup_museum_collections tool —
+      // see ADR-0005 finding #4). One deterministic ACKG lookup, built directly
+      // from VEA's own fields (no LLM involved in forming the query), stands in
+      // for the interactive multi-round version Claude gets. Weaker — a single
+      // fixed query instead of iteratively narrowed ones — but real grounding is
+      // still better than none. Worth a genuine Gemini tool loop if Gemini-routed
+      // Triage volume ever justifies the build.
+      let ackgBlock = "";
+      try {
+        const primaryTechnique = vea.printingTechniques?.[0]?.technique;
+        const candidates = await queryAckg({
+          technique: primaryTechnique || undefined,
+          paper: vea.paper?.surfaceType || undefined,
+        });
+        ackgBlock = `\n\nART CONTEXT KNOWLEDGE GRAPH — candidates matching VEA's observed technique/paper, ranked by real population support (see evidenceCorroboration.ackgAgreement instructions in your prompt):\n${this.formatAckgResultForClaude(candidates)}\n`;
+      } catch (err: any) {
+        console.warn(`[Stage 2a] ACKG pre-fetch failed (Gemini path) — proceeding without it: ${err.message}`);
+      }
+      raw = await this.callGemini(ai, stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ text: userText + ackgBlock }], TRIAGE_SCHEMA, 0.1);
+    }
+
+    // ADR-0006: routing is decided deterministically, in code, from the structured fields
+    // the LLM just populated — never LLM-declared. Single splice point so both model paths
+    // above get identical treatment.
+    const plan = classifyTriageOutcome(raw);
+    raw.routingDecision = {
+      ...raw.routingDecision,
+      scenario: plan.scenario,
+      scenarioName: plan.scenarioName,
+      tier: plan.tier,
+      specialistConfig: plan.specialistConfig,
+      routingRationale: plan.routingRationale,
+    };
+    console.log(`[Stage 2a routing] scenario=${plan.scenario} (${plan.scenarioName}) tier=${plan.tier} specialistConfig=${plan.specialistConfig} (matched on ${plan.specialistConfigMatchedOn}) skeptic=${plan.skepticModeEngaged}`);
+    console.log(`[Stage 2a routing] trace: ${plan.ruleTrace.join(" | ")}`);
+    return raw;
+  }
+
+  /**
+   * Stage 2a — Attribution Evidence Agent (ADR-0010 Decision 9.2). One Claude call
+   * (query_ackg tool loop) fills the observation cells; the deterministic two-pass tree
+   * (src/appraisal/two_pass_attribution.ts) evaluates them; the result is assembled back
+   * into the legacy TriageResult shape (+ the Decision 7 artistAttribution /
+   * workIdentification / impressionAssessment fields) so Stage 2b and the renderer are
+   * unchanged. Reached only when config.stage2aMode === "evidence".
+   */
+  protected async runStage2aEvidence(
+    vea: VisualExtractionResult,
+    stage2aModel: string,
+    userNotes?: string,
+    appraiserInput?: AppraiserInputResult,
+    visualSearch?: VisualSearchResult
+  ): Promise<TriageResult> {
+    if (vea.imageAuthenticity?.haltRecommended) {
+      // VEA already halted — no original work to attribute. Skip the call; run the tree
+      // on an empty evidence set (classifyTwoPass short-circuits on veaHaltRecommended).
+      const empty = emptyEvidenceOutput(vea.overallExtractionConfidence ?? 0);
+      const { triage, twoPass } = runEvidenceTree(empty, true);
+      console.log(`[Stage 2a evidence] VEA haltRecommended — tree not run; Scenario ${twoPass.scenario} (${twoPass.scenarioName})`);
+      return triage;
+    }
+
+    const { notesBlock, appraiserInputBlock, visualSearchBlock, veaSlim } =
+      this.buildStage2aContext(vea, userNotes, appraiserInput, visualSearch);
+    const evidenceTool = {
+      name: "report_attribution_evidence",
+      description: "Report the observed attribution evidence cells (no verdicts, no routing).",
+      schema: ATTRIBUTION_EVIDENCE_SCHEMA,
+    };
+    const buildUserText = (slim: unknown) =>
+      `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(slim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
+    const evidenceOpts = { extraTools: [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL], maxRounds: 5 };
+
+    let ev: EvidenceAgentOutput;
+    try {
+      ev = (await this.callClaudeWithAckgTool(
+        stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(veaSlim), 8192, evidenceTool, evidenceOpts,
+      )) as EvidenceAgentOutput;
+    } catch (err) {
+      if (!(err instanceof AnthropicContentFilterError)) throw err;
+      // Content filter tripped — most often on lurid free-text prose the model echoes back
+      // (surrealist / figurative descriptions). Retry once with VEA's long prose fields
+      // trimmed to their factual core; if it still fails, degrade to escalate rather than
+      // crash the lot.
+      console.warn(`[Stage 2a evidence] content-filtered — retrying with VEA prose trimmed`);
+      try {
+        ev = (await this.callClaudeWithAckgTool(
+          stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(trimVeaProse(veaSlim)), 8192, evidenceTool, evidenceOpts,
+        )) as EvidenceAgentOutput;
+      } catch (err2) {
+        if (!(err2 instanceof AnthropicContentFilterError)) throw err2;
+        console.warn(`[Stage 2a evidence] still content-filtered — emitting escalate-only result`);
+        const degraded = emptyEvidenceOutput(vea.overallExtractionConfidence ?? 0, {
+          reason: "Stage 2a evidence agent output blocked by content filtering on both attempts — needs manual triage.",
+          narrative: "The evidence agent could not complete: its output was blocked by content-filtering policy twice. No automated attribution was produced; route to a human.",
+        });
+        return runEvidenceTree(degraded, false).triage;
+      }
+    }
+
+    const { triage, twoPass } = runEvidenceTree(ev, false);
+    const rd = triage.routingDecision;
+    console.log(
+      `[Stage 2a evidence] artist=${twoPass.artistAttribution.evidenceBasis} ${twoPass.artistAttribution.verdict}/${twoPass.artistAttribution.confidence ?? "-"} "${twoPass.artistAttribution.artistName ?? "-"}"` +
+        ` | work=${twoPass.workIdentification ? `${twoPass.workIdentification.evidenceBasis} ${twoPass.workIdentification.verdict}/${twoPass.workIdentification.confidence ?? "-"}` : "(pass 2 not run)"}` +
+        ` | impression=${twoPass.impressionAssessment?.divergence ?? "n/a"}`,
+    );
+    console.log(`[Stage 2a evidence] routing: Scenario ${rd.scenario} (${rd.scenarioName}) tier ${rd.tier} specialistConfig=${rd.specialistConfig}`);
+    console.log(`[Stage 2a evidence] tree trace: ${twoPass.ruleTrace.join(" | ")}`);
+    return triage;
   }
 
   protected async runStage2bSpecialist(
@@ -1296,7 +1852,14 @@ INSTRUCTION: If any claim above conflicts with VEA's physical observations, reco
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
-    const asaSystemPrompt = injectSpecialistConfig(ATTRIBUTION_RESEARCH_SYSTEM_PROMPT, specialistConfig);
+    // ADR-0006: scenario (and its task profile) was decided deterministically in
+    // runStage2aTriage — default to LowSignalEverywhere only for pre-ADR-0006 stored
+    // triage results that predate the scenario field existing.
+    const scenario = (triage.routingDecision?.scenario ?? Scenario.LowSignalEverywhere) as Scenario;
+    const asaSystemPrompt = injectTaskProfile(
+      injectSpecialistConfig(ATTRIBUTION_RESEARCH_SYSTEM_PROMPT, specialistConfig),
+      scenario
+    );
     const notesBlock = userNotes?.trim()
       ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for attribution and title identification):\n"${userNotes.trim()}"\n\n`
       : "";
@@ -1311,9 +1874,10 @@ INSTRUCTION: If any claim above conflicts with VEA's physical observations, reco
 STAGE 1b VISUAL SEARCH RESULT (Gemini ${this.config.stage1bModel || DEFAULT_STAGE1B_MODEL} reverse image search):
   Best match artist : ${vs?.bestMatchArtist || "No match found"}
   Best match title  : ${vs?.bestMatchTitle || "No match found"}
+  Composition match : ${vs?.compositionMatch || "n/a"}
   Confidence        : ${vs?.matchConfidence || "N/A"}
-  Evidence basis    : ${vs?.evidenceBasis || "unspecified"} (visual = confirmed against an actual reference image; textual = only a page's written attribution, not visually confirmed)
-  Visual similarity : ${vs?.visualSimilarityScore != null ? `${(vs.visualSimilarityScore * 100).toFixed(0)}% — ${vs.visualSimilarityRationale}` : "Not scored (image not retrieved)"}
+  Evidence basis    : ${vs?.evidenceBasis || "unspecified"} (visual = a reference image of the work was retrieved and scored; textual = only a name/title, no image scored; none = no match)
+  Visual similarity : ${vs?.visualSimilarityScore != null ? `${(vs.visualSimilarityScore * 100).toFixed(0)}% — ${vs.visualSimilarityRationale}` : (vs?.visualSimilarityRationale || "Not scored (no reference image retrieved)")}
   Best image URL    : ${vs?.bestMatchImageUrl || "None"}
   Other pages       : ${vs?.pagesWithMatchingImages?.slice(0, 5).join(", ") || "None"}
 
@@ -1330,6 +1894,12 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     }
   }
 
+  // NOTE (ADR-0006): this legacy 3-stage path uses resolveCustomPrompt, not
+  // injectSpecialistConfig/injectTaskProfile — it already left an unresolved
+  // "[SPECIALIST_CONFIG]" literal in ATTRIBUTION_RESEARCH_SYSTEM_PROMPT (a pre-existing,
+  // separately-scoped bug), and now also carries an unresolved "[TASK_PROFILE]" literal for
+  // the same reason. Deliberately left untouched — ADR-0006 and this session's routing work
+  // is scoped to the 4-stage pipeline (runStage2aTriage/runStage2bSpecialist) only.
   protected async runStage2Attribution(
     vea: VisualExtractionResult,
     stage2Model: string,
@@ -1472,9 +2042,11 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
       `${d.category} / ${d.type} — ${d.severity}${d.affectsImageArea ? " (affects image area)" : ""}`
     ).join(". ") || "No significant damage detected.";
 
-    const inferredDimensions = vea.dimensions?.sourceImage !== "unavailable"
+    const hasScaledDims = vea.dimensions?.sourceImage === "supplementary_scale_photo"
+      && (vea.dimensions?.printedImageMM?.width || vea.dimensions?.fullSheetMM?.width);
+    const inferredDimensions = hasScaledDims
       ? `Plate: ${vea.dimensions?.printedImageMM?.width ?? "?"}×${vea.dimensions?.printedImageMM?.height ?? "?"}mm, Sheet: ${vea.dimensions?.fullSheetMM?.width ?? "?"}×${vea.dimensions?.fullSheetMM?.height ?? "?"}mm`
-      : "Dimensions not available — no scale scan provided.";
+      : "Dimensions not available — no scale reference in the images.";
 
     const editionRaw = (valuation as any).editionSizeAndPrintNumber;
 
@@ -1597,19 +2169,21 @@ export class FourStageAppraiser extends MultiStageAppraiser {
       return halt;
     }
 
-    // Stage 1b and Stage 1c were already launched above; awaited here
-    // alongside Stage 2a (Triage), which itself waits on Stage 1c (usually
-    // near-instant — it returns immediately when no notes were submitted)
-    // so Triage can weigh the appraiser's trust-tagged claims alongside
-    // VEA's physical evidence.
+    // Stage 1b and Stage 1c were already launched above. Per docs/adr/0003 item 2,
+    // Stage 2a (Triage) now also waits on Stage 1b's visual-search result (not
+    // just Stage 1c's appraiser claims) before making its routing decision —
+    // this is the ADR's accepted "blocking" tradeoff (Stage 1b's latency now
+    // sits on Stage 2a's critical path, rather than 1b and 2a running fully in
+    // parallel as before) in exchange for Triage actually being able to weigh a
+    // strong reverse-image match instead of it only reaching Stage 2b afterward.
     emit({ stage: "stage2a", status: "start", message: "Triaging attribution complexity and routing to specialist…", percent: 24 });
     const [visualSearch, triageResult, appraiserInput] = await Promise.all([
       visualSearchPromise,
       (async () => {
-        const appraiserInputResult = await appraiserInputPromise;
+        const [appraiserInputResult, visualSearchResult] = await Promise.all([appraiserInputPromise, visualSearchPromise]);
         const t2a = Date.now();
         console.log(`[Timing] Stage 2a (Triage) starting — model: ${stage2aModel}`);
-        const r = await this.runStage2aTriage(vea, stage2aModel, ai, input.userNotes, appraiserInputResult);
+        const r = await this.runStage2aTriage(vea, stage2aModel, ai, input.userNotes, appraiserInputResult, visualSearchResult);
         console.log(`[Timing] Stage 2a (Triage) done — ${((Date.now() - t2a) / 1000).toFixed(1)}s`);
         emit({ stage: "stage2a", status: "done", message: "Triage complete — specialist routing confirmed", percent: 40 });
         return r;
@@ -1830,6 +2404,23 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     stage2aModel: "claude-haiku-4-5",
     stage2bModel: "claude-sonnet-4-6",
     stage3Model: "claude-haiku-4-5",
+    enableVisualSearch: true,
+  },
+  {
+    id: "claude-4stage-evidence",
+    name: "Claude 4-Stage (ADR-0010 Evidence Agent Triage)",
+    description: "Full 4-stage pipeline with the Stage 2a Attribution Evidence Agent: one Sonnet call fills observation cells, the deterministic two-pass tree (artist → Conceptual Work → impression) evaluates them. Opus vision, Sonnet 2b/3.",
+    modelName: "claude-opus-4-8",
+    temperature: 0.1,
+    promptKey: "standard",
+    imageQuality: "original",
+    includeAuxiliaryScans: true,
+    provider: "anthropic",
+    stage1Model: "claude-opus-4-8",
+    stage2aModel: "claude-sonnet-4-6",
+    stage2aMode: "evidence",
+    stage2bModel: "claude-sonnet-4-6",
+    stage3Model: "claude-sonnet-4-6",
     enableVisualSearch: true,
   },
   {

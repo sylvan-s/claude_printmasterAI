@@ -1,0 +1,10 @@
+# Extra dependencies for embed_images_dinov2.py only — the rest of this toolkit needs
+# just `neo4j` + `pandas` (see README.md). Install into an isolated venv, not the shared
+# project/conda environment: confirmed during the DINOv2 proof-of-concept that installing
+# a fresh Pillow into this project's anaconda base broke against an old numpy already
+# there. See embed_images_dinov2.py's module docstring for the exact venv setup.
+torch
+transformers
+pillow
+requests
+neo4j

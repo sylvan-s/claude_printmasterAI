@@ -2,21 +2,21 @@
 
 ## Overview
 
-The appraisal system supports both a 3-stage and a 4-stage pipeline, implemented in `src/appraisal/appraiser.ts`. The 4-stage pipeline is the primary production path. All stages communicate via structured JSON — **only Stage 1a ever sees the images**, and only Stage 1c ever sees the appraiser's free-text notes.
+The appraisal system supports both a 3-stage and a 4-stage pipeline, implemented in `src/appraisal/appraiser.ts`. The 4-stage pipeline is the primary production path. All stages communicate via structured JSON — **only Stages 1a and 1b ever see the images** (1a for inspection, 1b for reverse-image search), and only Stage 1c ever sees the appraiser's free-text notes. Stages 2a, 2b and 3 work purely from upstream JSON.
 
 ```
-   images                     images                appraiser free-text notes
+   images                     image                 appraiser free-text notes
      │                          │                              │
      ▼                          ▼                              ▼
 Stage 1a (VEA)           Stage 1b (Visual Search)        Stage 1c (Appraiser Input Agent)
-     │                          │                              │
-     │   all three launch immediately and run fully concurrently  │
-     └──────────┬───────────────┴──────────────┬───────────────┘
-                ▼ Stage 2a waits on Stage 1a + Stage 1c; Stage 1b resolves independently
-         Stage 2a (Triage)
-                │
-                ▼
-         Stage 2b (Specialist ASA)
+     │                        │   │                            │
+     │      all three launch immediately, run fully concurrently│
+     └──────────┬─────────────┘   │   └────────────────────────┘
+                ▼                  │   Stage 2a waits on ALL of 1a + 1b + 1c
+         Stage 2a (Triage)         │
+                │                  │   Stage 1b's result is also passed
+                ▼                  │   straight through to Stage 2b
+         Stage 2b (Specialist ASA) ◄┘
                 │
                 ▼
          Stage 3 (Valuation)
@@ -25,7 +25,7 @@ Stage 1a (VEA)           Stage 1b (Visual Search)        Stage 1c (Appraiser Inp
          PrintAnalysisReport
 ```
 
-**Cost/latency tradeoff:** because Stage 1b starts before VEA's halt-gate result is known, a submission that VEA flags as a digital reproduction (Section 0, see below) still pays for a Stage 1b Gemini call whose result gets discarded — a deliberate latency-over-cost choice, since most submissions are real physical prints and halts are the exception.
+**Cost/latency tradeoff:** because Stage 1b starts before VEA's halt-gate result is known, a submission that VEA flags as a digital reproduction (Section 0, see below) still pays for a Stage 1b Gemini call whose result gets discarded — a deliberate latency-over-cost choice, since most submissions are real physical prints and halts are the exception. Stage 1b also sits on Stage 2a's critical path: Triage blocks until the visual-search result is ready rather than 1b and 2a overlapping (ADR-0003 item 2). That cost is accepted so Triage can weigh a strong reverse-image match, instead of that evidence only reaching Stage 2b.
 
 ---
 
@@ -34,7 +34,7 @@ Stage 1a (VEA)           Stage 1b (Visual Search)        Stage 1c (Appraiser Inp
 **Prompt:** `VISUAL_EXTRACTION_SYSTEM_PROMPT`
 **Schema output:** `VEA-1.1` (every section now carries its own `*Confidence` field — see below; `VEA-1.0` records without them are still accepted downstream)
 **Receives:** Raw images (primary scan + an arbitrary-length list of user-captioned supplementary photos)
-**Is the only stage that sees images. Receives no appraiser text — see Stage 1c.**
+**One of only two stages that see images (the other is Stage 1b). Receives no appraiser text — see Stage 1c.**
 
 ### What it does
 
@@ -61,32 +61,34 @@ All features with bounding boxes returned in `[ymin, xmin, ymax, xmax]` format o
 
 ## Stage 1b — Gemini Visual Search
 
-**Model:** Gemini 2.5 Flash (hardcoded — `STAGE1B_MODEL`)
-**Runs:** Launched immediately, fully concurrent with Stage 1a and Stage 1c — needs only the primary image, no dependency on VEA's output. Resolves independently; nothing downstream waits on it until Stage 2b.
+**Model:** Gemini, per-config (`stage1bModel`; default `DEFAULT_STAGE1B_MODEL` = `gemini-3.7-flash`)
+**Runs:** Launched immediately, fully concurrent with Stage 1a and Stage 1c — needs only the primary image, no dependency on VEA's output. **Stage 2a blocks on its result** (ADR-0003 item 2); Stage 2b then receives it as well.
 **Receives:** Primary image + Google Search tool
 
 ### What it does
 
-Two-pass reverse image search and visual similarity scoring:
+Two passes. The deliverable of the whole stage is **a reference image of the same work, scored against the submission** — the artist/title are metadata on that image, not the goal.
 
-**Pass 1 — Search (Gemini 2.5 Flash + Google Search)**
-Sends the artwork image with Google Search enabled. Searches Artnet, MutualArt, Catawiki, Invaluable, Christie's, Sotheby's, Bonhams, British Museum, V&A, Met, and MoMA.
+**Pass 1 — find the closest reference image (Gemini + Google Search)**
+Sends the artwork image with Google Search enabled and asks for the single deliverable: `closestReferenceImageUrl` — the direct file URL of the reference image on the public web that is visually closest to the submission. The prompt is explicit that *"an artist name with no matching image is a failure, not a result"*, and that a page's prose (auction description, gallery caption) is never grounds for a match without visual confirmation. Searches auction archives (Artnet, MutualArt, Christie's, Sotheby's, Bonhams, Phillips, Invaluable) and museum collections (British Museum, V&A, Met, MoMA, Tate, NGA, AIC).
 
-Prioritises evidence in this order: legible text (signatures, titles, edition numbers, stamps) → distinctive composition → technique markers → subject/style. Returns a **single best-match hypothesis** — artist, title, technique, period, confidence level, a direct URL to a matching image of the work, and a source page URL.
+Returns: `closestReferenceImageUrl`, `sourcePageUrl`, `compositionMatch` (`identical | very_close | loose | none`), `whatMatches` / `whatDiffers`, plus `artist` / `title` / `technique` / `period` *only when the image match supports them*.
 
-**Pass 2 — Visual similarity scoring (Gemini 2.5 Flash, multimodal)**
-Fetches the best-match image URL returned in Pass 1. Passes both the original submission and the retrieved image to Gemini for side-by-side comparison. Returns a `visualSimilarityScore` (0.0–1.0) and a one-sentence rationale.
+**Pass 2 — visual similarity scoring (Gemini, multimodal)**
+Fetches `closestReferenceImageUrl` **first** (magic-byte sniffed — museum IIIF endpoints and CDN proxies have no file extension). Only if that yields no usable image does it fall back to Wikimedia Commons for the *work* by title — it **never** scores against a Wikipedia artist-portrait, which was the old bug (every lot came back ~0.25 because it was comparing the print to a photo of the artist's face). Passes submission + retrieved image to Gemini side-by-side for a `visualSimilarityScore` (0.0–1.0) + rationale.
 
 | Score | Meaning |
 |-------|---------|
-| 1.0 | Identical work, same impression |
-| 0.9 | Same work, minor photographic differences |
-| 0.8 | Very likely same work or direct variant |
-| 0.7 | Strong match — same artist, same period, similar composition |
-| 0.6 | Probable match — similar style and technique |
-| < 0.6 | Treat with high scepticism |
+| 1.0 | Same work, near-identical reproduction |
+| 0.9 | Clearly the same work — differs only in photography (angle, lighting, crop) |
+| 0.8 | Very likely the same work or a direct variant (state / edition / colourway) |
+| 0.7 | Strong match — same artist and composition family, one genuine difference remains |
+| 0.6 | Probable — similar style/technique, composition only loosely aligned |
+| < 0.5 | Weak or no match |
 
-The full result — artist, title, similarity score, rationale, image URL, and page URLs — is passed to Stage 2b with an explicit hypothesis warning. Stage 2b is instructed to cross-reference against VEA signatures, title inscriptions, and technique before accepting any match, and to treat results with similarity < 0.6 or `LOW` confidence with high scepticism.
+`evidenceBasis` and `matchConfidence` are then **derived in code from what actually happened**, not the model's self-report: a real image scored → `visual`; a name with no scored image → `textual` (capped `LOW`); nothing → `none`. When the score contradicts Pass 1's `compositionMatch` claim (Gemini often says "identical" then returns a different work by the same artist), `compositionMatch` is downgraded (`identical → loose`/`very_close`).
+
+The full result — artist, title, `compositionMatch`, similarity score + rationale, image URL, page URLs — is passed to **Stage 2a** (where Triage fuses it with VEA and the ACKG in `evidenceCorroboration` — see below) and **again to Stage 2b**, always carrying an explicit hypothesis warning. Both stages are instructed to cross-reference against VEA before accepting any match, and to treat a `textual` basis (a name with no scored image) as an unverified hypothesis that must not drive a candidate above a low probability on its own.
 
 ---
 
@@ -116,8 +118,9 @@ Best-effort like Stage 1b: skipped entirely (zero API cost) if no notes were sub
 
 **Prompt:** `ATTRIBUTION_TRIAGE_SYSTEM_PROMPT`
 **Schema output:** `ATA-1.0`
-**Receives:** VEA JSON (text only — no images) + Stage 1c's structured appraiser claims
-**Runs:** Waits on Stage 1c (usually near-instant); independent of Stage 1b
+**Receives:** VEA JSON (text only — no images) + Stage 1c's structured appraiser claims + Stage 1b's visual-search result
+**Runs:** Waits on **all** of Stage 1a, Stage 1b and Stage 1c
+**Tool:** `query_ackg` — queries the Art Context Knowledge Graph (ingested Met / Roseberys / Forum records) for real population support behind candidate artists
 
 ### What it does
 
@@ -126,37 +129,41 @@ Best-effort like Stage 1b: skipped entirely (zero API cost) if no notes were sub
 | 2A | **Tradition identification** — classifies into East Asian (Ukiyo-e, Shin-hanga, Sosaku-hanga), European Old Master, 19th Century European, European/American Modern (1900–1970), or Contemporary (post-1970) |
 | 2B | **Period estimation** — uses paper type (laid/wove/machine-made), edition conventions (no numbering = pre-1880 Western; pencil signature = post-1880; fractional numbering = post-1900), and seal/stamp evidence |
 | 2C | **Candidate shortlisting** — ranked 1–5 candidates; text signals weighted highest (legible titles, signatures, publisher marks) over style alone |
-| 2D | **Risk flag assessment** — FORGERY_RISK, REPRINT_RISK, EDITION_COMPLEXITY_RISK, MISATTRIBUTION_RISK, AUTHENTICATION_BODY_EXISTS, PHYSICAL_EXAMINATION_REQUIRED |
-| 2E | **Routing decision** — selects a specialist config key (e.g. `hokusai`, `school_of_paris_modern`, `old_master_intaglio`, `general_print_fallback`) and escalation flag if required |
+| 2D | **Risk flag assessment** — FORGERY_RISK, REPRINT_RISK, EDITION_COMPLEXITY_RISK, MISATTRIBUTION_RISK, PHYSICAL_EXAMINATION_REQUIRED. Every flag defaults FALSE and needs specific cited evidence (never generic reasoning about an artist's fame or market value). AUTHENTICATION_BODY_EXISTS is a *fact* flag (does a catalogue raisonné / foundation exist), not a risk signal. |
+| 2E | **Evidence fusion** — reconciles VEA, the Stage 1b match, and `query_ackg` results into `candidateArtists[]` + `evidenceCorroboration` (`stage1bAgreement`, `ackgAgreement`, `conflicts[]`). Corroboration ranks a candidate up; contradiction goes into `conflicts[]`, never averaged away. |
+| 2F | **Escalation assessment** — sets `humanEscalationRequired` (physical exam + auth body + forgery all true, OR VEA `overallExtractionConfidence` < 0.35, OR appraiser input materially contradicts the physical evidence) |
 
-The routing decision determines which JSON specialist config is injected into Stage 2b.
+**Triage does not choose the route.** Since ADR-0006, routing is deterministic: `classifyTriageOutcome()` in `src/appraisal/routing.ts` is a pure function over the `TriageResult` fields above — no LLM call. It picks, in order, one of six scenarios (Confirmed-clean · Elevated-authentication-risk · Artist-confirmed-work-unresolved · Movement-only · Competing-candidates · Low-signal-everywhere), a coarse tier, whether the Stage 2b Skeptic pass engages, and a specialist config key from a real on-disk registry (`rembrandt_etchings`, `ukiyo_e_edo_general`, `general_print_fallback` today) — falling back explicitly to `general_print_fallback`, never inventing a name (the ADR-0005 finding #8 failure mode). The LLM's only routing-related output is `humanEscalationRequired`.
 
-When Stage 1c produced any claims, Triage weighs `documented_fact` claims above `hypothesis` claims, and `hypothesis` claims no higher than VEA's own physical evidence — a claim conflicting with VEA's observations is recorded as an explicit conflict (in `traditionNotes` or a risk flag), never silently preferred over the other.
+When Stage 1c produced any claims, Triage weighs `documented_fact` claims above `hypothesis` claims, and `hypothesis` claims no higher than VEA's own physical evidence — a claim conflicting with VEA's observations is recorded as an explicit entry in `evidenceCorroboration.conflicts[]`, never silently preferred over the other.
 
 ---
 
 ## Stage 2b — Specialist Attribution Agent (ASA)
 
-**Prompt:** `ATTRIBUTION_RESEARCH_SYSTEM_PROMPT` + injected specialist config
+**Prompt:** `ATTRIBUTION_RESEARCH_SYSTEM_PROMPT` + injected specialist config + injected scenario task profile
 **Schema output:** `ASA-1.0`
-**Receives:** VEA JSON + triage routing + Stage 1b visual search candidates (all text)
+**Receives:** VEA JSON + triage routing (scenario, tier, `specialistConfig`) + Stage 1b visual-search result (all text)
 **Has web search access**
 
 ### What it does
 
 Loads the specialist knowledge config for the routed tradition from `src/appraisal/specialist_configs/<key>.json` — this defines which databases to query (priority order), critical authentication markers, known forgeries/facsimiles, and catalogue raisonnés.
 
-Executes a structured 7-step research process:
+Executes a structured 8-step research process. Stage 2a's deterministic router (ADR-0006) also injects a **scenario task profile** deciding which steps run at full depth, which are abbreviated, and which are skipped:
 
 | Step | Task |
 |------|------|
 | 1 | Extract search keys from triage output (artist name, series title, native script text) |
-| 2 | Run at most 3 web searches across priority databases |
+| 2 | Primary database queries — at most 5 web searches total (≤3 attribution, ≤2 comps), priority order from the specialist config |
 | 3 | Catalogue raisonné cross-reference — note all discrepancies vs VEA |
 | 4 | Authentication marker analysis — each marker assessed as CONFIRMED / ABSENT / INCONSISTENT / UNASSESSABLE |
-| 5 | Forgery and reprint risk assessment |
+| 5 | Forgery and reprint risk assessment → `reprintForgeryRisk: LOW / MEDIUM / HIGH / UNASSESSABLE` |
 | 6 | Impression state and series/edition identification |
-| 7 | Attribution confidence scoring (structured formula: base score from database match + marker modifiers + risk penalty + image quality penalty; ceilings apply) |
+| 7 | Auction comp collection — 1–2 searches for recent verifiable sales of identical/similar prints (Roseberys, Sotheby's, Christie's, Phillips, Bonhams, Artnet); fractional-lot logic applied |
+| 8 | Attribution confidence scoring (structured formula: base score from database match + marker modifiers + risk penalty + image-quality penalty; ceilings apply) |
+
+**Skeptic pass (ADR-0006, resolves Issue #7):** under the *Elevated-authentication-risk* and *Competing-candidates* scenarios, STEP 4/5 run adversarially — actively trying to falsify the leading hypothesis. The outcome is recorded in `attributionChallengeAssessment` (`skepticModeEngaged`, `verdict` = CONFIRMED / CHALLENGED / UNCERTAIN, `challengeNarrative`), which Stage 3 reads when setting its valuation range.
 
 Outputs attribution level (`definitive | probable | possible | school_of | tradition_only | unattributed`), confidence score, evidence chain, and valuation-relevant findings — **no monetary estimates**.
 
@@ -165,14 +172,14 @@ Outputs attribution level (`definitive | probable | possible | school_of | tradi
 ## Stage 3 — Valuation Agent
 
 **Prompt:** `VALUATION_REPORT_SYSTEM_PROMPT`
-**Receives:** Stage 1a VEA JSON (condition/technique) + Stage 2b ASA JSON (attribution/edition/rarity)
+**Receives:** Stage 1a VEA JSON (condition/technique) + Stage 2b ASA JSON (attribution/edition/rarity, incl. `attributionChallengeAssessment`)
 **Has web search access**
 
 ### What it does
 
 Searches for recent auction comps at Sotheby's, Christie's, Phillips, Bonhams, and Roseberys (Roseberys London April auctions prioritised). For group lot sales, calculates the individual print's fractional value rather than using the full lot price.
 
-Applies condition penalties (20%–75% discount based on VEA defect grade) and rarity/edition factors from Stage 2b. Outputs only six fields: `auctionEstimate`, `recentAuctionSales`, `nextSteps`, `editionSizeAndPrintNumber`, `isLikelyReproductionOrPoster`, `reproductionExplanation`.
+Applies condition penalties (20%–75% discount based on VEA defect grade) and rarity/edition factors from Stage 2b, and widens the estimate range on a CHALLENGED or UNCERTAIN Skeptic verdict from Stage 2b. Outputs only six fields: `auctionEstimate`, `recentAuctionSales`, `nextSteps`, `editionSizeAndPrintNumber`, `isLikelyReproductionOrPoster`, `reproductionExplanation`.
 
 Deliberately siloed from attribution — does not re-describe the artwork or repeat Stage 2b findings.
 
@@ -182,9 +189,9 @@ Deliberately siloed from attribution — does not re-describe the artwork or rep
 
 | Config ID | Stage 1a (VEA) | Stage 1b (Visual Search) | Stage 1c (Appraiser Input) | Stage 2a (Triage) | Stage 2b (Specialist) | Stage 3 (Valuation) |
 |-----------|---------------|--------------------------|-----------------------------|-------------------|----------------------|---------------------|
-| `claude-4stage` | Claude Opus 4.8 | Gemini 2.5 Flash | Claude Haiku 4.5 | Claude Sonnet 4.6 | Claude Sonnet 4.6 | Claude Sonnet 4.6 |
-| `claude-4stage-fast` | Claude Opus 4.8 | Gemini 2.5 Flash | Claude Haiku 4.5 | Claude Haiku 4.5 | Claude Sonnet 4.6 | Claude Sonnet 4.6 |
-| `gemini-4stage` | Gemini 2.5 Pro | Gemini 2.5 Flash | Claude Haiku 4.5 | Gemini 3.1 Pro Preview | Gemini 3.1 Pro Preview | Gemini 2.5 Pro |
+| `claude-4stage` | Claude Opus 4.8 | Gemini 3.7 Flash | Claude Haiku 4.5 | Claude Sonnet 4.6 | Claude Sonnet 4.6 | Claude Sonnet 4.6 |
+| `claude-4stage-fast` | Claude Opus 4.8 | Gemini 3.7 Flash | Claude Haiku 4.5 | Claude Haiku 4.5 | Claude Sonnet 4.6 | Claude Sonnet 4.6 |
+| `gemini-4stage` | Gemini 2.5 Pro | Gemini 3.7 Flash | Claude Haiku 4.5 | Gemini 3.1 Pro Preview | Gemini 3.1 Pro Preview | Gemini 2.5 Pro |
 | `gemini-3stage` | Gemini 2.5 Pro | — | — | — | Gemini 2.5 Pro (direct) | Gemini 2.5 Pro |
 | `claude-3stage` | Claude Sonnet 4.6 | — | — | — | Claude Sonnet 4.6 (direct) | Claude Sonnet 4.6 |
 
@@ -201,11 +208,11 @@ Unlike Stage 1b's model (`stage1bModel`, per-config), Stage 1c's model is curren
 
 ## Key Design Principles
 
-1. **Images are seen only once** — Stage 1a is the sole image-processing layer. All downstream agents work from structured JSON.
+1. **Images are seen only in Stage 1** — Stage 1a (inspection) and Stage 1b (reverse-image search) are the only image-processing layers. Stages 2a, 2b and 3 work purely from structured JSON.
 2. **Separation of concerns** — visual extraction, tradition routing, attribution research, and valuation are handled by separate agents with separate prompts and schemas.
 3. **Text signals are privileged** — legible inscriptions (titles, signatures, edition numbers) outweigh stylistic inference in all attribution stages.
 4. **Null over fabrication** — all agents are instructed to return `null` or `"uncertain"` rather than guess unobservable fields.
 5. **Halt gate** — if Stage 1a detects a digital reproduction, the pipeline stops immediately and returns a zero-value report rather than producing a meaningless valuation.
-6. **Stage 1b is advisory** — visual search candidates are passed to Stage 2b as hypotheses labelled with a warning, never as confirmed attribution.
+6. **Stage 1b is advisory** — its visual-search match is passed to Stage 2a (fused in `evidenceCorroboration`) and to Stage 2b as a hypothesis labelled with a warning, never as confirmed attribution.
 7. **Appraiser text is seen only by Stage 1c** — VEA is strictly vision-only; the appraiser's free-text notes reach the pipeline exclusively through Stage 1c's structured, trust-tagged extraction, not mixed into VEA's inspection prompt. See ADR-0004.
 8. **Trust-tagged claims never silently override physical evidence** — Stage 1c tags every claim `hypothesis` or `documented_fact`; Triage weighs `documented_fact` above `hypothesis`, and `hypothesis` no higher than VEA's own observations. A conflict between an appraiser claim and VEA's physical evidence is recorded explicitly, never resolved by picking one silently.

@@ -392,7 +392,9 @@ export const TRIAGE_SCHEMA = {
           artistName: { type: Type.STRING },
           candidateProbability: { type: Type.NUMBER },
           supportingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
-          contradictingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } }
+          contradictingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
+          ackgSupportCount: { type: Type.INTEGER },
+          ackgProvenanceTags: { type: Type.ARRAY, items: { type: Type.STRING } }
         },
         required: ["rank", "artistName", "candidateProbability", "supportingEvidence", "contradictingEvidence"]
       }
@@ -409,17 +411,26 @@ export const TRIAGE_SCHEMA = {
       },
       required: ["forgeryRisk", "reprintRisk", "editionComplexityRisk", "misattributionRisk", "authenticationBodyExists", "physicalExaminationRequired"]
     },
-    routingDecision: {
+    evidenceCorroboration: {
       type: Type.OBJECT,
       properties: {
-        tier: { type: Type.INTEGER },
-        specialistConfig: { type: Type.STRING },
-        routingRationale: { type: Type.STRING },
-        humanEscalationRequired: { type: Type.BOOLEAN },
-        humanEscalationReason: { type: Type.STRING },
-        alternativeConfig: { type: Type.STRING }
+        stage1bAgreement: { type: Type.BOOLEAN },
+        ackgAgreement: { type: Type.BOOLEAN },
+        conflicts: { type: Type.ARRAY, items: { type: Type.STRING } }
       },
-      required: ["tier", "specialistConfig", "routingRationale", "humanEscalationRequired", "alternativeConfig"]
+      required: ["conflicts"]
+    },
+    routingDecision: {
+      // Deliberately minimal — scenario/tier/specialistConfig/routingRationale are no
+      // longer asked of the model at all (ADR-0006): classifyTriageOutcome (src/appraisal/
+      // routing.ts) computes and splices them onto this object deterministically after the
+      // LLM call returns. Only humanEscalationRequired/Reason remain genuine LLM judgment.
+      type: Type.OBJECT,
+      properties: {
+        humanEscalationRequired: { type: Type.BOOLEAN },
+        humanEscalationReason: { type: Type.STRING }
+      },
+      required: ["humanEscalationRequired"]
     },
     triageConfidenceSummary: {
       type: Type.OBJECT,
@@ -524,6 +535,17 @@ export const SPECIALIST_ATTRIBUTION_SCHEMA = {
         required: ["question", "resolutionAction", "confidenceImpact"]
       }
     },
+    // ADR-0006 Decision 4 / GitHub Issue #7 — mandatory real verdict under Scenario 2/5
+    // task profiles (injected via [TASK_PROFILE]), NOT_APPLICABLE otherwise.
+    attributionChallengeAssessment: {
+      type: Type.OBJECT,
+      properties: {
+        skepticModeEngaged: { type: Type.BOOLEAN },
+        verdict: { type: Type.STRING },
+        challengeNarrative: { type: Type.STRING }
+      },
+      required: ["skepticModeEngaged", "verdict"]
+    },
     auctionComps: {
       type: Type.ARRAY,
       description: "2–3 verified auction comps collected during Stage 2b research. Empty array if none found.",
@@ -547,7 +569,7 @@ export const SPECIALIST_ATTRIBUTION_SCHEMA = {
   required: [
     "schemaVersion", "specialistConfigUsed", "attributionConclusion", "catalogueRaisonne",
     "reprintForgeryAssessment", "seriesAndEditionIdentification", "valuationRelevantFindings",
-    "researchConfidenceSummary", "unresolvedQuestions", "auctionComps"
+    "researchConfidenceSummary", "unresolvedQuestions", "attributionChallengeAssessment", "auctionComps"
   ]
 };
 
@@ -805,4 +827,155 @@ export const APPRAISER_INPUT_SCHEMA = {
     "provenanceChain", "conditionClaims", "catalogueReferences", "literatureOrExhibitionClaims",
     "dimensionsClaim", "paperOrSupport", "rawNotes", "overallExtractionConfidence", "lowConfidenceFlags"
   ]
+};
+
+// ---------------------------------------------------------------------------
+// Stage 2a — Attribution Evidence Agent (AEA-1.0) — ADR-0010 Decision 9.2
+//
+// The evidence-agent variant of Stage 2a. Where TRIAGE_SCHEMA asks the model for
+// verdicts (candidateProbability, scenario-shaped routing), this asks only for
+// OBSERVATIONS — the "evidence cells" that src/appraisal/two_pass_attribution.ts
+// then evaluates the A1..A11 / T1..T7 tables over, in code. Numbers use -1 as a
+// "not assessed / not applicable" sentinel (tool schemas can't express nullable
+// cleanly — same idiom as TRIAGE_SCHEMA's ackgSupportCount).
+// ---------------------------------------------------------------------------
+const AEA_WH = {
+  type: Type.OBJECT,
+  properties: { width: { type: Type.NUMBER }, height: { type: Type.NUMBER } },
+  required: ["width", "height"],
+};
+export const ATTRIBUTION_EVIDENCE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    schemaVersion: { type: Type.STRING, description: 'Always "AEA-1.0".' },
+    evidenceTimestamp: { type: Type.STRING },
+    inputValidation: {
+      type: Type.OBJECT,
+      properties: {
+        inputValidationError: { type: Type.BOOLEAN },
+        veaExtractionConfidence: { type: Type.NUMBER },
+        provisionalOutput: { type: Type.BOOLEAN },
+      },
+      required: ["inputValidationError", "veaExtractionConfidence", "provisionalOutput"],
+    },
+    traditionIdentification: {
+      type: Type.OBJECT,
+      properties: {
+        primaryTradition: { type: Type.STRING },
+        traditionConfidence: { type: Type.NUMBER },
+        supportingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
+        contradictingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
+      },
+      required: ["primaryTradition", "traditionConfidence", "supportingEvidence", "contradictingEvidence"],
+    },
+    periodEstimation: {
+      type: Type.OBJECT,
+      properties: {
+        estimatedPeriodRange: { type: Type.STRING },
+        periodConfidence: { type: Type.NUMBER },
+      },
+      required: ["estimatedPeriodRange", "periodConfidence"],
+    },
+    artistEvidence: {
+      type: Type.OBJECT,
+      properties: {
+        veaNamesArtist: { type: Type.BOOLEAN, description: "VEA produced a nameable authorship signal (legible hand-signature, monogram resolved to a name, publisher/atelier mark implying authorship, or an in-image title cartouche that names the maker)." },
+        veaArtistName: { type: Type.STRING, description: 'The name VEA evidence points to, "" if none.' },
+        veaAuthorshipSignalLegible: { type: Type.BOOLEAN, description: "The signature/cartouche the name was read from is actually legible (not reconstructed / guessed)." },
+        veaSignatureConfidence: { type: Type.NUMBER, description: "VEA signatureConfidence for that mark; -1 if there is no signature mark at all." },
+        reverseImageNamesArtist: { type: Type.BOOLEAN },
+        reverseImageArtistName: { type: Type.STRING },
+        reverseImageSimilarity: { type: Type.NUMBER, description: "Stage 1b visualSimilarityScore (0-1); -1 if no reference image was scored." },
+        reverseImageConsistentWithVea: { type: Type.BOOLEAN, description: "ADR-0010 Decision 2 consistency gate: does Stage 1b's hypothesis contradict the VEA read (technique / period / signature characters / medium)? false when unscored or contradicting; only true when a scored reference image agrees with VEA." },
+        reverseImageConsistencyRationale: { type: Type.STRING },
+        appraiserNamesArtist: { type: Type.BOOLEAN, description: "Stage 1c claimedAttribution names an artist (excludes collector/publisher/dedicatee names — those are not an authorship claim)." },
+        appraiserArtistName: { type: Type.STRING },
+        appraiserTrust: { type: Type.STRING, description: '"documented_fact" (the note references supporting paperwork) | "hypothesis" (bare assertion) | "none".' },
+        dominantCandidateName: { type: Type.STRING, description: "Your single best artist identity given all sources — the one the K_* queries below are about." },
+        dominantCandidateIdentityKey: { type: Type.STRING, description: 'ULAN or Wikidata URI for the dominant candidate if query_ackg returned one, else "".' },
+        kId: { type: Type.STRING, description: '"true" = an institutional authority record exists (ULAN/Wikidata/Tate/Met) | "false" = confidently not | "unknown" (incl. the East-Asian coverage-gap carve-out).' },
+        kOeuvreMatchCount: { type: Type.INTEGER, description: "query_ackg supportCount for the dominant candidate at the observed technique/period(/paper/region); -1 if query_ackg was not called for this candidate. 0 is a real absence-of-population signal, never evidence against." },
+        kOeuvreProvenanceTags: { type: Type.ARRAY, items: { type: Type.STRING }, description: '"institutional" and/or "auction_history".' },
+        kSubject: { type: Type.STRING, description: "TYPICAL | OCCASIONAL | ATYPICAL | UNASSESSABLE — how well the observed subject fits the dominant candidate's catalogued ACKG output. Annotation only (ADR-0010 Decision 3b)." },
+        kSubjectNote: { type: Type.STRING },
+      },
+      required: [
+        "veaNamesArtist", "veaArtistName", "veaAuthorshipSignalLegible", "veaSignatureConfidence",
+        "reverseImageNamesArtist", "reverseImageArtistName", "reverseImageSimilarity",
+        "reverseImageConsistentWithVea", "reverseImageConsistencyRationale",
+        "appraiserNamesArtist", "appraiserArtistName", "appraiserTrust",
+        "dominantCandidateName", "dominantCandidateIdentityKey",
+        "kId", "kOeuvreMatchCount", "kOeuvreProvenanceTags", "kSubject", "kSubjectNote",
+      ],
+    },
+    workEvidence: {
+      type: Type.OBJECT,
+      properties: {
+        veaTitle: { type: Type.STRING, description: 'Title / series inscription read from within the image (VEA composition.textWithinImage or a title inscription), "" if none.' },
+        veaInImageTitleLegible: { type: Type.BOOLEAN, description: "A legible in-image title/series cartouche is present (Decision 6 — triggers Pass 2 even when the artist is unresolved; matters most for ukiyo-e)." },
+        reverseImageTitle: { type: Type.STRING },
+        reverseImageTitleSimilarity: { type: Type.NUMBER, description: "-1 if not scored." },
+        appraiserTitle: { type: Type.STRING },
+        kWorkQueried: { type: Type.BOOLEAN, description: "Did you call query_ackg_work for the identified/candidate work?" },
+        kWorkTitleSim: { type: Type.NUMBER, description: 'The "computed title similarity" value query_ackg_work reports for its best match — TRANSCRIBE it, do not estimate your own. -1 if you did not call query_ackg_work.' },
+        kWorkMatchedTitle: { type: Type.STRING, description: 'The catalogued title query_ackg_work reported as the best match, verbatim. "" if none / not called.' },
+        kWorkBackPropArtist: { type: Type.STRING, description: 'The artist query_ackg_work catalogues that matched work to, when it is exactly ONE artist. Votes for the artist when kWorkTitleSim >= 0.8 (ADR-0010 Decision 4a) and drives Decision 6 back-propagation. "" if the matched work is catalogued to several artists, or no confident match.' },
+      },
+      required: [
+        "veaTitle", "veaInImageTitleLegible", "reverseImageTitle", "reverseImageTitleSimilarity",
+        "appraiserTitle", "kWorkQueried", "kWorkTitleSim", "kWorkMatchedTitle", "kWorkBackPropArtist",
+      ],
+    },
+    impressionEvidence: {
+      type: Type.OBJECT,
+      properties: {
+        assessable: { type: Type.BOOLEAN, description: "true only when a Conceptual Work was identified/candidate. When true, call query_ackg_work for that work and fill the cells below from its catalogued facts. false ⇒ the whole block is ignored." },
+        observedTechniques: { type: Type.ARRAY, items: { type: Type.STRING }, description: "VEA's observed printing technique name(s), e.g. [\"Etching\", \"Drypoint\"]. Verbatim from VEA printingTechniques." },
+        observedIsPhotomechanical: { type: Type.BOOLEAN, description: "VEA read halftone dot structure / offset / giclée / digital-pigment — i.e. NOT a hand-pulled process." },
+        catalogueTechniques: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Catalogued technique(s) for the identified work, from query_ackg_work (the `techniques` field; merge across near-duplicate title rows). [] if the work is not in the graph." },
+        catalogueMediumRaw: { type: Type.STRING, description: "The single most informative catalogued rawMedium string from query_ackg_work, e.g. \"Laminated giclée print in colours on aluminium composite panel\". \"\" if none." },
+        workIsIntaglio: { type: Type.BOOLEAN, description: "The identified work is an intaglio process (etching/engraving/drypoint/aquatint/mezzotint) — controls plate-vs-image dimension comparison." },
+        observedDimSource: { type: Type.STRING, description: "\"appraiser\" = Stage 1c stated the object's dimensions (the pipeline's dimension source of record — prefer this) | \"vea_scaled\" = VEA had a ruler/coin/known-object scale reference | \"none\" = no usable observed measurement." },
+        observedPlateMm: AEA_WH,
+        observedImageMm: AEA_WH,
+        cataloguePlateMm: AEA_WH,
+        catalogueImageMm: AEA_WH,
+      },
+      required: [
+        "assessable", "observedTechniques", "observedIsPhotomechanical", "catalogueTechniques",
+        "catalogueMediumRaw", "workIsIntaglio", "observedDimSource",
+        "observedPlateMm", "observedImageMm", "cataloguePlateMm", "catalogueImageMm",
+      ],
+    },
+    riskFlags: {
+      type: Type.OBJECT,
+      properties: {
+        forgeryRisk: { type: Type.BOOLEAN },
+        forgeryRiskNote: { type: Type.STRING },
+        reprintRisk: { type: Type.BOOLEAN },
+        reprintRiskNote: { type: Type.STRING },
+        editionComplexityRisk: { type: Type.BOOLEAN },
+        editionComplexityRiskNote: { type: Type.STRING },
+        misattributionRisk: { type: Type.BOOLEAN },
+        misattributionRiskNote: { type: Type.STRING },
+        authenticationBodyExists: { type: Type.BOOLEAN },
+        authenticationBodyNote: { type: Type.STRING },
+        physicalExaminationRequired: { type: Type.BOOLEAN },
+        physicalExaminationReason: { type: Type.STRING },
+      },
+      required: [
+        "forgeryRisk", "reprintRisk", "editionComplexityRisk", "misattributionRisk",
+        "authenticationBodyExists", "physicalExaminationRequired",
+      ],
+    },
+    conflicts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Every evidence disagreement you chose not to average away — same discipline as ADR-0003." },
+    humanEscalationRequired: { type: Type.BOOLEAN },
+    humanEscalationReason: { type: Type.STRING },
+    evidenceNarrative: { type: Type.STRING, description: "2-5 sentences: what the evidence says about artist / work / impression and why. No routing language." },
+  },
+  required: [
+    "schemaVersion", "inputValidation", "traditionIdentification", "periodEstimation",
+    "artistEvidence", "workEvidence", "impressionEvidence", "riskFlags", "conflicts",
+    "humanEscalationRequired", "evidenceNarrative",
+  ],
 };

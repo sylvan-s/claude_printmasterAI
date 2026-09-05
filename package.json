@@ -13,7 +13,16 @@
     "forum:fetch": "tsx benchmark/src/forum/extract.ts",
     "lookup:artist": "tsx src/appraisal/reference_lookup/cli.ts",
     "test:vea": "tsx tests/vea/run_vea_trial.ts",
-    "test:backtest": "tsx tests/backtest/run_backtest.ts"
+    "test:backtest": "tsx tests/backtest/run_backtest.ts",
+    "test:routing": "tsx tests/routing/run_routing_tests.ts",
+    "query:ackg": "tsx src/appraisal/knowledge_graph/cli.ts",
+    "test:two-pass": "tsx tests/two_pass_attribution/run_tests.ts",
+    "test:stage2a-evidence": "tsx tests/stage2a_evidence/run_tests.ts",
+    "test:kg-parse": "tsx tests/knowledge_graph/parse_tests.ts",
+    "kg:embed-titles": "tsx src/appraisal/knowledge_graph/backfill_title_embeddings.ts",
+    "test:pool": "tsx tests/backtest/run_pool.ts",
+    "show:pool": "tsx tests/backtest/show_pool.ts",
+    "test:pool:triage": "tsx tests/backtest/run_pool_triage.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
@@ -24,6 +33,7 @@
     "google-auth-library": "^11.0.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "neo4j-driver": "^5.28.3",
     "pg": "^8.21.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
