@@ -1129,6 +1129,21 @@ Use paper type (laid/wove/machine-made), ink pigment evidence, edition conventio
 2C. CANDIDATE ARTIST SHORTLISTING
 Produce ranked shortlist of 1–5 candidate artists or tradition-level groupings. Weight: legible text/title cartouches > signature characters > publisher marks > style. Style alone is INSUFFICIENT to name an individual.
 
+A COLLECTOR IS NOT A CANDIDATE ARTIST. Stage 1c input (when provided) separates "Claimed
+attribution" (a claim that grammatically attaches a person to authorship of THIS work) from
+"Provenance chain" (owners, collectors, dealers, or consignors — including a named collection
+such as "The X and Y Print Collection"). A name that appears ONLY in the Provenance chain line
+is a collector/owner identity, not an attribution signal — do not add it to candidateArtists on
+that basis, and never cite "named in appraiser provenance" as supportingEvidence for a
+candidate's probability. This holds even when that person is independently a known artist, and
+even when the collection name pairs two people (e.g. "The X and Y Print Collection" names X and
+Y as the collection's owners, not as co-authors of every work in it). If VEA's physical evidence
+independently points to one of those names on its own merits (signature, technique, style), that
+is a valid candidate — but the justification must cite the physical evidence, not the provenance
+mention. A provenance-only name with no independent physical support does not belong on the
+shortlist at all, and its presence in the notes should not be read as narrowing the field of
+real candidates.
+
 2D. RISK FLAGS — DEFAULT FALSE, EACH ONE REQUIRES SPECIFIC CITED EVIDENCE
 
 Every flag below defaults to FALSE. Set a flag TRUE only if you can cite the specific VEA
@@ -1159,7 +1174,10 @@ EDITION_COMPLEXITY_RISK — TRUE only when: edition numbering/state is illegible
 MISATTRIBUTION_RISK — TRUE only when: VEA's physical evidence (signature, technique, style)
   itself conflicts with the leading candidate, OR two or more candidates have genuinely
   comparable supporting evidence, OR Stage 1b's visual match is against a real REFERENCE
-  ARTWORK IMAGE (not an artist portrait) with low similarity. Explicitly NOT triggered by: a
+  ARTWORK IMAGE (not an artist portrait) with low similarity. A provenance-only name (see
+  Section 2C — a collector/owner cited from the Provenance chain, with no independent
+  physical support) is not a genuine candidate and does not count toward "two or more
+  candidates" here, however many such names the notes happen to mention. Explicitly NOT triggered by: a
   low Stage 1b similarity score where the comparison was against a Wikipedia artist portrait or
   no reference image was found at all — that is a known coverage gap in the search step, not
   evidence about this attribution. A missing or weak Stage 1b result with otherwise-consistent
@@ -1342,7 +1360,7 @@ riskFlags — DEFAULT FALSE. Set one true only with a specific cited observation
 - forgeryRisk: VEA's observed signature/technique/paper actively CONFLICTS with the candidate's documented conventions, OR a documented facsimile line matches THIS composition specifically, OR claimed marks conflict with VEA's physical reading suggestive of an added/altered signature.
 - reprintRisk: paper/ink/edition conventions VEA observed are inconsistent with the claimed/estimated period, OR the piece matches a documented posthumous/later-edition pattern for THIS work.
 - editionComplexityRisk: edition marking illegible/absent AND multiple genuinely different documented states/editions exist for THIS work.
-- misattributionRisk: VEA's physical evidence itself conflicts with the leading candidate (e.g. the signature characters, technique, or period actively point elsewhere), OR two or more candidates have genuinely comparable supporting evidence pointing to DIFFERENT identities. NOT triggered by a weak or absent Stage 1b result: Stage 1b retrieves the closest catalogued work it can find and scores it honestly, so a low or moderate similarity against a real artwork by (or near) the candidate is the search step working normally — that is not misattribution evidence. A thin, single-source, or uncorroborated attribution with no active contradiction is simply low confidence, which the two-pass tree already reflects — it is not elevated risk.
+- misattributionRisk: VEA's physical evidence itself conflicts with the leading candidate (e.g. the signature characters, technique, or period actively point elsewhere), OR two or more candidates have genuinely comparable supporting evidence pointing to DIFFERENT identities. A name that appears only as a collector/owner (appraiserNamesArtist false — see above) is not a genuine competing candidate, however specific-sounding the mention, and does not by itself create this two-candidates condition. NOT triggered by a weak or absent Stage 1b result: Stage 1b retrieves the closest catalogued work it can find and scores it honestly, so a low or moderate similarity against a real artwork by (or near) the candidate is the search step working normally — that is not misattribution evidence. A thin, single-source, or uncorroborated attribution with no active contradiction is simply low confidence, which the two-pass tree already reflects — it is not elevated risk.
 - authenticationBodyExists: a FACT flag — a catalogue raisonné / foundation / committee exists for the candidate. Informational, not a risk.
 - physicalExaminationRequired: a SPECIFIC named question only hands-on inspection could settle (watermark unreadable from the scan, plate-vs-hand signature medium ambiguous, drypoint burr condition). General caution is not grounds.
 
@@ -1385,7 +1403,7 @@ RESEARCH PROCESS (execute in order)
 ═══════════════════════════════════════════════════════════════════════
 
 STEP 1 — SEARCH KEY EXTRACTION
-Extract from triage output: artist name (rank 1 candidate), series title (from VEA composition.textWithinImage), native script text (preserve exactly). Use technique, period range, subject description as secondary keys.
+Extract from triage output: artist name (rank 1 candidate), series title (from VEA composition.textWithinImage), native script text (preserve exactly). Use technique, period range, subject description as secondary keys. If the rank-1 candidate reached the shortlist only via a provenance/collection mention (see Triage's Section 2C) rather than independent physical evidence, treat it as an open question to test, not a settled starting hypothesis — your research in this run may be what confirms it's a collector, not the artist.
 
 STEP 2 — PRIMARY DATABASE QUERIES
 Run at most 5 web searches total across all steps (up to 3 for attribution research, up to 2 for auction comp collection in STEP 8). If the top attribution candidate is confirmed after the first search, proceed directly to STEP 7. Query databases in priority order from your specialist config. Record: database name, query used, result found (true/false), result summary, catalogue reference, match confidence (0.0–1.0), and match notes. NULL RESULTS ARE DATA — record failed queries explicitly.
@@ -1425,7 +1443,20 @@ BEHAVIOURAL RULES
 1. TEST YOUR HYPOTHESIS. Record counter-evidence as carefully as evidence for.
 2. NULL RESULTS ARE DATA. Report failed queries explicitly.
 3. VALUATION IS DOWNSTREAM. Note valuation-relevant findings in structured fields but do NOT produce monetary estimates.
-4. JSON ONLY.
+4. A NAME YOUR OWN RESEARCH RULES OUT CANNOT BE attributedArtist. If your research establishes
+   that a candidate's name reached the shortlist through a provenance/collection credit rather
+   than authorship (e.g. you confirm "The X and Y Print Collection" names X and Y as the
+   collection's former owners, not this work's maker) — or otherwise directly disproves the
+   candidate — do not set attributedArtist to that name regardless of how specific or well-
+   documented it looked going in, and regardless of whether it is still the only named person
+   in the file. Naming the collector because no better name is available is not a legitimate
+   fallback: report the outcome your evidence actually supports instead — a different
+   candidate if one is independently supported, or attributionLevel "tradition_only" /
+   "unattributed" with the ruled-out name and the reasoning captured in
+   attributionCounterEvidence. attributionConfidence must reflect that your leading
+   attributionEvidenceChain entries argue AGAINST attributedArtist, never a low number used as
+   a hedge while still naming a disproven candidate.
+5. JSON ONLY.
 
 OUTPUT SCHEMA:
 {
