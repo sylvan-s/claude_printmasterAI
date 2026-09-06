@@ -23,6 +23,26 @@ with open(AAT_CROSSWALK_PATH) as _f:
 # "lithograph"). TECHNIQUE_SUPPRESSES then drops the generic match once a more specific
 # one has already fired, since a plain substring scan would otherwise tag both.
 TECHNIQUE_KEYWORDS = [
+    # Photographic-print processes — found missing 2026-09-06 while onboarding the
+    # Bonhams Group adapter (bonhams_ingest.py): a systematic scan of ~3,000 sampled
+    # Bonhams/Skinner single-work lots found ~17% had no recognized technique at all,
+    # and "gelatin silver print" alone accounted for the large majority of that gap.
+    # None of Met/Tate/Roseberys/Forum/BM (the sources this crosswalk was built against
+    # so far) carried meaningful photography volume, so this vocabulary was never
+    # exercised against it before. Kept before the printmaking-process entries below so
+    # a compound phrase like "sepia-toned gelatin silver print" still matches on the
+    # substring regardless of list order (no suppression conflict with anything below —
+    # these are process names, not umbrella/specific pairs the way Lithograph/Intaglio
+    # are). AAT ids intentionally left null/unverified — this project's usual discipline
+    # is to confirm an id with a live vocab.getty.edu lookup before adding it (see the
+    # Collotype/Monotype/etc. entries below for that pattern); not done here yet given
+    # time constraints, so these are recorded as a genuine open gap in aat_crosswalk.json
+    # rather than a guessed id.
+    ("Gelatin silver print", ["gelatin silver"]),
+    ("Platinum print", ["platinum print", "platinum-palladium", "platinum palladium"]),
+    ("Chromogenic print", ["chromogenic print", "chromogenic prints", "c-print", "c print"]),
+    ("Cibachrome print", ["cibachrome", "ilfochrome"]),
+    ("Pigment print", ["pigment print", "pigment prints", "archival pigment"]),
     ("Chine-collé", ["chine-collé", "chine colle", "chine-colle"]),
     ("Wood engraving", ["wood engraving"]),
     ("Offset lithograph", ["offset lithograph"]),
@@ -38,6 +58,17 @@ TECHNIQUE_KEYWORDS = [
     ("Aquatint", ["aquatint"]),
     ("Mezzotint", ["mezzotint"]),
     ("Photogravure", ["photogravure"]),
+    ("Collotype", ["collotype"]),      # found missing 2026-09-06 investigating 4 records in a
+                                        # Sir Muirhead Bone BM pull dropped by the technique gate
+                                        # (doc 09 §7.13/§7.14) — all four "Collotype reproduction
+                                        # of drawing" (WWI documentary work). AAT id verified live
+                                        # (300053204, "collotype (process)") before adding, not
+                                        # guessed — see aat_crosswalk.json. Recognizing it here
+                                        # only answers "was a real printmaking process used," per
+                                        # this project's own established distinction (doc 09
+                                        # §7.14) — it deliberately does NOT judge whether a given
+                                        # collotype print is a reproduction or an original
+                                        # composition; that's a separate, content-level question.
     ("Photomechanical print", ["photomechanical print", "photomechanical prints"]),  # found missing
                                         # 2026-09-06 investigating a 14/76-record [EXCLUDED] result in
                                         # a Richard Hamilton BM test pull — see aat_crosswalk.json note.

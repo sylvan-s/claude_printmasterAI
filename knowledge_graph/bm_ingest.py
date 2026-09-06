@@ -294,6 +294,35 @@ ROLE_QUALIFIER_MAP = {
 # instead, which would just exclude it as non-print rather than mis-load it as one.
 PLATE_MATERIALS = {"zinc alloy", "copper alloy", "wood", "stone", "plaster", "metal", "copper", "steel", "zinc"}
 
+# A tempting-looking but WRONG fix was tried and reverted here, 2026-09-06 — worth
+# keeping the story rather than deleting it, so it isn't re-attempted: `Object Type`'s
+# secondary entries ("postcard", "advertisement", "invitation", "christmas-card",
+# "letter", "bookplate", "almanac") looked, from their labels alone, like personal/
+# commercial ephemera riding along on Sir Muirhead Bone's 487-record BM holding (a
+# single 1949 bulk studio-archive donation). Excluding records with any of those tags
+# regardless of technique immediately regressed THREE already-loaded, already-verified
+# artists when regression-tested: Eric Gill (31 wrongly excluded — he is specifically
+# celebrated for his wood-engraved bookplates and Christmas cards as original
+# artworks), Paul Nash (6), Stanley Anderson (8). Checking the actual `Description` text
+# behind Bone's own "ephemera"-tagged records (not just trusting the tag name) showed
+# the same thing: "Text for Bone's art classes. 1900 Etching", "Exhibition postcard...
+# 1901 Etching" — these are genuine original etchings/drypoints that merely served a
+# postcard/invitation/advertisement/bookplate FUNCTION, a real and common historical
+# practice (hand-etched exhibition souvenir cards were routine), not evidence the
+# record isn't a real print. The secondary object-type tag encodes FUNCTION, which is
+# orthogonal to whether original printmaking technique was used — it is not a usable
+# fine-art/ephemera signal on its own, at least not without per-tag content
+# verification this session didn't have time to do properly before reverting.
+# The one genuine case behind Bone's contamination (an almanac page, "Collotype with
+# letterpress", a photomechanical REPRODUCTION of a drawing for Oxford University
+# Press) is already correctly caught by the ordinary technique gate whenever the
+# reproduction technique alone (without a co-occurring real printmaking term) fails
+# `resolve_techniques()` — see the 4 "Collotype reproduction of drawing" records this
+# session already found dropped that way, no extra code needed. A cheap heuristic that
+# reliably separates "used for X" from "IS an original print" was not found this
+# session; if revisited, verify content per confirmed case the way this note now
+# documents doing for the first attempt, don't re-apply a tag-name-only exclusion.
+
 CREDIT_LINE = "© The Trustees of the British Museum"
 LICENSE = "CC BY-NC-SA 4.0"
 _PREVIEW_SIZE_RE = re.compile(r"/preview_")

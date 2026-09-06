@@ -3,6 +3,26 @@
   "_lastVerified": "2026-08-24",
 
   "printingTechniques": {
+    "Gelatin silver print": {
+      "aatId": null,
+      "note": "Added 2026-09-06 for the Bonhams Group adapter — not yet live-verified against vocab.getty.edu (this project's usual discipline for a new entry), recorded here as an open gap rather than a guessed id. AAT is expected to have a 'gelatin silver print (process)' concept; confirm before relying on this for any AAT-linked query."
+    },
+    "Chromogenic print": {
+      "aatId": null,
+      "note": "Added 2026-09-06 for the Bonhams Group adapter — same unverified-id caveat as Gelatin silver print above."
+    },
+    "Cibachrome print": {
+      "aatId": null,
+      "note": "Added 2026-09-06 for the Bonhams Group adapter — same unverified-id caveat as Gelatin silver print above."
+    },
+    "Platinum print": {
+      "aatId": null,
+      "note": "Added 2026-09-06 for the Bonhams Group adapter — same unverified-id caveat as Gelatin silver print above."
+    },
+    "Pigment print": {
+      "aatId": null,
+      "note": "Added 2026-09-06 for the Bonhams Group adapter — same unverified-id caveat as Gelatin silver print above. Kept distinct from 'Giclée' above despite likely process overlap, since Bonhams/Skinner's own catalogue text treats 'archival pigment print' as its own term rather than using 'giclée'."
+    },
     "Etching": { "aatId": "300053241", "aatLabel": "etching (process)" },
     "Drypoint": { "aatId": "300053228", "aatLabel": "drypoint (printing process)" },
     "Aquatint": { "aatId": "300053242", "aatLabel": "aquatint (printing process)" },
@@ -44,6 +64,11 @@
       "aatId": "300053277",
       "aatLabel": "monotype (planographic process)",
       "note": "Found missing 2026-09-06 investigating an 11/22-record silent exclusion in a Sidney Nolan BM test pull — 'monotype' was absent from BOTH this crosswalk AND TECHNIQUE_KEYWORDS entirely (not merely unmapped to an aatId), the same has_print_technique()-style silent-exclusion failure mode already documented above for Intaglio/Agathe Sorel, just never triggered before since no prior artist tested (Rembrandt/Trevelyan/Hayter/Sorel) had monotype-technique prints. Verified live against vocab.getty.edu before adding, not guessed."
+    },
+    "Collotype": {
+      "aatId": "300053204",
+      "aatLabel": "collotype (process)",
+      "note": "Found missing 2026-09-06 investigating 4 records the technique gate (doc 09 §7.13/§7.14) dropped from a Sir Muirhead Bone BM pull — all four literally described 'Collotype reproduction of drawing' (WWI documentary work), 'collotype' absent from both this crosswalk AND TECHNIQUE_KEYWORDS entirely, same silent-exclusion failure mode as Monotype above. A genuine process-level AAT concept was confirmed live (Activities Facet > Processes and Techniques > ... > printing processes > photomechanical processes > planographic photomechanical processes > photolithography), distinct from the separate object-type concept 'collotypes (prints)' (300154355) — the process-level id was used, matching this crosswalk's own preference (see Photorelief below) for a confirmed process match over an object-type-only fallback. Recognizing this only answers 'was a real printmaking process used,' per this project's own established distinction (doc 09 §7.14) — it does not judge whether a given collotype print is a reproduction or an original composition; that's a separate, content-level question this crosswalk was never meant to answer."
     },
     "Photomechanical print": {
       "aatId": null,

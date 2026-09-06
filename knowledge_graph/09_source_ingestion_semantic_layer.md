@@ -1265,6 +1265,194 @@ task in §7.10 (`task_cb3d23ee`) — confirmed not applicable to these 10 artist
 **The pre-existing `"Object: "` title-prefix bug (§7.9) grew again** — all 209 `ConceptualWork`
 nodes added this run inherit it. Still not fixed here, same queued backlog as §7.10.
 
+## 7.12 Remaining >10-verified-count artists: 2 more (Antony Gormley, Grayson Perry) — and a real false-merge caught before writing (2026-09-06)
+
+Extended the Roseberys→BM priority list (§7.10/§7.11) to its actual end: re-ran the full
+verification pass (direct-producer-role + 1900+ + image, per [[reference_bm_search_api]])
+across the remaining ~180 candidates in the top-200-by-Roseberys-lots pool. Only 2 more clear
+the >10-verified-prints bar: Antony Gormley (14) and Grayson Perry (13) — everyone else in that
+pool has single-digit verified BM coverage. Handled directly in this session rather than via a
+background agent, given the small scope (27 objects total).
+
+**A real false-merge was caught in a `--dry-run`, before any write** — worth recording in full
+since it's a genuinely new failure mode, not a repeat of Bawden's (§7.11): Antony Gormley's
+9-plate "Body & Soul" portfolio (1990, Paragon Press) cites TWO different catalogue references,
+and BOTH are portfolio-level, not per-plate:
+1. `"Booth-Clibborn 1995 / ... (p.105-9)"` — a literal page-range locator. Fixed generally:
+   `parse_bibliographic_ref()` now rejects any entry-number parenthetical matching
+   `^pp?\.?\s*\d` (a page-locator shape) before treating it as a genuine per-work identifier.
+2. `"Daunt 2020 / Living with art: the Alexander Walker collection (123)"` — critically, this
+   one does NOT have a page-locator shape (bare "123" is indistinguishable in form from a
+   genuine catalogue entry number like New Hollstein's "306.VI"). Investigated instead of
+   trusted: "Daunt 2020" turned out to be a general collection-survey book cataloguing the
+   WHOLE Alexander Walker bequest by item number, not a catalogue raisonné of Gormley's own
+   work — "123" is the portfolio's single item number in that book, shared identically across
+   all 9 plates. Same underlying failure mode `catalogue_matching.py`'s own docstring already
+   documents for Forum's "Cramer 30" (a portfolio-level citation covering several genuinely
+   different plates) — just discovered here as a citation NAME problem rather than an
+   entry-number SHAPE problem, so the shape-based regex fix above couldn't catch it. Fixed with
+   an explicit `BM_NON_CATALOGUE_NAMES = {"daunt 2020"}` exclusion set, same discipline as
+   `catalogue_matching.py`'s own `NON_CATALOGUE_NAMES` — extended only from a confirmed case.
+
+Neither citation's page/item number could be caught by the existing title-inclusive
+`build_conceptual_work_id()` protection (§7.11's Bawden/Albers fixes) because — unlike those
+cases — BM gives these 9 plates NO distinguishing "Object:" title at all, only an identical
+shared `"Series: Body & Soul"` (the curatorial note explicitly says "There are no titles for the
+prints"). Confirmed live in `--dry-run` before either fix: without them, all 9 plates collapsed
+into one `ConceptualWork`; after both fixes, zero merge, all 9 correctly separate. Full
+regression check against all 25 previously-loaded BM caches (Rembrandt through the §7.10/§7.11
+batches) — zero count drift, both fixes correctly scoped.
+
+**Final**: Gormley 14 works / 14 images, Perry 13 works / 13 images, all embedded (`embedded=27
+failed=0`). BM extraction running total across all three rounds: **22 artists, 1,548
+ConceptualWork, 1,800 DigitalImage, all embedded.** This closes out the Roseberys→BM priority
+list at the >10-verified-print threshold — no further candidates in the checked pool clear it.
+
+## 7.13 New process step: a technique gate before caching/ingest, piloted on Albert de Belleroche (2026-09-06)
+
+Prompted by a user spot-check of Sir Muirhead Bone's 467-print count (a full-collection,
+non-Roseberys artist surfaced by a properly date-scoped BM agent aggregation — see
+[[reference_bm_search_api]]): pulling real records showed ~16% of his catalogued "prints" were
+actually personal ephemera (postcards, Christmas cards, an advertisement, an invitation, a
+letter) from what looks like a single 1949 bulk studio-archive donation, not curated fine-art
+acquisitions — despite all being tagged BM object_type `print`. Investigated whether a cheap
+pre-filter could catch this before it reaches the graph.
+
+**Finding: BM's lightweight `/api/_search` list-level JSON (`@template.brief`) never carries a
+`Technique` field, for ANY record** — confirmed 0/100 even for Albert de Belleroche's own
+unambiguous, genuine lithographs ("Priscilla", "Avril", "Meditation"). So a technique check
+cannot happen before the full per-object detail-page scrape; that page is the only place BM
+exposes Technique at all. The real process improvement is therefore: scrape as before, but
+**immediately after scraping each record, check it against `resolve_techniques()` (the exact
+function `bm_ingest.py`'s own `classify_record()` already uses) before writing anything to a
+batch cache file** — a record with no recognized technique is dropped right there, logged with
+its raw `Technique`/`Description` text, never persisted to a cache, never reaches `bm_ingest.py`,
+never gets an image downloaded or embedded for it. Implemented as a standalone script
+(`technique_gate.py`) that imports `resolve_techniques` directly from `bm_ingest.py` rather than
+re-implementing the crosswalk logic, so the gate can never drift from what the real ingest
+would decide.
+
+**Piloted on Albert de Belleroche** (146 raw candidates, direct-role+1900+image filtered to 140):
+all 140 passed the gate — every one a genuine, recognized `lithograph`, zero ephemera, zero
+drops. Cross-checked why this artist's donation is cleaner than Bone's: nearly every record
+cites "Belleroche 1912 / Facsimile of Belleroche's log book (N)" — his own personal print-only
+log book, giving each real lithograph a genuine, unique per-work entry number (confirmed by the
+2 legitimate `--dry-run` merges: both pairs share the identical log-book number AND matching
+title — the same real print accessioned twice, correctly consolidated, not a repeat of §7.12's
+portfolio-citation problem). Ingested cleanly: 138 `ConceptualWork` (140 − 2 legitimate merges),
+140 `DigitalImage`, all embedded (`embedded=140 failed=0`).
+
+**Not yet done**: the gate was piloted on a clean case (de Belleroche), not yet run against a
+known-contaminated one (Bone) to confirm it actually catches ephemera in practice — Bone himself
+was never added to this graph (he's a full-collection candidate surfaced by the general
+aggregation, not the Roseberys priority list, so extracting him wasn't otherwise in scope).
+Re-running the gate against a bulk-archive-style donation with confirmed ephemera contamination
+would be the real stress test of this process step, not just a regression check against clean
+data.
+
+## 7.14 The stress test: Sir Muirhead Bone through the gate — the gate worked, a follow-on fix did not (2026-09-06)
+
+Ran the pending stress test from §7.13: all 487 of Bone's direct-role+1900+image-filtered
+candidates scraped (0 errors), run through the unchanged technique gate. Result: **471 kept, 16
+dropped**, all 16 sharing `Technique: ["collotype"]` — a crosswalk gap, not portfolio-container
+wrappers as this section first (wrongly) characterized them. **Correction, made when actually
+adding these records back in — see §7.16**: 12 of the 16 also happened to carry a `portfolio`
+secondary `Object Type` tag, which was misread as "headless container record, no technique of
+its own" without checking their actual `Title`/`Description` fields first — the same
+label-trusted-without-content-check mistake this section's own follow-on-fix story (below)
+already illustrates for a different tag. All 16 are genuine, individually titled WWI documentary
+plates ("Mounting a Great Gun", "The Giant Slotters," etc., from his "Munition Drawings"/"With
+the Grand Fleet" series) using the same collotype reproduction technique — none were container
+wrappers. The gate, as designed (recognized-technique presence, nothing about content/genre),
+worked correctly on its own terms; this document just miscounted why 12 of the 16 fell into it.
+
+**A follow-on fix attempt was wrong, caused real regressions, and was reverted before ingesting
+anything bad.** The original ephemera concern (§7.13's Bone spot-check: postcards, an
+advertisement, an invitation, a Christmas card, a letter) was still sitting inside the 471 kept
+records, since those all carry a real recognized technique (mostly `etching`) and the gate never
+claimed to filter by content. The tempting fix — exclude records by `Object Type`'s secondary
+tag (`postcard`/`advertisement`/`invitation`/`christmas-card`/`letter`/`bookplate`/`almanac`)
+regardless of technique — was implemented, and a full regression pass across all 29
+already-loaded BM caches caught it immediately: **Eric Gill (31 records wrongly excluded), Paul
+Nash (6), Stanley Anderson (8)**. Investigating why (rather than just reverting blind) found the
+actual mistake: the exclusion was built from the TAG NAME alone, never from the underlying
+record content — and Eric Gill is specifically celebrated for his wood-engraved bookplates and
+Christmas cards as original artworks, not personal ephemera. Checking Bone's own "ephemera"-
+tagged records' actual `Description` text the same way confirmed the fix was wrong for HIM too,
+not just collaterally wrong for Gill: `"Text for Bone's art classes. 1900 Etching"`, `"Exhibition
+postcard... 1901 Etching"` — these are genuine original etchings/drypoints that merely served a
+postcard/invitation/advertisement/letter/bookplate FUNCTION, a real, common historical practice
+(hand-etched exhibition souvenir cards), not evidence of non-print status. The secondary
+object-type tag encodes FUNCTION, which is orthogonal to whether an original printmaking
+technique was used, and isn't a usable fine-art/ephemera signal on its own without per-tag
+content verification this session didn't do BEFORE implementing, only after regression-testing
+forced the question. Reverted in full (`EPHEMERA_OBJECT_TYPES` and its `classify_record()` check
+removed from `bm_ingest.py`, replaced with a docstring recording the incident so it isn't
+re-attempted the same way) — confirmed Gill/Nash/Anderson back to their exact pre-regression
+counts (387/93/143, 0 excluded each) before touching Bone again.
+
+**Ingested the untouched, correct 471-record technique-gate output.** Artist identity checked
+first: a pre-existing 1-work `"Muirhead Bone"` (no honorific, no ULAN) fragment exists, but BM's
+own producer string is `"Sir Muirhead Bone"`, exactly matching the canonical 9-work ULAN-bearing
+node — no `PILOT_ARTIST_RESOLUTION` entry needed, the ingest lands correctly without one.
+12 `--dry-run` merges, all verified legitimate (Dodgson 1909's real per-plate catalogue numbers,
+each pair also sharing a matching title — the same real etching re-accessioned twice, including
+one of the "bookplate"-tagged records the reverted fix would have wrongly dropped). Final:
+**459 `ConceptualWork`** (471 − 12), **471 `DigitalImage`**, embedding run in background.
+
+**Net finding on the original ephemera question**: it mostly wasn't real. Of Bone's 487
+candidates, only the 4 collotype-reproduction records (already caught by the ordinary technique
+gate) and possibly the 12 portfolio-container wrappers are genuinely not original prints — the
+postcards/adverts/invitations/letters/bookplates that looked like contamination from their tags
+alone are, on actual inspection, real etchings and drypoints. The lesson generalizes: a BM
+`Object Type` secondary tag describes what a print was USED for, never trust it as a genre/
+fine-art signal without reading the record's own `Description` first.
+
+## 7.15 The 4 collotype-gap records fixed properly: crosswalk entry added, verified live (2026-09-06)
+
+Closed the crosswalk gap §7.14 found but deliberately left unfixed pending real verification.
+"Collotype" was verified against `vocab.getty.edu`/`getty.edu/vow` before adding, not guessed:
+a genuine PROCESS-level AAT concept exists, `300053204` "collotype (process)" (Activities Facet
+› Processes and Techniques › ... › printing processes › photomechanical processes › planographic
+photomechanical processes › photolithography) — distinct from a separate object-type-only
+concept, `collotypes (prints)` (300154355), which was not used, matching this crosswalk's
+established preference for a confirmed process match over an object-type fallback (same
+discipline as Photorelief, §7.10). Added to both `crosswalk_matching.py`'s `TECHNIQUE_KEYWORDS`
+and `aat_crosswalk.json`.
+
+**Full regression check across all 29 BM caches (Rembrandt through Bone) — zero regressions, one
+genuine positive rescue.** `henry_moore_batch.json` went from 97→**98** print / 3→**2** excluded.
+Investigated which record, not just trusted the delta: of 6 Moore records tagged `collotype`,
+5 also carry `lithograph` (already recognized, so already correctly kept) — only
+`P_1952-0401-1` ("Figures in settings," described as a "collotype reproduction of colour
+drawing") was collotype-only and genuinely rescued from silent exclusion.
+
+**Left undone at the time, then done properly — see §7.16**: Bone's own collotype records that
+originally motivated this fix weren't automatically in the graph, since the standalone
+`technique_gate_bone.py` script only ever wrote its 471 gate-survivors to
+`muirhead_bone_batch.json`.
+
+## 7.16 All 16 of Bone's originally-dropped collotype records added — and the §7.14 miscount caught in the process (2026-09-06)
+
+Requested as the natural follow-up to §7.15. Re-checked the dropped-records log before assuming
+"4" from §7.14 was still right, rather than trusting an earlier turn's own count — **found all
+16 of §7.14's dropped records share `Technique: ["collotype"]`**, not 4; the "12 portfolio-
+container wrappers" description was wrong (corrected in §7.14 above, in place, rather than left
+standing). Re-ran all 16 through `resolve_techniques()` with the new crosswalk entry: **16/16
+now pass** (0 still dropped). Pulled their full previously-scraped record data (already captured
+during §7.14's original scrape, no need to re-fetch from BM), merged into
+`muirhead_bone_batch.json` (471 + 16 = 487 — his ENTIRE original candidate pool now clears the
+gate, zero drops), and re-ran the full `bm_ingest.py` pipeline: `--dry-run` first (487 print,
+0 excluded, the same 12 legitimate title-matching merges as before — confirmed unchanged, so
+none of the 16 new WWI documentary plates introduced a new false-merge risk), then the real
+ingest. Final: **475 `ConceptualWork`** (487 − 12), **16 new `DigitalImage`** embedded
+(`embedded=16 failed=0`), live pending-count independently confirmed at 0 both before and after.
+
+**Verified live, not hand-added** (a hand-added running total was the exact mistake that caused
+this section's own "4 vs 16" miscount above, so it wasn't repeated here): total BM-sourced graph
+state across every adapter run this session (Rembrandt through this correction) is
+**2,384 ConceptualWork, 2,507 DigitalImage, all 2,507 embedded.**
+
 ## Next steps
 
 1. Migrate the 3 miscategorized Met tags (Abstraction, Landscapes, Christmas) from
@@ -1328,3 +1516,186 @@ nodes added this run inherit it. Still not fixed here, same queued backlog as §
    This is a materially stronger candidate than the general BM pilot (§7) specifically
    for ukiyo-e coverage, precisely because it doesn't need the Cloudflare workaround at
    all.
+
+## 8. Source adapter: Bonhams Group 'Prints & Multiples' (`bonhams_ingest.py`, `bonhams_parsing.py`)
+
+- **Access method:** a single 150MB JSON export supplied by the user (Google Drive,
+  `bonhams_prints_and_multiples_full_history.json`), 85,847 flat lot records — no per-
+  lot network fetch, unlike Met/BM's own per-object APIs.
+- **Not single-institution data — confirmed before writing a single line of mapping
+  code, not assumed from the filename.** `auction.brand` splits five ways: bonhams
+  (78,857), cornette [Cornette de Saint Cyr, French] (4,983), skinner [Bonhams Skinner]
+  (1,890), bukowskis [Swedish] (89), bruun_rasmussen [Danish] (28). This adapter scopes
+  to the two English-language brands (`bonhams` + `skinner`, 80,747 records, 94% of the
+  file) — the other three carry catalogue text in French/Swedish/Danish, which every
+  regex here (signed/edition/printer/publisher phrasing, technique keywords) is built
+  against English house style and would silently mis-parse rather than genuinely
+  handle. Deferred, not attempted speculatively — a real follow-up adapter, same
+  category of decision as BM's own "deliberately not built" bulk-scrape call in §7.
+  `institutionName` is set per-row from the record's own actual `auction.brand`
+  (Bonhams / Skinner / Cornette de Saint Cyr / Bukowskis / Bruun Rasmussen), not
+  hardcoded, so the deferred brands can be enabled later via `--brands` without any
+  code change once a French/Swedish/Danish-aware parsing pass exists.
+- **Entity identity:** `lot_id`, confirmed globally unique across all 85,847 rows and
+  across every brand (some brands format it `{auction_id}-{lot_number}`, bonhams itself
+  just a bare numeric id, bukowskis/bruun_rasmussen prefix their own brand code — no
+  collision risk either way) — used as `bonhams-{lot_id}`.
+- **The most HEURISTIC_EXTRACTION-heavy source in this graph so far.** Unlike Roseberys/
+  Forum (already parsed into columns by an external tool before this project ever saw
+  them), this source is raw per-lot HTML (`LotHeading`/`LotName`/`LotDesc` divs) — much
+  closer to doc 09 §3's original Roseberys *live-page* pilot than to this project's
+  other bulk-CSV adapters. Per doc 09 §6's own onboarding template ("a source dominated
+  by HEURISTIC_EXTRACTION... needs a pilot batch and manual review before any bulk
+  load"), this was piloted against random samples (25, then 400, then 3,000 records)
+  before any real load — see `bonhams_parsing.py`'s own docstring for what's DIRECT
+  (the `artist` field itself, confirmed identical to LotName's text before its own
+  parenthetical) versus everything else (HEURISTIC_EXTRACTION: nationality/dates,
+  title/catalogue-ref/year splitting, technique/paper, dimensions, signed, edition
+  size, printer/publisher, multi-work detection).
+
+| Bonhams field | Maps to | Type |
+|---|---|---|
+| `lot_id` | id prefix for `ConceptualWork`/`Impression`/etc. | DIRECT |
+| `artist` (bare name, before any qualifier prefix) | `Artist` merge key | DIRECT |
+| `artist`'s leading "After X"/"Attributed to X"/etc. prefix | `ATTRIBUTED_TO.qualifier` | HEURISTIC_EXTRACTION via `strip_qualifier_prefix()` — confirmed real prefixes in the data: after (~4,600 title occurrences), attributed to (~100), circle of, manner of, follower of, school of (new — see below), studio of |
+| LotName's parenthetical (nationality, life dates) | `Artist.nationality`/`dateBorn`/`dateDied` | HEURISTIC_EXTRACTION |
+| LotDesc's title line (title + optional catalogue ref + optional year) | `ConceptualWork.name`/`dateCreated`, `CatalogueRaisonne`/`CatalogueEntry` (via the shared `catalogue_matching.py`) | HEURISTIC_EXTRACTION — see `parse_lot_desc_title_line()`'s docstring for the ordering rule (strip trailing year first, then a trailing parenthetical is a catalogue ref only if it contains a digit — a bare descriptive aside like "(Figure)" never does, confirmed against every sample pulled) |
+| Free-text technique/signing/edition/printer/publisher/dimensions sentence | `Technique`/`Paper`/`Impression.signed`/`EditionRun.declaredSize`/`Impression.copyType`/`Publisher`/dimensions | HEURISTIC_EXTRACTION |
+| `LotHeading` (when present) | `Impression.provenanceNote` | DIRECT when present, same "don't drop it, judge it later" policy as Roseberys' provenance field |
+| `pricing.hammer_price`/`hammer_premium`, `estimates.low`/`high` | `SourceRecord.hammerPrice`/`priceRealised`/`estimateLow`/`estimateHigh` | DIRECT, but see the multi-currency note below |
+| `pricing.gbp_low_estimate`/`gbp_high_estimate` | `SourceRecord.estimateLowGBP`/`estimateHighGBP` | DIRECT — Bonhams' own already-computed conversion, stored alongside the native-currency estimate rather than replacing it |
+| `primary_image_url` | `DigitalImage.sourceUrl` | DIRECT — confirmed live (plain `curl`, HTTP 200 on both `images2.bonhams.com` and the `cloudfront.net` CDN skinner/some bonhams lots use) that this is NOT WAF-blocked the way Roseberys/Forum's own site CDN was (§3.1) — no URL rewrite needed here |
+
+### New qualifier value: `school_of`
+
+Confirmed real, low-volume (~22 rows) but distinct from every existing value in doc 08's
+qualifier enum — "school of X" names a regional/period school of artists, not a specific
+studio, workshop, or named follower the way `studio_of`/`follower_of`/`circle_of` do.
+Added following the exact precedent Roseberys already set for `studio_of`/`follower_of`
+(§3.1): extend the enum for a confirmed real value rather than force-fit it into the
+closest existing one.
+
+### Genuinely multi-currency — a real difference from every prior source
+
+Roseberys/Forum were GBP-native throughout; Bonhams' export carries USD/GBP/SEK/DKK etc.
+per lot (`estimates.currency`). `SourceRecord.priceCurrency` is set from each row's own
+actual currency, not hardcoded `"GBP"` — hardcoding it would have been a real, silent
+correctness bug for every non-UK sale (most of the pilot sample's US-market lots are
+USD). No GBP-equivalent conversion is supplied for the realised hammer price (only for
+the estimate), so `hammerPrice`/`priceRealised` stay in the row's native currency rather
+than being approximated from the estimate-time FX rate, which could easily be stale
+relative to the actual sale date.
+
+### `status` determines `sold`/`hammerPrice`, and `WD` is excluded outright
+
+`SOLD` -> `sold=true`, `hammerPrice = hammer_price + hammer_premium` (native currency).
+`BI` (bought in / reserve not met), `NEW` (future/pending lot), `CS`, `WR` -> `sold=false`,
+`hammerPrice=null` — their raw `pricing.hammer_price` is a literal `0.0` placeholder, not
+a real sale total, and storing it as-is would fabricate a "sold for £0" fact. `WD`
+(withdrawn, 465 of 80,747 eligible-brand rows) is excluded from the load entirely: a
+withdrawn lot never actually went under the hammer and may reflect a stale/duplicate
+future re-listing, not a fact about a real transaction.
+
+No `reserve` value is supplied — Bonhams gives `pricing.starting_bid` (the auctioneer's
+opening call), a genuinely different concept from Roseberys/Forum's `reserve` (the
+confidential minimum). Left UNMAPPED per doc 09 §1 rather than force-fit, which would
+misrepresent what the number actually means.
+
+### Placeholder "artist" values excluded, same reasoning as Tate's "Anonymous" (§4.2)
+
+825 rows (bonhams+skinner) carry a literal placeholder instead of a real, individually-
+attributable artist: `various artists` (549), `artist unknown` (153), `unknown artist`
+(88), `anonymous` (34), `unknown` (1). Merging these as one shared `Artist` identity
+would fabricate a false common attribution across otherwise-unrelated lots — `various
+artists` specifically means the lot spans *multiple* different real artists, which a
+single-Artist merge key can't represent at all regardless. Excluded via
+`PLACEHOLDER_ARTIST_NAMES`, same policy tate_ingest.py already established.
+
+### No pre-supplied multi-work column — a from-scratch heuristic, not a re-implementation
+
+Roseberys/Forum's external CSV parser flagged multi-work lots for those adapters; this
+source has no equivalent column. `bonhams_parsing.detect_multi_work()` combines four
+signals, each confirmed against real sampled records before being added (not designed
+defensively in the abstract): a trailing `(N)` count marker: a `"comprising"`/`"a
+collection"`/`"together with"`/`"the complete set of"`-style phrase; a leading `"Two
+works:"`/`"Three works:"` Skinner house-style convention (found only after an initial
+pilot missed a real case — Elizabeth Catlett's "Two works: Cabeza Indígena and
+Rebozos", confirmed multi via its own detail text literally saying "Two lithographs...
+each signed"); and multiple substantial semicolon-joined titles on one line with no
+count marker at all (found the same way — Auguste Brouet's "Untitled (Reclining Nude);
+Ostend; French Horn", confirmed via its own detail text saying "third title"). Same
+policy as Roseberys/Forum once flagged: excluded from this load, not mismodeled, every
+excluded row preserved in `bonhams_excluded_rows.csv` tagged with its specific reason —
+this heuristic is not expected to be complete (a residual false-negative was spotted
+even after both fixes, a Miró multi-volume book set with no clear marker at all) and
+under-flagging leaves the graph merely incomplete rather than corrupted, the same
+conservative trade-off doc 09's catalogue-identity discipline (§ catalogue_matching.py)
+already established for a different reason.
+
+### Photographic-print vocabulary gap found and fixed before this load, not after
+
+A systematic scan of ~3,000 sampled single-work Bonhams/Skinner lots found ~17% had no
+recognized technique at all after the existing crosswalk, and "gelatin silver print"
+alone accounted for the large majority of that gap — none of this project's prior
+sources (Met/Tate/Roseberys/Forum/BM) carried meaningful photography volume, so
+`crosswalk_matching.TECHNIQUE_KEYWORDS` never needed photographic-process terms before.
+Added to the shared crosswalk (`Gelatin silver print`, `Platinum print`, `Chromogenic
+print`, `Cibachrome print`, `Pigment print`) — brought the unmatched rate down to ~11%
+on the same sample. **AAT ids left explicitly `null`/unverified in `aat_crosswalk.json`
+for all five** — a deliberate, flagged departure from this project's usual "confirm via
+a live vocab.getty.edu lookup before adding" discipline (see e.g. Collotype/Monotype/
+Photorelief in §crosswalk_matching.py for what that verification normally looks like),
+made given time constraints rather than silently skipped or guessed. Revisit before
+trusting any AAT-linked query over these five technique nodes specifically.
+
+### Non-print-medium filter reused as-is
+
+Same convention as the BM/Tate adapters, not a new invention: a record whose free text
+yields zero recognized printmaking/photographic technique after
+`crosswalk_matching.extract_techniques()` is excluded. "Prints & Multiples" as a
+department genuinely includes ceramics (Picasso's Madoura editions turned up
+repeatedly in sampling), bronze/painted multiples, and drawings/paintings with no print
+process at all — real objects, just outside this graph's `Impression` model, same
+reasoning as BM's `Matrix`-vs-`Impression` split (§7.2) even though these specifically
+don't get routed to `Matrix` either (they aren't printing plates).
+
+### ALL-CAPS artist-name duplication — found and fixed 2026-09-06, while building the catalogue artifact
+
+Found the same way Forum's own Picasso/Rembrandt identity fixes were found (doc 09 §3's
+"the table won't be reliable otherwise" precedent): Bonhams' own catalogue data formats
+some lots' artist names in ALL CAPS (a genuine house-style inconsistency in the source),
+and the original adapter's exact-string `Artist` merge key created a fresh duplicate
+node for every already-known artist whose name happened to appear in caps on at least
+one lot — confirmed live, **183 case-insensitive-duplicate groups, 182 duplicate nodes,
+every single ALL-CAPS variant attributed ONLY to Bonhams/Skinner SourceRecords** (zero
+overlap with any pre-existing source), i.e. entirely attributable to this adapter, not a
+pre-existing issue. Fixed two ways: (1) a live remediation, one Cypher pass merging all
+182 duplicates via case-insensitive grouping (deterministic case-folding, not fuzzy
+matching — see `merge_case_duplicate_artists.py`'s docstring), same manual MATCH/MERGE/
+DETACH DELETE-per-relationship-type pattern as the earlier Henry Moore/Joan Miró
+cleanups, canonical chosen by (has ULAN, has Wikidata, most works, not-all-caps) in that
+priority order; (2) `normalize_all_caps_name()` added to `bonhams_parsing.py` and wired
+into `map_record()`, so a future re-run of `bonhams_ingest.py` won't recreate the bug.
+Two case-insensitive groups found by the same scan ("no lot"/"NO LOT",
+"amendment: please note"/its case variants) are **not** artist duplicates at all — pre-
+existing Roseberys auction-admin notes miscaptured into the `artist` field, same failure
+mode as the already-documented 2026-08-31 junk cleanup, just a different exact string;
+deliberately excluded from this fix's scope, not yet cleaned up.
+
+### Pilot results and scale (2026-09-05/06)
+
+After every filter above: **53,809 of 85,847 total rows eligible** (62.7% of the whole
+file; 66.7% of the bonhams+skinner subset alone). Breakdown of what the remaining
+32,038 excluded rows are, all preserved in `bonhams_excluded_rows.csv` tagged with their
+specific reason, none silently dropped: 5,100 non-English-brand (deferred, not
+excluded-as-bad), 8,485 no-artist rows, 825 placeholder-artist rows, 465 withdrawn
+lots, 11,111 heuristically-detected multi-work lots, 6,052 non-print-medium lots.
+Verified via `--dry-run` against random samples throughout (25, then 20, then 400, then
+3,000 records) rather than trusting a clean script exit — the standard this project
+already holds every adapter to (doc 09 §7's own BM UNWIND bug, §7.3's embed-query bug,
+etc. were all caught the same way, by checking real output, not by an absence of
+errors). **Not yet run against the live graph as a full bulk load** — this section
+documents the adapter and its pilot validation; the actual production write is a
+separate, explicit step given the scale (53,809 new lot records, on the order of
+150,000-250,000 new nodes once Impression/EditionRun/ConceptualWork/SourceRecord/
+DigitalImage are all counted, against a graph currently at 219,762 nodes).
