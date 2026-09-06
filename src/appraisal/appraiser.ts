@@ -1842,11 +1842,10 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       ...raw.routingDecision,
       scenario: plan.scenario,
       scenarioName: plan.scenarioName,
-      tier: plan.tier,
       specialistConfig: plan.specialistConfig,
       routingRationale: plan.routingRationale,
     };
-    console.log(`[Stage 2a routing] scenario=${plan.scenario} (${plan.scenarioName}) tier=${plan.tier} specialistConfig=${plan.specialistConfig} (matched on ${plan.specialistConfigMatchedOn}) skeptic=${plan.skepticModeEngaged}`);
+    console.log(`[Stage 2a routing] scenario=${plan.scenario} (${plan.scenarioName}) specialistConfig=${plan.specialistConfig} (matched on ${plan.specialistConfigMatchedOn}) skeptic=${plan.skepticModeEngaged}`);
     console.log(`[Stage 2a routing] trace: ${plan.ruleTrace.join(" | ")}`);
     return raw;
   }
@@ -1920,7 +1919,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
         ` | work=${twoPass.workIdentification ? `${twoPass.workIdentification.evidenceBasis} ${twoPass.workIdentification.verdict}/${twoPass.workIdentification.confidence ?? "-"}` : "(pass 2 not run)"}` +
         ` | impression=${twoPass.impressionAssessment?.divergence ?? "n/a"}`,
     );
-    console.log(`[Stage 2a evidence] routing: Scenario ${rd.scenario} (${rd.scenarioName}) tier ${rd.tier} specialistConfig=${rd.specialistConfig}`);
+    console.log(`[Stage 2a evidence] routing: Scenario ${rd.scenario} (${rd.scenarioName}) specialistConfig=${rd.specialistConfig}`);
     console.log(`[Stage 2a evidence] tree trace: ${twoPass.ruleTrace.join(" | ")}`);
     return triage;
   }

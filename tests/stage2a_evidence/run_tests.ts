@@ -11,7 +11,7 @@ import {
   runEvidenceTree,
   emptyEvidenceOutput,
 } from "../../src/appraisal/stage2a_evidence";
-import { Scenario, SCENARIO_TO_TIER } from "../../src/appraisal/routing";
+import { Scenario } from "../../src/appraisal/routing";
 import {
   postAnthropicMessages,
   trimVeaProse,
@@ -99,7 +99,6 @@ test("confirmed-clean evidence → artist attributed HIGH, work identified, Scen
   assert.equal(twoPass.artistAttribution.confidence, "HIGH");
   assert.equal(twoPass.workIdentification?.verdict, "identified");
   assert.equal(triage.routingDecision.scenario, Scenario.ConfirmedClean);
-  assert.equal(triage.routingDecision.tier, 1);
   assert.equal(triage.artistAttribution?.artistName, "Pablo Picasso");
   assert.equal(triage.candidateArtists[0].artistName, "Pablo Picasso");
   assert.ok(triage.candidateArtists[0].candidateProbability >= 0.85);
@@ -124,7 +123,6 @@ test("photomechanical technique where an original is expected → reproduction �
   assert.equal(twoPass.impressionAssessment?.divergence, "reproduction");
   assert.equal(triage.impressionAssessment?.divergence, "reproduction");
   assert.equal(triage.routingDecision.scenario, Scenario.ElevatedAuthenticationRisk);
-  assert.equal(triage.routingDecision.tier, SCENARIO_TO_TIER[Scenario.ElevatedAuthenticationRisk]);
 });
 
 test("giclée observed AND giclée catalogued (Hirst Empresses) → NOT a reproduction, not Scenario 2", () => {
@@ -167,7 +165,6 @@ test("assembled TriageResult keeps a valid routingDecision for Stage 2b", () => 
   const rd = triage.routingDecision;
   assert.ok(rd.specialistConfig && typeof rd.specialistConfig === "string");
   assert.ok(rd.scenarioName.length > 0);
-  assert.ok([1, 2, 3].includes(rd.tier));
   assert.equal(triage.schemaVersion, "ATA-2.0-evidence");
 });
 

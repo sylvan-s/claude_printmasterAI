@@ -9,6 +9,15 @@
  * on disk (only 2 of the 26 names the old prompt offered were real files). The fix isn't a
  * bigger list — it's removing the LLM's ability to invent a name at all. Code decides the
  * route; the LLM's only job is to honestly populate the evidence fields this reads.
+ *
+ * `routingDecision.tier` retired 2026-09-06: ADR-0006 originally kept it as a coarser,
+ * backward-compatible derivative of `scenario` for downstream consumers. A full-repo audit
+ * found nothing — inside or outside src/appraisal — ever read it back (UI report rendering,
+ * Stage 3, storage, analytics all came back clean; the only outside reference was a backtest
+ * script writing it to a debug JSON for humans to eyeball). Scenario alone already drives
+ * Stage 2b's task-profile selection (see TASK_PROFILES in prompts.ts) and was the more
+ * precise signal ADR-0006 itself said tier overlapped with. Removed rather than left as dead
+ * weight two routing signals could still quietly drift apart on.
  */
 import { existsSync } from "fs";
 import { join } from "path";
@@ -33,16 +42,6 @@ export const SCENARIO_NAMES: Record<Scenario, string> = {
   [Scenario.MovementOnly]: "Movement/style only",
   [Scenario.CompetingCandidates]: "Competing candidates",
   [Scenario.LowSignalEverywhere]: "Low signal everywhere",
-};
-
-// ADR-0006 Decision 3: 1→1, 3/4→2, 2/5/6→3.
-export const SCENARIO_TO_TIER: Record<Scenario, 1 | 2 | 3> = {
-  [Scenario.ConfirmedClean]: 1,
-  [Scenario.ArtistConfirmedWorkUnresolved]: 2,
-  [Scenario.MovementOnly]: 2,
-  [Scenario.ElevatedAuthenticationRisk]: 3,
-  [Scenario.CompetingCandidates]: 3,
-  [Scenario.LowSignalEverywhere]: 3,
 };
 
 // ---------------------------------------------------------------------------
@@ -73,7 +72,6 @@ const SPECIALIST_CONFIG_REGISTRY: SpecialistConfigRule[] = [
 export interface RoutingPlan {
   scenario: Scenario;
   scenarioName: string;
-  tier: 1 | 2 | 3;
   specialistConfig: string;
   specialistConfigMatchedOn: "artistName" | "primaryTradition" | "fallback";
   skepticModeEngaged: boolean;
@@ -186,16 +184,14 @@ export function classifyTriageOutcome(triage: TriageResult): RoutingPlan {
   }
 
   const { key: specialistConfig, matchedOn: specialistConfigMatchedOn } = matchSpecialistConfig(triage);
-  const tier = SCENARIO_TO_TIER[scenario];
   const scenarioName = SCENARIO_NAMES[scenario];
   const skepticModeEngaged = scenario === Scenario.ElevatedAuthenticationRisk || scenario === Scenario.CompetingCandidates;
 
-  trace.push(`→ Scenario ${scenario} (${scenarioName}), tier ${tier}, specialistConfig="${specialistConfig}" (matched on ${specialistConfigMatchedOn})`);
+  trace.push(`→ Scenario ${scenario} (${scenarioName}), specialistConfig="${specialistConfig}" (matched on ${specialistConfigMatchedOn})`);
 
   return {
     scenario,
     scenarioName,
-    tier,
     specialistConfig,
     specialistConfigMatchedOn,
     skepticModeEngaged,
@@ -216,7 +212,6 @@ export function applyDeterministicRouting(raw: TriageResult): TriageResult {
     ...raw.routingDecision,
     scenario: plan.scenario,
     scenarioName: plan.scenarioName,
-    tier: plan.tier,
     specialistConfig: plan.specialistConfig,
     routingRationale: plan.routingRationale,
   };

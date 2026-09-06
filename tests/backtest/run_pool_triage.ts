@@ -215,7 +215,6 @@ async function runOne(id: string) {
           routing: {
             scenario: rd.scenario,
             scenarioName: rd.scenarioName ?? SCENARIO_NAMES[rd.scenario as Scenario],
-            tier: rd.tier,
             specialistConfig: rd.specialistConfig,
             humanEscalationRequired: rd.humanEscalationRequired,
             routingRationale: rd.routingRationale,

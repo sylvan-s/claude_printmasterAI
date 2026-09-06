@@ -43,7 +43,6 @@ function baseTriage(overrides: Partial<TriageResult> = {}): TriageResult {
     routingDecision: {
       scenario: 6,
       scenarioName: "placeholder",
-      tier: 3,
       specialistConfig: "general_print_fallback",
       routingRationale: "",
       humanEscalationRequired: false,

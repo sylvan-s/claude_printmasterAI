@@ -28,7 +28,6 @@ import {
 import {
   Scenario,
   SCENARIO_NAMES,
-  SCENARIO_TO_TIER,
   matchSpecialistConfig,
 } from "./routing";
 
@@ -389,7 +388,6 @@ export function assembleTriageResult(ev: EvidenceAgentOutput, tp: TwoPassResult)
     routingDecision: {
       scenario: scenario as 1 | 2 | 3 | 4 | 5 | 6,
       scenarioName: SCENARIO_NAMES[scenario],
-      tier: SCENARIO_TO_TIER[scenario],
       specialistConfig,
       routingRationale,
       humanEscalationRequired: !!ev.humanEscalationRequired,

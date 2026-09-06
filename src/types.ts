@@ -531,10 +531,6 @@ export interface TriageResult {
      *  fields immediately after Stage 2a returns — never LLM-declared. */
     scenario: 1 | 2 | 3 | 4 | 5 | 6;
     scenarioName: string;
-    /** Derived from `scenario` by classifyTriageOutcome — a coarser view kept for backward
-     *  compatibility with existing stored appraisals. 1→1, 3/4→2, 2/5/6→3. No longer
-     *  LLM-declared (fixes ADR-0005 finding #8's root cause, not just its symptom). */
-    tier: 1 | 2 | 3;
     /** Deterministically matched against real files in src/appraisal/specialist_configs/ —
      *  falls back explicitly to "general_print_fallback" when nothing matches. Can never be
      *  a nonexistent config name (ADR-0005 finding #8). */

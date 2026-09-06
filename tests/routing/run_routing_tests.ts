@@ -41,14 +41,12 @@ console.log("Scenario classification\n");
 test("Scenario 1: confirmed, clean", () => {
   const plan = classifyTriageOutcome(fixtures.scenario1ConfirmedClean);
   assert.equal(plan.scenario, Scenario.ConfirmedClean);
-  assert.equal(plan.tier, 1);
   assert.equal(plan.skepticModeEngaged, false);
 });
 
 test("Scenario 2: elevated authentication risk", () => {
   const plan = classifyTriageOutcome(fixtures.scenario2ElevatedAuthenticationRisk);
   assert.equal(plan.scenario, Scenario.ElevatedAuthenticationRisk);
-  assert.equal(plan.tier, 3);
   assert.equal(plan.skepticModeEngaged, true);
 });
 
@@ -64,7 +62,6 @@ test("CRITICAL ORDERING: risk flag masks an otherwise-Scenario-1-looking match",
 test("Scenario 3: artist confirmed, work unresolved (zero ACKG support of any kind)", () => {
   const plan = classifyTriageOutcome(fixtures.scenario3ArtistConfirmedWorkUnresolved);
   assert.equal(plan.scenario, Scenario.ArtistConfirmedWorkUnresolved);
-  assert.equal(plan.tier, 2);
   assert.equal(plan.skepticModeEngaged, false);
 });
 
@@ -81,13 +78,11 @@ test("REGRESSION: authenticationBodyExists alone (no forgeryRisk/misattributionR
 test("Scenario 4: movement only", () => {
   const plan = classifyTriageOutcome(fixtures.scenario4MovementOnly);
   assert.equal(plan.scenario, Scenario.MovementOnly);
-  assert.equal(plan.tier, 2);
 });
 
 test("Scenario 5: competing candidates (two comparable probabilities)", () => {
   const plan = classifyTriageOutcome(fixtures.scenario5CompetingCandidates);
   assert.equal(plan.scenario, Scenario.CompetingCandidates);
-  assert.equal(plan.tier, 3);
   assert.equal(plan.skepticModeEngaged, true);
 });
 
@@ -100,7 +95,6 @@ test("Scenario 5: competing candidates (evidenceCorroboration.conflicts trigger)
 test("Scenario 6: low signal everywhere", () => {
   const plan = classifyTriageOutcome(fixtures.scenario6LowSignalEverywhere);
   assert.equal(plan.scenario, Scenario.LowSignalEverywhere);
-  assert.equal(plan.tier, 3);
   assert.equal(plan.skepticModeEngaged, false);
 });
 
