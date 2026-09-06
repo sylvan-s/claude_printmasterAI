@@ -53,8 +53,16 @@ def extract_lot_desc_html(html):
 
 # ---- Artist qualifier prefix (HEURISTIC_EXTRACTION, mirrors doc 09 section 3's
 # original Roseberys single-lot adapter, not the bulk-CSV one) ----
+# "attr. to "/"attr. "/"attributed " (abbreviated/bare forms) found missing 2026-09-06
+# — 7 live Bonhams Artist nodes ended up as "Attr. Marc Chagall"/"Attr. to Pablo
+# Picasso"/"Attributed Edith Catlin Phelps"/etc., the full qualifier text swallowed
+# into the artist NAME with `qualifier` silently left at the wrong default ("direct"),
+# because only the spelled-out "attributed to " was recognized before this fix.
 QUALIFIER_PREFIX_MAP = [
     ("attributed to ", "attributed_to"),
+    ("attr. to ", "attributed_to"),
+    ("attr. ", "attributed_to"),
+    ("attributed ", "attributed_to"),
     ("in the manner of ", "manner_of"),
     ("manner of ", "manner_of"),
     ("circle of ", "circle_of"),

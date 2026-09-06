@@ -1433,5 +1433,60 @@
     "imgId": "bonhams-16098-7160-image",
     "url": "https://images2.bonhams.com/image?src=Images/live/2008-06/09/7653066-7-1.JPG",
     "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-17681-11-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2010-03/19/8048074-1-2.jpg",
+    "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-17682-84-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2010-01/20/7977605-9-9.jpg",
+    "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-17753-5092-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2010-03/23/8046021-3-2.jpg",
+    "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-17753-5096-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2010-03/22/8038981-7-1.jpg",
+    "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-18169-88-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2010-01/11/7953851-359-2.jpg",
+    "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-18269-5230-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2010-03/23/8046021-3-2.jpg",
+    "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-19092-4146-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2011-06/09/8342862-1-1.jpg",
+    "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-19248-2148-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2011-06/09/8342862-1-1.jpg",
+    "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-19411-2130-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2011-06/09/8342862-1-1.jpg",
+    "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-19740-8134-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2011-06/09/8342862-1-1.jpg",
+    "error": "HTTP 404"
+  },
+  {
+    "imgId": "bonhams-20006-3116-image",
+    "url": "https://images2.bonhams.com/image?src=Images/live/2011-06/09/8342862-1-1.jpg",
+    "error": "HTTP 404"
   }
 ]
