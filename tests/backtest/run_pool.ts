@@ -10,7 +10,7 @@
  *   npm run test:pool -- --limit 10                 # 10 lots (default)
  *   npm run test:pool -- --limit 99 --concurrency 3 # whole pool
  *   npm run test:pool -- --resume                   # skip lots already done
- *   npm run test:pool -- --method gemini-4stage     # Gemini VEA instead of Opus
+ *   npm run test:pool -- --method gemini-3stage     # Gemini VEA instead of Opus
  *
  * Output: tests/backtest/pool_output/<saleId>_<lot>/stage1.json  (gitignored)
  */

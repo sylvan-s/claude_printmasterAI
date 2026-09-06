@@ -132,7 +132,6 @@ export default function BatchProcessor({
     "gemini-3stage",
     "claude-3stage",
     "claude-4stage",
-    "gemini-4stage",
   ]);
   const batchAppraisalMethods = appraisalMethods.filter(m => BATCH_ALLOWED_IDS.has(m.id));
 

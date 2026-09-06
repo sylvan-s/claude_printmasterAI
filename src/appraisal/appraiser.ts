@@ -13,7 +13,6 @@ import {
   PromptKey,
   resolveCustomPrompt,
   VISUAL_EXTRACTION_SYSTEM_PROMPT,
-  ATTRIBUTION_TRIAGE_SYSTEM_PROMPT,
   ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT,
   ATTRIBUTION_RESEARCH_SYSTEM_PROMPT,
   VALUATION_REPORT_SYSTEM_PROMPT,
@@ -21,13 +20,12 @@ import {
   injectSpecialistConfig,
   injectTaskProfile,
 } from "./prompts";
-import { classifyTriageOutcome, Scenario } from "./routing";
+import { Scenario } from "./routing";
 import { runEvidenceTree, emptyEvidenceOutput, type EvidenceAgentOutput } from "./stage2a_evidence";
 import {
   translateSchemaToStandardJsonSchema,
   VISUAL_EXTRACTION_SCHEMA,
   ATTRIBUTION_RESEARCH_SCHEMA,
-  TRIAGE_SCHEMA,
   ATTRIBUTION_EVIDENCE_SCHEMA,
   SPECIALIST_ATTRIBUTION_SCHEMA,
   FINAL_REPORT_RESPONSE_SCHEMA,
@@ -147,11 +145,6 @@ export interface AppraisalMethodConfig {
    *  Shadow-run only — its result is attached to the report but never read by Stage 2a/2b/3. */
   enableEmbeddingMatch?: boolean;
   stage2aModel?: string;
-  /** ADR-0010: "triage" (default) = the classic Attribution Triage Agent + classifyTriageOutcome.
-   *  "evidence" = the Attribution Evidence Agent — one Claude call fills observation cells, the
-   *  deterministic two-pass tree (src/appraisal/two_pass_attribution.ts) evaluates them. Claude
-   *  only (needs the query_ackg tool loop); a Gemini stage2aModel falls back to "triage". */
-  stage2aMode?: "triage" | "evidence";
   stage2bModel?: string;
   stage2Model?: string;
   stage3Model?: string;
@@ -949,11 +942,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     systemInstruction: string,
     userText: string,
     maxTokens: number = 8192,
-    finalTool: { name: string; description: string; schema: any } = {
-      name: "report_attribution_triage",
-      description: "Report the structured attribution triage and routing decision.",
-      schema: TRIAGE_SCHEMA,
-    },
+    finalTool: { name: string; description: string; schema: any },
     opts: { extraTools?: any[]; maxRounds?: number } = {}
   ): Promise<any> {
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
@@ -1712,9 +1701,7 @@ CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
 
   /**
    * The shared Stage 2a input context — VEA projection + the Stage 1c and Stage 1b
-   * hand-off blocks. Used by both runStage2aTriage (classic) and runStage2aEvidence
-   * (ADR-0010). Kept identical between the two so a triage-vs-evidence A/B compares
-   * the classifier, not the framing.
+   * hand-off blocks. Used by runStage2aTriage (ADR-0010's Attribution Evidence Agent).
    */
   protected buildStage2aContext(
     vea: VisualExtractionResult,
@@ -1785,80 +1772,17 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     return { notesBlock, appraiserInputBlock, visualSearchBlock, veaSlim };
   }
 
-  protected async runStage2aTriage(
-    vea: VisualExtractionResult,
-    stage2aModel: string,
-    ai: GoogleGenAI,
-    userNotes?: string,
-    appraiserInput?: AppraiserInputResult,
-    visualSearch?: VisualSearchResult
-  ): Promise<TriageResult> {
-    // ADR-0010: the Attribution Evidence Agent replaces the whole classic triage path
-    // (LLM verdicts + classifyTriageOutcome) with observation cells + the deterministic
-    // two-pass tree. Claude only — it needs the query_ackg tool loop.
-    if (this.config.stage2aMode === "evidence") {
-      if (isClaude(stage2aModel)) {
-        return this.runStage2aEvidence(vea, stage2aModel, userNotes, appraiserInput, visualSearch);
-      }
-      console.warn(`[Stage 2a] stage2aMode="evidence" needs a Claude model for the query_ackg loop — got "${stage2aModel}"; using classic triage.`);
-    }
-
-    const { notesBlock, appraiserInputBlock, visualSearchBlock, veaSlim } =
-      this.buildStage2aContext(vea, userNotes, appraiserInput, visualSearch);
-    const userText = `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Use it to triage the print tradition and candidate artists.\n\n${JSON.stringify(veaSlim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
-
-    let raw: TriageResult;
-    if (isClaude(stage2aModel)) {
-      // Claude gets the live query_ackg tool — see callClaudeWithAckgTool above.
-      raw = await this.callClaudeWithAckgTool(stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, userText);
-    } else {
-      // Gemini has no user-defined function-calling loop in this codebase (same
-      // existing limitation as the Claude-only lookup_museum_collections tool —
-      // see ADR-0005 finding #4). One deterministic ACKG lookup, built directly
-      // from VEA's own fields (no LLM involved in forming the query), stands in
-      // for the interactive multi-round version Claude gets. Weaker — a single
-      // fixed query instead of iteratively narrowed ones — but real grounding is
-      // still better than none. Worth a genuine Gemini tool loop if Gemini-routed
-      // Triage volume ever justifies the build.
-      let ackgBlock = "";
-      try {
-        const primaryTechnique = vea.printingTechniques?.[0]?.technique;
-        const candidates = await queryAckg({
-          technique: primaryTechnique || undefined,
-          paper: vea.paper?.surfaceType || undefined,
-        });
-        ackgBlock = `\n\nART CONTEXT KNOWLEDGE GRAPH — candidates matching VEA's observed technique/paper, ranked by real population support (see evidenceCorroboration.ackgAgreement instructions in your prompt):\n${this.formatAckgResultForClaude(candidates)}\n`;
-      } catch (err: any) {
-        console.warn(`[Stage 2a] ACKG pre-fetch failed (Gemini path) — proceeding without it: ${err.message}`);
-      }
-      raw = await this.callGemini(ai, stage2aModel, ATTRIBUTION_TRIAGE_SYSTEM_PROMPT, [{ text: userText + ackgBlock }], TRIAGE_SCHEMA, 0.1);
-    }
-
-    // ADR-0006: routing is decided deterministically, in code, from the structured fields
-    // the LLM just populated — never LLM-declared. Single splice point so both model paths
-    // above get identical treatment.
-    const plan = classifyTriageOutcome(raw);
-    raw.routingDecision = {
-      ...raw.routingDecision,
-      scenario: plan.scenario,
-      scenarioName: plan.scenarioName,
-      specialistConfig: plan.specialistConfig,
-      routingRationale: plan.routingRationale,
-    };
-    console.log(`[Stage 2a routing] scenario=${plan.scenario} (${plan.scenarioName}) specialistConfig=${plan.specialistConfig} (matched on ${plan.specialistConfigMatchedOn}) skeptic=${plan.skepticModeEngaged}`);
-    console.log(`[Stage 2a routing] trace: ${plan.ruleTrace.join(" | ")}`);
-    return raw;
-  }
-
   /**
-   * Stage 2a — Attribution Evidence Agent (ADR-0010 Decision 9.2). One Claude call
-   * (query_ackg tool loop) fills the observation cells; the deterministic two-pass tree
-   * (src/appraisal/two_pass_attribution.ts) evaluates them; the result is assembled back
-   * into the legacy TriageResult shape (+ the Decision 7 artistAttribution /
-   * workIdentification / impressionAssessment fields) so Stage 2b and the renderer are
-   * unchanged. Reached only when config.stage2aMode === "evidence".
+   * Stage 2a — Attribution Evidence Agent (ADR-0010 Decision 9.2; sole implementation as
+   * of ADR-0014). One Claude call (query_ackg tool loop) fills the observation cells; the
+   * deterministic two-pass tree (src/appraisal/two_pass_attribution.ts) evaluates them; the
+   * result is assembled back into the legacy TriageResult shape (+ the Decision 7
+   * artistAttribution / workIdentification / impressionAssessment fields) so Stage 2b and
+   * the renderer are unchanged. Claude only (needs the query_ackg tool loop) — see
+   * ADR-0014 for why a Gemini equivalent was not built and gemini-4stage was retired
+   * rather than left pointed at a mode it cannot run.
    */
-  protected async runStage2aEvidence(
+  protected async runStage2aTriage(
     vea: VisualExtractionResult,
     stage2aModel: string,
     userNotes?: string,
@@ -2275,7 +2199,7 @@ export class FourStageAppraiser extends MultiStageAppraiser {
         const [appraiserInputResult, visualSearchResult] = await Promise.all([appraiserInputPromise, visualSearchPromise]);
         const t2a = Date.now();
         console.log(`[Timing] Stage 2a (Triage) starting — model: ${stage2aModel}`);
-        const r = await this.runStage2aTriage(vea, stage2aModel, ai, input.userNotes, appraiserInputResult, visualSearchResult);
+        const r = await this.runStage2aTriage(vea, stage2aModel, input.userNotes, appraiserInputResult, visualSearchResult);
         console.log(`[Timing] Stage 2a (Triage) done — ${((Date.now() - t2a) / 1000).toFixed(1)}s`);
         emit({ stage: "stage2a", status: "done", message: "Triage complete — specialist routing confirmed", percent: 40 });
         return r;
@@ -2473,8 +2397,8 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
   },
   {
     id: "claude-4stage",
-    name: "Claude 4-Stage Pipeline (VEA + ATA + ASA + Valuation)",
-    description: "Full 4-stage appraisal: Visual Extraction (Opus), Attribution Triage (Sonnet), Specialist Attribution with web search (Sonnet), and Valuation (Sonnet).",
+    name: "Claude 4-Stage Pipeline (VEA + Evidence Agent + ASA + Valuation)",
+    description: "Full 4-stage appraisal: Visual Extraction (Opus), Stage 2a Attribution Evidence Agent (Sonnet, ADR-0010) — one call fills observation cells, the deterministic two-pass tree evaluates them — Specialist Attribution with web search (Sonnet), and Valuation (Sonnet).",
     modelName: "claude-opus-4-8",
     temperature: 0.1,
     promptKey: "standard",
@@ -2489,8 +2413,8 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
   },
   {
     id: "claude-4stage-fast",
-    name: "Claude 4-Stage Fast (Haiku Triage)",
-    description: "Opus for vision (S1), Haiku for triage (S2a), Sonnet for specialist search (S2b), Haiku for valuation (S3). Faster and cheaper than standard 4-stage.",
+    name: "Claude 4-Stage Fast (Haiku Evidence Agent)",
+    description: "Opus for vision (S1), Haiku for the Stage 2a Evidence Agent (S2a), Sonnet for specialist search (S2b), Haiku for valuation (S3). Faster and cheaper than standard 4-stage.",
     modelName: "claude-opus-4-8",
     temperature: 0.1,
     promptKey: "standard",
@@ -2501,38 +2425,6 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     stage2aModel: "claude-haiku-4-5",
     stage2bModel: "claude-sonnet-4-6",
     stage3Model: "claude-haiku-4-5",
-    enableVisualSearch: true,
-  },
-  {
-    id: "claude-4stage-evidence",
-    name: "Claude 4-Stage (ADR-0010 Evidence Agent Triage)",
-    description: "Full 4-stage pipeline with the Stage 2a Attribution Evidence Agent: one Sonnet call fills observation cells, the deterministic two-pass tree (artist → Conceptual Work → impression) evaluates them. Opus vision, Sonnet 2b/3.",
-    modelName: "claude-opus-4-8",
-    temperature: 0.1,
-    promptKey: "standard",
-    imageQuality: "original",
-    includeAuxiliaryScans: true,
-    provider: "anthropic",
-    stage1Model: "claude-opus-4-8",
-    stage2aModel: "claude-sonnet-4-6",
-    stage2aMode: "evidence",
-    stage2bModel: "claude-sonnet-4-6",
-    stage3Model: "claude-sonnet-4-6",
-    enableVisualSearch: true,
-  },
-  {
-    id: "gemini-4stage",
-    name: "Gemini 4-Stage Pipeline (VEA + ATA + ASA + Valuation)",
-    description: "Full 4-stage appraisal: VEA on Gemini 2.5 Pro, Attribution Triage + Specialist on Gemini 3.1 Pro Preview, Valuation on Gemini 2.5 Pro.",
-    modelName: "gemini-2.5-pro",
-    temperature: 0.1,
-    promptKey: "standard",
-    imageQuality: "original",
-    includeAuxiliaryScans: true,
-    stage1Model: "gemini-2.5-pro",
-    stage2aModel: "gemini-3.1-pro-preview",
-    stage2bModel: "gemini-3.1-pro-preview",
-    stage3Model: "gemini-2.5-pro",
     enableVisualSearch: true,
   },
 ];
@@ -2580,6 +2472,5 @@ export {
   VISUAL_EXTRACTION_SCHEMA,
   ATTRIBUTION_RESEARCH_SCHEMA,
   FINAL_REPORT_RESPONSE_SCHEMA,
-  TRIAGE_SCHEMA,
   SPECIALIST_ATTRIBUTION_SCHEMA,
 } from "./schemas";

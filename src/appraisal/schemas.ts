@@ -347,107 +347,6 @@ export const ATTRIBUTION_RESEARCH_SCHEMA = {
 };
 
 // ---------------------------------------------------------------------------
-// Stage 2a — Attribution Triage Agent (ATA-1.0)
-// ---------------------------------------------------------------------------
-export const TRIAGE_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    schemaVersion: { type: Type.STRING },
-    triageTimestamp: { type: Type.STRING },
-    inputValidation: {
-      type: Type.OBJECT,
-      properties: {
-        inputValidationError: { type: Type.BOOLEAN },
-        lowSourceConfidence: { type: Type.BOOLEAN },
-        veaExtractionConfidence: { type: Type.NUMBER },
-        provisionalOutput: { type: Type.BOOLEAN }
-      },
-      required: ["inputValidationError", "lowSourceConfidence", "veaExtractionConfidence", "provisionalOutput"]
-    },
-    traditionIdentification: {
-      type: Type.OBJECT,
-      properties: {
-        primaryTradition: { type: Type.STRING },
-        traditionConfidence: { type: Type.NUMBER },
-        supportingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
-        contradictingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
-        traditionNotes: { type: Type.STRING }
-      },
-      required: ["primaryTradition", "traditionConfidence", "supportingEvidence", "contradictingEvidence"]
-    },
-    periodEstimation: {
-      type: Type.OBJECT,
-      properties: {
-        estimatedPeriodRange: { type: Type.STRING },
-        periodConfidence: { type: Type.NUMBER }
-      },
-      required: ["estimatedPeriodRange", "periodConfidence"]
-    },
-    candidateArtists: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          rank: { type: Type.INTEGER },
-          artistName: { type: Type.STRING },
-          candidateProbability: { type: Type.NUMBER },
-          supportingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
-          contradictingEvidence: { type: Type.ARRAY, items: { type: Type.STRING } },
-          ackgSupportCount: { type: Type.INTEGER },
-          ackgProvenanceTags: { type: Type.ARRAY, items: { type: Type.STRING } }
-        },
-        required: ["rank", "artistName", "candidateProbability", "supportingEvidence", "contradictingEvidence"]
-      }
-    },
-    riskFlags: {
-      type: Type.OBJECT,
-      properties: {
-        forgeryRisk: { type: Type.BOOLEAN },
-        reprintRisk: { type: Type.BOOLEAN },
-        editionComplexityRisk: { type: Type.BOOLEAN },
-        misattributionRisk: { type: Type.BOOLEAN },
-        authenticationBodyExists: { type: Type.BOOLEAN },
-        physicalExaminationRequired: { type: Type.BOOLEAN }
-      },
-      required: ["forgeryRisk", "reprintRisk", "editionComplexityRisk", "misattributionRisk", "authenticationBodyExists", "physicalExaminationRequired"]
-    },
-    evidenceCorroboration: {
-      type: Type.OBJECT,
-      properties: {
-        stage1bAgreement: { type: Type.BOOLEAN },
-        ackgAgreement: { type: Type.BOOLEAN },
-        conflicts: { type: Type.ARRAY, items: { type: Type.STRING } }
-      },
-      required: ["conflicts"]
-    },
-    routingDecision: {
-      // Deliberately minimal — scenario/tier/specialistConfig/routingRationale are no
-      // longer asked of the model at all (ADR-0006): classifyTriageOutcome (src/appraisal/
-      // routing.ts) computes and splices them onto this object deterministically after the
-      // LLM call returns. Only humanEscalationRequired/Reason remain genuine LLM judgment.
-      type: Type.OBJECT,
-      properties: {
-        humanEscalationRequired: { type: Type.BOOLEAN },
-        humanEscalationReason: { type: Type.STRING }
-      },
-      required: ["humanEscalationRequired"]
-    },
-    triageConfidenceSummary: {
-      type: Type.OBJECT,
-      properties: {
-        overallTriageConfidence: { type: Type.NUMBER },
-        criticalUnresolved: { type: Type.ARRAY, items: { type: Type.STRING } }
-      },
-      required: ["overallTriageConfidence", "criticalUnresolved"]
-    }
-  },
-  required: [
-    "schemaVersion", "inputValidation", "traditionIdentification", "periodEstimation",
-    "candidateArtists", "riskFlags", "routingDecision", "triageConfidenceSummary"
-  ]
-};
-
-// ---------------------------------------------------------------------------
 // Stage 2b — Specialist Attribution Agent (ASA-1.0)
 // ---------------------------------------------------------------------------
 export const SPECIALIST_ATTRIBUTION_SCHEMA = {
@@ -830,14 +729,14 @@ export const APPRAISER_INPUT_SCHEMA = {
 };
 
 // ---------------------------------------------------------------------------
-// Stage 2a — Attribution Evidence Agent (AEA-1.0) — ADR-0010 Decision 9.2
+// Stage 2a — Attribution Evidence Agent (AEA-1.0) — ADR-0010 Decision 9.2, sole Stage 2a
+// implementation as of ADR-0014.
 //
-// The evidence-agent variant of Stage 2a. Where TRIAGE_SCHEMA asks the model for
-// verdicts (candidateProbability, scenario-shaped routing), this asks only for
-// OBSERVATIONS — the "evidence cells" that src/appraisal/two_pass_attribution.ts
-// then evaluates the A1..A11 / T1..T7 tables over, in code. Numbers use -1 as a
-// "not assessed / not applicable" sentinel (tool schemas can't express nullable
-// cleanly — same idiom as TRIAGE_SCHEMA's ackgSupportCount).
+// Rather than ask the model for verdicts (candidateProbability, scenario-shaped routing),
+// this asks only for OBSERVATIONS — the "evidence cells" that
+// src/appraisal/two_pass_attribution.ts then evaluates the A1..A11 / T1..T7 tables over, in
+// code. Numbers use -1 as a "not assessed / not applicable" sentinel (tool schemas can't
+// express nullable cleanly).
 // ---------------------------------------------------------------------------
 const AEA_WH = {
   type: Type.OBJECT,

@@ -7,9 +7,10 @@
  * consistency, resolves identities); this module does the rest — no LLM, no network,
  * fully unit-testable (tests/two_pass_attribution/).
  *
- * NOT wired into the live pipeline yet. runStage2aTriage / classifyTriageOutcome
- * (src/appraisal/routing.ts) are unchanged. `mapTwoPassToScenario()` returns the same
- * ADR-0006 Scenario enum and is the intended bridge when Decision 8 is implemented.
+ * Wired into the live pipeline via src/appraisal/stage2a_evidence.ts's `runEvidenceTree`,
+ * which the sole Stage 2a implementation (`runStage2aTriage` in appraiser.ts; ADR-0014
+ * retired the older classic-triage path) calls after the evidence agent fills the cells.
+ * `mapTwoPassToScenario()` returns the same ADR-0006 `Scenario` enum from routing.ts.
  *
  * Run the tests: npm run test:two-pass
  */
@@ -803,7 +804,7 @@ export function classifyImpression(ev: ImpressionEvidence): ImpressionAssessment
 // ───────────────────────────────────────────────────────────────────────────────
 // SCENARIO MAPPING — ADR-0010 Decision 8 (bridge to ADR-0006's Scenario enum)
 // ───────────────────────────────────────────────────────────────────────────────
-export const MOVEMENT_THRESHOLD = 0.5; // mirrors routing.ts
+export const MOVEMENT_THRESHOLD = 0.5;
 
 /** ADR-0010's two-pass verdicts ADD structure; they do not replace the triage LLM's
  *  Section-2D risk flags. `forgeryRisk` / `misattributionRisk` still trigger Scenario 2
