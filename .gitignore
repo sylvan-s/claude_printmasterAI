@@ -64,3 +64,7 @@ knowledge_graph/wikidata_coverage_for_no_printmaker.json
 # Embedding/image-resolution failure logs (regenerate on demand)
 knowledge_graph/bm_embed_images_failures.json
 resolve_tate_images_failures.json
+
+# technique_ml — regenerable from the graph, too large to track
+knowledge_graph/technique_ml/data/
+knowledge_graph/technique_ml/artifacts/*.pt
