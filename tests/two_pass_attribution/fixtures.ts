@@ -15,6 +15,7 @@ export function artistEv(o: Partial<ArtistEvidence> = {}): ArtistEvidence {
     vea: { kind: "silent" },
     reverseImageSearch: { kind: "no_match" },
     appraiser: { kind: "absent" },
+    embeddingMatch: { kind: "no_match" },
     stage1bConsistentWithVea: null,
     veaAuthorshipSignalLegible: false,
     veaSignatureConfidence: null,

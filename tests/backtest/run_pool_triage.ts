@@ -109,6 +109,10 @@ function toTwoPassInput(vea: any, vs: any, aia: any, triage: TriageResult): { in
       vea: vSource,
       reverseImageSearch: rSource,
       appraiser: aSource,
+      // The coarse fixture adapter doesn't carry Stage 1d data through this function's
+      // inputs — this comparison mode predates the D vote, and D is fed to the real
+      // evidence agent path separately (see runTriage). "no_match" == not modeled here.
+      embeddingMatch: { kind: "no_match" },
       stage1bConsistentWithVea: s1bConsistent,
       veaAuthorshipSignalLegible: maxSigConf >= 0.5 || !!legSig || !!veaTitle,
       veaSignatureConfidence: sigs.length ? maxSigConf : null,

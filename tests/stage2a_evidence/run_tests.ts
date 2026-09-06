@@ -91,6 +91,55 @@ test("-1 numeric sentinels become null / 0 as appropriate", () => {
   assert.equal(evidenceToTwoPassInput(noSig, false).artistEvidence.veaSignatureConfidence, null);
 });
 
+// ── D — Stage 1d embedding match, 2026-09-06 amendment to ADR-0013 ──────────
+// (built directly from the optional stage1d arg, not from the LLM's evidence cells)
+
+const stage1d = (matchConfidence: "HIGH" | "MEDIUM" | "LOW" | null, bestMatchArtist = "Henry Moore") => ({
+  schemaVersion: "IES-1.0" as const,
+  embeddingModelsUsed: { dinov2: "dinov2-large" as const, clip: "clip-vit-b32" as const },
+  indexCoverageNote: "",
+  candidateMatches: [],
+  bestMatchArtist,
+  matchConfidence,
+  attributionCaveat: "",
+  hypothesisWarning: "",
+});
+
+test("no stage1d arg -> embeddingMatch is no_match (D never votes)", () => {
+  const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false);
+  assert.equal(inp.artistEvidence.embeddingMatch.kind, "no_match");
+});
+
+test("stage1d with no bestMatchArtist -> embeddingMatch is no_match", () => {
+  const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false, stage1d("HIGH", ""));
+  assert.equal(inp.artistEvidence.embeddingMatch.kind, "no_match");
+});
+
+test("stage1d HIGH confidence -> embeddingMatch carries the name + matchConfidence", () => {
+  const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false, stage1d("HIGH"));
+  assert.equal(inp.artistEvidence.embeddingMatch.kind, "names");
+  assert.equal((inp.artistEvidence.embeddingMatch as any).raw, "Henry Moore");
+  assert.equal((inp.artistEvidence.embeddingMatch as any).matchConfidence, "HIGH");
+});
+
+test("end-to-end: a lone HIGH-confidence Stage 1d match (no other evidence) -> A6D candidate, Scenario 3", () => {
+  const { twoPass } = runEvidenceTree(f.evOut({}), false, stage1d("HIGH", "Barbara Hepworth"));
+  assert.equal(twoPass.artistAttribution.evidenceBasis, "A6D");
+  assert.equal(twoPass.artistAttribution.verdict, "candidate");
+  assert.equal(twoPass.artistAttribution.artistName, "Barbara Hepworth");
+  assert.equal(twoPass.scenario, Scenario.ArtistConfirmedWorkUnresolved);
+});
+
+test("end-to-end: a lone MEDIUM-confidence Stage 1d match does NOT vote -> not attributed, Scenario 6", () => {
+  const { twoPass } = runEvidenceTree(
+    f.evOut({ traditionIdentification: { traditionConfidence: 0.2 } }),
+    false,
+    stage1d("MEDIUM", "Barbara Hepworth"),
+  );
+  assert.equal(twoPass.artistAttribution.verdict, "not_attributed");
+  assert.equal(twoPass.scenario, Scenario.LowSignalEverywhere);
+});
+
 // ── end-to-end: runEvidenceTree ──────────────────────────────────────────────
 
 test("confirmed-clean evidence → artist attributed HIGH, work identified, Scenario 1", () => {

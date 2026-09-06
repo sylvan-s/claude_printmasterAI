@@ -140,7 +140,11 @@ export function titleSimilarity(a: string, b: string): number {
 // see ADR-0010 Decision 4a amendment (2026-08-29): an ACKG work whose title matches an
 // observed title AND is catalogued to a single artist is independent enough to VOTE.
 // K_oeuvre population COUNTS still only corroborate (never vote).
-export type SourceTag = "V" | "R" | "A" | "K";
+// D — Stage 1d DINOv2/CLIP nearest-neighbour match against the ACKG's own indexed image
+// corpus (ADR-0013). ADR-0013 deliberately withheld voting rights pending backtest; this
+// amendment (2026-09-06) grants them, gated to a HIGH matchConfidence only — MEDIUM/LOW
+// are a "don't know", not a vote (see eligibleVotes below).
+export type SourceTag = "V" | "R" | "A" | "K" | "D";
 
 /** One naming source's state. `identityKey` is a ULAN/Wikidata URI when the model
  *  resolved one; otherwise agreement falls back to normalizeName/nameSimilarity. */
@@ -153,15 +157,21 @@ export type NamingSource =
       sim?: number;
       /** Appraiser only. */
       trust?: "documented_fact" | "hypothesis";
+      /** Stage 1d (D) only — Stage 1d's own self-reported match confidence. */
+      matchConfidence?: "HIGH" | "MEDIUM" | "LOW";
     }
   | { kind: "silent" } // V: no nameable authorship signal
-  | { kind: "no_match" } // R: reverse search found nothing
+  | { kind: "no_match" } // R / D: search found nothing (or wasn't run)
   | { kind: "absent" }; // A: no appraiser notes / no attribution claim
 
 export interface ArtistEvidence {
   vea: NamingSource; // V
   reverseImageSearch: NamingSource; // R — needs sim >= SIM_ARTIST_VOTE and consistency to vote
   appraiser: NamingSource; // A — documented_fact votes; hypothesis does not
+  /** Stage 1d — DINOv2/CLIP match against the ACKG's own image index (ADR-0013 + 2026-09-06
+   *  voting amendment). Only `matchConfidence === "HIGH"` votes; MEDIUM/LOW count as "don't
+   *  know" (dropped in eligibleVotes, no corroboration effect either). */
+  embeddingMatch: NamingSource; // D
   /** Model judgement (ADR-0010 Decision 2): does R's hypothesis contradict the VEA read
    *  (technique / period / signature characters / medium)? null when R has no match. */
   stage1bConsistentWithVea: boolean | null;
@@ -186,7 +196,7 @@ export interface ArtistVerdict {
   verdict: "attributed" | "candidate" | "not_attributed" | "conflict";
   artistName: string | null;
   confidence: Confidence | null;
-  evidenceBasis: string; // "A1".."A11"
+  evidenceBasis: string; // "A1".."A11", or "A6D" (2026-09-06: lone HIGH-confidence Stage 1d match)
   agreementSet: SourceTag[];
   kId: "true" | "false" | "unknown";
   kOeuvreMatchCount: number | null;
@@ -246,6 +256,20 @@ function eligibleVotes(ev: ArtistEvidence, trace: string[]): { votes: Vote[]; ap
     trace.push(
       `K dropped: ackgWorkAnchor titleSim=${(ev.ackgWorkAnchor.titleSim ?? 0).toFixed(2)} < ${TAU_TITLE} or no artist — corroboration only`,
     );
+  }
+
+  // D — Stage 1d DINOv2/CLIP match (2026-09-06 amendment to ADR-0013). Only a HIGH
+  // matchConfidence votes; MEDIUM/LOW is a "don't know" — dropped entirely, not even kept
+  // as a corroborating note, since an uncalibrated embedding score below HIGH isn't known
+  // to mean anything yet (ADR-0013's own "Not addressed" section).
+  if (ev.embeddingMatch.kind === "names") {
+    if (ev.embeddingMatch.matchConfidence === "HIGH") {
+      votes.push({ source: "D", raw: ev.embeddingMatch.raw, identityKey: ev.embeddingMatch.identityKey ?? null });
+    } else {
+      trace.push(
+        `D dropped from vote: matchConfidence=${ev.embeddingMatch.matchConfidence ?? "unknown"} (only HIGH votes; MEDIUM/LOW = don't know)`,
+      );
+    }
   }
 
   return { votes, appraiserHypothesis };
@@ -353,7 +377,8 @@ export function classifyArtistPass(ev: ArtistEvidence): ArtistVerdict {
     return base("conflict", null, null, "A10", ["attributionConflict"]);
   }
 
-  // A1 — n >= 3 (all of V/R/A, or three of V/R/A/K, agree — Decision 4a amendment adds K)
+  // A1 — n >= 3 (any three-plus of V/R/A/K/D agree — Decision 4a amendment added K,
+  // the 2026-09-06 amendment adds D)
   if (ag.n >= 3) {
     const f = ev.kOeuvreMatchCount === 0 ? ["noMatchingOeuvre"] : [];
     if (f.length) trace.push(`K_oeuvre = 0 — noted, not downgraded (A1)`);
@@ -386,6 +411,12 @@ export function classifyArtistPass(ev: ArtistEvidence): ArtistVerdict {
       // ADR-0010 Decision 4a amendment: an ACKG work-level artist+title match, alone,
       // makes a MEDIUM candidate (never "attributed" without a direct V/R/A signal).
       v = base("candidate", only.raw, "MEDIUM", "A8K", ["ackgWorkAnchor"]);
+    } else if (only.source === "D") {
+      // 2026-09-06 amendment: a lone HIGH-confidence Stage 1d embedding match, same
+      // treatment as a lone strong Stage 1b image match (A6) — a real signal, but never
+      // "attributed" on visual similarity alone (ADR-0002's documented false-positive:
+      // two different artists sharing style).
+      v = base("candidate", only.raw, "MEDIUM", "A6D", ["singleSourceEmbeddingMatch"]);
     } else {
       // A: only a documented_fact appraiser claim
       v = base("candidate", only.raw, "MEDIUM", "A8", ["appraiserDocumentedOnly"]);

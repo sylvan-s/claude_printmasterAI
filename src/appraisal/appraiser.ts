@@ -1787,13 +1787,14 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     stage2aModel: string,
     userNotes?: string,
     appraiserInput?: AppraiserInputResult,
-    visualSearch?: VisualSearchResult
+    visualSearch?: VisualSearchResult,
+    stage1d?: Stage1dResult
   ): Promise<TriageResult> {
     if (vea.imageAuthenticity?.haltRecommended) {
       // VEA already halted — no original work to attribute. Skip the call; run the tree
       // on an empty evidence set (classifyTwoPass short-circuits on veaHaltRecommended).
       const empty = emptyEvidenceOutput(vea.overallExtractionConfidence ?? 0);
-      const { triage, twoPass } = runEvidenceTree(empty, true);
+      const { triage, twoPass } = runEvidenceTree(empty, true, stage1d);
       console.log(`[Stage 2a evidence] VEA haltRecommended — tree not run; Scenario ${twoPass.scenario} (${twoPass.scenarioName})`);
       return triage;
     }
@@ -1832,11 +1833,11 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
           reason: "Stage 2a evidence agent output blocked by content filtering on both attempts — needs manual triage.",
           narrative: "The evidence agent could not complete: its output was blocked by content-filtering policy twice. No automated attribution was produced; route to a human.",
         });
-        return runEvidenceTree(degraded, false).triage;
+        return runEvidenceTree(degraded, false, stage1d).triage;
       }
     }
 
-    const { triage, twoPass } = runEvidenceTree(ev, false);
+    const { triage, twoPass } = runEvidenceTree(ev, false, stage1d);
     const rd = triage.routingDecision;
     console.log(
       `[Stage 2a evidence] artist=${twoPass.artistAttribution.evidenceBasis} ${twoPass.artistAttribution.verdict}/${twoPass.artistAttribution.confidence ?? "-"} "${twoPass.artistAttribution.artistName ?? "-"}"` +
@@ -2157,9 +2158,10 @@ export class FourStageAppraiser extends MultiStageAppraiser {
       ? this.runStage1bVisionSearch(input.imageBase64, input.mimeType)
       : Promise.resolve(undefined);
 
-    // ADR-0013, shadow-run only: this result is captured and attached to the
-    // report below for visibility, but — unlike visualSearchPromise — it is
-    // deliberately never passed into runStage2aTriage/runStage2bSpecialist.
+    // ADR-0013 + 2026-09-06 voting amendment: this result is attached to the report for
+    // visibility AND fed into runStage2aTriage as evidence source D (a HIGH-confidence
+    // match votes; MEDIUM/LOW is a "don't know" — see two_pass_attribution.ts). Still
+    // never passed into runStage2bSpecialist — the specialist prompt is unchanged.
     emit({ stage: "stage1d", status: "start", message: "Matching image embeddings against internal art graph…", percent: 5 });
     const embeddingMatchPromise = runEmbeddingMatch
       ? this.runStage1dEmbeddingMatch(input.imageBase64, input.mimeType)
@@ -2192,21 +2194,25 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     // sits on Stage 2a's critical path, rather than 1b and 2a running fully in
     // parallel as before) in exchange for Triage actually being able to weigh a
     // strong reverse-image match instead of it only reaching Stage 2b afterward.
+    // 2026-09-06: Stage 2a now also awaits Stage 1d for the same reason — its
+    // HIGH-confidence DINOv2 match is evidence source D (two_pass_attribution.ts).
     emit({ stage: "stage2a", status: "start", message: "Triaging attribution complexity and routing to specialist…", percent: 24 });
     const [visualSearch, triageResult, appraiserInput, stage1d] = await Promise.all([
       visualSearchPromise,
       (async () => {
-        const [appraiserInputResult, visualSearchResult] = await Promise.all([appraiserInputPromise, visualSearchPromise]);
+        const [appraiserInputResult, visualSearchResult, stage1dResult] = await Promise.all([
+          appraiserInputPromise,
+          visualSearchPromise,
+          embeddingMatchPromise,
+        ]);
         const t2a = Date.now();
         console.log(`[Timing] Stage 2a (Triage) starting — model: ${stage2aModel}`);
-        const r = await this.runStage2aTriage(vea, stage2aModel, input.userNotes, appraiserInputResult, visualSearchResult);
+        const r = await this.runStage2aTriage(vea, stage2aModel, input.userNotes, appraiserInputResult, visualSearchResult, stage1dResult);
         console.log(`[Timing] Stage 2a (Triage) done — ${((Date.now() - t2a) / 1000).toFixed(1)}s`);
         emit({ stage: "stage2a", status: "done", message: "Triage complete — specialist routing confirmed", percent: 40 });
         return r;
       })(),
       appraiserInputPromise,
-      // Independent 4th member, NOT inside the Stage 2a block above — this is what keeps
-      // Stage 1d's result out of runStage2aTriage's inputs (shadow-run scope, ADR-0013).
       embeddingMatchPromise,
     ]);
     emit({ stage: "stage1b", status: "done", message: "Visual search complete", percent: 42 });

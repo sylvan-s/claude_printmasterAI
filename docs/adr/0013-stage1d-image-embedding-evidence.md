@@ -1,7 +1,10 @@
 # ADR-0013: Stage 1d — DINOv2/CLIP image-embedding match as independent visual evidence
 
 **Date:** 2026-09-05
-**Status:** Proposed — not started.
+**Status:** Implemented (Stage 1d itself: DINOv2-Large + CLIP-Base embedding service, ACKG
+vector-index lookup, `runStage1dEmbeddingMatch`, shadow-run in every 4-stage appraisal). See
+the **2026-09-06 amendment** below: the "Deliberately not proposed here" voting-rights
+deferral this ADR originally made is now superseded — D votes, gated to HIGH confidence.
 
 ---
 
@@ -156,15 +159,15 @@ And `TriageResult.evidenceCorroboration` (`stage2a_evidence.ts:384`) gets one ne
 embeddingMatchAgreement: boolean | null;   // null when embeddingMatchAvailable is false
 ```
 
-**Deliberately not proposed here:** adding a fifth `SourceTag` (e.g. `"D"`) to `two_pass_attribution.ts`'s voting
-tree. `SourceTag = "V" | "R" | "A" | "K"` each represents an evidence source whose reliability characteristics are
-already understood and tuned (TAU_NAME, TAU_TITLE, etc., calibrated against real backtest data per ADR-0010).
-Giving embedding-match a vote on day one, before its own precision/recall against a backtest set is known, risks
-exactly the failure ADR-0002 already documented — a stylistic false-positive casting a vote as if it were an
-independent identity signal. Corroboration-only (surfaced to the LLM evidence agent's judgement, and in
-`evidenceCorroboration` for the report/reviewer) is the correct scope for this ADR; formal voting rights are a
-follow-up ADR gated on backtest evidence, exactly as ADR-0011 gates its riskier classifiers on labeled-data
-availability.
+**Deliberately not proposed here (superseded 2026-09-06 — see the amendment below):** adding a fifth `SourceTag`
+(e.g. `"D"`) to `two_pass_attribution.ts`'s voting tree. `SourceTag = "V" | "R" | "A" | "K"` each represents an
+evidence source whose reliability characteristics are already understood and tuned (TAU_NAME, TAU_TITLE, etc.,
+calibrated against real backtest data per ADR-0010). Giving embedding-match a vote on day one, before its own
+precision/recall against a backtest set is known, risks exactly the failure ADR-0002 already documented — a
+stylistic false-positive casting a vote as if it were an independent identity signal. Corroboration-only
+(surfaced to the LLM evidence agent's judgement, and in `evidenceCorroboration` for the report/reviewer) is the
+correct scope for this ADR; formal voting rights are a follow-up ADR gated on backtest evidence, exactly as
+ADR-0011 gates its riskier classifiers on labeled-data availability.
 
 ---
 
@@ -216,10 +219,55 @@ availability.
 
 1. ~~Resolve the multi-model embedding inconsistency~~ — done (Decision 2). **Next:** re-embed Forum's 1,005
    images and the Roseberys catalogue on `dinov2-large` so they re-enter the candidate pool.
-2. **Neo4j vector index + a minimal query function**, tested standalone against the existing corpus, before any
-   pipeline wiring — mirrors how ADR-0011 recommends proving out the cheapest deterministic pieces first.
-3. **Stage 1d as a pipeline stage** producing `Stage1dResult`, initially logged/shadow-run alongside real
-   appraisals without being read by Stage 2a at all — lets the multi-model fix and the vector index get validated
-   against real submissions before any evidence-agent prompt changes.
-4. **Wire into `EvidenceAgentOutput`** (Decision 4) once shadow results look sane, starting corroboration-only.
-5. Only after a genuine backtest — formal voting rights, as its own follow-up ADR.
+2. ~~Neo4j vector index + a minimal query function~~ — done.
+3. ~~Stage 1d as a pipeline stage producing `Stage1dResult`, shadow-run~~ — done; ran in production
+   shadow-run for a period before the amendment below.
+4. ~~Wire into `EvidenceAgentOutput`, corroboration-only~~ — superseded: wired directly into
+   `two_pass_attribution.ArtistEvidence` instead (see amendment), not through the LLM's schema at all.
+5. ~~Only after a genuine backtest — formal voting rights~~ — done via the amendment below, gated to HIGH
+   confidence only rather than a full backtest-fitted threshold (see amendment for the reasoning).
+
+---
+
+## Amendment (2026-09-06): D given voting rights, gated to HIGH confidence
+
+This ADR's original Decision 4 explicitly withheld a `SourceTag` for Stage 1d, deferring formal voting rights to
+"a follow-up ADR gated on backtest evidence." Per direct user instruction, that follow-up happens here rather
+than as a separate ADR number, because the change made is narrower than a full backtest-calibrated threshold:
+**a HIGH `matchConfidence` votes; MEDIUM and LOW are treated as "don't know"** — no vote, no corroboration effect,
+dropped as if the match hadn't run at all. This sidesteps needing the labeled backtest set the original deferral
+called for, by only trusting the tier of the signal the model already self-reports as its strongest read, on the
+theory that a HIGH categorical confidence is far less likely to be the ADR-0002 false-positive-namesake failure
+mode than a MEDIUM/LOW one — the same logic already used for Stage 1b's R (gated on a numeric similarity floor,
+`SIM_ARTIST_VOTE`/`SIM_ARTIST_STRONG` in `two_pass_attribution.ts`).
+
+**What changed:**
+- `SourceTag` gains `"D"`; `ArtistEvidence` gains an `embeddingMatch: NamingSource` cell.
+- Unlike V/R/A/K, this cell is **not** filled by the LLM evidence agent's tool call — it costs nothing to compute
+  deterministically from `Stage1dResult.bestMatchArtist` / `matchConfidence`, so `evidenceToTwoPassInput()` and
+  `runEvidenceTree()` (`stage2a_evidence.ts`) both take an optional `stage1d` parameter and build the cell
+  directly in code. `ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT`/`ATTRIBUTION_EVIDENCE_SCHEMA` are untouched — the LLM is
+  never shown Stage 1d's result and makes no judgement about it.
+- `eligibleVotes()` gates D to `matchConfidence === "HIGH"`; MEDIUM/LOW are logged to the rule trace as dropped,
+  with zero downstream effect (no corroboration lift either, unlike a hypothesis-tier appraiser claim).
+- A lone HIGH-confidence D vote is a new rule, **A6D** — same treatment as A6 (a lone strong Stage 1b image
+  match): `candidate`/MEDIUM, never `attributed` on visual similarity alone. D joining V/R/A/K's agreement
+  cluster participates in A1 (n≥3) and A2/A3/A4 (n=2) exactly like any other source — `agree()`/`eligibleVotes()`
+  were already generic over the vote list, so no special-casing was needed there.
+- `appraiser.ts`'s `FourStageAppraiser.appraise()` now awaits `embeddingMatchPromise` inside the Stage 2a block
+  (previously an independent 4th `Promise.all` member, deliberately kept out of Stage 2a's inputs per this ADR's
+  original shadow-run scope) and passes the result into `runStage2aTriage`. This adds Stage 1d's latency to Stage
+  2a's critical path — the same tradeoff ADR-0003 item 2 already accepted for Stage 1b.
+- Stage 1d is **still not** passed into Stage 2b (`runStage2bSpecialist`) — unchanged, out of scope here.
+
+**Tests:** 7 new cases in `tests/two_pass_attribution/run_tests.ts` (A6D alone; MEDIUM/LOW don't vote; D joining
+V to reach n=2; D+V+R to reach n=3/A1; D conflicting with V) — 72 → 78. 5 new cases in
+`tests/stage2a_evidence/run_tests.ts` covering the `stage1d` parameter end to end (no arg / no bestMatchArtist /
+HIGH / a full `runEvidenceTree` HIGH-alone and MEDIUM-alone run) — 24 → 29.
+
+**Not addressed by the amendment** (inherits this ADR's own unaddressed items above): `matchConfidence`
+calibration for Stage 1d specifically was never separately validated against a labeled backtest set — this
+amendment's "HIGH only" gate is a conservative stand-in for that validation, not a replacement for eventually
+doing it. If Stage 1d's HIGH tier turns out to be poorly calibrated (too permissive or too rare) once real
+backtest data accumulates, revisit the gate — tighten to a numeric embedding-similarity floor (mirroring R's
+`SIM_ARTIST_VOTE`) rather than trusting the categorical label, or recalibrate what HIGH means at the source.

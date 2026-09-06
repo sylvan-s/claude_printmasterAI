@@ -11,9 +11,14 @@
  *                               plus the ADR-0010 Decision 7 artistAttribution /
  *                               workIdentification / impressionAssessment fields.
  *
+ * evidenceToTwoPassInput() also takes an optional Stage1dResult (ADR-0013's DINOv2/CLIP
+ * match against the ACKG's own image index) and builds the D evidence cell from it directly
+ * in code — no LLM judgement involved, unlike V/R/A/K. Only a HIGH matchConfidence votes
+ * (2026-09-06 amendment to ADR-0013, which had deliberately withheld voting rights).
+ *
  * Pure and unit-tested — tests/stage2a_evidence/.
  */
-import type { TriageResult } from "../types";
+import type { TriageResult, Stage1dResult } from "../types";
 import {
   classifyTwoPass,
   nameSimilarity,
@@ -151,11 +156,23 @@ function identityKeyFor(name: string, dom: string, key: string): string | null {
 // ───────────────────────────────────────────────────────────────────────────────
 // evidence cells -> TwoPassInput
 // ───────────────────────────────────────────────────────────────────────────────
-export function evidenceToTwoPassInput(ev: EvidenceAgentOutput, veaHaltRecommended: boolean): TwoPassInput {
+export function evidenceToTwoPassInput(
+  ev: EvidenceAgentOutput,
+  veaHaltRecommended: boolean,
+  stage1d?: Stage1dResult | null,
+): TwoPassInput {
   const a = ev.artistEvidence;
   const w = ev.workEvidence;
   const dom = a.dominantCandidateName || "";
   const domKey = a.dominantCandidateIdentityKey || "";
+
+  // D — Stage 1d DINOv2/CLIP match against the ACKG's own image index (ADR-0013 + the
+  // 2026-09-06 voting amendment). Computed entirely in code from Stage 1d's own output —
+  // no LLM judgement involved, unlike V/R/A/K — so this is built here rather than read off
+  // the evidence agent's tool-call output. eligibleVotes() below gates it to HIGH only.
+  const embeddingMatch: NamingSource = stage1d?.bestMatchArtist
+    ? { kind: "names", raw: stage1d.bestMatchArtist, matchConfidence: stage1d.matchConfidence ?? undefined }
+    : { kind: "no_match" };
 
   const veaSource: NamingSource = a.veaNamesArtist && a.veaArtistName
     ? { kind: "names", raw: a.veaArtistName, identityKey: identityKeyFor(a.veaArtistName, dom, domKey) }
@@ -248,6 +265,7 @@ export function evidenceToTwoPassInput(ev: EvidenceAgentOutput, veaHaltRecommend
       vea: veaSource,
       reverseImageSearch,
       appraiser,
+      embeddingMatch,
       stage1bConsistentWithVea: rNamed ? !!a.reverseImageConsistentWithVea : null,
       veaAuthorshipSignalLegible: !!a.veaAuthorshipSignalLegible,
       veaSignatureConfidence: num(a.veaSignatureConfidence),
@@ -483,11 +501,15 @@ export function emptyEvidenceOutput(
 }
 
 /** One-shot: evidence cells -> tree -> TriageResult. */
-export function runEvidenceTree(ev: EvidenceAgentOutput, veaHaltRecommended: boolean): {
+export function runEvidenceTree(
+  ev: EvidenceAgentOutput,
+  veaHaltRecommended: boolean,
+  stage1d?: Stage1dResult | null,
+): {
   triage: TriageResult;
   twoPass: TwoPassResult;
 } {
-  const twoPass = classifyTwoPass(evidenceToTwoPassInput(ev, veaHaltRecommended));
+  const twoPass = classifyTwoPass(evidenceToTwoPassInput(ev, veaHaltRecommended, stage1d));
   return { triage: assembleTriageResult(ev, twoPass), twoPass };
 }
 

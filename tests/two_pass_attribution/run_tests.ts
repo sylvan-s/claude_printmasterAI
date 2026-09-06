@@ -236,6 +236,79 @@ test("K naming a different identity than VEA -> CONFLICT (A10)", () => {
   assert.equal(v.evidenceBasis, "A10");
 });
 
+// ── D vote — Stage 1d DINOv2 match, 2026-09-06 amendment to ADR-0013 ────────
+
+test("D alone at HIGH confidence -> CANDIDATE MEDIUM (A6D)", () => {
+  const v = classifyArtistPass(
+    f.artistEv({ embeddingMatch: { kind: "names", raw: "Henry Moore", matchConfidence: "HIGH" } }),
+  );
+  assert.equal(v.evidenceBasis, "A6D");
+  assert.equal(v.verdict, "candidate");
+  assert.equal(v.confidence, "MEDIUM");
+  assert.equal(v.artistName, "Henry Moore");
+  assert.deepEqual(v.agreementSet, ["D"]);
+});
+
+test("D alone at MEDIUM confidence is a 'don't know' — does NOT vote (stays NOT ATTRIBUTED)", () => {
+  const v = classifyArtistPass(
+    f.artistEv({ embeddingMatch: { kind: "names", raw: "Henry Moore", matchConfidence: "MEDIUM" } }),
+  );
+  assert.equal(v.evidenceBasis, "A11");
+  assert.equal(v.verdict, "not_attributed");
+  assert.ok(v.ruleTrace.some((l) => l.includes("D dropped from vote")));
+});
+
+test("D alone at LOW confidence is a 'don't know' — does NOT vote", () => {
+  const v = classifyArtistPass(
+    f.artistEv({ embeddingMatch: { kind: "names", raw: "Henry Moore", matchConfidence: "LOW" } }),
+  );
+  assert.equal(v.evidenceBasis, "A11");
+  assert.equal(v.verdict, "not_attributed");
+});
+
+test("D (HIGH) + a consistent VEA signature -> n=2 (A2/A3/A4 depending on K_oeuvre)", () => {
+  const v = classifyArtistPass(
+    f.artistEv({
+      vea: { kind: "names", raw: "Henry Moore" },
+      veaAuthorshipSignalLegible: true,
+      veaSignatureConfidence: 0.8,
+      embeddingMatch: { kind: "names", raw: "Henry Moore", matchConfidence: "HIGH" },
+    }),
+  );
+  assert.equal(v.verdict, "attributed");
+  assert.ok(["A2", "A3", "A4"].includes(v.evidenceBasis));
+  assert.ok(v.agreementSet.includes("D") && v.agreementSet.includes("V"));
+});
+
+test("D (HIGH) + V + R all agree -> n=3, A1 HIGH", () => {
+  const v = classifyArtistPass(
+    f.artistEv({
+      vea: { kind: "names", raw: "Henry Moore" },
+      veaAuthorshipSignalLegible: true,
+      veaSignatureConfidence: 0.8,
+      reverseImageSearch: { kind: "names", raw: "Henry Moore", sim: 0.9 },
+      stage1bConsistentWithVea: true,
+      embeddingMatch: { kind: "names", raw: "Henry Moore", matchConfidence: "HIGH" },
+    }),
+  );
+  assert.equal(v.evidenceBasis, "A1");
+  assert.equal(v.confidence, "HIGH");
+  assert.deepEqual(v.agreementSet.sort(), ["D", "R", "V"]);
+});
+
+test("D (HIGH) naming a different identity than VEA -> CONFLICT (A10)", () => {
+  const v = classifyArtistPass(
+    f.artistEv({
+      vea: { kind: "names", raw: "Joan Miró" },
+      veaAuthorshipSignalLegible: true,
+      veaSignatureConfidence: 0.8,
+      embeddingMatch: { kind: "names", raw: "Marc Chagall", matchConfidence: "HIGH" },
+    }),
+  );
+  assert.equal(v.verdict, "conflict");
+  assert.equal(v.evidenceBasis, "A10");
+});
+
 // ── GATE ─────────────────────────────────────────────────────────────────────
 console.log("\nPass-2 gate\n");
 

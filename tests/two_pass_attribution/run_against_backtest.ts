@@ -116,6 +116,9 @@ function reportToTwoPassInput(report: any): { input: TwoPassInput; notes: string
       vea: vSource,
       reverseImageSearch: rSource,
       appraiser: aSource,
+      // Not reconstructed from the backtest artefact — this coarse adapter predates the D
+      // vote. "no_match" == not modeled here.
+      embeddingMatch: { kind: "no_match" },
       stage1bConsistentWithVea: s1bConsistent,
       veaAuthorshipSignalLegible: maxSigConf >= 0.5 || !!legibleSig,
       veaSignatureConfidence: sigs.length ? maxSigConf : null,
