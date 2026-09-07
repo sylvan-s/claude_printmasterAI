@@ -336,6 +336,40 @@ _MULTI_PHRASES = [
     "and another by", "and one by", "a collection",
 ]
 
+# "After X, and After Y" / "attributed to X, and attributed to Y" -- a second qualified
+# attribution joined onto the first by "and". Confirmed real and MISSED by every check
+# above (2026-09-07 incident): Bonhams lot 19117-7139, "After René  Magritte, and After
+# Paul Wunderlich, Two Exhibition Posters" -- a 2-item, 2-artist lot. Its "(2)" markers
+# are followed by medium/dimension text so _TRAILING_COUNT_RE's end-anchor never matched;
+# its raw `title` field uses ";" as the separator but the semicolon check runs against
+# the *parsed* title (derived from catalog_description's LotName, which phrases the join
+# with a comma, not ";"), so that never fired either. Bonhams' own structured `artist`
+# field only kept the first name ("After René Magritte"), and its `primary_image_url`
+# happened to be the SECOND item -- so the lot was ingested as one Magritte-attributed
+# ConceptualWork whose DigitalImage was actually the Wunderlich poster. Checks for "and "
+# immediately followed by any qualifier prefix from QUALIFIER_PREFIX_MAP, not just
+# "after", since the same construction plausibly recurs with "attributed to"/"in the
+# manner of"/etc.
+#
+# Re-run against the full raw corpus (2026-09-07): 28 matches, of which 2 more were
+# already-ingested bad data fixed alongside this incident (Bonhams lots 10248-114 --
+# "George Townly Stubbs after George Stubbs, Godolphin Arabian... With one other by and
+# after the same hand... and small collection of various sporting images" -- and
+# 15203-103 -- Samuel Prout's genuine 29-view portfolio with "a small quantity of prints
+# by and after various hands" tacked onto the same lot). Two of the 28 are KNOWN,
+# ACCEPTED false positives, confirmed already-correct in the graph and deliberately not
+# worked around: lot 18833-154 ("after the reworking by Captain Ballie and after the
+# plate was divided" -- "after" used in its plain temporal sense, not as a second
+# attribution) and lot 17089-9 (Patrick Procktor's real print title is literally "Cobra
+# and After"). Both are single legitimate works this heuristic would now flag for
+# exclusion on a fresh ingestion run -- an over-exclusion, not a corruption, which is the
+# direction of error this heuristic (like every other one in this function) is meant to
+# fail toward.
+_AND_QUALIFIER_RE = re.compile(
+    r"\band\s+(?:" + "|".join(re.escape(p.strip()) for p, _ in QUALIFIER_PREFIX_MAP) + r")\b",
+    re.IGNORECASE,
+)
+
 
 def detect_multi_work(catalog_description_raw, title_raw, parsed_title=None):
     text = strip_tags(catalog_description_raw or "")
@@ -348,6 +382,8 @@ def detect_multi_work(catalog_description_raw, title_raw, parsed_title=None):
     for phrase in _MULTI_PHRASES:
         if phrase in low:
             return True, f"phrase:{phrase}"
+    if _AND_QUALIFIER_RE.search(low):
+        return True, "and_qualifier_second_artist"
     # Confirmed real case (found by direct sampling): several distinct titles joined by
     # ";" on one title line with no trailing count marker at all ("Untitled (Reclining
     # Nude); Ostend; French Horn" -- three separate Auguste Brouet etchings in one lot,
