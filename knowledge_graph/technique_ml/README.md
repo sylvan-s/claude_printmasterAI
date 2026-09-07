@@ -65,8 +65,12 @@ knowledge_graph/venv-embeddings/bin/python knowledge_graph/technique_ml/train_te
 ```
 
 Training is ~50s on CPU; there is no GPU path because the embeddings are frozen and
-the head is tiny. Needs the same `venv-embeddings` as the rest of the embedding
-toolkit, plus `scikit-learn`.
+the head is tiny. Needs nothing beyond the `venv-embeddings` the rest of the embedding
+toolkit already uses — `numpy`, `torch` and `neo4j`. Deliberately no scikit-learn: the
+splitter has to be group-aware *and* multi-label-stratified at once (`GroupKFold`
+ignores labels, so it strands rare techniques entirely in one fold), and the metrics
+all need artist weighting inside threshold search and average precision, so both are
+~15 lines of numpy in `dataset.py` and `train_technique_classifier.py` instead.
 
 Inference:
 
