@@ -38,10 +38,16 @@ records):
 Same isolated-venv/native-arm64 requirement as every other embedding script here —
 reuses the existing `venv-embeddings` (already built: torch 2.8.0, transformers 4.57.6).
 
+A failed image (almost always a dead source URL — see `WRITE_FAILURE_QUERY`) is marked
+`embeddingFailed` on the DigitalImage node itself, not just logged locally, so a scheduled
+run (no access to a previous run's local FAILURE_LOG_PATH) doesn't retry the same permanent
+failure forever. Use --retry-failures to deliberately recheck them later.
+
 Usage:
     python3 bonhams_embed_images.py --all --limit 50     # test run
     python3 bonhams_embed_images.py --all
     python3 bonhams_embed_images.py --all --force
+    python3 bonhams_embed_images.py --all --retry-failures --limit 50   # recheck dead URLs
 """
 
 import argparse
@@ -90,6 +96,7 @@ SET img.embedding = row.dinoEmbedding,
     img.clipImageEmbeddingModel = row.clipModel,
     img.clipImageEmbeddingDim = row.clipDim,
     img.clipEmbeddedAt = row.embeddedAt
+REMOVE img.embeddingFailed, img.embeddingFailedReason, img.embeddingFailedAt
 WITH row
 MATCH (target {id: row.targetId})
 FOREACH (_ IN CASE WHEN row.clipTextEmbedding IS NOT NULL THEN [1] ELSE [] END |
@@ -100,6 +107,21 @@ FOREACH (_ IN CASE WHEN row.clipTextEmbedding IS NOT NULL THEN [1] ELSE [] END |
 )
 """
 
+# Persists a failed download/embed attempt onto the DigitalImage node itself, not just the
+# local FAILURE_LOG_PATH json — this needs to survive across machines/CI runs (a scheduled
+# GitHub Actions run has no access to a previous run's local log file). Written 2026-09-07
+# after the first unattended daily run would otherwise have re-tried the same ~298 permanent
+# HTTP 404s (dead 2005-era Bonhams lot images, confirmed via the failure log from an earlier
+# run) every single day, forever, since ORDER BY imgId is deterministic and never-embedded
+# rows never drop out of the candidate pool on their own.
+WRITE_FAILURE_QUERY = """
+UNWIND $rows AS row
+MATCH (img:DigitalImage {id: row.imgId})
+SET img.embeddingFailed = true,
+    img.embeddingFailedReason = row.error,
+    img.embeddingFailedAt = row.failedAt
+"""
+
 FAILURE_LOG_PATH = "bonhams_embed_images_failures.json"
 
 # WHERE must come directly after the primary MATCH, before the OPTIONAL MATCHes — a
@@ -108,9 +130,17 @@ FAILURE_LOG_PATH = "bonhams_embed_images_failures.json"
 # fields null) instead of excluding it. This exact bug made --force effectively always-on
 # in the original embed_tate_images.py/bm_embed_images.py (doc 09 §7.3) — written
 # correctly from the start here rather than re-discovered.
+#
+# embeddingFailed is skipped by default (a prior attempt already recorded a real error —
+# most commonly a permanently dead source URL, not a transient blip) unless --retry-failures
+# or --force is passed. --force bypasses both the embedding and embeddingFailed checks.
 FETCH_CANDIDATES_QUERY = """
 MATCH (img:DigitalImage)-[:SHOWS]->(target)<-[:DOCUMENTS]-(src:SourceRecord)
-WHERE src.institutionName IN ['Bonhams', 'Skinner'] AND ($force OR img.embedding IS NULL)
+WHERE src.institutionName IN ['Bonhams', 'Skinner']
+  AND (
+    $force
+    OR (img.embedding IS NULL AND ($retryFailures OR coalesce(img.embeddingFailed, false) = false))
+  )
 OPTIONAL MATCH (er:EditionRun)-[:INCLUDES]->(target)
 OPTIONAL MATCH (cw:ConceptualWork)-[:PRINTED_AS]->(er)
 RETURN img.id AS imgId, img.sourceUrl AS sourceUrl, target.id AS targetId,
@@ -119,11 +149,11 @@ ORDER BY imgId
 """
 
 
-def fetch_candidates(force=False, limit=None):
+def fetch_candidates(force=False, retry_failures=False, limit=None):
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     try:
         with driver.session(database=NEO4J_DATABASE) as session:
-            result = session.run(FETCH_CANDIDATES_QUERY, force=force)
+            result = session.run(FETCH_CANDIDATES_QUERY, force=force, retryFailures=retry_failures)
             rows = [dict(r) for r in result]
     finally:
         driver.close()
@@ -188,7 +218,7 @@ def embed_clip_text(processor, model, text):
     return features.squeeze(0).tolist()
 
 
-def _write_chunk_with_retry(rows, retries=4, backoff_seconds=5.0):
+def _write_chunk_with_retry(rows, query=WRITE_EMBEDDING_QUERY, retries=4, backoff_seconds=5.0):
     if not rows:
         return
     last_error = None
@@ -196,7 +226,7 @@ def _write_chunk_with_retry(rows, retries=4, backoff_seconds=5.0):
         driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
         try:
             with driver.session(database=NEO4J_DATABASE) as session:
-                session.run(WRITE_EMBEDDING_QUERY, rows=rows).consume()
+                session.run(query, rows=rows).consume()
             return
         except Exception as e:
             last_error = e
@@ -217,6 +247,7 @@ def run_embeddings(candidates, chunk_size=25, keep_cache=False):
     total = len(candidates)
     start = time.time()
     write_buffer = []
+    failure_buffer = []
     failures = []
     text_embedded_count = 0
 
@@ -236,7 +267,11 @@ def run_embeddings(candidates, chunk_size=25, keep_cache=False):
                 text_embedded_count += 1
         except Exception as e:
             failures.append({"imgId": c["imgId"], "url": c["sourceUrl"], "error": str(e)})
+            failure_buffer.append({"imgId": c["imgId"], "error": str(e), "failedAt": datetime.now(timezone.utc).isoformat()})
             print(f"[SKIP] {c['imgId']}: {e}", flush=True)
+            if len(failure_buffer) >= chunk_size:
+                _write_chunk_with_retry(failure_buffer, query=WRITE_FAILURE_QUERY)
+                failure_buffer = []
             continue
         finally:
             if not keep_cache and os.path.exists(dest_path):
@@ -265,6 +300,7 @@ def run_embeddings(candidates, chunk_size=25, keep_cache=False):
               f"| elapsed={elapsed:.0f}s | est_remaining={(elapsed/done)*(total-done):.0f}s", flush=True)
 
     _write_chunk_with_retry(write_buffer)
+    _write_chunk_with_retry(failure_buffer, query=WRITE_FAILURE_QUERY)
 
     if not keep_cache:
         shutil.rmtree(SCRATCH_DIR, ignore_errors=True)
@@ -284,13 +320,14 @@ if __name__ == "__main__":
     parser.add_argument("--all", action="store_true", help="Embed all qualifying Bonhams+Skinner DigitalImage nodes already in the graph")
     parser.add_argument("--limit", type=int, help="Cap the number of images embedded (for a test run)")
     parser.add_argument("--force", action="store_true", help="Re-embed even if already set")
+    parser.add_argument("--retry-failures", action="store_true", help="Include images previously marked embeddingFailed (e.g. to recheck dead URLs later); skipped by default so a persistent failure (a dead source URL) isn't retried on every run forever")
     parser.add_argument("--keep-cache", action="store_true", help="Don't delete downloaded images after embedding")
     parser.add_argument("--chunk-size", type=int, default=25, help="Neo4j write batch size")
     args = parser.parse_args()
 
     if not args.all:
-        parser.error("Provide --all (optionally with --limit/--force/--keep-cache)")
+        parser.error("Provide --all (optionally with --limit/--force/--retry-failures/--keep-cache)")
 
-    candidates = fetch_candidates(force=args.force, limit=args.limit)
-    print(f"Found {len(candidates)} image(s) to embed (force={args.force})", flush=True)
+    candidates = fetch_candidates(force=args.force, retry_failures=args.retry_failures, limit=args.limit)
+    print(f"Found {len(candidates)} image(s) to embed (force={args.force}, retry_failures={args.retry_failures})", flush=True)
     run_embeddings(candidates, chunk_size=args.chunk_size, keep_cache=args.keep_cache)

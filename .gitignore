@@ -18,6 +18,8 @@ knowledge_graph/embed_dinov2_failures.json
 knowledge_graph/tmp_tate_images/
 knowledge_graph/resolve_tate_images_failures.json
 knowledge_graph/embed_tate_images_failures.json
+knowledge_graph/bonhams_embed_images_failures.json
+knowledge_graph/tmp_bonhams_images/
 
 # ULAN backfill reports (regenerate on demand)
 knowledge_graph/artist_ulan_report.csv

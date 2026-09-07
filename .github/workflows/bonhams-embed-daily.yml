@@ -1,0 +1,88 @@
+name: Bonhams Embedding — Daily Batch
+
+# Incrementally embeds DINOv2 + CLIP vectors for Bonhams/Skinner DigitalImage nodes that
+# are already in the ACKG but not yet embedded (knowledge_graph/bonhams_embed_images.py).
+# 150/day was picked as a small, steady pace that finishes a run in a few minutes on a
+# free-tier runner — raise `limit` (workflow_dispatch input, or the default below) if a
+# faster pace is wanted; there's no reason it must stay 150 forever.
+#
+# Requires 4 repo secrets: NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, NEO4J_DATABASE — the same
+# self-hosted Neo4j CE instance (Oracle Cloud, bolt://, Bolt port already open to 0.0.0.0/0
+# per docs — see project memory) the rest of this pipeline uses.
+#
+# A permanently failing image (dead source URL — the common case for very old lots) is
+# marked embeddingFailed on its own node and skipped by every future run by default, so
+# this cron makes real forward progress instead of retrying the same dead links forever.
+# To recheck previously-failed images later (e.g. if Bonhams fixes a CDN path), run this
+# workflow manually with retryFailures: true.
+
+on:
+  schedule:
+    - cron: "20 3 * * *" # daily, 03:20 UTC — off a round hour to avoid GitHub's scheduling congestion
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Number of images to embed this run"
+        required: false
+        default: "150"
+      retryFailures:
+        description: "Also recheck images previously marked embeddingFailed"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: bonhams-embed
+  cancel-in-progress: false
+
+jobs:
+  embed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: knowledge_graph
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Model weights (DINOv2-Large ~1.2GB, CLIP-Base ~600MB) via HuggingFace, plus the pip
+      # cache — both keyed on the requirements file so a dependency bump busts the cache.
+      - name: Cache pip + HuggingFace model weights
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/huggingface
+          key: bonhams-embed-${{ runner.os }}-${{ hashFiles('knowledge_graph/requirements-embeddings.txt') }}
+
+      - name: Install dependencies (CPU-only torch — no CUDA wheel on a CPU-only runner)
+        run: |
+          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet transformers pillow requests neo4j
+
+      - name: Embed a batch
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          NEO4J_DATABASE: ${{ secrets.NEO4J_DATABASE }}
+        run: |
+          LIMIT="${{ github.event.inputs.limit || '150' }}"
+          RETRY_FLAG=""
+          if [ "${{ github.event.inputs.retryFailures }}" = "true" ]; then
+            RETRY_FLAG="--retry-failures"
+          fi
+          python bonhams_embed_images.py --all --limit "$LIMIT" $RETRY_FLAG
+
+      - name: Upload this run's failure log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bonhams-embed-failures-${{ github.run_id }}
+          path: knowledge_graph/bonhams_embed_images_failures.json
+          if-no-files-found: ignore
+          retention-days: 30
