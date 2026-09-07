@@ -1,0 +1,520 @@
+{
+  "generated_at": "2026-09-07 10:05:03",
+  "config": {
+    "data": "/Users/sylvansitkey/PycharmProjects/claude_printmasterAI/knowledge_graph/technique_ml/data/dataset.npz",
+    "out_dir": "/Users/sylvansitkey/PycharmProjects/claude_printmasterAI/knowledge_graph/technique_ml/artifacts",
+    "min_class_count": 150,
+    "per_artist_cap": 40,
+    "artist_weight_alpha": 0.5,
+    "escalation_bar": 0.45,
+    "model": "mlp",
+    "hidden": 512,
+    "dropout": 0.3,
+    "lr": 0.001,
+    "weight_decay": 0.0001,
+    "batch_size": 256,
+    "epochs": 60,
+    "patience": 8,
+    "max_pos_weight": 20.0,
+    "seed": 13
+  },
+  "families": [
+    "Intaglio",
+    "Other",
+    "Photographic",
+    "Planographic",
+    "Relief",
+    "Screen"
+  ],
+  "stage_a_family": {
+    "artist_balanced_macro_f1": 0.5578,
+    "per_class": [
+      {
+        "technique": "Intaglio",
+        "support": 2288,
+        "support_artists": 490,
+        "precision": 0.7359,
+        "recall": 0.6722,
+        "f1": 0.7026,
+        "artist_balanced_f1": 0.6857,
+        "threshold": 0.53,
+        "average_precision": 0.7981,
+        "artist_balanced_average_precision": 0.7775
+      },
+      {
+        "technique": "Planographic",
+        "support": 2090,
+        "support_artists": 456,
+        "precision": 0.4182,
+        "recall": 0.8833,
+        "f1": 0.5677,
+        "artist_balanced_f1": 0.5863,
+        "threshold": 0.18,
+        "average_precision": 0.5652,
+        "artist_balanced_average_precision": 0.6362
+      },
+      {
+        "technique": "Screen",
+        "support": 1092,
+        "support_artists": 177,
+        "precision": 0.4938,
+        "recall": 0.619,
+        "f1": 0.5494,
+        "artist_balanced_f1": 0.5583,
+        "threshold": 0.54,
+        "average_precision": 0.564,
+        "artist_balanced_average_precision": 0.5688
+      },
+      {
+        "technique": "Photographic",
+        "support": 822,
+        "support_artists": 238,
+        "precision": 0.803,
+        "recall": 0.9075,
+        "f1": 0.8521,
+        "artist_balanced_f1": 0.8796,
+        "threshold": 0.83,
+        "average_precision": 0.9249,
+        "artist_balanced_average_precision": 0.9211
+      },
+      {
+        "technique": "Relief",
+        "support": 462,
+        "support_artists": 148,
+        "precision": 0.4918,
+        "recall": 0.3896,
+        "f1": 0.4348,
+        "artist_balanced_f1": 0.4313,
+        "threshold": 0.81,
+        "average_precision": 0.4611,
+        "artist_balanced_average_precision": 0.4312
+      },
+      {
+        "technique": "Other",
+        "support": 71,
+        "support_artists": 35,
+        "precision": 0.1548,
+        "recall": 0.1831,
+        "f1": 0.1677,
+        "artist_balanced_f1": 0.2054,
+        "threshold": 0.56,
+        "average_precision": 0.082,
+        "artist_balanced_average_precision": 0.1906
+      }
+    ]
+  },
+  "stage_b_gates": {
+    "Intaglio": {
+      "Aquatint": {
+        "point": 0.4334,
+        "lower": 0.4004
+      },
+      "Drypoint": {
+        "point": 0.2539,
+        "lower": 0.2116
+      },
+      "Engraving": {
+        "point": 0.5823,
+        "lower": 0.5471
+      },
+      "Etching": {
+        "point": 0.7849,
+        "lower": 0.7683
+      },
+      "Intaglio": {
+        "point": 0.1812,
+        "lower": 0.1034
+      },
+      "Mezzotint": {
+        "point": 0.3312,
+        "lower": 0.2602
+      },
+      "Photogravure": {
+        "point": 0.4522,
+        "lower": 0.3186
+      }
+    },
+    "Other": {
+      "Collage": {
+        "point": 0.2994,
+        "lower": 0.2093
+      }
+    },
+    "Photographic": {
+      "Chromogenic print": {
+        "point": 0.5238,
+        "lower": 0.4729
+      },
+      "Cibachrome print": null,
+      "Gelatin silver print": {
+        "point": 0.8148,
+        "lower": 0.7963
+      },
+      "Platinum print": {
+        "point": 0.0,
+        "lower": 0.0
+      }
+    },
+    "Planographic": {
+      "Lithograph": {
+        "point": 0.9129,
+        "lower": 0.9025
+      },
+      "Monotype": {
+        "point": 0.0661,
+        "lower": 0.0
+      },
+      "Offset lithograph": {
+        "point": 0.1979,
+        "lower": 0.1705
+      }
+    },
+    "Relief": {
+      "Embossing": {
+        "point": 0.5291,
+        "lower": 0.4323
+      },
+      "Letterpress": null,
+      "Linocut": {
+        "point": 0.3744,
+        "lower": 0.2749
+      },
+      "Wood engraving": {
+        "point": 0.3184,
+        "lower": 0.2027
+      },
+      "Woodcut": {
+        "point": 0.6654,
+        "lower": 0.6205
+      }
+    },
+    "Screen": {
+      "Screenprint / Serigraphy": {
+        "point": 0.506,
+        "lower": 0.4834
+      }
+    }
+  },
+  "emitted_techniques": [
+    "Chromogenic print",
+    "Engraving",
+    "Etching",
+    "Gelatin silver print",
+    "Lithograph",
+    "Screenprint / Serigraphy",
+    "Woodcut"
+  ],
+  "end_to_end": {
+    "test_images": 6650,
+    "coverage": 0.9589,
+    "correct_when_answered": 0.6504,
+    "per_technique": [
+      {
+        "technique": "Lithograph",
+        "support": 1862,
+        "precision": 0.4129,
+        "recall": 0.8794,
+        "artist_balanced_f1": 0.562
+      },
+      {
+        "technique": "Etching",
+        "support": 1618,
+        "precision": 0.4488,
+        "recall": 0.578,
+        "artist_balanced_f1": 0.5053
+      },
+      {
+        "technique": "Screenprint / Serigraphy",
+        "support": 1092,
+        "precision": 0.502,
+        "recall": 0.6288,
+        "artist_balanced_f1": 0.5583
+      },
+      {
+        "technique": "Gelatin silver print",
+        "support": 681,
+        "precision": 0.6846,
+        "recall": 0.8337,
+        "artist_balanced_f1": 0.7518
+      },
+      {
+        "technique": "Engraving",
+        "support": 274,
+        "precision": 0.4397,
+        "recall": 0.7145,
+        "artist_balanced_f1": 0.5444
+      },
+      {
+        "technique": "Woodcut",
+        "support": 220,
+        "precision": 0.3687,
+        "recall": 0.3944,
+        "artist_balanced_f1": 0.3811
+      },
+      {
+        "technique": "Chromogenic print",
+        "support": 87,
+        "precision": 0.3762,
+        "recall": 0.4438,
+        "artist_balanced_f1": 0.4072
+      }
+    ]
+  },
+  "flat_baseline": {
+    "artist_balanced_macro_f1": 0.2984,
+    "per_class": [
+      {
+        "technique": "Lithograph",
+        "support": 1862,
+        "support_artists": 436,
+        "precision": 0.4263,
+        "recall": 0.776,
+        "f1": 0.5503,
+        "artist_balanced_f1": 0.5898,
+        "threshold": 0.44,
+        "average_precision": 0.5488,
+        "artist_balanced_average_precision": 0.6205
+      },
+      {
+        "technique": "Etching",
+        "support": 1618,
+        "support_artists": 321,
+        "precision": 0.5633,
+        "recall": 0.5909,
+        "f1": 0.5768,
+        "artist_balanced_f1": 0.5291,
+        "threshold": 0.58,
+        "average_precision": 0.6194,
+        "artist_balanced_average_precision": 0.5366
+      },
+      {
+        "technique": "Screenprint / Serigraphy",
+        "support": 1092,
+        "support_artists": 177,
+        "precision": 0.4696,
+        "recall": 0.6511,
+        "f1": 0.5457,
+        "artist_balanced_f1": 0.5626,
+        "threshold": 0.63,
+        "average_precision": 0.5508,
+        "artist_balanced_average_precision": 0.5836
+      },
+      {
+        "technique": "Gelatin silver print",
+        "support": 681,
+        "support_artists": 175,
+        "precision": 0.7155,
+        "recall": 0.8972,
+        "f1": 0.7961,
+        "artist_balanced_f1": 0.7811,
+        "threshold": 0.67,
+        "average_precision": 0.8781,
+        "artist_balanced_average_precision": 0.8439
+      },
+      {
+        "technique": "Aquatint",
+        "support": 680,
+        "support_artists": 163,
+        "precision": 0.2328,
+        "recall": 0.2191,
+        "f1": 0.2258,
+        "artist_balanced_f1": 0.1938,
+        "threshold": 0.65,
+        "average_precision": 0.2142,
+        "artist_balanced_average_precision": 0.1756
+      },
+      {
+        "technique": "Drypoint",
+        "support": 323,
+        "support_artists": 66,
+        "precision": 0.183,
+        "recall": 0.3127,
+        "f1": 0.2309,
+        "artist_balanced_f1": 0.1716,
+        "threshold": 0.68,
+        "average_precision": 0.1563,
+        "artist_balanced_average_precision": 0.1013
+      },
+      {
+        "technique": "Engraving",
+        "support": 274,
+        "support_artists": 105,
+        "precision": 0.3666,
+        "recall": 0.6971,
+        "f1": 0.4805,
+        "artist_balanced_f1": 0.5198,
+        "threshold": 0.71,
+        "average_precision": 0.5203,
+        "artist_balanced_average_precision": 0.5334
+      },
+      {
+        "technique": "Woodcut",
+        "support": 220,
+        "support_artists": 81,
+        "precision": 0.2602,
+        "recall": 0.3182,
+        "f1": 0.2863,
+        "artist_balanced_f1": 0.3706,
+        "threshold": 0.8,
+        "average_precision": 0.2619,
+        "artist_balanced_average_precision": 0.332
+      },
+      {
+        "technique": "Offset lithograph",
+        "support": 188,
+        "support_artists": 11,
+        "precision": 0.0196,
+        "recall": 0.0053,
+        "f1": 0.0084,
+        "artist_balanced_f1": 0.0006,
+        "threshold": 0.77,
+        "average_precision": 0.0635,
+        "artist_balanced_average_precision": 0.0028
+      },
+      {
+        "technique": "Linocut",
+        "support": 134,
+        "support_artists": 23,
+        "precision": 0.6267,
+        "recall": 0.3507,
+        "f1": 0.4498,
+        "artist_balanced_f1": 0.205,
+        "threshold": 0.73,
+        "average_precision": 0.502,
+        "artist_balanced_average_precision": 0.2043
+      },
+      {
+        "technique": "Intaglio",
+        "support": 94,
+        "support_artists": 29,
+        "precision": 0.1227,
+        "recall": 0.3617,
+        "f1": 0.1833,
+        "artist_balanced_f1": 0.1661,
+        "threshold": 0.57,
+        "average_precision": 0.1314,
+        "artist_balanced_average_precision": 0.1062
+      },
+      {
+        "technique": "Chromogenic print",
+        "support": 87,
+        "support_artists": 48,
+        "precision": 0.1626,
+        "recall": 0.5402,
+        "f1": 0.25,
+        "artist_balanced_f1": 0.3843,
+        "threshold": 0.4,
+        "average_precision": 0.1998,
+        "artist_balanced_average_precision": 0.306
+      },
+      {
+        "technique": "Collage",
+        "support": 71,
+        "support_artists": 35,
+        "precision": 0.0924,
+        "recall": 0.2394,
+        "f1": 0.1333,
+        "artist_balanced_f1": 0.1817,
+        "threshold": 0.34,
+        "average_precision": 0.0878,
+        "artist_balanced_average_precision": 0.2001
+      },
+      {
+        "technique": "Mezzotint",
+        "support": 71,
+        "support_artists": 43,
+        "precision": 0.3774,
+        "recall": 0.2817,
+        "f1": 0.3226,
+        "artist_balanced_f1": 0.5053,
+        "threshold": 0.68,
+        "average_precision": 0.2611,
+        "artist_balanced_average_precision": 0.4333
+      },
+      {
+        "technique": "Wood engraving",
+        "support": 64,
+        "support_artists": 21,
+        "precision": 0.1479,
+        "recall": 0.3281,
+        "f1": 0.2039,
+        "artist_balanced_f1": 0.1954,
+        "threshold": 0.48,
+        "average_precision": 0.2029,
+        "artist_balanced_average_precision": 0.1967
+      },
+      {
+        "technique": "Monotype",
+        "support": 42,
+        "support_artists": 23,
+        "precision": 0.082,
+        "recall": 0.2381,
+        "f1": 0.122,
+        "artist_balanced_f1": 0.2749,
+        "threshold": 0.67,
+        "average_precision": 0.0713,
+        "artist_balanced_average_precision": 0.219
+      },
+      {
+        "technique": "Photogravure",
+        "support": 40,
+        "support_artists": 15,
+        "precision": 0.1176,
+        "recall": 0.15,
+        "f1": 0.1319,
+        "artist_balanced_f1": 0.1774,
+        "threshold": 0.42,
+        "average_precision": 0.0496,
+        "artist_balanced_average_precision": 0.068
+      },
+      {
+        "technique": "Embossing",
+        "support": 39,
+        "support_artists": 20,
+        "precision": 0.1875,
+        "recall": 0.0769,
+        "f1": 0.1091,
+        "artist_balanced_f1": 0.2112,
+        "threshold": 0.6,
+        "average_precision": 0.0903,
+        "artist_balanced_average_precision": 0.1394
+      },
+      {
+        "technique": "Platinum print",
+        "support": 31,
+        "support_artists": 14,
+        "precision": 0.0476,
+        "recall": 0.0968,
+        "f1": 0.0638,
+        "artist_balanced_f1": 0.0979,
+        "threshold": 0.44,
+        "average_precision": 0.1014,
+        "artist_balanced_average_precision": 0.1228
+      },
+      {
+        "technique": "Letterpress",
+        "support": 27,
+        "support_artists": 23,
+        "precision": 0.0725,
+        "recall": 0.1852,
+        "f1": 0.1042,
+        "artist_balanced_f1": 0.1491,
+        "threshold": 0.29,
+        "average_precision": 0.1414,
+        "artist_balanced_average_precision": 0.1646
+      },
+      {
+        "technique": "Cibachrome print",
+        "support": 25,
+        "support_artists": 15,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "artist_balanced_f1": 0.0,
+        "threshold": 0.66,
+        "average_precision": 0.0213,
+        "artist_balanced_average_precision": 0.0548
+      }
+    ]
+  }
+}
