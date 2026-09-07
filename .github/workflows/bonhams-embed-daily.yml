@@ -61,7 +61,7 @@ jobs:
 
       - name: Install dependencies (CPU-only torch — no CUDA wheel on a CPU-only runner)
         run: |
-          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet transformers pillow requests neo4j
 
       - name: Embed a batch

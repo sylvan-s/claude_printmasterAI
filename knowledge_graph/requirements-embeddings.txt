@@ -4,7 +4,12 @@
 # DINOv2 proof-of-concept that installing a fresh Pillow into this project's anaconda base
 # broke against an old numpy already there. See embed_images_dinov2.py's module docstring
 # for the exact venv setup.
+# torchvision: transformers' AutoImageProcessor (used by bonhams_embed_images.py's
+# DINOv2 load_models()) hard-requires it as of transformers 4.57.x — confirmed missing
+# from venv-embeddings until 2026-09-07 (torch alone had been enough on an older
+# transformers version); without it, load_models() raises ImportError at run time.
 torch
+torchvision
 transformers
 pillow
 requests
