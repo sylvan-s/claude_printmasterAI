@@ -1,0 +1,699 @@
+{
+  "fine_grained": {
+    "techniques": 21,
+    "artist_balanced_macro_f1": 0.2984,
+    "macro_f1": 0.275
+  },
+  "family_collapsed": {
+    "families": [
+      "Intaglio",
+      "Other",
+      "Photographic",
+      "Planographic",
+      "Relief",
+      "Screen"
+    ],
+    "artist_balanced_macro_f1": 0.5578,
+    "macro_f1": 0.5457,
+    "per_class": [
+      {
+        "technique": "Intaglio",
+        "support": 2288,
+        "support_artists": 490,
+        "precision": 0.7359,
+        "recall": 0.6722,
+        "f1": 0.7026,
+        "artist_balanced_f1": 0.6857,
+        "threshold": 0.53,
+        "average_precision": 0.7981,
+        "artist_balanced_average_precision": 0.7775
+      },
+      {
+        "technique": "Planographic",
+        "support": 2090,
+        "support_artists": 456,
+        "precision": 0.4182,
+        "recall": 0.8833,
+        "f1": 0.5677,
+        "artist_balanced_f1": 0.5863,
+        "threshold": 0.18,
+        "average_precision": 0.5652,
+        "artist_balanced_average_precision": 0.6362
+      },
+      {
+        "technique": "Screen",
+        "support": 1092,
+        "support_artists": 177,
+        "precision": 0.4938,
+        "recall": 0.619,
+        "f1": 0.5494,
+        "artist_balanced_f1": 0.5583,
+        "threshold": 0.54,
+        "average_precision": 0.564,
+        "artist_balanced_average_precision": 0.5688
+      },
+      {
+        "technique": "Photographic",
+        "support": 822,
+        "support_artists": 238,
+        "precision": 0.803,
+        "recall": 0.9075,
+        "f1": 0.8521,
+        "artist_balanced_f1": 0.8796,
+        "threshold": 0.83,
+        "average_precision": 0.9249,
+        "artist_balanced_average_precision": 0.9211
+      },
+      {
+        "technique": "Relief",
+        "support": 462,
+        "support_artists": 148,
+        "precision": 0.4918,
+        "recall": 0.3896,
+        "f1": 0.4348,
+        "artist_balanced_f1": 0.4313,
+        "threshold": 0.81,
+        "average_precision": 0.4611,
+        "artist_balanced_average_precision": 0.4312
+      },
+      {
+        "technique": "Other",
+        "support": 71,
+        "support_artists": 35,
+        "precision": 0.1548,
+        "recall": 0.1831,
+        "f1": 0.1677,
+        "artist_balanced_f1": 0.2054,
+        "threshold": 0.56,
+        "average_precision": 0.082,
+        "artist_balanced_average_precision": 0.1906
+      }
+    ]
+  },
+  "cross_attribution": [
+    {
+      "technique": "Aquatint",
+      "family": "Intaglio",
+      "total_false_positive_rate": 1.1928,
+      "share_inside_own_family": 0.261,
+      "top_confusions": [
+        {
+          "technique": "Lithograph",
+          "rate": 0.6049,
+          "same_family": false
+        },
+        {
+          "technique": "Drypoint",
+          "rate": 0.09,
+          "same_family": true
+        },
+        {
+          "technique": "Engraving",
+          "rate": 0.0882,
+          "same_family": true
+        }
+      ]
+    },
+    {
+      "technique": "Chromogenic print",
+      "family": "Photographic",
+      "total_false_positive_rate": 0.8717,
+      "share_inside_own_family": 0.708,
+      "top_confusions": [
+        {
+          "technique": "Gelatin silver print",
+          "rate": 0.5929,
+          "same_family": true
+        },
+        {
+          "technique": "Lithograph",
+          "rate": 0.1232,
+          "same_family": false
+        },
+        {
+          "technique": "Screenprint / Serigraphy",
+          "rate": 0.0885,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Cibachrome print",
+      "family": "Photographic",
+      "total_false_positive_rate": 1.2448,
+      "share_inside_own_family": 0.697,
+      "top_confusions": [
+        {
+          "technique": "Chromogenic print",
+          "rate": 0.4531,
+          "same_family": true
+        },
+        {
+          "technique": "Gelatin silver print",
+          "rate": 0.414,
+          "same_family": true
+        },
+        {
+          "technique": "Lithograph",
+          "rate": 0.1119,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Collage",
+      "family": "Other",
+      "total_false_positive_rate": 1.4706,
+      "share_inside_own_family": 0.0,
+      "top_confusions": [
+        {
+          "technique": "Lithograph",
+          "rate": 0.4426,
+          "same_family": false
+        },
+        {
+          "technique": "Aquatint",
+          "rate": 0.2228,
+          "same_family": false
+        },
+        {
+          "technique": "Etching",
+          "rate": 0.22,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Drypoint",
+      "family": "Intaglio",
+      "total_false_positive_rate": 0.8938,
+      "share_inside_own_family": 0.471,
+      "top_confusions": [
+        {
+          "technique": "Lithograph",
+          "rate": 0.4401,
+          "same_family": false
+        },
+        {
+          "technique": "Etching",
+          "rate": 0.287,
+          "same_family": true
+        },
+        {
+          "technique": "Aquatint",
+          "rate": 0.0504,
+          "same_family": true
+        }
+      ]
+    },
+    {
+      "technique": "Embossing",
+      "family": "Relief",
+      "total_false_positive_rate": 1.0007,
+      "share_inside_own_family": 0.0,
+      "top_confusions": [
+        {
+          "technique": "Screenprint / Serigraphy",
+          "rate": 0.3439,
+          "same_family": false
+        },
+        {
+          "technique": "Lithograph",
+          "rate": 0.3016,
+          "same_family": false
+        },
+        {
+          "technique": "Etching",
+          "rate": 0.2783,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Engraving",
+      "family": "Intaglio",
+      "total_false_positive_rate": 0.7927,
+      "share_inside_own_family": 0.609,
+      "top_confusions": [
+        {
+          "technique": "Etching",
+          "rate": 0.2944,
+          "same_family": true
+        },
+        {
+          "technique": "Lithograph",
+          "rate": 0.1484,
+          "same_family": false
+        },
+        {
+          "technique": "Mezzotint",
+          "rate": 0.0867,
+          "same_family": true
+        }
+      ]
+    },
+    {
+      "technique": "Etching",
+      "family": "Intaglio",
+      "total_false_positive_rate": 0.9824,
+      "share_inside_own_family": 0.414,
+      "top_confusions": [
+        {
+          "technique": "Lithograph",
+          "rate": 0.4422,
+          "same_family": false
+        },
+        {
+          "technique": "Drypoint",
+          "rate": 0.1477,
+          "same_family": true
+        },
+        {
+          "technique": "Engraving",
+          "rate": 0.1408,
+          "same_family": true
+        }
+      ]
+    },
+    {
+      "technique": "Gelatin silver print",
+      "family": "Photographic",
+      "total_false_positive_rate": 0.4066,
+      "share_inside_own_family": 0.515,
+      "top_confusions": [
+        {
+          "technique": "Chromogenic print",
+          "rate": 0.1554,
+          "same_family": true
+        },
+        {
+          "technique": "Letterpress",
+          "rate": 0.0588,
+          "same_family": false
+        },
+        {
+          "technique": "Platinum print",
+          "rate": 0.0509,
+          "same_family": true
+        }
+      ]
+    },
+    {
+      "technique": "Intaglio",
+      "family": "Intaglio",
+      "total_false_positive_rate": 1.3487,
+      "share_inside_own_family": 0.561,
+      "top_confusions": [
+        {
+          "technique": "Etching",
+          "rate": 0.3512,
+          "same_family": true
+        },
+        {
+          "technique": "Lithograph",
+          "rate": 0.3396,
+          "same_family": false
+        },
+        {
+          "technique": "Engraving",
+          "rate": 0.2663,
+          "same_family": true
+        }
+      ]
+    },
+    {
+      "technique": "Letterpress",
+      "family": "Relief",
+      "total_false_positive_rate": 1.2602,
+      "share_inside_own_family": 0.0,
+      "top_confusions": [
+        {
+          "technique": "Screenprint / Serigraphy",
+          "rate": 0.4162,
+          "same_family": false
+        },
+        {
+          "technique": "Lithograph",
+          "rate": 0.2866,
+          "same_family": false
+        },
+        {
+          "technique": "Gelatin silver print",
+          "rate": 0.2671,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Linocut",
+      "family": "Relief",
+      "total_false_positive_rate": 1.5932,
+      "share_inside_own_family": 0.308,
+      "top_confusions": [
+        {
+          "technique": "Lithograph",
+          "rate": 0.4407,
+          "same_family": false
+        },
+        {
+          "technique": "Woodcut",
+          "rate": 0.3192,
+          "same_family": true
+        },
+        {
+          "technique": "Aquatint",
+          "rate": 0.1882,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Lithograph",
+      "family": "Planographic",
+      "total_false_positive_rate": 0.7933,
+      "share_inside_own_family": 0.065,
+      "top_confusions": [
+        {
+          "technique": "Etching",
+          "rate": 0.1853,
+          "same_family": false
+        },
+        {
+          "technique": "Screenprint / Serigraphy",
+          "rate": 0.1677,
+          "same_family": false
+        },
+        {
+          "technique": "Aquatint",
+          "rate": 0.1265,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Mezzotint",
+      "family": "Intaglio",
+      "total_false_positive_rate": 1.1984,
+      "share_inside_own_family": 0.704,
+      "top_confusions": [
+        {
+          "technique": "Engraving",
+          "rate": 0.5054,
+          "same_family": true
+        },
+        {
+          "technique": "Lithograph",
+          "rate": 0.2809,
+          "same_family": false
+        },
+        {
+          "technique": "Etching",
+          "rate": 0.2696,
+          "same_family": true
+        }
+      ]
+    },
+    {
+      "technique": "Monotype",
+      "family": "Planographic",
+      "total_false_positive_rate": 1.5244,
+      "share_inside_own_family": 0.447,
+      "top_confusions": [
+        {
+          "technique": "Lithograph",
+          "rate": 0.6811,
+          "same_family": true
+        },
+        {
+          "technique": "Aquatint",
+          "rate": 0.3184,
+          "same_family": false
+        },
+        {
+          "technique": "Screenprint / Serigraphy",
+          "rate": 0.1833,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Offset lithograph",
+      "family": "Planographic",
+      "total_false_positive_rate": 1.3593,
+      "share_inside_own_family": 0.328,
+      "top_confusions": [
+        {
+          "technique": "Screenprint / Serigraphy",
+          "rate": 0.4661,
+          "same_family": false
+        },
+        {
+          "technique": "Lithograph",
+          "rate": 0.4464,
+          "same_family": true
+        },
+        {
+          "technique": "Gelatin silver print",
+          "rate": 0.1904,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Photogravure",
+      "family": "Intaglio",
+      "total_false_positive_rate": 1.173,
+      "share_inside_own_family": 0.018,
+      "top_confusions": [
+        {
+          "technique": "Gelatin silver print",
+          "rate": 0.4747,
+          "same_family": false
+        },
+        {
+          "technique": "Lithograph",
+          "rate": 0.2332,
+          "same_family": false
+        },
+        {
+          "technique": "Platinum print",
+          "rate": 0.1973,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Platinum print",
+      "family": "Photographic",
+      "total_false_positive_rate": 1.3901,
+      "share_inside_own_family": 0.846,
+      "top_confusions": [
+        {
+          "technique": "Gelatin silver print",
+          "rate": 0.9842,
+          "same_family": true
+        },
+        {
+          "technique": "Chromogenic print",
+          "rate": 0.192,
+          "same_family": true
+        },
+        {
+          "technique": "Screenprint / Serigraphy",
+          "rate": 0.087,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Screenprint / Serigraphy",
+      "family": "Screen",
+      "total_false_positive_rate": 0.9262,
+      "share_inside_own_family": 0.0,
+      "top_confusions": [
+        {
+          "technique": "Lithograph",
+          "rate": 0.4974,
+          "same_family": false
+        },
+        {
+          "technique": "Collage",
+          "rate": 0.0708,
+          "same_family": false
+        },
+        {
+          "technique": "Woodcut",
+          "rate": 0.0591,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Wood engraving",
+      "family": "Relief",
+      "total_false_positive_rate": 1.2653,
+      "share_inside_own_family": 0.093,
+      "top_confusions": [
+        {
+          "technique": "Etching",
+          "rate": 0.4069,
+          "same_family": false
+        },
+        {
+          "technique": "Engraving",
+          "rate": 0.2904,
+          "same_family": false
+        },
+        {
+          "technique": "Lithograph",
+          "rate": 0.2788,
+          "same_family": false
+        }
+      ]
+    },
+    {
+      "technique": "Woodcut",
+      "family": "Relief",
+      "total_false_positive_rate": 1.2216,
+      "share_inside_own_family": 0.125,
+      "top_confusions": [
+        {
+          "technique": "Lithograph",
+          "rate": 0.4953,
+          "same_family": false
+        },
+        {
+          "technique": "Engraving",
+          "rate": 0.1382,
+          "same_family": false
+        },
+        {
+          "technique": "Etching",
+          "rate": 0.1186,
+          "same_family": false
+        }
+      ]
+    }
+  ],
+  "within_family_discrimination": {
+    "Intaglio": {
+      "images": 2288,
+      "macro_f1_within_family": 0.3937,
+      "per_technique": [
+        {
+          "technique": "Aquatint",
+          "positives": 680,
+          "artist_balanced_f1": 0.3418
+        },
+        {
+          "technique": "Drypoint",
+          "positives": 323,
+          "artist_balanced_f1": 0.2303
+        },
+        {
+          "technique": "Engraving",
+          "positives": 274,
+          "artist_balanced_f1": 0.5796
+        },
+        {
+          "technique": "Etching",
+          "positives": 1618,
+          "artist_balanced_f1": 0.6281
+        },
+        {
+          "technique": "Intaglio",
+          "positives": 94,
+          "artist_balanced_f1": 0.2311
+        },
+        {
+          "technique": "Mezzotint",
+          "positives": 71,
+          "artist_balanced_f1": 0.5074
+        },
+        {
+          "technique": "Photogravure",
+          "positives": 40,
+          "artist_balanced_f1": 0.2377
+        }
+      ]
+    },
+    "Photographic": {
+      "images": 822,
+      "macro_f1_within_family": 0.3516,
+      "per_technique": [
+        {
+          "technique": "Chromogenic print",
+          "positives": 87,
+          "artist_balanced_f1": 0.4603
+        },
+        {
+          "technique": "Cibachrome print",
+          "positives": 25,
+          "artist_balanced_f1": 0.0
+        },
+        {
+          "technique": "Gelatin silver print",
+          "positives": 681,
+          "artist_balanced_f1": 0.8366
+        },
+        {
+          "technique": "Platinum print",
+          "positives": 31,
+          "artist_balanced_f1": 0.1096
+        }
+      ]
+    },
+    "Planographic": {
+      "images": 2090,
+      "macro_f1_within_family": 0.4096,
+      "per_technique": [
+        {
+          "technique": "Lithograph",
+          "positives": 1862,
+          "artist_balanced_f1": 0.8505
+        },
+        {
+          "technique": "Monotype",
+          "positives": 42,
+          "artist_balanced_f1": 0.3777
+        },
+        {
+          "technique": "Offset lithograph",
+          "positives": 188,
+          "artist_balanced_f1": 0.0006
+        }
+      ]
+    },
+    "Relief": {
+      "images": 462,
+      "macro_f1_within_family": 0.2889,
+      "per_technique": [
+        {
+          "technique": "Embossing",
+          "positives": 39,
+          "artist_balanced_f1": 0.192
+        },
+        {
+          "technique": "Letterpress",
+          "positives": 27,
+          "artist_balanced_f1": 0.2598
+        },
+        {
+          "technique": "Linocut",
+          "positives": 134,
+          "artist_balanced_f1": 0.1997
+        },
+        {
+          "technique": "Wood engraving",
+          "positives": 64,
+          "artist_balanced_f1": 0.3374
+        },
+        {
+          "technique": "Woodcut",
+          "positives": 220,
+          "artist_balanced_f1": 0.4556
+        }
+      ]
+    }
+  }
+}
