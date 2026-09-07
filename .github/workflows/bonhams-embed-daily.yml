@@ -59,10 +59,13 @@ jobs:
             ~/.cache/huggingface
           key: bonhams-embed-${{ runner.os }}-${{ hashFiles('knowledge_graph/requirements-embeddings.txt') }}
 
+      # Pinned exact versions (torch/torchvision/transformers) from requirements-embeddings.txt
+      # — see its comment for why: an unpinned install once resolved a just-released
+      # transformers major version that silently broke DINOv2's output shape.
       - name: Install dependencies (CPU-only torch — no CUDA wheel on a CPU-only runner)
         run: |
-          pip install --quiet torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          pip install --quiet transformers pillow requests neo4j
+          pip install --quiet torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet -r requirements-embeddings.txt
           pip list | grep -Ei "^torch|^transformers|^pillow"
 
       - name: Embed a batch

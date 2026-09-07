@@ -8,9 +8,19 @@
 # DINOv2 load_models()) hard-requires it as of transformers 4.57.x — confirmed missing
 # from venv-embeddings until 2026-09-07 (torch alone had been enough on an older
 # transformers version); without it, load_models() raises ImportError at run time.
-torch
-torchvision
-transformers
+#
+# transformers/torch/torchvision are PINNED, not left floating, as of 2026-09-07: an
+# unpinned `pip install transformers` in a fresh GitHub Actions runner resolved
+# transformers 5.16.1 (a major version that had just been released) + torch 2.14.0,
+# and DINOv2's model output under that combination silently changed shape — embed_dinov2()
+# got a BaseModelOutputWithPooling back from the [:, 0, :] slice instead of a Tensor,
+# so every image failed with "'BaseModelOutputWithPooling' object has no attribute
+# 'squeeze'". These exact versions are the ones verified working end-to-end (real
+# Bonhams images, real embeddings written to Neo4j) — bump deliberately and re-verify,
+# don't let a fresh install silently pick up whatever transformers ships next.
+torch==2.8.0
+torchvision==0.23.0
+transformers==4.57.6
 pillow
 requests
 neo4j
