@@ -20,6 +20,8 @@ import {
   normalizeName,
   nameSimilarity,
   titleSimilarity,
+  titleContainment,
+  TAU_TITLE_AGREE,
   SIM_ARTIST_VOTE,
 } from "../../src/appraisal/two_pass_attribution";
 import { Scenario } from "../../src/appraisal/routing";
@@ -369,6 +371,95 @@ test("T8K — no source consensus but a strong K_work embedding match -> IDENTIF
   assert.equal(v.verdict, "identified");
   assert.equal(v.confidence, "MEDIUM");
   assert.equal(v.conceptualWorkTitle, "H10-1 Wu Zetian, from The Empresses");
+});
+
+test("titleContainment tolerates a series suffix where Jaccard does not", () => {
+  const plain = "Cold water about to hit the Prince";
+  const catalogued = "Cold Water about to Hit the Prince, from 'Illustrations for Six Fairy Tales from the Brothers Grimm'";
+  assert.ok(titleSimilarity(plain, catalogued) < TAU_TITLE_AGREE, "Jaccard should fall short here");
+  assert.ok(titleContainment(plain, catalogued) >= TAU_TITLE_AGREE, "containment should not");
+});
+
+test("titleContainment still separates two genuinely different works", () => {
+  assert.ok(titleContainment("Reclining Figure", "Cold Water about to Hit the Prince") < TAU_TITLE_AGREE);
+});
+
+test("titleContainment falls back to Jaccard for a one-token title", () => {
+  // "Untitled" is contained by half the catalogue; overlap would score it 1.0.
+  assert.equal(
+    titleContainment("Untitled", "Untitled Composition No. 5 from the Blue Series"),
+    titleSimilarity("Untitled", "Untitled Composition No. 5 from the Blue Series"),
+  );
+  assert.ok(titleContainment("Untitled", "Untitled Composition No. 5 from the Blue Series") < TAU_TITLE_AGREE);
+});
+
+// ── K_work corroboration must point at the same work (2026-09-08) ───────────────
+
+test("K_work matching a DIFFERENT work does not lift 2 agreeing sources to T2 -> T4 MEDIUM", () => {
+  const v = classifyWorkPass(f.t4_kworkMatchedADifferentWork);
+  assert.equal(v.evidenceBasis, "T4");
+  assert.equal(v.confidence, "MEDIUM");
+  assert.ok(
+    v.ruleTrace.some((t) => t.includes("not counted as corroboration") && t.includes("Reclining Figure")),
+    v.ruleTrace.join(" | "),
+  );
+});
+
+test("K_work matching a DIFFERENT work leaves a single source at T5 LOW, not MEDIUM", () => {
+  const v = classifyWorkPass(f.t5_kworkMatchedADifferentWork);
+  assert.equal(v.evidenceBasis, "T5");
+  assert.equal(v.confidence, "LOW");
+});
+
+test("a K_work hit with no matchedWorkTitle is unverifiable and does not corroborate", () => {
+  const v = classifyWorkPass(f.t4_kworkUnverifiable);
+  assert.equal(v.evidenceBasis, "T4");
+  assert.ok(v.ruleTrace.some((t) => t.includes("no matchedWorkTitle recorded")), v.ruleTrace.join(" | "));
+});
+
+test("a catalogued title carrying a series suffix still corroborates -> T2 HIGH", () => {
+  const v = classifyWorkPass(f.t2_kworkSeriesSuffixStillAgrees);
+  assert.equal(v.evidenceBasis, "T2");
+  assert.equal(v.confidence, "HIGH");
+});
+
+// ── D_t — Stage 1d's catalogued title as a title vote (2026-09-08) ──────────────
+
+test("D_t — a lone HIGH Stage 1d title votes, and beats the K_work anchor to a different work", () => {
+  const v = classifyWorkPass(f.dt_embeddingTitleOnly_high);
+  assert.equal(v.evidenceBasis, "T5");
+  assert.equal(v.verdict, "candidate");
+  assert.equal(v.conceptualWorkTitle, "Cold Water about to Hit the Prince");
+  assert.deepEqual(v.agreementSet, ["D_t"]);
+});
+
+test("D_t — MEDIUM Stage 1d does not vote; T8K still anchors on K_work", () => {
+  const v = classifyWorkPass(f.dt_embeddingTitleOnly_medium);
+  assert.equal(v.evidenceBasis, "T8K");
+  assert.equal(v.conceptualWorkTitle, "Reclining Figure");
+  assert.ok(v.ruleTrace.some((t) => t.includes("D_t dropped from vote")), v.ruleTrace.join(" | "));
+});
+
+test("D_t — agreeing with the appraiser makes two sources -> T2 IDENTIFIED HIGH", () => {
+  const v = classifyWorkPass(f.dt_agreesWithAppraiser);
+  assert.equal(v.evidenceBasis, "T2");
+  assert.equal(v.verdict, "identified");
+  assert.equal(v.confidence, "HIGH");
+  assert.deepEqual(v.agreementSet.sort(), ["A_t", "D_t"]);
+});
+
+test("D_t — as a fourth agreeing source, T1 still fires (n >= 3, not === 3)", () => {
+  const v = classifyWorkPass(f.dt_fourSourcesAgree);
+  assert.equal(v.evidenceBasis, "T1");
+  assert.equal(v.verdict, "identified");
+  assert.equal(v.confidence, "HIGH");
+  assert.equal(v.agreementSet.length, 4);
+});
+
+test("D_t — contradicting the only other source with no anchor -> T6 CONFLICT", () => {
+  const v = classifyWorkPass(f.dt_contradictsAppraiser);
+  assert.equal(v.evidenceBasis, "T6");
+  assert.equal(v.verdict, "conflict");
 });
 
 test("T6 — title sources conflict -> CONFLICT", () => {

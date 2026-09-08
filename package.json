@@ -20,6 +20,7 @@
     "test:two-pass": "tsx tests/two_pass_attribution/run_tests.ts",
     "test:stage2a-evidence": "tsx tests/stage2a_evidence/run_tests.ts",
     "test:kg-parse": "tsx tests/knowledge_graph/parse_tests.ts",
+    "test:leak-detection": "tsx tests/benchmark_parse/leak_detection_tests.ts",
     "kg:embed-titles": "tsx src/appraisal/knowledge_graph/backfill_title_embeddings.ts",
     "test:pool": "tsx tests/backtest/run_pool.ts",
     "show:pool": "tsx tests/backtest/show_pool.ts",

@@ -131,6 +131,8 @@ function reportToTwoPassInput(report: any): { input: TwoPassInput; notes: string
       titleVea,
       titleReverseImageSearch: titleRis,
       titleAppraiser,
+      // This adapter models no Stage 1d — D_t stays silent.
+      titleEmbeddingMatch: { kind: "silent" },
       kWork: null,
     },
     impressionEvidence: null,

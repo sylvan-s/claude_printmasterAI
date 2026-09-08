@@ -94,12 +94,17 @@ test("-1 numeric sentinels become null / 0 as appropriate", () => {
 // ── D — Stage 1d embedding match, 2026-09-06 amendment to ADR-0013 ──────────
 // (built directly from the optional stage1d arg, not from the LLM's evidence cells)
 
-const stage1d = (matchConfidence: "HIGH" | "MEDIUM" | "LOW" | null, bestMatchArtist = "Henry Moore") => ({
+const stage1d = (
+  matchConfidence: "HIGH" | "MEDIUM" | "LOW" | null,
+  bestMatchArtist = "Henry Moore",
+  bestMatchConceptualWorkTitle: string | null = null,
+) => ({
   schemaVersion: "IES-1.0" as const,
   embeddingModelsUsed: { dinov2: "dinov2-large" as const, clip: "clip-vit-b32" as const },
   indexCoverageNote: "",
   candidateMatches: [],
   bestMatchArtist,
+  bestMatchConceptualWorkTitle,
   matchConfidence,
   attributionCaveat: "",
   hypothesisWarning: "",
@@ -120,6 +125,23 @@ test("stage1d HIGH confidence -> embeddingMatch carries the name + matchConfiden
   assert.equal(inp.artistEvidence.embeddingMatch.kind, "names");
   assert.equal((inp.artistEvidence.embeddingMatch as any).raw, "Henry Moore");
   assert.equal((inp.artistEvidence.embeddingMatch as any).matchConfidence, "HIGH");
+});
+
+test("no stage1d work title -> titleEmbeddingMatch is silent (D_t never votes)", () => {
+  const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false, stage1d("HIGH"));
+  assert.equal(inp.workEvidence.titleEmbeddingMatch.kind, "silent");
+});
+
+test("stage1d work title -> titleEmbeddingMatch carries the title + matchConfidence", () => {
+  const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false, stage1d("HIGH", "David Hockney", "Cold Water about to Hit the Prince"));
+  assert.equal(inp.workEvidence.titleEmbeddingMatch.kind, "names");
+  assert.equal((inp.workEvidence.titleEmbeddingMatch as any).raw, "Cold Water about to Hit the Prince");
+  assert.equal((inp.workEvidence.titleEmbeddingMatch as any).matchConfidence, "HIGH");
+});
+
+test("a MEDIUM stage1d work title is carried but gated out of the vote by the classifier", () => {
+  const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false, stage1d("MEDIUM", "David Hockney", "Cold Water about to Hit the Prince"));
+  assert.equal((inp.workEvidence.titleEmbeddingMatch as any).matchConfidence, "MEDIUM");
 });
 
 test("end-to-end: a lone HIGH-confidence Stage 1d match (no other evidence) -> A6D candidate, Scenario 3", () => {

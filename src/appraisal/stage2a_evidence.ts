@@ -28,6 +28,7 @@ import {
   type NamingSource,
   type TitleSource,
   type KWorkResult,
+  type WorkEvidence,
   type Confidence,
 } from "./two_pass_attribution";
 import {
@@ -174,6 +175,17 @@ export function evidenceToTwoPassInput(
     ? { kind: "names", raw: stage1d.bestMatchArtist, matchConfidence: stage1d.matchConfidence ?? undefined }
     : { kind: "no_match" };
 
+  // D_t — the catalogued title of that same Stage 1d match. Built here in code for the
+  // same reason as D above (no LLM judgement involved); eligibleTitleVotes() applies the
+  // HIGH-only gate.
+  const titleEmbeddingMatch: WorkEvidence["titleEmbeddingMatch"] = stage1d?.bestMatchConceptualWorkTitle
+    ? {
+        kind: "names",
+        raw: stage1d.bestMatchConceptualWorkTitle,
+        matchConfidence: stage1d.matchConfidence ?? undefined,
+      }
+    : { kind: "silent" };
+
   const veaSource: NamingSource = a.veaNamesArtist && a.veaArtistName
     ? { kind: "names", raw: a.veaArtistName, identityKey: identityKeyFor(a.veaArtistName, dom, domKey) }
     : { kind: "silent" };
@@ -281,6 +293,7 @@ export function evidenceToTwoPassInput(
         ? { kind: "names", raw: w.reverseImageTitle, sim: w.reverseImageTitleSimilarity >= 0 ? w.reverseImageTitleSimilarity : 0 }
         : { kind: "silent" },
       titleAppraiser: titleSrc(w.appraiserTitle),
+      titleEmbeddingMatch,
       kWork,
     },
     impressionEvidence,

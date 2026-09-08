@@ -15,6 +15,9 @@
  * Run the tests: npm run test:two-pass
  */
 import { Scenario, SCENARIO_NAMES } from "./routing";
+// HONORIFICS lives in src/shared so the blind-mode leak detectors in benchmark/
+// share one vocabulary with this matcher rather than drifting copies.
+import { HONORIFICS, NATIONALITY_WORDS } from "../shared/text_extraction";
 
 // ───────────────────────────────────────────────────────────────────────────────
 // UNTUNED PLACEHOLDER THRESHOLDS — ADR-0010 Decision 4.
@@ -49,17 +52,6 @@ function liftBand(c: Confidence, by = 1): Confidence {
 // Name normalization — the deterministic fallback matcher (ADR-0010 "Not addressed":
 // production resolves via ULAN/Wikidata id first; this is the string fallback).
 // ───────────────────────────────────────────────────────────────────────────────
-const HONORIFICS = new Set([
-  "sir", "dame", "ra", "ara", "pra", "re", "are", "rws", "arws", "rba", "arba",
-  "rsa", "rsw", "neac", "re.", "hon", "obe", "cbe", "mbe", "kt", "jr", "sr",
-  "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x",
-]);
-const NATIONALITY_WORDS = new Set([
-  "british", "english", "scottish", "welsh", "irish", "french", "german", "dutch",
-  "flemish", "italian", "spanish", "american", "japanese", "chinese", "korean",
-  "swiss", "belgian", "austrian", "russian", "danish", "norwegian", "swedish",
-  "czech", "polish", "hungarian", "mexican", "chilean", "brazilian", "canadian",
-]);
 
 export function normalizeName(raw: string): { key: string; tokens: string[] } {
   let s = raw;
@@ -114,23 +106,56 @@ const TITLE_STOPWORDS = new Set([
   "no", "plate", "pl", "suite", "series", "for", "le", "la", "les", "un", "une",
   "des", "du", "der", "die", "das", "el", "los", "las",
 ]);
+function titleTokens(s: string): Set<string> {
+  return new Set(
+    s
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((t) => t.length > 2 && !TITLE_STOPWORDS.has(t)),
+  );
+}
+
+function intersectionSize(ta: Set<string>, tb: Set<string>): number {
+  let n = 0;
+  for (const t of ta) if (tb.has(t)) n++;
+  return n;
+}
+
 export function titleSimilarity(a: string, b: string): number {
-  const norm = (s: string) =>
-    new Set(
-      s
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9\s]/g, " ")
-        .split(/\s+/)
-        .filter((t) => t.length > 2 && !TITLE_STOPWORDS.has(t)),
-    );
-  const ta = norm(a);
-  const tb = norm(b);
+  const ta = titleTokens(a);
+  const tb = titleTokens(b);
   if (ta.size === 0 || tb.size === 0) return 0;
-  let inter = 0;
-  for (const t of ta) if (tb.has(t)) inter++;
+  const inter = intersectionSize(ta, tb);
   return inter / (ta.size + tb.size - inter);
+}
+
+/**
+ * Overlap coefficient over the same tokens — `intersection / min(|a|, |b|)`.
+ *
+ * Used ONLY to compare a catalogued title against an agreed one (see
+ * `kWorkCorroborates`), never to cluster two title SOURCES against each other. The
+ * asymmetry is deliberate: a catalogued ACKG title is routinely the plain title plus a
+ * series or plate qualifier — "Cold Water about to Hit the Prince" vs "Cold Water about
+ * to Hit the Prince, from 'Illustrations for Six Fairy Tales from the Brothers Grimm'" —
+ * which Jaccard punishes (0.45, below TAU_TITLE_AGREE) for containing MORE information
+ * about the same work. This is the same reasoning `nameSimilarity` already applies to
+ * artist names, and for the same reason.
+ *
+ * Guard: overlap is trusted only when the shorter side carries at least two informative
+ * tokens. A single-token title ("Untitled", "Composition") is contained by half the
+ * catalogue, so those fall back to Jaccard.
+ */
+const TITLE_OVERLAP_MIN_TOKENS = 2;
+export function titleContainment(a: string, b: string): number {
+  const ta = titleTokens(a);
+  const tb = titleTokens(b);
+  if (ta.size === 0 || tb.size === 0) return 0;
+  const smaller = Math.min(ta.size, tb.size);
+  if (smaller < TITLE_OVERLAP_MIN_TOKENS) return titleSimilarity(a, b);
+  return intersectionSize(ta, tb) / smaller;
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -488,9 +513,9 @@ export function passTwoGate(
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
-// PASS 2 — CONCEPTUAL WORK — ADR-0010 Decision 5 (T1..T7)
+// PASS 2 — CONCEPTUAL WORK — ADR-0010 Decision 5 (T1..T7), + D_t (2026-09-08)
 // ───────────────────────────────────────────────────────────────────────────────
-export type TitleSourceTag = "V_t" | "R_t" | "A_t";
+export type TitleSourceTag = "V_t" | "R_t" | "A_t" | "D_t";
 export type TitleSource = { kind: "names"; raw: string } | { kind: "silent" };
 
 export interface KWorkResult {
@@ -507,6 +532,13 @@ export interface WorkEvidence {
   titleVea: TitleSource; // V_t
   titleReverseImageSearch: TitleSource & { sim?: number }; // R_t — needs sim >= SIM_WORK_VOTE
   titleAppraiser: TitleSource; // A_t
+  /** D_t — the catalogued title of Stage 1d's best DINOv2/CLIP match. Same HIGH-only gate
+   *  as the artist pass's D vote: an uncalibrated embedding score below HIGH is a "don't
+   *  know", not a weak yes (ADR-0013 "Not addressed"). Stage 1d already carried this title
+   *  in `bestMatchConceptualWorkTitle`; before the 2026-09-08 amendment only its ARTIST was
+   *  read, so on A0793 lot 148 the top three 1d candidates all named the correct Hockney
+   *  work and the work pass still resolved to a different one off K_work alone. */
+  titleEmbeddingMatch: TitleSource & { matchConfidence?: "HIGH" | "MEDIUM" | "LOW" }; // D_t
   kWork: KWorkResult | null; // null = not queried / no hit
 }
 
@@ -534,6 +566,15 @@ function eligibleTitleVotes(ev: WorkEvidence, trace: string[]): TitleVote[] {
     else trace.push(`R_t dropped: sim=${sim.toFixed(2)} < ${SIM_WORK_VOTE}`);
   }
   if (ev.titleAppraiser.kind === "names") votes.push({ source: "A_t", raw: ev.titleAppraiser.raw });
+  if (ev.titleEmbeddingMatch.kind === "names") {
+    if (ev.titleEmbeddingMatch.matchConfidence === "HIGH") {
+      votes.push({ source: "D_t", raw: ev.titleEmbeddingMatch.raw });
+    } else {
+      trace.push(
+        `D_t dropped from vote: matchConfidence=${ev.titleEmbeddingMatch.matchConfidence ?? "unknown"} (only HIGH votes; MEDIUM/LOW = don't know)`,
+      );
+    }
+  }
   return votes;
 }
 
@@ -554,6 +595,41 @@ function agreeTitles(votes: TitleVote[]): { dominantRaw: string | null; n: numbe
     distinct: clusters.length,
     set: tie ? [] : top.map((v) => v.source),
   };
+}
+
+/**
+ * Does the K_work hit corroborate the title the SOURCES actually agreed on?
+ *
+ * `k.titleSim` scores the OBSERVED title (what VEA/the appraiser described) against the
+ * nearest catalogued title. It says nothing about whether that catalogued work is the
+ * work the voters named. Before the 2026-09-08 amendment T2/T5 read the score alone, so
+ * a strong match to a DIFFERENT work lifted the confidence band anyway: on A0793 lot 148
+ * VEA's "reclining figure beneath valance" matched a Hockney work literally titled
+ * "Reclining Figure" at titleSim 1.00, and that perfect score would have "corroborated"
+ * a verdict of "Cold Water about to Hit the Prince".
+ *
+ * Agreement is tested with `titleContainment` against TAU_TITLE_AGREE, not the Jaccard
+ * used to cluster two title SOURCES: a catalogued title legitimately carries a series or
+ * plate qualifier the sources omit, and that extra information should not read as
+ * disagreement. See titleContainment for the guard against generic one-word titles.
+ *
+ * A hit with no `matchedWorkTitle` recorded does NOT corroborate. That is deliberately
+ * stricter than the old behaviour: a confidence band should rest on evidence someone can
+ * point at, and an unverifiable corroborator is not that. It is traced, not silent.
+ */
+function kWorkCorroborates(k: KWorkResult | null, dominantRaw: string | null, trace: string[]): boolean {
+  if (!k || k.titleSim < TAU_TITLE || !dominantRaw) return false;
+  if (!k.matchedWorkTitle) {
+    trace.push(`K_work titleSim=${k.titleSim.toFixed(2)} not counted as corroboration: no matchedWorkTitle recorded`);
+    return false;
+  }
+  const agreement = titleContainment(k.matchedWorkTitle, dominantRaw);
+  if (agreement >= TAU_TITLE_AGREE) return true;
+  trace.push(
+    `K_work titleSim=${k.titleSim.toFixed(2)} not counted as corroboration: it matched "${k.matchedWorkTitle}", ` +
+      `but the sources agreed on "${dominantRaw}" (agreement=${agreement.toFixed(2)} < ${TAU_TITLE_AGREE})`,
+  );
+  return false;
 }
 
 /** ADR-0010 Decision 5 — the T1..T7 table. */
@@ -582,20 +658,22 @@ export function classifyWorkPass(ev: WorkEvidence): WorkVerdict {
     };
   };
 
-  // T1 — all three sources agree
-  if (ag.n === 3) return mk("identified", ag.dominantRaw, "HIGH", "T1");
+  // T1 — three or more sources agree. Was `=== 3` when V_t/R_t/A_t were the only
+  // sources; D_t makes four possible, and a fourth agreeing source cannot mean less
+  // than three do (mirrors the artist pass's A1, which is already `n >= 3`).
+  if (ag.n >= 3) return mk("identified", ag.dominantRaw, "HIGH", "T1");
 
   // T2 / T4 — two agree. The physical-vs-catalogued divergence that used to split T2/T3
   // is now entirely the impression layer's job (Decision 5b, Part A): classifyImpression
   // runs after this for any identified/candidate work and sets impressionAssessment.
   if (ag.n === 2) {
-    if (k && k.titleSim >= TAU_TITLE) return mk("identified", ag.dominantRaw, "HIGH", "T2");
-    return mk("identified", ag.dominantRaw, "MEDIUM", "T4"); // no / weak K_work corroboration
+    if (kWorkCorroborates(k, ag.dominantRaw, trace)) return mk("identified", ag.dominantRaw, "HIGH", "T2");
+    return mk("identified", ag.dominantRaw, "MEDIUM", "T4"); // no / weak / mismatched K_work corroboration
   }
 
   // T5 — single source
   if (ag.n === 1) {
-    const conf: Confidence = k && k.titleSim >= TAU_TITLE ? "MEDIUM" : "LOW";
+    const conf: Confidence = kWorkCorroborates(k, ag.dominantRaw, trace) ? "MEDIUM" : "LOW";
     return mk("candidate", ag.dominantRaw, conf, "T5");
   }
 
@@ -980,6 +1058,10 @@ export function classifyTwoPass(input: TwoPassInput): TwoPassResult {
 
   if (gate.runPass2) {
     work = classifyWorkPass(input.workEvidence);
+    // Splice in the work pass's own trace, not just its conclusion. Which title sources
+    // voted, and why a K_work hit was or wasn't counted as corroboration, is the part
+    // you need when a work verdict looks wrong — and it used to be dropped here.
+    for (const line of work.ruleTrace) if (!line.startsWith("-> ")) trace.push(`  pass2: ${line}`);
     trace.push(`PASS 2: ${work.evidenceBasis} ${work.verdict}/${work.confidence ?? "-"} (${work.conceptualWorkTitle ?? "-"})`);
 
     // Decision 6 — one bounded work -> artist back-propagation. A Conceptual Work

@@ -32,6 +32,7 @@ export function workEv(o: Partial<WorkEvidence> = {}): WorkEvidence {
     titleVea: { kind: "silent" },
     titleReverseImageSearch: { kind: "silent" },
     titleAppraiser: { kind: "silent" },
+    titleEmbeddingMatch: { kind: "silent" },
     kWork: null,
     ...o,
   };
@@ -294,6 +295,76 @@ export const t8k_kworkAnchorNoConsensus = workEv({
   titleVea: { kind: "names", raw: "Wu Zetian" },
   titleReverseImageSearch: { kind: "names", raw: "Nur Jahan H10-2", sim: 0.9 },
   kWork: { titleSim: 0.94, matchedWorkTitle: "H10-1 Wu Zetian, from The Empresses", backPropArtist: "Damien Hirst" },
+});
+
+// ── K_work corroboration must be to the SAME work (2026-09-08 amendment) ────────
+
+// Two sources agree on one work; K_work scored a perfect match to a DIFFERENT one.
+// The old code read titleSim alone and returned T2/HIGH off that mismatch.
+export const t4_kworkMatchedADifferentWork = workEv({
+  titleVea: { kind: "names", raw: "Cold Water about to Hit the Prince" },
+  titleAppraiser: { kind: "names", raw: "Cold water about to hit the Prince" },
+  kWork: { titleSim: 1.0, matchedWorkTitle: "Reclining Figure", backPropArtist: "David Hockney" },
+});
+
+// Same mismatch with a single source: the band must fall back to LOW, not MEDIUM.
+export const t5_kworkMatchedADifferentWork = workEv({
+  titleAppraiser: { kind: "names", raw: "Cold water about to hit the Prince" },
+  kWork: { titleSim: 1.0, matchedWorkTitle: "Reclining Figure", backPropArtist: "David Hockney" },
+});
+
+// A strong hit whose matched title was never recorded cannot be verified either way.
+export const t4_kworkUnverifiable = workEv({
+  titleVea: { kind: "names", raw: "Station Approach" },
+  titleAppraiser: { kind: "names", raw: "Station Approach" },
+  kWork: { titleSim: 0.97, matchedWorkTitle: null },
+});
+
+// The corroborating case still works when the catalogued title merely carries a series
+// suffix — TAU_TITLE_AGREE is a token measure, not string equality.
+export const t2_kworkSeriesSuffixStillAgrees = workEv({
+  titleVea: { kind: "names", raw: "Cold Water about to Hit the Prince" },
+  titleAppraiser: { kind: "names", raw: "Cold water about to hit the Prince" },
+  kWork: {
+    titleSim: 0.93,
+    matchedWorkTitle: "Cold Water about to Hit the Prince, from 'Illustrations for Six Fairy Tales from the Brothers Grimm'",
+  },
+});
+
+// ── D_t (Stage 1d catalogued title, 2026-09-08 amendment) ───────────────────────
+
+// The A0793/148 shape: no title source of any kind, but Stage 1d matched the work at
+// HIGH. Before D_t this fell through to T8K and resolved to whatever K_work matched.
+export const dt_embeddingTitleOnly_high = workEv({
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "HIGH" },
+  kWork: { titleSim: 1.0, matchedWorkTitle: "Reclining Figure", backPropArtist: "David Hockney" },
+});
+
+// Same, but Stage 1d is not confident — D_t must NOT vote, and T8K takes over again.
+export const dt_embeddingTitleOnly_medium = workEv({
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "MEDIUM" },
+  kWork: { titleSim: 1.0, matchedWorkTitle: "Reclining Figure", backPropArtist: "David Hockney" },
+});
+
+// D_t agreeing with the appraiser: two sources -> T2/T4 rather than a lone candidate.
+export const dt_agreesWithAppraiser = workEv({
+  titleAppraiser: { kind: "names", raw: "Cold water about to hit the Prince" },
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "HIGH" },
+  kWork: { titleSim: 0.93, matchedWorkTitle: "Cold Water about to Hit the Prince" },
+});
+
+// D_t as the fourth agreeing source — T1 must still fire at n >= 3.
+export const dt_fourSourcesAgree = workEv({
+  titleVea: { kind: "names", raw: "The Great Wave off Kanagawa" },
+  titleReverseImageSearch: { kind: "names", raw: "Great Wave off Kanagawa", sim: 0.97 },
+  titleAppraiser: { kind: "names", raw: "The Great Wave, Kanagawa" },
+  titleEmbeddingMatch: { kind: "names", raw: "The Great Wave off Kanagawa", matchConfidence: "HIGH" },
+});
+
+// D_t contradicting the only other source, with no K_work anchor -> a real conflict.
+export const dt_contradictsAppraiser = workEv({
+  titleAppraiser: { kind: "names", raw: "The Bathers" },
+  titleEmbeddingMatch: { kind: "names", raw: "Station Approach", matchConfidence: "HIGH" },
 });
 
 export const t6_titlesConflict = workEv({

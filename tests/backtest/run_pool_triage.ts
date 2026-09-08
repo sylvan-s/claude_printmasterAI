@@ -127,6 +127,8 @@ function toTwoPassInput(vea: any, vs: any, aia: any, triage: TriageResult): { in
         ? { kind: "names", raw: vs.bestMatchTitle, sim: typeof vs.visualSimilarityScore === "number" ? vs.visualSimilarityScore : 0 }
         : { kind: "silent" },
       titleAppraiser: claimed.title ? { kind: "names", raw: claimed.title } : { kind: "silent" },
+      // This adapter models no Stage 1d (see embeddingMatch above) — D_t stays silent.
+      titleEmbeddingMatch: { kind: "silent" },
       kWork: null,
     },
     impressionEvidence: null,

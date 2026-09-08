@@ -11,6 +11,10 @@
  *
  * Flags:
  *   --auction <id>    one sale by auction_id
+ *   --sale-code <code> label the sale as this code (e.g. "A0793") when the sitemap
+ *                     does not list it yet — an upcoming sale is reachable through
+ *                     the lots API but absent from /sitemap.xml, and without this
+ *                     the rows get a blank sale_code and lotIds like "RB-673-46"
  *   --all-prints      every Prints & Multiples sale in the sitemap (43 as of 2026-08)
  *   --department <kw> slug keyword to match (default "print"); use with --all-prints
  *   --benchmark       also emit benchmark lot records (facts only, no raw prose)
@@ -49,6 +53,7 @@ function parseArgs(argv: string[]) {
   };
   return {
     auction: get("--auction") ? Number(get("--auction")) : undefined,
+    saleCode: get("--sale-code"),
     allPrints: argv.includes("--all-prints"),
     department: get("--department") ?? "print",
     benchmark: argv.includes("--benchmark"),
@@ -233,9 +238,18 @@ async function main() {
   const byId = new Map(all.map((a) => [a.auctionId, a]));
   console.log(`  ${all.length} auctions in sitemap`);
 
+  // An upcoming sale is served by the lots API before it appears in the sitemap
+  // (A0793 / auction 673 was), so fall back to a bare ref and let --sale-code
+  // supply the label the sitemap would have given us.
   const targets: AuctionRef[] = args.allPrints
     ? filterByKeyword(all, args.department)
     : [byId.get(args.auction!) ?? { auctionId: args.auction!, slug: "", saleCode: "", url: "" }];
+  if (!args.allPrints && args.saleCode) {
+    if (targets[0].saleCode && targets[0].saleCode !== args.saleCode) {
+      console.warn(`  ! --sale-code ${args.saleCode} overrides the sitemap's ${targets[0].saleCode} for auction ${targets[0].auctionId}`);
+    }
+    targets[0] = { ...targets[0], saleCode: args.saleCode };
+  }
 
   console.log(`Target sales: ${targets.length}`);
 
