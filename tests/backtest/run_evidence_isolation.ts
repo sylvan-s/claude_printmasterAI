@@ -7,14 +7,22 @@
 //
 //   1. Stage 1b (Gemini reverse image search) is switched off at config level
 //      (enableVisualSearch: false), so the two-pass classifier's R vote never fires.
-//   2. Stage 1a's AUTHORSHIP vote is suppressed. VEA still runs — the pipeline needs
-//      its physical description for Stage 2b/3, and it is the only stage that sees
-//      the image — but the artist-naming evidence cells it fills (veaNamesArtist /
-//      veaArtistName / veaAuthorshipSignalLegible / veaSignatureConfidence) are
-//      blanked before the deterministic tree reads them, so the V vote never fires.
-//      VEA's non-authorship observations (including any legible in-image title) are
-//      left alone: they feed the ACKG work query, which this harness deliberately
-//      keeps.
+//   2. Stage 1a (VEA) DOES NOT RUN. No vision call is made at all; a stub result
+//      standing for "not run" is passed downstream in its place.
+//
+//      This started out as suppressing VEA's authorship vote while still letting it
+//      run, which was not enough. VEA's non-authorship prose still steered the
+//      evidence agent: on A0793 lot 148 VEA's description of the image produced
+//      `observedTitle: "Reclining figure beneath valance"`, that string was what the
+//      agent handed to query_ackg_work, and the resulting match to an unrelated
+//      Hockney work titled "Reclining Figure" is what the work pass then resolved to.
+//      A run that means "1c + 1d only" cannot have Stage 1a shaping the graph queries.
+//
+//      The cost is real and deliberate: Stage 2b and Stage 3 lose every physical
+//      observation (technique, plate mark, paper, condition, signatures, dimensions),
+//      so the specialist and the valuation work from Stage 1c's notes and Stage 1d's
+//      match alone. Read the estimate from these runs accordingly — this harness tests
+//      what 1c+1d can carry, not what the production pipeline would produce.
 //
 // The ACKG votes (K / K_work) and Stage 1d's D vote are both kept — 1d's candidates
 // come out of the same graph, so they are one internal-evidence path.
@@ -40,6 +48,7 @@ import {
   type AppraisalInput,
   type AppraisalMethodConfig,
 } from "../../src/appraisal/appraiser";
+import type { VisualExtractionResult } from "../../src/types";
 import { resolveSaleRef, type AuctionRef } from "../../benchmark/src/roseberys/discover";
 import { fetchLotByNumber, imageUrl, lotUrl, type RawLot } from "../../benchmark/src/roseberys/api";
 import { parseDescription, type ParsedLot } from "../../benchmark/src/roseberys/parse";
@@ -56,13 +65,59 @@ const DEFAULT_METHOD = "claude-4stage";
 // ───────────────────────────────────────────────────────────────────────────────
 
 /**
- * Blanks the VEA authorship cells on the Stage 2a evidence agent's output, on the way
- * back from the model and before `runEvidenceTree` reads them. Hooking the tool call
- * rather than reimplementing runStage2aTriage keeps the retry/content-filter/degrade
- * behaviour of the real stage intact.
+ * A schema-shaped VisualExtractionResult standing for "Stage 1a was not run".
+ *
+ * Every field downstream reads is optional-chained or an array (verified across
+ * projectVeaForAttribution, assembleReport, and the Stage 2b/3 prompt builders), so
+ * empties are safe. `haltRecommended` must stay false — true short-circuits the whole
+ * pipeline into the halt report. `overallExtractionConfidence: 0` plus the explicit
+ * lowConfidenceFlag is what tells the Stage 2a evidence agent it is looking at an
+ * absence of observation rather than an observation of absence.
+ */
+function notRunVea(): VisualExtractionResult {
+  return {
+    schemaVersion: "VEA-1.1",
+    inspectionTimestamp: new Date().toISOString(),
+    imagesReceived: { primaryScan: false, supplementaryScanCount: 0 },
+    imageAuthenticity: { haltRecommended: false } as any,
+    titleInscriptions: [],
+    signatures: [],
+    editionInfo: [],
+    editionInfoAbsent: true,
+    printingTechniques: [],
+    plateMark: {} as any,
+    dimensions: {} as any,
+    paper: {} as any,
+    condition: {} as any,
+    inkAndColour: {} as any,
+    stampsAndLabels: [],
+    composition: {} as any,
+    photographicQuality: {} as any,
+    visualEvidenceHighlights: [],
+    overallExtractionConfidence: 0,
+    lowConfidenceFlags: [
+      "Stage 1a (Visual Extraction Agent) WAS NOT RUN in this appraisal — no image was " +
+        "examined and no physical observation exists. Every field below is empty because " +
+        "nothing was looked at, NOT because the work lacks those features. Draw no inference " +
+        "from the absence of signatures, inscriptions, technique or condition data.",
+    ],
+    provisionalOutput: true,
+  };
+}
+
+/**
+ * Skips Stage 1a entirely and blanks any VEA authorship cell the evidence agent still
+ * manages to fill. Hooking the tool call rather than reimplementing runStage2aTriage
+ * keeps the retry/content-filter/degrade behaviour of the real stage intact.
  */
 class EvidenceIsolationAppraiser extends FourStageAppraiser {
   public veaVoteSuppressed: { veaNamesArtist: boolean; veaArtistName: string; legible: boolean; sigConf: number } | null = null;
+
+  /** No vision call. Returns the "not run" stub without touching the model. */
+  protected async runStage1VEA(): Promise<VisualExtractionResult> {
+    console.log("[Isolation] Stage 1a (VEA) SKIPPED — no vision call made; passing a 'not run' stub downstream");
+    return notRunVea();
+  }
 
   protected async callClaudeWithAckgTool(
     modelName: string,
@@ -81,8 +136,11 @@ class EvidenceIsolationAppraiser extends FourStageAppraiser {
         legible: !!a.veaAuthorshipSignalLegible,
         sigConf: typeof a.veaSignatureConfidence === "number" ? a.veaSignatureConfidence : -1,
       };
+      // With Stage 1a skipped there is nothing for the agent to read an artist off, so
+      // this should always be a no-op now. Kept as a tripwire: if it ever reports
+      // veaNamesArtist=true, the agent invented a VEA observation out of the stub.
       console.log(
-        `[Isolation] suppressing VEA authorship vote — agent had filled: ` +
+        `[Isolation] VEA authorship cells (expected empty — Stage 1a did not run): ` +
           `veaNamesArtist=${this.veaVoteSuppressed.veaNamesArtist} ` +
           `veaArtistName="${this.veaVoteSuppressed.veaArtistName}" ` +
           `legible=${this.veaVoteSuppressed.legible} sigConf=${this.veaVoteSuppressed.sigConf}`,
@@ -195,12 +253,16 @@ async function main() {
   const notesFieldsUsed = (["inscribedMarksNotes", "provenanceNotes", "conditionNotes", "catalogueNotes"] as const)
     .filter((k) => input[k]);
   console.log(`[Isolation] Stage 1c notes populated: ${notesFieldsUsed.join(", ") || "(none)"}`);
-  console.log(`[Isolation] Stage 1b: DISABLED | VEA authorship vote: SUPPRESSED | Stage 1d: ON | ACKG K/K_work: ON`);
+  console.log(`[Isolation] Stage 1a (VEA): NOT RUN | Stage 1b: DISABLED | Stage 1d: ON | ACKG K/K_work: ON`);
 
   const t0 = Date.now();
   const report = await appraiser.appraise(input);
   const elapsedS = ((Date.now() - t0) / 1000).toFixed(1);
   console.log(`[Isolation] Done in ${elapsedS}s — app says: "${report.likelyArtist}" / "${report.artworkTitle}"`);
+
+  // report.modelUsed is assembled inside the pipeline and still names a Stage 1 model
+  // that was never called. Correct it rather than storing a claim that isn't true.
+  if (report.modelUsed) report.modelUsed = report.modelUsed.replace(/S1: [^|\]]+/, "S1: skip (VEA not run) ");
 
   const comparison: BacktestComparison = compareResults(report, groundTruth, rawLot);
   console.log(`[Isolation] Catalogue says: "${groundTruth.artist}" / "${groundTruth.title}"`);
@@ -221,8 +283,12 @@ async function main() {
         method: config.id,
         blindnessCompromised,
         evidenceIsolation: {
+          stage1aVeaRun: false,
+          stage1aNote:
+            "No vision call was made. Stage 2b and Stage 3 therefore had no physical " +
+            "observation to work from, so the estimate reflects Stage 1c notes + Stage 1d " +
+            "match only and is not comparable to a production run.",
           stage1bDisabled: true,
-          veaAuthorshipVoteSuppressed: true,
           veaAuthorshipCellsAsFilledByAgent: appraiser.veaVoteSuppressed,
           stage1dEnabled: true,
           ackgVotesEnabled: true,

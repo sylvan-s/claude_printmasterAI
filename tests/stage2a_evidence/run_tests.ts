@@ -127,6 +127,53 @@ test("stage1d HIGH confidence -> embeddingMatch carries the name + matchConfiden
   assert.equal((inp.artistEvidence.embeddingMatch as any).matchConfidence, "HIGH");
 });
 
+// ── A_t comes from Stage 1c, never from the agent's inference ───────────────────
+
+/** A minimal AppraiserInputResult carrying just the title claim under test. */
+const stage1c = (title: string | null) => ({
+  schemaVersion: "AIA-1.0" as const,
+  inputReceived: { inscribedMarksNotes: true, provenanceNotes: false, conditionNotes: false, catalogueNotes: true },
+  claimedAttribution: { artist: null, title, period: null, technique: null, status: (title ? "hypothesis" : "absent") as any, sourceField: null, sourceExcerpt: null },
+  inscriptionClaims: { signatureClaim: null, editionClaim: null, editionSizeClaim: null, monogramOrStampClaim: null, status: "absent" as any },
+  provenanceChain: [], conditionClaims: [], catalogueReferences: [], literatureOrExhibitionClaims: [],
+  dimensionsClaim: null, paperOrSupport: null,
+  rawNotes: { inscribedMarksNotes: null, provenanceNotes: null, conditionNotes: null, catalogueNotes: null },
+  overallExtractionConfidence: 0.8, lowConfidenceFlags: [],
+});
+
+test("REGRESSION A0793/148: Stage 1c claims no title -> A_t is silent even when the agent inferred one", () => {
+  // The agent read the edition inscription "Grimm edition B 35/100" as a title.
+  const ev = f.evOut({ workEvidence: { ...f.evOut({}).workEvidence, appraiserTitle: "Grimm edition B 35/100" } });
+  const inp = evidenceToTwoPassInput(ev as any, false, null, stage1c(null) as any);
+  assert.equal(inp.workEvidence.titleAppraiser.kind, "silent");
+});
+
+test("Stage 1c's title is used verbatim, not the agent's differing version", () => {
+  const ev = f.evOut({ workEvidence: { ...f.evOut({}).workEvidence, appraiserTitle: "Grimm edition B 35/100" } });
+  const inp = evidenceToTwoPassInput(ev as any, false, null, stage1c("Cold water about to hit the Prince") as any);
+  assert.equal(inp.workEvidence.titleAppraiser.kind, "names");
+  assert.equal((inp.workEvidence.titleAppraiser as any).raw, "Cold water about to hit the Prince");
+});
+
+test("with Stage 1c silent and Stage 1d HIGH, the work pass resolves on D_t instead of conflicting", () => {
+  const ev = f.evOut({ workEvidence: { ...f.evOut({}).workEvidence, appraiserTitle: "Grimm edition B 35/100" } });
+  const inp = evidenceToTwoPassInput(
+    ev as any, false,
+    stage1d("HIGH", "David Hockney", "Cold Water about to Hit the Prince"),
+    stage1c(null) as any,
+  );
+  const { twoPass } = runEvidenceTree(ev as any, false, stage1d("HIGH", "David Hockney", "Cold Water about to Hit the Prince"), stage1c(null) as any);
+  assert.equal(inp.workEvidence.titleAppraiser.kind, "silent");
+  assert.equal(twoPass.workIdentification?.conceptualWorkTitle, "Cold Water about to Hit the Prince");
+  assert.notEqual(twoPass.workIdentification?.verdict, "conflict");
+});
+
+test("no Stage 1c result supplied at all -> falls back to the agent cell (fixture path)", () => {
+  const ev = f.evOut({ workEvidence: { ...f.evOut({}).workEvidence, appraiserTitle: "Le Taureau" } });
+  const inp = evidenceToTwoPassInput(ev as any, false);
+  assert.equal((inp.workEvidence.titleAppraiser as any).raw, "Le Taureau");
+});
+
 test("no stage1d work title -> titleEmbeddingMatch is silent (D_t never votes)", () => {
   const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false, stage1d("HIGH"));
   assert.equal(inp.workEvidence.titleEmbeddingMatch.kind, "silent");

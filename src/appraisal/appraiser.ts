@@ -635,6 +635,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       {
         model: modelName,
         max_tokens: 4096,
+        temperature: this.config.temperature ?? DEFAULT_CLAUDE_TEMPERATURE,
         system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: contentBlocks }],
         tools: [{ name: toolName, description: toolDescription, input_schema: translateSchemaToStandardJsonSchema(inputSchema) }],
@@ -721,6 +722,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         {
           model: modelName,
           max_tokens: maxTokens,
+          temperature: this.config.temperature ?? DEFAULT_CLAUDE_TEMPERATURE,
           // Cache the specialist system prompt (+ injected config). Reused verbatim for
           // every lot routed to the same specialist config; the web_search tool renders
           // before it and is cached alongside.
@@ -824,8 +826,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     name: "query_ackg",
     description:
       "Query the Art Context Knowledge Graph — a Neo4j graph built from real ingested " +
-      "print records (Metropolitan Museum of Art, Roseberys, Forum Auctions; ~4,800 " +
-      "artists, ~33,700 works) — for artists whose actual catalogued output matches the " +
+      "print records (auction history: Bonhams, Roseberys, Forum Auctions, Skinner; " +
+      "institutional: Tate, Metropolitan Museum of Art, British Museum; ~97,000 records, " +
+      "~8,000 artists, ~90,900 works, verified 2026-09-08) — " +
+      "for artists whose actual catalogued output matches the " +
       "given technique/period/paper/region/subject combination. Returns candidates ranked " +
       "by supportCount (how many real matching works exist), split into institutional vs. " +
       "auction-history provenance. All parameters are optional — supply whichever you " +
@@ -833,7 +837,8 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       "hypothesis sharpens. IMPORTANT: a zero or low supportCount is real absence-of-" +
       "population-data for that combination in this graph's current sources — it is NOT " +
       "evidence against a candidate. Coverage is strong for Western 19th-20th century " +
-      "prints and currently thin-to-absent for ukiyo-e specifically; treat a zero result " +
+      "prints. It is ABSENT for ukiyo-e specifically — as at 2026-09-08 the graph holds no " +
+      "Hokusai, Hiroshige, Utamaro, Kunisada or Yoshitoshi at all — so treat a zero result " +
       "for an East Asian candidate as a coverage gap, never as disqualifying.",
     input_schema: {
       type: "object" as const,
@@ -958,6 +963,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         {
           model: modelName,
           max_tokens: maxTokens,
+          temperature: this.config.temperature ?? DEFAULT_CLAUDE_TEMPERATURE,
           // Cache the triage system prompt (it is large and identical for every lot). Across
           // a pool run — and across repeated triage-version evaluations against that pool —
           // this is the single biggest input-token saving: only the first lot writes it,
@@ -1794,7 +1800,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       // VEA already halted — no original work to attribute. Skip the call; run the tree
       // on an empty evidence set (classifyTwoPass short-circuits on veaHaltRecommended).
       const empty = emptyEvidenceOutput(vea.overallExtractionConfidence ?? 0);
-      const { triage, twoPass } = runEvidenceTree(empty, true, stage1d);
+      const { triage, twoPass } = runEvidenceTree(empty, true, stage1d, appraiserInput);
       console.log(`[Stage 2a evidence] VEA haltRecommended — tree not run; Scenario ${twoPass.scenario} (${twoPass.scenarioName})`);
       return triage;
     }
@@ -1833,11 +1839,11 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
           reason: "Stage 2a evidence agent output blocked by content filtering on both attempts — needs manual triage.",
           narrative: "The evidence agent could not complete: its output was blocked by content-filtering policy twice. No automated attribution was produced; route to a human.",
         });
-        return runEvidenceTree(degraded, false, stage1d).triage;
+        return runEvidenceTree(degraded, false, stage1d, appraiserInput).triage;
       }
     }
 
-    const { triage, twoPass } = runEvidenceTree(ev, false, stage1d);
+    const { triage, twoPass } = runEvidenceTree(ev, false, stage1d, appraiserInput);
     const rd = triage.routingDecision;
     console.log(
       `[Stage 2a evidence] artist=${twoPass.artistAttribution.evidenceBasis} ${twoPass.artistAttribution.verdict}/${twoPass.artistAttribution.confidence ?? "-"} "${twoPass.artistAttribution.artistName ?? "-"}"` +

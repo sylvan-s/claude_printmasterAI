@@ -3,7 +3,8 @@
  * knowledge_graph/08_ackg_schema_definition.md (repo root) for the full graph
  * schema and docs/adr/0003-knowledge-graph-grounded-triage.md for why this
  * exists: candidate-artist probabilities grounded in real ingested records
- * (Met, Roseberys, Forum Auctions) rather than an LLM's unexaminable prior.
+ * (Bonhams, Roseberys, Forum Auctions, Skinner, Tate, the Met, the British Museum)
+ * rather than an LLM's unexaminable prior.
  */
 import type { DimMm } from "./dimension_parse.js";
 
@@ -86,7 +87,8 @@ export interface AckgCandidate {
    *  in query.ts for known coverage gaps). */
   supportCount: number;
   /** Support broken down by source layer, per ADR-0003's two-layer design:
-   *  institutional (Met, V&A) vs. auction-history (Roseberys, Forum Auctions). */
+   *  institutional (Tate, Met, British Museum) vs. auction-history (Bonhams, Roseberys,
+   *  Forum Auctions, Skinner). */
   institutionalSupportCount: number;
   auctionSupportCount: number;
   /** Up to 3 sample work titles, for the calling agent to sanity-check the match. */

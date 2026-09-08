@@ -18,7 +18,7 @@
  *
  * Pure and unit-tested — tests/stage2a_evidence/.
  */
-import type { TriageResult, Stage1dResult } from "../types";
+import type { TriageResult, Stage1dResult, AppraiserInputResult } from "../types";
 import {
   classifyTwoPass,
   nameSimilarity,
@@ -161,6 +161,7 @@ export function evidenceToTwoPassInput(
   ev: EvidenceAgentOutput,
   veaHaltRecommended: boolean,
   stage1d?: Stage1dResult | null,
+  appraiserInput?: AppraiserInputResult | null,
 ): TwoPassInput {
   const a = ev.artistEvidence;
   const w = ev.workEvidence;
@@ -230,6 +231,30 @@ export function evidenceToTwoPassInput(
 
   const titleSrc = (s: string): TitleSource => (s ? { kind: "names", raw: s } : { kind: "silent" });
 
+  // A_t — the appraiser's title. Deciding what in a set of notes is a TITLE and what is
+  // merely an inscription is Stage 1c's job, not the evidence agent's; when Stage 1c
+  // reports no title claim, there is no appraiser title. The agent's own `appraiserTitle`
+  // cell was the one cell in workEvidence with no schema description, and it filled the
+  // gap by inference: on A0793 lot 148 it read the edition inscription "Grimm edition
+  // B 35/100" as a title while Stage 1c had correctly recorded claimedAttribution.title
+  // as null. That invented vote collided with D_t and collapsed the work pass to a T6
+  // conflict. Stage 1c is authoritative here; the agent's cell is reported, never voted.
+  const claimedTitle = appraiserInput?.claimedAttribution?.title?.trim() || "";
+  const titleAppraiser: TitleSource = appraiserInput
+    ? claimedTitle
+      ? { kind: "names", raw: claimedTitle }
+      : { kind: "silent" }
+    // No Stage 1c result supplied at all — unit fixtures that drive the agent's cells
+    // directly. Production always passes one: runStage1cAppraiserInput returns a fully
+    // formed "absent" result rather than undefined even when there are no notes.
+    : titleSrc(w.appraiserTitle);
+  if (appraiserInput && w.appraiserTitle?.trim() && w.appraiserTitle.trim() !== claimedTitle) {
+    console.warn(
+      `[Stage 2a evidence] evidence agent reported appraiserTitle "${w.appraiserTitle.trim()}" but Stage 1c claimed ` +
+        `${claimedTitle ? `"${claimedTitle}"` : "no title"} — using Stage 1c; the agent's value does not vote.`,
+    );
+  }
+
   // ACKG work-level anchor (ADR-0010 Decision 4a amendment): a catalogued work whose title
   // matches an observed title AND is attributed to one artist. The agent puts that artist in
   // kWorkBackPropArtist and the title-match strength in kWorkTitleSim. This VOTES.
@@ -292,7 +317,7 @@ export function evidenceToTwoPassInput(
       titleReverseImageSearch: w.reverseImageTitle
         ? { kind: "names", raw: w.reverseImageTitle, sim: w.reverseImageTitleSimilarity >= 0 ? w.reverseImageTitleSimilarity : 0 }
         : { kind: "silent" },
-      titleAppraiser: titleSrc(w.appraiserTitle),
+      titleAppraiser,
       titleEmbeddingMatch,
       kWork,
     },
@@ -518,11 +543,12 @@ export function runEvidenceTree(
   ev: EvidenceAgentOutput,
   veaHaltRecommended: boolean,
   stage1d?: Stage1dResult | null,
+  appraiserInput?: AppraiserInputResult | null,
 ): {
   triage: TriageResult;
   twoPass: TwoPassResult;
 } {
-  const twoPass = classifyTwoPass(evidenceToTwoPassInput(ev, veaHaltRecommended, stage1d));
+  const twoPass = classifyTwoPass(evidenceToTwoPassInput(ev, veaHaltRecommended, stage1d, appraiserInput));
   return { triage: assembleTriageResult(ev, twoPass), twoPass };
 }
 

@@ -7,8 +7,8 @@
  * hypothesis narrows.
  *
  * Known, honest coverage gap: the graph's current sources (Met Open Access,
- * Roseberys, Forum Auctions) are strong for Western 19th-20th century prints
- * and thin-to-absent for ukiyo-e specifically — the same non-Western coverage
+ * Bonhams, Roseberys, Forum Auctions, Skinner, Tate, British Museum) are strong for
+ * 19th-20th century prints and thin-to-absent for ukiyo-e specifically — the same non-Western coverage
  * gap ADR-0003 already flags for Getty ULAN (~1.3% Japan). A zero or low
  * supportCount for an East Asian candidate reflects that gap, not evidence
  * against the attribution — never treat it as a vote to rule the candidate

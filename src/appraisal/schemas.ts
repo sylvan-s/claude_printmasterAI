@@ -814,7 +814,7 @@ export const ATTRIBUTION_EVIDENCE_SCHEMA = {
         veaInImageTitleLegible: { type: Type.BOOLEAN, description: "A legible in-image title/series cartouche is present (Decision 6 — triggers Pass 2 even when the artist is unresolved; matters most for ukiyo-e)." },
         reverseImageTitle: { type: Type.STRING },
         reverseImageTitleSimilarity: { type: Type.NUMBER, description: "-1 if not scored." },
-        appraiserTitle: { type: Type.STRING },
+        appraiserTitle: { type: Type.STRING, description: 'Stage 1c\'s claimedAttribution.title VERBATIM, or "" when Stage 1c states none. Deciding what in the notes is a title rather than an inscription is Stage 1c\'s job — do NOT infer a title from edition marks, blindstamps, series/publisher names or any other inscription text. This cell is REPORTED, not voted: the A_t title vote is taken from Stage 1c directly, and a value here that disagrees with Stage 1c is logged and discarded.' },
         kWorkQueried: { type: Type.BOOLEAN, description: "Did you call query_ackg_work for the identified/candidate work?" },
         kWorkTitleSim: { type: Type.NUMBER, description: 'The "computed title similarity" value query_ackg_work reports for its best match — TRANSCRIBE it, do not estimate your own. -1 if you did not call query_ackg_work.' },
         kWorkMatchedTitle: { type: Type.STRING, description: 'The catalogued title query_ackg_work reported as the best match, verbatim. "" if none / not called.' },
