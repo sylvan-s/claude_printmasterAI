@@ -36,7 +36,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude } from "./knowledge_graph/index.js";
 import { assessComps, formatCompStorability, type CompStorabilityReport } from "./comp_storability.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
 import type { StyleConsistencyEvidence } from "./two_pass_attribution";
@@ -724,6 +724,9 @@ const MIN_ACKG_ROUNDS_BEFORE_REPORT = 1;
 const STAGE2B_MAX_WEB_SEARCHES = 5;
 
 const STAGE3_COMPS_LIMIT = 40;
+/** Stage 2b reads comps to reason about, not to compute a median over, so it gets a
+ *  tighter set than Stage 3's 40 — the rows ride along in every later turn of its loop. */
+const STAGE2B_COMPS_LIMIT = 12;
 
 /**
  * Stage 3's input is dominated by the comparables block: 40 rows x 15 fields, pretty-printed
@@ -903,6 +906,71 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     },
   };
 
+  // ---- ACKG tools for Stage 2b -------------------------------------------------
+  //
+  // Until 2026-09-09 Stage 2b's only tools were web_search and lookup_museum_collections:
+  // the one stage whose whole job is research had NO access to this project's own knowledge
+  // graph, while Stage 2a queried it freely and Stage 3 called queryAuctionComparables
+  // directly in code. So Stage 2b spent web searches rediscovering facts the graph held,
+  // and comps in particular were researched TWICE — 2b hunting them on the open web, then
+  // Stage 3 independently querying the graph and labelling 2b's findings "SECONDARY …
+  // unverified". Measured on A0793/122: 4 web comps found (3 with no price at all) for an
+  // artist with 310 dated, priced, GBP-normalised records already in the graph.
+  //
+  // Cost shape is the argument. A Stage 2a graph round reads ~8,600 cached tokens and costs
+  // cents; one web-search call on the same lot wrote 21,977 and read 46,122, because search
+  // results are bulk text that then rides along in every later turn. Per fact retrieved the
+  // graph is an order of magnitude cheaper. Adding tools does invalidate the cached prompt
+  // prefix, but that prefix is written once per lot and the searches it displaces are far
+  // larger.
+
+  private static readonly COMPARABLES_TOOL = {
+    name: "query_ackg_comparables",
+    description:
+      "Realised auction prices from this project's own knowledge graph — 48,000+ dated, " +
+      "sold records from Bonhams (2003-2026), Roseberys London (2014-2026) and Skinner " +
+      "(2022-2026), premium-inclusive and converted to GBP at the sale-date ECB rate. " +
+      "PREFER THIS OVER web_search for comparables: these are structured verified records, " +
+      "not search snippets, and Stage 3 values the work from this same corpus. Results are " +
+      "tiered by exact match only, never similarity: same_work (the same print — strongest), " +
+      "same_artist_technique, same_artist. Coverage is uneven — 81% of artists in the graph " +
+      "have fewer than 3 priced records, and Forum Auctions is absent entirely — so an empty " +
+      "or thin result is a coverage fact and your cue to spend a web search, NOT evidence " +
+      "that the work is unsaleable or low-value.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        artistName: { type: "string" as const, description: "Candidate artist's full name, e.g. \"Peter Blake\"." },
+        workTitle: { type: "string" as const, description: "Identified work title, for the same_work tier. Omit if unknown; a generic title (\"Untitled\") is ignored." },
+        technique: { type: "string" as const, description: "Technique for the same_artist_technique tier, e.g. \"Screenprint\"." },
+        sinceDate: { type: "string" as const, description: "ISO lower bound on sale date, e.g. \"2015-01-01\". Defaults to 2015." },
+      },
+      required: ["artistName"],
+    },
+  };
+
+  private static readonly EDITION_TOOL = {
+    name: "query_ackg_editions",
+    description:
+      "Declared edition sizes and catalogued proof types (numbered/AP/PP/HC/BAT/TP) from " +
+      "this project's knowledge graph, for STEP 6. Use it before web-searching edition " +
+      "details. Returns EVERY declared size found for a work rather than one number: for " +
+      "prints, several sizes on one work usually means genuinely different editions of the " +
+      "same image — lettered editions (A/B/C/D, each its own edition of N), a later or " +
+      "posthumous edition, a restrike — which changes rarity and value substantially. " +
+      "Coverage is partial (size on 54% of runs, copyType on 79% of impressions), so an " +
+      "absent value is missing data, never evidence that no edition exists. Impression " +
+      "counts are what the graph holds — a floor on what exists, never an edition total.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        artistName: { type: "string" as const, description: "Candidate artist's full name." },
+        workTitle: { type: "string" as const, description: "Work title to narrow to. Omit for an artist-wide sample; note those are DIFFERENT works, so their sizes are not comparable to one another." },
+      },
+      required: ["artistName"],
+    },
+  };
+
   /** Cap what reaches the model — real facts, not a dump of every field on every record. */
   private formatMuseumLookupForClaude(result: ArtistLookupResult): string {
     const MAX_RECORDS_PER_SOURCE = 12;
@@ -936,7 +1004,11 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     modelName: string,
     systemInstruction: string,
     userText: string,
-    maxTokens: number = 8192
+    maxTokens: number = 8192,
+    /** Backtest circularity guard, threaded through so the graph comps Stage 2b now sees
+     *  are filtered the same way Stage 3's are — a pool lot must never be handed its own
+     *  sale record as a comparable. */
+    testingExcludeSourceListing?: string,
   ): Promise<any> {
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
     if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
@@ -950,7 +1022,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const tools = [
       { type: "web_search_20250305", name: "web_search", max_uses: STAGE2B_MAX_WEB_SEARCHES },
       MultiStageAppraiser.MUSEUM_LOOKUP_TOOL,
+      MultiStageAppraiser.COMPARABLES_TOOL,
+      MultiStageAppraiser.EDITION_TOOL,
     ];
+    const excludedListing = parseExcludedListing(testingExcludeSourceListing);
 
     const post = (messages: any[], forceFinal: boolean) =>
       postAnthropicMessages(
@@ -1003,6 +1078,42 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
               content = this.formatMuseumLookupForClaude(result);
             } catch (err: any) {
               content = `Museum lookup failed: ${err.message}`;
+            }
+            return { type: "tool_result", tool_use_id: b.id, content };
+          }
+          if (b.name === "query_ackg_comparables") {
+            let content: string;
+            try {
+              const comps = await queryAuctionComparables({
+                artistName: String(b.input?.artistName ?? ""),
+                workTitle: b.input?.workTitle ?? null,
+                technique: b.input?.technique ?? null,
+                sinceDate: b.input?.sinceDate ?? STAGE3_COMPS_SINCE,
+                limit: STAGE2B_COMPS_LIMIT,
+                excludeListingUrl: excludedListing.listingUrl,
+                excludeSaleLot: excludedListing.saleLot,
+              });
+              content =
+                `${comps.summary.count} comparable(s). Summary: ${JSON.stringify(comps.summary)}\n` +
+                `Coverage: ${comps.coverageNote}\n` +
+                JSON.stringify(comps.comparables.map(compactComparableForValuation));
+              console.log(`[4-Stage] Stage 2b query_ackg_comparables "${b.input?.artistName}": ${comps.summary.count} comp(s), median GBP ${comps.summary.medianGBP ?? "n/a"}`);
+            } catch (err: any) {
+              content = `ACKG comparables query failed: ${err.message}`;
+            }
+            return { type: "tool_result", tool_use_id: b.id, content };
+          }
+          if (b.name === "query_ackg_editions") {
+            let content: string;
+            try {
+              const ed = await queryEditionRuns({
+                artistName: String(b.input?.artistName ?? ""),
+                workTitle: b.input?.workTitle ?? null,
+              });
+              content = formatEditionRunsForClaude(ed);
+              console.log(`[4-Stage] Stage 2b query_ackg_editions "${b.input?.artistName}": ${ed ? `${ed.works.length} work(s), sizes ${ed.works.flatMap(w => w.declaredSizes).join("/") || "none"}` : "no match"}`);
+            } catch (err: any) {
+              content = `ACKG edition query failed: ${err.message}`;
             }
             return { type: "tool_result", tool_use_id: b.id, content };
           }
@@ -2241,7 +2352,10 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     ai: GoogleGenAI,
     userNotes?: string,
     visualSearch?: VisualSearchResult,
-    appraiserInput?: AppraiserInputResult
+    appraiserInput?: AppraiserInputResult,
+    /** Backtest-only; forwarded to the ACKG comparables tool so Stage 2b cannot be handed
+     *  the very listing this input came from as a comparable. */
+    testingExcludeSourceListing?: string
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
@@ -2289,7 +2403,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
     const result: AttributionResearchResult = isClaude(stage2bModel)
-      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192)
+      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing)
       : await this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
     await this.persistCatalogueRaisonneFinding(result);
     // Phase 0 of the comps write-back is a measurement, not a feature: nothing is written,
@@ -2754,7 +2868,7 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const t2b = Date.now();
     emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
     console.log(`[Timing] Stage 2b (Specialist) starting — model: ${stage2bModel}`);
-    const attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined, appraiserInput);
+    const attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing);
     console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
     emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
 

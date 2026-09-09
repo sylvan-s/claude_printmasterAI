@@ -9,6 +9,7 @@ import { normalizeTitleForEmbedding, isLowInformationTitle } from "../../src/app
 import { titleSimFromCosine, COSINE_FLOOR, COSINE_CEIL } from "../../src/appraisal/knowledge_graph/embed_text";
 import { parseExcludedListing } from "../../src/appraisal/knowledge_graph/query_comparables";
 import { formatCatalogueRaisonneBlock, MIN_WORKS_FOR_DERIVED_CR, type ArtistCatalogueRaisonne } from "../../src/appraisal/knowledge_graph/catalogue_raisonne";
+import { formatEditionRunsForClaude, type EditionQueryResult, type EditionWorkFact } from "../../src/appraisal/knowledge_graph/edition_runs";
 
 let passed = 0;
 let failed = 0;
@@ -229,6 +230,66 @@ test("CR block: the graph's canonical spelling is shown when it differs from the
 
 test("MIN_WORKS_FOR_DERIVED_CR is above 1 — a single citation is the documented noise case", () => {
   assert.ok(MIN_WORKS_FOR_DERIVED_CR > 1);
+});
+
+
+// ---- Stage 2b edition tool result -------------------------------------------------
+
+function work(over: Partial<EditionWorkFact> = {}): EditionWorkFact {
+  return { workTitle: "The Beach Boys", matchType: "exact", declaredSizes: [50], runCount: 1,
+           years: [1964], impressions: 3, copyTypes: { numbered: 3 }, ...over };
+}
+function ed(over: Partial<EditionQueryResult> = {}): EditionQueryResult {
+  const works = over.works ?? [work()];
+  return {
+    artistName: "Peter Blake", queriedAs: "Peter Blake", workTitle: "The Beach Boys",
+    works, multiEditionWorks: works.filter(w => w.declaredSizes.length > 1).map(w => w.workTitle),
+    copyTypeTotals: { numbered: 3 }, coverageNote: "partial coverage", ...over,
+  };
+}
+
+test("editions: a null result reads as missing coverage, not as a finding", () => {
+  const out = formatEditionRunsForClaude(null);
+  assert.match(out, /Absence of coverage, not evidence about the edition/);
+});
+
+test("editions: one size on one work raises no multi-edition warning", () => {
+  const out = formatEditionRunsForClaude(ed());
+  assert.doesNotMatch(out, /SEVERAL DECLARED SIZES/);
+  assert.match(out, /declaredSize: 50/);
+});
+
+test("editions: two sizes on ONE work is the signal, and says do not average", () => {
+  const out = formatEditionRunsForClaude(ed({ works: [work({ declaredSizes: [100, 400] })] }));
+  assert.match(out, /SEVERAL DECLARED SIZES ON ONE WORK/);
+  assert.match(out, /Do not average them or pick one/);
+  assert.match(out, /lettered editions/);
+  assert.match(out, /declaredSize: 100 \/ 400/);
+});
+
+test("editions: differing sizes across DIFFERENT works raise no warning", () => {
+  // The bug this guards: an artist-wide sample of Banksy returned 150 and 750 for two
+  // unrelated prints and reported it as competing editions of one image.
+  const out = formatEditionRunsForClaude(ed({
+    workTitle: null,
+    works: [work({ workTitle: "Laugh Now", declaredSizes: [150] }),
+            work({ workTitle: "Weston Super Mare", declaredSizes: [750] })],
+  }));
+  assert.doesNotMatch(out, /SEVERAL DECLARED SIZES/);
+  assert.match(out, /DIFFERENT works, so their sizes are not comparable/);
+});
+
+test("editions: proofs are flagged as outside the numbered edition", () => {
+  const out = formatEditionRunsForClaude(ed({ copyTypeTotals: { numbered: 20, AP: 4, BAT: 1 } }));
+  assert.match(out, /AP=4/);
+  assert.match(out, /sit OUTSIDE the numbered edition/);
+});
+
+test("editions: a provenance note ingested as a title is truncated, not dumped", () => {
+  const long = "Note: " + "x".repeat(500);
+  const out = formatEditionRunsForClaude(ed({ works: [work({ workTitle: long })] }));
+  assert.ok(out.length < 900, `expected a compact block, got ${out.length} chars`);
+  assert.match(out, /…/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

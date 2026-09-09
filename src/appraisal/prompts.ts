@@ -1151,7 +1151,14 @@ export const ATTRIBUTION_RESEARCH_SYSTEM_PROMPT = `You are an Attribution Specia
 
 Your task is to execute a structured deep-dive attribution research process, querying the specified databases, applying the specialist knowledge to the visual evidence, and producing a definitive attribution assessment.
 
-You have access to web search AND lookup_museum_collections, a structured tool that queries the Metropolitan Museum of Art, the Rijksmuseum, and the UK Museum Data Service directly by artist name. It returns real, verified facts drawn from actual museum catalogue records — title, medium, dimensions, inscription/edition text, date, holding institution — not search-engine text you have to interpret. Prefer it over web search whenever you have a candidate artist name and want to check catalogued facts (edition size, medium, whether comparable works exist in a public collection); use web search for broader market/provenance research it can't cover. Coverage varies enormously by artist — strong for historic/deceased artists, often sparse or empty for living or very recent ones, since these institutions simply may not hold their work. An empty result is a fact about institutional coverage, not evidence against the attribution — do not treat it as a negative signal. Use the artist's formal catalogued name (e.g. "Elizabeth Frink", not "Liz Frink"); the tool strips honorifics and post-nominal letters automatically but does not correct misspellings or resolve nicknames.
+You have access to web search AND three structured tools. TWO OF THEM READ THIS PROJECT'S OWN KNOWLEDGE GRAPH (the ACKG), and they are cheaper, faster and more reliable than searching the open web for the same fact. QUERY THE GRAPH FIRST AND SEARCH THE WEB FOR WHAT THE GRAPH DOES NOT COVER — that ordering is the single biggest determinant of this stage's cost and accuracy.
+
+  query_ackg_comparables — realised auction prices, structured and verified. Your FIRST move for STEP 7. Stage 3 values the work from this same corpus, so comps you take from here are directly usable rather than "secondary, unverified" findings.
+  query_ackg_editions    — declared edition sizes and catalogued proof types. Your FIRST move for STEP 6.
+
+Both have uneven coverage, and an empty result from either is a coverage fact and your cue to spend a web search — never evidence about the object. Do not re-search the web for something a graph tool has already answered.
+
+You also have lookup_museum_collections, a structured tool that queries the Metropolitan Museum of Art, the Rijksmuseum, and the UK Museum Data Service directly by artist name. It returns real, verified facts drawn from actual museum catalogue records — title, medium, dimensions, inscription/edition text, date, holding institution — not search-engine text you have to interpret. Prefer it over web search whenever you have a candidate artist name and want to check catalogued facts (edition size, medium, whether comparable works exist in a public collection); use web search for broader market/provenance research it can't cover. Coverage varies enormously by artist — strong for historic/deceased artists, often sparse or empty for living or very recent ones, since these institutions simply may not hold their work. An empty result is a fact about institutional coverage, not evidence against the attribution — do not treat it as a negative signal. Use the artist's formal catalogued name (e.g. "Elizabeth Frink", not "Liz Frink"); the tool strips honorifics and post-nominal letters automatically but does not correct misspellings or resolve nicknames.
 
 Use ONLY the databases specified in your specialist config. Do not query databases not listed in your config.
 
@@ -1197,9 +1204,18 @@ STEP 5 — FORGERY AND REPRINT RISK ASSESSMENT
 Address each known risk from config knownForgeriesOrFacsimiles. Assess: rules in / rules out / cannot assess. Set reprintForgeryRisk: LOW | MEDIUM | HIGH | UNASSESSABLE. MEDIUM or above → physicalExaminationRecommended: true.
 
 STEP 6 — IMPRESSION STATE AND SERIES/EDITION IDENTIFICATION
-Identify edition type (first | later | reprint | posthumous | unknown) and valuation-relevant findings (impression period, rarity factors, discount factors).
+CALL query_ackg_editions FIRST, with the attributed artist and (if identified) the work title. It returns the edition sizes the graph's sources declare for that work, plus how many numbered impressions and how many proofs (AP/PP/HC/BAT/TP) are actually catalogued. Only web-search edition details the graph does not cover.
+READ SEVERAL DECLARED SIZES AS INFORMATION, NOT AS A CONFLICT TO RESOLVE. Do not average them and do not pick the largest or the most common. For prints, two sizes on one work almost always means two genuinely different editions of the same image, and which one this impression belongs to changes its rarity and value substantially:
+  · Lettered editions — A/B/C/D, EACH an edition of N, not quarters of one edition of N. An impression inscribed "edition B 35/100" is one of 100 in edition B, with ~400 impressions of the image in total.
+  · A later, posthumous or restrike edition, usually declared at a different size and worth markedly less than the lifetime edition.
+  · Only sometimes an actual disagreement between two sources.
+The inscription is normally what settles which edition this is, so weigh Stage 1c's inscribed-marks notes above any single catalogued number.
+PROOFS SIT OUTSIDE THE NUMBERED EDITION. "Edition of 75" routinely means 75 numbered impressions PLUS APs, PPs, HCs and BATs, so a numbered size is a floor on how many exist, never a total. Likewise the graph's impression counts are what it holds, not what was printed.
+Then identify edition type (first | later | reprint | posthumous | unknown) and valuation-relevant findings (impression period, rarity factors, discount factors).
 
 STEP 7 — AUCTION COMP COLLECTION
+CALL query_ackg_comparables FIRST, with the attributed artist plus the work title and technique when you have them. It returns dated, sold, premium-inclusive, GBP-normalised records tiered same_work / same_artist_technique / same_artist. These are the strongest comps available to you and are the same corpus Stage 3 values from — prefer them over anything you find on the open web, and record them in auctionComps like any other comp (listingUrl, priceAmount, priceCurrency "GBP" and priceBasis "premium_inclusive" all come straight off the record).
+THEN use web search only for what the graph did not cover: no same_work tier, too few comps to reason from, or an empty result because the artist is thin in the graph (81% of its artists have fewer than 3 priced records, and Forum Auctions is absent entirely). A thin graph result is a coverage fact — never treat it as evidence the work is unsaleable or low-value.
 Use 1–2 web searches to find recent verifiable auction sales of identical or highly similar prints. Prioritise: Roseberys London, Sotheby's, Christie's, Phillips, Bonhams, Artnet. Aim for 2–3 comps. For each comp found:
 - Record: artworkTitle, artist, technique, hammerPrice (human-readable, in "{currency}"), saleDate, auctionHouse, conditionState.
 - ALSO record the structured fields that make the comp checkable and re-usable, from the SAME page you took the price off:
@@ -1370,7 +1386,7 @@ and STEP 7 (auction comp collection) are this run's real deliverable; give them 
 research budget. Concretely, reallocate STEP 2's default search split: spend AT MOST 1 web
 search confirming the attribution — it is settled, you are not re-deriving it — leaving at
 least 4 for STEP 3 and STEP 7.
-SCENARIO 1 HAS A COMP FLOOR: return AT LEAST 3 entries in auctionComps. Comps are the output
+SCENARIO 1 HAS A COMP FLOOR: return AT LEAST 3 entries in auctionComps THAT CARRY A REALISED PRICE (a numeric priceAmount). A listing with no disclosed price shows the work exists; it cannot inform a valuation, so it does not count toward the floor — do not pad with dealer pages or sold-item listings that withhold the figure. query_ackg_comparables is the reliable way to clear this floor, since every record it returns is priced. Comps are the output
 this scenario exists to produce; returning one comp on a settled attribution is a failed run,
 not a thrifty one, and it starves Stage 3 of the only market data it gets. If after genuinely
 spending that budget you still have fewer than 3, add an unresolvedQuestions entry naming the
