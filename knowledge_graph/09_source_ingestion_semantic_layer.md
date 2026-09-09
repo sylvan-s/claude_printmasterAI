@@ -1562,7 +1562,7 @@ state across every adapter run this session (Rembrandt through this correction) 
 | LotDesc's title line (title + optional catalogue ref + optional year) | `ConceptualWork.name`/`dateCreated`, `CatalogueRaisonne`/`CatalogueEntry` (via the shared `catalogue_matching.py`) | HEURISTIC_EXTRACTION — see `parse_lot_desc_title_line()`'s docstring for the ordering rule (strip trailing year first, then a trailing parenthetical is a catalogue ref only if it contains a digit — a bare descriptive aside like "(Figure)" never does, confirmed against every sample pulled) |
 | Free-text technique/signing/edition/printer/publisher/dimensions sentence | `Technique`/`Paper`/`Impression.signed`/`EditionRun.declaredSize`/`Impression.copyType`/`Publisher`/dimensions | HEURISTIC_EXTRACTION |
 | `LotHeading` (when present) | `Impression.provenanceNote` | DIRECT when present, same "don't drop it, judge it later" policy as Roseberys' provenance field |
-| `pricing.hammer_price`/`hammer_premium`, `estimates.low`/`high` | `SourceRecord.hammerPrice`/`priceRealised`/`estimateLow`/`estimateHigh` | DIRECT, but see the multi-currency note below |
+| `pricing.hammer_price`/`hammer_premium`, `estimates.low`/`high` | `SourceRecord.hammerPrice`/`priceRealised`/`estimateLow`/`estimateHigh` | DIRECT, but see the multi-currency and `hammer_premium` notes below |
 | `pricing.gbp_low_estimate`/`gbp_high_estimate` | `SourceRecord.estimateLowGBP`/`estimateHighGBP` | DIRECT — Bonhams' own already-computed conversion, stored alongside the native-currency estimate rather than replacing it |
 | `primary_image_url` | `DigitalImage.sourceUrl` | DIRECT — confirmed live (plain `curl`, HTTP 200 on both `images2.bonhams.com` and the `cloudfront.net` CDN skinner/some bonhams lots use) that this is NOT WAF-blocked the way Roseberys/Forum's own site CDN was (§3.1) — no URL rewrite needed here |
 
@@ -1588,7 +1588,25 @@ relative to the actual sale date.
 
 ### `status` determines `sold`/`hammerPrice`, and `WD` is excluded outright
 
-`SOLD` -> `sold=true`, `hammerPrice = hammer_price + hammer_premium` (native currency).
+`SOLD` -> `sold=true`, `hammerPrice = pricing.hammer_price` (the hammer),
+`priceRealised = pricing.hammer_premium` (native currency).
+
+**`pricing.hammer_premium` is the premium-INCLUSIVE TOTAL, not the premium amount.**
+Despite the field name it is not an addend — it is the exact figure Bonhams' own lot
+pages print as "Sold for X inc. premium", so it IS `priceRealised`. Confirmed three ways
+rather than inferred from the name: against live Bonhams pages in two currencies (sale
+26785 lot 179, hammer 700.0 / `hammer_premium` 892.5 -> "Sold for GBP892.50 inc.
+premium"; sale 15403 lot 330, hammer 1800.0 / `hammer_premium` 2160.0 -> "Sold for
+US$2,160 inc. premium"); by sign test over all 59,824 eligible `SOLD` rows in the export,
+not one of which has `hammer_premium < hammer_price` (a genuine premium amount would have
+to be smaller in every case); and by the ratio distribution, which clusters on the real
+Bonhams schedules (1.175/1.195/1.20/1.22/1.25/1.275/1.28 by era and currency) rather than
+the absurd 117-128% premium rates the additive reading implies.
+
+An earlier version of the adapter read the field additively, which inflated
+`priceRealised` by one whole hammer price on every sold row. 39,914 graph rows (38,663
+Bonhams + 1,251 Skinner) were repaired in place by
+`knowledge_graph/repair_bonhams_price_realised.py`.
 `BI` (bought in / reserve not met), `NEW` (future/pending lot), `CS`, `WR` -> `sold=false`,
 `hammerPrice=null` — their raw `pricing.hammer_price` is a literal `0.0` placeholder, not
 a real sale total, and storing it as-is would fabricate a "sold for £0" fact. `WD`
