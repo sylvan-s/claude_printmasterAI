@@ -1398,13 +1398,31 @@ Your task is to synthesise:
 DO NOT re-describe the artwork or repeat attribution findings. Output ONLY the six valuation fields: auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation.
 
 VALUATION PROCESS:
-1. Read the auctionComps from Stage 2b. For each comp, check wasSoldInBroaderLot — if true, use the fractional value from broaderLotPriceAdjustment, not the full lot price.
-2. Apply condition penalties from Stage 1: GOOD = 0%, FAIR = 20–40%, POOR = 40–75% reduction from the comp midpoint.
-3. Apply rarity and edition factors from Stage 2b: AP/HC/first-state impressions attract premiums; later reprints or posthumous editions attract discounts.
-4. Set lowEstimate at the protective floor of the adjusted comp range. Set highEstimate at the top of the adjusted range, only if condition and attribution evidence clearly support it.
-5. Keep lowEstimate conservative — err toward caution given current macroeconomic softness and high buy-in rates.
-6. Check Stage 2b's attributionChallengeAssessment.verdict (ADR-0006). If CHALLENGED, widen your estimate range (lower lowEstimate, raise highEstimate, or both) to reflect the unresolved authentication/attribution risk that survived adversarial review — do not report a normal-width range as if no real counter-evidence had surfaced. If UNCERTAIN, apply a smaller widening. CONFIRMED or NOT_APPLICABLE requires no adjustment beyond the condition/rarity factors above.
-7. Populate recentAuctionSales from the auctionComps data. Convert hammerPrice strings to priceRealized.
+1. Read the comparables. Two sources may be supplied, and they are NOT equal in weight (ADR-0016):
+   - PRIMARY — ACKG REALISED AUCTION COMPARABLES: structured records from this project's own
+     knowledge graph. Every one is a real, dated, SOLD lot with a premium-inclusive realised
+     price already converted to GBP at that sale date's ECB rate. Anchor your valuation on
+     these whenever they are present. Weight them by tier: "same_work" (the SAME print —
+     strongest evidence available, and a run of same_work sales is close to a direct market
+     price) > "same_artist_technique" > "same_artist". Prefer recent sales within a tier.
+     If several same_work comps exist, your estimate range should sit close to their spread
+     unless condition, edition or attribution factors below justify departing from it — say
+     so explicitly in valuationContext when you do depart.
+   - SECONDARY — STAGE 2b WEB-RESEARCH COMPS: free-text findings from web search. These are
+     unverified prose and often contain no usable figure at all (e.g. "hammer price not
+     publicly disclosed"). Use them to corroborate, to fill a gap the ACKG set leaves, or as
+     the sole basis ONLY when no ACKG comparables were returned. Never let a web-research
+     figure override a same_work ACKG realised price.
+   An empty ACKG comp set reflects that graph's dated coverage (Bonhams, Roseberys London and
+   Skinner; Forum Auctions absent) — it is NOT evidence that the work is unsaleable or
+   low-value. Never reason downward from the absence of graph comps.
+2. For each Stage 2b comp, check wasSoldInBroaderLot — if true, use the fractional value from broaderLotPriceAdjustment, not the full lot price.
+3. Apply condition penalties from Stage 1: GOOD = 0%, FAIR = 20–40%, POOR = 40–75% reduction from the comp midpoint.
+4. Apply rarity and edition factors from Stage 2b: AP/HC/first-state impressions attract premiums; later reprints or posthumous editions attract discounts.
+5. Set lowEstimate at the protective floor of the adjusted comp range. Set highEstimate at the top of the adjusted range, only if condition and attribution evidence clearly support it.
+6. Keep lowEstimate conservative — err toward caution given current macroeconomic softness and high buy-in rates.
+7. Check Stage 2b's attributionChallengeAssessment.verdict (ADR-0006). If CHALLENGED, widen your estimate range (lower lowEstimate, raise highEstimate, or both) to reflect the unresolved authentication/attribution risk that survived adversarial review — do not report a normal-width range as if no real counter-evidence had surfaced. If UNCERTAIN, apply a smaller widening. CONFIRMED or NOT_APPLICABLE requires no adjustment beyond the condition/rarity factors above.
+8. Populate recentAuctionSales from the comparables you actually used, ACKG comps first. For an ACKG comp, priceRealized is its priceRealisedGBP and auctionHouse its institutionName; for a Stage 2b comp, convert the hammerPrice string to priceRealized.
 
 CURRENCY: All prices must be in "{currency}" (e.g. GBP → £, USD → $, EUR → €).
 

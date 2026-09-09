@@ -1,6 +1,8 @@
 export { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency } from "./query.js";
 export type { ArtistStyleConsistency } from "./query.js";
 export { queryImageEmbeddingMatches, getStoredImageVectors } from "./query_image_similarity.js";
+export { queryAuctionComparables, parseExcludedListing } from "./query_comparables.js";
+export type { AuctionComparable, ComparablesSummary, ComparablesResult, ComparablesParams, ComparableTier } from "./query_comparables.js";
 export { closeDriver } from "./client.js";
 export { parseAckgDimMm } from "./dimension_parse.js";
 export { normalizeTitleForEmbedding, isLowInformationTitle } from "./title_normalize.js";

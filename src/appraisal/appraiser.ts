@@ -36,7 +36,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing } from "./knowledge_graph/index.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
 import type { StyleConsistencyEvidence } from "./two_pass_attribution";
 import { getImageEmbeddings } from "./embedding_client.js";
@@ -561,14 +561,29 @@ const HYPOTHESIS_WARNING =
   "⚠️ HYPOTHESIS ONLY — Stage 1b reverse image search result. Must be verified against VEA visual evidence (signatures, inscriptions, technique) before use in attribution. Do not treat as confirmed attribution.";
 const STAGE1C_MODEL = "claude-haiku-4-5";
 
+// Stage 3 ACKG comparables window (ADR-0016). Print prices move enough that a 2003 sale is
+// a poor guide to today's hammer; 2015 keeps ~a decade of history without letting the
+// pre-2010 tail dominate an artist whose market has since re-rated.
+const STAGE3_COMPS_SINCE = "2015-01-01";
+const STAGE3_COMPS_LIMIT = 40;
+
+// Anthropic's Messages API defaults temperature to 1.0 when the key is absent. Every
+// Claude call site here used to omit it, so `AppraisalMethodConfig.temperature` was
+// honoured on the Gemini path and silently ignored on the Claude path — the 4-stage
+// configs declared 0.1 and ran at 1.0. That was the dominant source of run-to-run
+// variance in Stage 2a: three runs of the same lot chose three different ACKG queries
+// and produced three different work matches. Fallback is `??`, not `||`, so an explicit
+// temperature of 0 survives.
+const DEFAULT_CLAUDE_TEMPERATURE = 0.1;
+
 // ---------------------------------------------------------------------------
 // Stage 1d — image-embedding match (ADR-0013). Shadow-run only: computed and
 // attached to the report for visibility, never read by Stage 2a/2b/3 this pass.
 // ---------------------------------------------------------------------------
 
 const STAGE1D_INDEX_COVERAGE_NOTE =
-  "ACKG image index currently covers British Museum + Tate only (~12k images, DINOv2-Large/CLIP). " +
-  "Forum Auctions and Roseberys are not yet embedded — a weak or absent match reflects this coverage gap, not evidence against attribution.";
+  "ACKG image index currently covers Bonhams (40,224), Tate (10,208) and the British Museum (2,507) — 52,939 images on DINOv2-Large/CLIP, verified 2026-09-07. " +
+  "Roseberys and Forum Auctions are not yet embedded — a weak or absent match reflects this coverage gap, not evidence against attribution.";
 const STAGE1D_ATTRIBUTION_CAVEAT =
   "DINOv2/CLIP similarity reflects visual/stylistic closeness, not verified authorship — one corroborating " +
   "evidence point, never a standalone attribution (see ADR-0002, ADR-0013).";
@@ -2019,17 +2034,80 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     testingExcludeSourceListing?: string
   ): Promise<Partial<PrintAnalysisReport>> {
     const systemInstruction = resolveCustomPrompt(VALUATION_REPORT_SYSTEM_PROMPT, currency, userNotes);
-    const auctionComps = (attr as any).auctionComps;
-    const compsNote = Array.isArray(auctionComps) && auctionComps.length > 0
-      ? `\n\nAUCTION COMPS (collected during Stage 2b research — use these for valuation):\n${JSON.stringify(auctionComps, null, 2)}`
-      : "\n\nAUCTION COMPS: None found during Stage 2b research — base valuation on condition and rarity factors alone.";
+
+    // ADR-0016 — ACKG realised prices are the PRIMARY comparables source; Stage 2b's
+    // free-text web findings are the fallback for artists the graph does not cover.
+    // The graph's prices are structured, dated, premium-inclusive and GBP-normalised at
+    // the sale date; Stage 2b's are prose, and frequently carry no usable number at all
+    // (a real backtest artifact records hammerPrice as "Estimate £3,000–£3,500 (hammer
+    // price not publicly disclosed)"). Failure here must never take a valuation down —
+    // the graph is an enrichment, so a Neo4j outage degrades to the old web-only path.
+    const conclusion = (attr as any)?.attributionConclusion ?? {};
+    const ackgArtist: string | null =
+      conclusion.attributedArtist ?? (attr as any)?.artistAttribution?.artistName ?? null;
+    const excludedListing = parseExcludedListing(testingExcludeSourceListing);
+    let ackgComps: Awaited<ReturnType<typeof queryAuctionComparables>> | null = null;
+    if (ackgArtist) {
+      try {
+        ackgComps = await queryAuctionComparables({
+          artistName: ackgArtist,
+          workTitle: conclusion.workTitle ?? null,
+          technique: conclusion.technique ?? vea?.printingTechniques?.[0]?.technique ?? null,
+          sinceDate: STAGE3_COMPS_SINCE,
+          limit: STAGE3_COMPS_LIMIT,
+          // Same circularity guard as the free-text path below, but enforced in Cypher
+          // rather than asked of the model: Roseberys lots are both in the graph and in
+          // the backtest pool, so a pool lot can otherwise match its own SourceRecord and
+          // value itself from its own realised price. testingExcludeSourceListing is
+          // PROSE, so both keys have to be parsed out of it — see parseExcludedListing.
+          excludeListingUrl: excludedListing.listingUrl,
+          excludeSaleLot: excludedListing.saleLot,
+        });
+        console.log(
+          `[Stage 3 comps] ACKG "${ackgArtist}": ${ackgComps.summary.count} comparable(s) ` +
+            `(same-work ${ackgComps.summary.tierCounts.same_work}, ` +
+            `same-artist+technique ${ackgComps.summary.tierCounts.same_artist_technique}, ` +
+            `same-artist ${ackgComps.summary.tierCounts.same_artist})` +
+            (ackgComps.summary.medianGBP != null
+              ? `, median GBP ${ackgComps.summary.medianGBP.toFixed(0)}`
+              : ""),
+        );
+      } catch (err) {
+        console.warn(`[Stage 3 comps] ACKG comparables query failed, falling back to Stage 2b web comps: ${err}`);
+        ackgComps = null;
+      }
+    }
+
+    const webComps = (attr as any).auctionComps;
+    const hasWebComps = Array.isArray(webComps) && webComps.length > 0;
+    const webCompsBlock = hasWebComps
+      ? `\n\nSECONDARY — STAGE 2b WEB-RESEARCH COMPS (free-text findings, unverified; use only to corroborate or to fill gaps the ACKG set leaves):\n${JSON.stringify(webComps, null, 2)}`
+      : "\n\nSECONDARY — STAGE 2b WEB-RESEARCH COMPS: none found.";
+
+    const compsNote = ackgComps && ackgComps.summary.count > 0
+      ? `\n\nPRIMARY — ACKG REALISED AUCTION COMPARABLES (structured records from this project's own knowledge graph; ` +
+        `premium-inclusive realised prices, converted to GBP at the sale-date ECB rate). ` +
+        `These are the primary basis for your valuation.\n` +
+        `Summary: ${JSON.stringify(ackgComps.summary)}\n` +
+        `Coverage caveat: ${ackgComps.coverageNote}\n` +
+        `Tiers: "same_work" = the SAME print (strongest evidence — weight these highest); ` +
+        `"same_artist_technique" = same artist and technique; "same_artist" = same artist only.\n` +
+        `${JSON.stringify(ackgComps.comparables, null, 2)}${webCompsBlock}`
+      : `\n\nPRIMARY — ACKG REALISED AUCTION COMPARABLES: none. ` +
+        `${ackgArtist ? `No dated, sold records for "${ackgArtist}" in the graph.` : "No artist was attributed, so the graph could not be queried."} ` +
+        `The ACKG's dated auction coverage is Bonhams (2003-2026), Roseberys London (2014-2026) ` +
+        `and Skinner (2022-2026); Forum Auctions is absent entirely. So an ` +
+        `absent comp set reflects that coverage gap — it is NOT evidence that the work is unsaleable ` +
+        `or low-value. Fall back to the Stage 2b findings below.${webCompsBlock}`;
     // Backtest/eval-harness only — see AppraisalInput.testingExcludeSourceListing.
     // Stage 2b's web search can surface the exact listing this input's image/
     // description came from; using its own estimate or hammer price as a "comp"
     // would make the valuation circular, not independent, so this asks Stage 3 to
     // actively recognise and discard it rather than filtering comps mechanically
     // (Stage 2b's auctionComps are free-text research findings, not a structured
-    // field reliably matchable by URL/id).
+    // field reliably matchable by URL/id). The ACKG comps above do NOT need this
+    // treatment — they are filtered structurally by listingUrl in Cypher — but the
+    // note still has to cover the free-text set below it.
     const excludeSourceNote = testingExcludeSourceListing
       ? `\n\n⚠️ TESTING MODE — SOURCE LISTING EXCLUDED: This artwork's image and description were sourced directly from this auction listing: ${testingExcludeSourceListing}. If any entry in AUCTION COMPS above is that same listing (same auction house, matching sale/lot, or described as "the subject work" / "the identical work" / "the present lot"), you MUST exclude its estimate and price data from your valuation entirely — do not anchor on it, average it in, or cite it as a reason for your number. Value this work using only genuinely independent comps and evidence. If excluding it leaves no usable comps, say so explicitly in valuationContext and value from first principles as you would with zero comps.`
       : "";

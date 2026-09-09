@@ -7,6 +7,7 @@ import assert from "node:assert/strict";
 import { parseAckgDimMm } from "../../src/appraisal/knowledge_graph/dimension_parse";
 import { normalizeTitleForEmbedding, isLowInformationTitle } from "../../src/appraisal/knowledge_graph/title_normalize";
 import { titleSimFromCosine, COSINE_FLOOR, COSINE_CEIL } from "../../src/appraisal/knowledge_graph/embed_text";
+import { parseExcludedListing } from "../../src/appraisal/knowledge_graph/query_comparables";
 
 let passed = 0;
 let failed = 0;
@@ -115,6 +116,40 @@ test("titleSimFromCosine maps the empirical band to 0..1", () => {
   assert.ok(titleSimFromCosine(0.99) === 1); // clamped
   const mid = titleSimFromCosine((COSINE_FLOOR + COSINE_CEIL) / 2);
   assert.ok(Math.abs(mid - 0.5) < 1e-9);
+});
+
+// ── backtest self-match guard (ADR-0016) ────────────────────────────────────
+// testingExcludeSourceListing is PROSE, not a URL. The first cut of the comps guard
+// passed it straight into an exact URL comparison, so it silently matched nothing — a
+// hole that only became load-bearing once Roseberys sale dates were backfilled and
+// Roseberys lots (which ARE the backtest pool) entered the comps corpus.
+
+test("parseExcludedListing pulls both keys out of the harness's prose string", () => {
+  const prose =
+    "Roseberys, sale A0777, lot 42 (https://www.roseberys.co.uk/bidding/A0777-prints-multiples-657/42-julian-trevelyan-tower-oxen-613230)";
+  const p = parseExcludedListing(prose);
+  assert.equal(
+    p.listingUrl,
+    "https://www.roseberys.co.uk/bidding/A0777-prints-multiples-657/42-julian-trevelyan-tower-oxen-613230",
+  );
+  assert.deepEqual(p.saleLot, { saleId: "A0777", lotNumber: 42 });
+});
+
+test("parseExcludedListing does not swallow the closing paren into the URL", () => {
+  const p = parseExcludedListing("sale A1, lot 7 (https://example.com/a/b)");
+  assert.equal(p.listingUrl, "https://example.com/a/b");
+});
+
+test("parseExcludedListing degrades to nulls rather than throwing", () => {
+  assert.deepEqual(parseExcludedListing(null), { listingUrl: null, saleLot: null });
+  assert.deepEqual(parseExcludedListing(""), { listingUrl: null, saleLot: null });
+  assert.deepEqual(parseExcludedListing("no keys in here"), { listingUrl: null, saleLot: null });
+});
+
+test("parseExcludedListing finds a bare URL with no sale/lot phrasing", () => {
+  const p = parseExcludedListing("https://www.roseberys.co.uk/bidding/x/1-y-2");
+  assert.equal(p.listingUrl, "https://www.roseberys.co.uk/bidding/x/1-y-2");
+  assert.equal(p.saleLot, null);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
