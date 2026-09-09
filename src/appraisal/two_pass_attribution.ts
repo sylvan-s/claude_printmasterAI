@@ -45,7 +45,9 @@ export const KOEUVRE_DISCRIMINATING_MIN = 3; // K_oeuvre matchCount that counts 
 export type Confidence = "HIGH" | "MEDIUM_HIGH" | "MEDIUM" | "LOW";
 const BANDS: Confidence[] = ["LOW", "MEDIUM", "MEDIUM_HIGH", "HIGH"];
 function liftBand(c: Confidence, by = 1): Confidence {
-  return BANDS[Math.min(BANDS.length - 1, BANDS.indexOf(c) + by)];
+  // Clamped at BOTH ends. Only ever called with by=+1 until 2026-09-09; corroboration can
+  // now move a band down, and an unclamped index would return BANDS[-1] === undefined.
+  return BANDS[Math.max(0, Math.min(BANDS.length - 1, BANDS.indexOf(c) + by))];
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -209,6 +211,9 @@ export interface ArtistEvidence {
   kId: "true" | "false" | "unknown";
   kOeuvreMatchCount: number | null; // null = not queried
   kSubject: "TYPICAL" | "OCCASIONAL" | "ATYPICAL" | "UNASSESSABLE";
+  /** Scoped style comparison for the dominant candidate. Built in code (a graph query run
+   *  before the tree), never by the agent. null when unavailable. Exclusion only. */
+  styleConsistency?: StyleConsistencyEvidence | null;
   kSubjectNote?: string;
   /** ADR-0010 Decision 4a amendment: the ACKG holds a work whose title matches an observed
    *  title (V_t / R_t / A_t) AND is catalogued to exactly one artist. This VOTES in the
@@ -270,16 +275,21 @@ function eligibleVotes(ev: ArtistEvidence, trace: string[]): { votes: Vote[]; ap
     }
   }
 
-  // K — ACKG work-level anchor (Decision 4a amendment). Only a title match at or above
-  // TAU_TITLE, catalogued to a named artist, is independent enough to count.
-  if (ev.ackgWorkAnchor && ev.ackgWorkAnchor.artist && ev.ackgWorkAnchor.titleSim >= TAU_TITLE) {
-    votes.push({ source: "K", raw: ev.ackgWorkAnchor.artist, identityKey: ev.ackgWorkAnchor.identityKey ?? null });
+  // K does NOT vote (2026-09-09 amendment, superseding Decision 4a's amendment).
+  //
+  // The ACKG is not a witness to authorship — it is the reference the witnesses are checked
+  // against. Its "vote" was an artist back-propagated from a title match, and that title came
+  // from V_t / R_t / A_t / D_t, so counting it as an independent source double-counted the
+  // very sources it derives from. It produced a concrete false positive: on Roseberys
+  // A0793/148 the verdict was A2 attributed/HIGH on agreementSet ["K","D"], where K's artist
+  // came from a title match to "Reclining Figure" — the wrong work entirely. A bad title
+  // match manufactured a second independent-looking vote and carried the verdict to HIGH.
+  //
+  // The anchor is now read by corroborateArtist() below, where a title match can raise
+  // confidence in a candidate a real source named, but can never name one by itself.
+  if (ev.ackgWorkAnchor?.artist) {
     trace.push(
-      `K votes: ACKG holds "${ev.ackgWorkAnchor.artist}" for a title-matched work (titleSim=${ev.ackgWorkAnchor.titleSim.toFixed(2)} >= ${TAU_TITLE})`,
-    );
-  } else if (ev.ackgWorkAnchor) {
-    trace.push(
-      `K dropped: ackgWorkAnchor titleSim=${(ev.ackgWorkAnchor.titleSim ?? 0).toFixed(2)} < ${TAU_TITLE} or no artist — corroboration only`,
+      `K does not vote — ACKG corroborates, it does not witness (anchor "${ev.ackgWorkAnchor.artist}", titleSim=${(ev.ackgWorkAnchor.titleSim ?? 0).toFixed(2)})`,
     );
   }
 
@@ -298,6 +308,195 @@ function eligibleVotes(ev: ArtistEvidence, trace: string[]): { votes: Vote[]; ap
   }
 
   return { votes, appraiserHypothesis };
+}
+
+/**
+ * Each naming source's OWN confidence, normalised to 0..1 (2026-09-09).
+ *
+ * "Agreement primary, confidence modulates": the number of agreeing sources still sets the
+ * base band, but a verdict resting on sources that are themselves unsure should not read the
+ * same as one resting on confident ones.
+ *
+ * V and R report real numbers. A and D are ordinal and mapped to placeholders — flagged as
+ * such because, like every other threshold in this file, they are unfitted (ADR-0010
+ * Decision 4). D only reaches here at HIGH, and A only when documented_fact, so both are
+ * already gated above; the values below express "how much does a source that cleared its
+ * gate contribute", not the gate itself.
+ */
+/**
+ * Mean confidence of the agreeing sources below which the base band is demoted one.
+ *
+ * Deliberately 0.8 and not something lower: each source's vote GATE already floors its
+ * confidence — R only votes at sim >= SIM_ARTIST_VOTE (0.75), A only when documented_fact
+ * (0.85), D only at HIGH (0.9). A floor beneath those could never fire on anything except a
+ * lone weak V, which A5 already sends to LOW on its own. Set above the gates, the rule
+ * separates a pair that barely cleared its thresholds from a pair that cleared them
+ * comfortably — which is the distinction "confidence modulates" is actually for.
+ *
+ * The MEAN, not the max: two sources scraping past their gates should not read like one
+ * confident source plus a passenger.
+ */
+export const CONFIDENCE_MEAN_FLOOR = 0.8;
+const A_DOCUMENTED_CONFIDENCE = 0.85; // ordinal placeholder — paperwork cited, not verified
+const D_HIGH_CONFIDENCE = 0.9; // ordinal placeholder — only HIGH votes at all
+const V_ILLEGIBLE_CAP = 0.5; // a reconstructed mark cannot be a confident read
+
+export function sourceConfidence(v: Vote, ev: ArtistEvidence): number {
+  switch (v.source) {
+    case "V": {
+      const c = ev.veaSignatureConfidence ?? 0.5;
+      return ev.veaAuthorshipSignalLegible ? c : Math.min(c, V_ILLEGIBLE_CAP);
+    }
+    case "R":
+      return ev.reverseImageSearch.kind === "names" ? ev.reverseImageSearch.sim ?? 0 : 0;
+    case "A":
+      return A_DOCUMENTED_CONFIDENCE;
+    case "D":
+      return D_HIGH_CONFIDENCE;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Scoped style comparison against ONE candidate's catalogued output, with near-identical
+ * matches removed (knowledge_graph/query.ts `queryArtistStyleConsistency`).
+ *
+ * EXCLUSION ONLY. Measured on A0793/148 excluding identity matches, the correct artist came
+ * THIRD (Hockney 0.782, Moore 0.792, Picasso 0.799) — between plausible candidates it cannot
+ * discriminate, because it is measuring tradition and medium family, not authorship. What it
+ * does separate is the stylistically alien candidate (Banksy 0.666, Hirst 0.623). So it may
+ * withhold corroboration and raise a flag; it may never lift a band or pick between
+ * candidates.
+ */
+export interface StyleConsistencyEvidence {
+  artistName: string;
+  comparedWorks: number;
+  meanTopSimilarity: number;
+  /** Catalogue descriptions of the nearest works, where the ingest kept them. Narrative
+   *  supporting evidence for the report — never scored. */
+  supportingText: string[];
+}
+
+/**
+ * Mean top-N similarity below which a candidate's output is "stylistically alien" to the
+ * object. UNFITTED — read off a single lot, where plausible candidates clustered at
+ * 0.78-0.80 and alien ones at 0.62-0.67. Needs the fixture pool before it is trusted.
+ */
+export const STYLE_ALIEN_BELOW = 0.72;
+/** Fewer embedded works than this and the comparison is too thin to act on either way. */
+export const STYLE_MIN_COMPARED = 20;
+
+export type CorroborationLevel = "strong" | "moderate" | "weak" | "none";
+
+/**
+ * How far each corroboration level moves the band the agreement count established.
+ * Chosen to preserve the pre-2026-09-09 spread at n=2 — corroborated HIGH, thin
+ * MEDIUM_HIGH, uncorroborated MEDIUM — now driven by the cascade rather than by raw
+ * kOeuvre/kId counts. Unfitted, like every threshold here (ADR-0010 Decision 4).
+ */
+export const CORROBORATION_BAND_DELTA: Record<CorroborationLevel, number> = {
+  strong: 1,
+  moderate: 1,
+  weak: 0,
+  none: -1,
+};
+
+export interface Corroboration {
+  level: CorroborationLevel;
+  basis: string;
+  notes: string[];
+}
+
+/**
+ * What the ACKG says about a candidate a real source already named (2026-09-09).
+ *
+ * A cascade, cheapest and most discriminating first:
+ *
+ *   1. SAME TITLE. If the graph catalogues a title-matched work to this artist, that is the
+ *      strongest corroboration available and the rest adds nothing — take it and stop.
+ *   2. Otherwise fall back to what the graph knows about the artist's OUTPUT: are they
+ *      catalogued working in this technique/period (kOeuvre), and is this subject typical of
+ *      them (kSubject)? Both -> moderate, one -> weak, neither -> none.
+ *
+ * Absence is never evidence against (the graph's coverage is partial by construction), so
+ * "none" only ever withholds a lift — it never lowers a band.
+ */
+export function corroborateArtist(
+  ev: ArtistEvidence,
+  artistName: string | null,
+  trace: string[],
+): Corroboration {
+  const notes: string[] = [];
+  if (!artistName) return { level: "none", basis: "noCandidate", notes };
+
+  // 1 — same title, and catalogued to THIS artist.
+  const anchor = ev.ackgWorkAnchor;
+  if (anchor?.artist && anchor.titleSim >= TAU_TITLE) {
+    if (nameSimilarity(anchor.artist, artistName) >= TAU_NAME) {
+      trace.push(
+        `corroboration STRONG: ACKG catalogues a title-matched work (titleSim=${anchor.titleSim.toFixed(2)}) to "${anchor.artist}"`,
+      );
+      return applyStyleExclusion({ level: "strong", basis: "ackgTitleMatch", notes: [`titleSim=${anchor.titleSim.toFixed(2)}`] }, ev, artistName, trace);
+    }
+    // A title match pointing at someone else is a real disagreement, not a null result.
+    notes.push(`ackgTitleMatchNamesDifferentArtist:${anchor.artist}`);
+    trace.push(
+      `corroboration: ACKG's title match names "${anchor.artist}", not "${artistName}" — not corroboration; falling through to oeuvre checks`,
+    );
+  }
+
+  // 2 — fall back to the artist's catalogued output.
+  const techniqueOk = (ev.kOeuvreMatchCount ?? 0) >= KOEUVRE_DISCRIMINATING_MIN;
+  const subjectOk = ev.kSubject === "TYPICAL";
+  if (techniqueOk) notes.push(`kOeuvre=${ev.kOeuvreMatchCount}`);
+  if (subjectOk) notes.push("subjectTypical");
+
+  if (techniqueOk && subjectOk) {
+    trace.push(`corroboration MODERATE: catalogued in this technique/period (${ev.kOeuvreMatchCount}) and subject is typical`);
+    return applyStyleExclusion({ level: "moderate", basis: "ackgOeuvreAndSubject", notes }, ev, artistName, trace);
+  }
+  if (techniqueOk || subjectOk) {
+    trace.push(`corroboration WEAK: only ${techniqueOk ? "technique/period" : "subject"} corroborates`);
+    return applyStyleExclusion({ level: "weak", basis: techniqueOk ? "ackgOeuvre" : "ackgSubject", notes }, ev, artistName, trace);
+  }
+  trace.push(`corroboration NONE: ACKG adds nothing for "${artistName}" (absence is not evidence against)`);
+  return applyStyleExclusion({ level: "none", basis: "ackgSilent", notes }, ev, artistName, trace);
+}
+
+/**
+ * One-directional style check. Can only take corroboration AWAY.
+ *
+ * A confirmed title match ("strong") is documentary evidence that this artist made a work of
+ * this name; stylistic distance from the rest of their output does not outweigh that, so
+ * strong is never vetoed — the flag is still recorded for the report.
+ */
+function applyStyleExclusion(
+  c: Corroboration,
+  ev: ArtistEvidence,
+  artistName: string,
+  trace: string[],
+): Corroboration {
+  const sc = ev.styleConsistency;
+  if (!sc || nameSimilarity(sc.artistName, artistName) < TAU_NAME) return c;
+  if (sc.comparedWorks < STYLE_MIN_COMPARED) {
+    trace.push(`style check skipped: only ${sc.comparedWorks} embedded work(s) for "${artistName}" (need ${STYLE_MIN_COMPARED})`);
+    return c;
+  }
+  if (sc.meanTopSimilarity >= STYLE_ALIEN_BELOW) {
+    return { ...c, notes: [...c.notes, `styleConsistent:${sc.meanTopSimilarity.toFixed(3)}`] };
+  }
+  const notes = [...c.notes, `styleInconsistentWithCandidate:${sc.meanTopSimilarity.toFixed(3)}`];
+  if (c.level === "strong") {
+    trace.push(
+      `style: "${artistName}" output is distant (mean-top ${sc.meanTopSimilarity.toFixed(3)} < ${STYLE_ALIEN_BELOW}) — flagged, but a catalogued title match is not overridden`,
+    );
+    return { ...c, notes };
+  }
+  trace.push(
+    `style EXCLUSION: nothing in "${artistName}"'s ${sc.comparedWorks} catalogued works resembles this object (mean-top ${sc.meanTopSimilarity.toFixed(3)} < ${STYLE_ALIEN_BELOW}) — corroboration withheld`,
+  );
+  return { level: "none", basis: "styleInconsistent", notes };
 }
 
 function sameIdentity(a: Vote, b: Vote): boolean {
@@ -402,51 +601,97 @@ export function classifyArtistPass(ev: ArtistEvidence): ArtistVerdict {
     return base("conflict", null, null, "A10", ["attributionConflict"]);
   }
 
-  // A1 — n >= 3 (any three-plus of V/R/A/K/D agree — Decision 4a amendment added K,
-  // the 2026-09-06 amendment adds D)
-  if (ag.n >= 3) {
-    const f = ev.kOeuvreMatchCount === 0 ? ["noMatchingOeuvre"] : [];
-    if (f.length) trace.push(`K_oeuvre = 0 — noted, not downgraded (A1)`);
-    return base("attributed", ag.dominantRaw, "HIGH", "A1", f);
+  // ── Scoring (2026-09-09): agreement sets the base band, the agreeing sources' own
+  // confidence modulates it, then ACKG corroboration lifts it. K no longer votes.
+  const agreeingConfidences = ag.dominantVotes.map((v) => ({ source: v.source, conf: sourceConfidence(v, ev) }));
+  const meanConf = agreeingConfidences.length
+    ? agreeingConfidences.reduce((t, c) => t + c.conf, 0) / agreeingConfidences.length
+    : 0;
+  const weakSources = agreeingConfidences.length > 0 && meanConf < CONFIDENCE_MEAN_FLOOR;
+  if (agreeingConfidences.length) {
+    trace.push(
+      `sourceConfidence=[${agreeingConfidences.map((c) => `${c.source}:${c.conf.toFixed(2)}`).join(", ")}] ` +
+        `mean=${meanConf.toFixed(2)}${weakSources ? ` < ${CONFIDENCE_MEAN_FLOOR} — agreeing sources only just cleared their gates` : ""}`,
+    );
   }
 
-  // A2 / A3 / A4 — n = 2
+  /** base band -> weak-source demotion -> corroboration lift, capped at HIGH. */
+  const scored = (verdict: ArtistVerdict["verdict"], baseBand: Confidence, basis: string, flags: string[] = []) => {
+    let band = baseBand;
+    if (weakSources) {
+      band = liftBand(band, -1);
+      trace.push(`mean source confidence ${meanConf.toFixed(2)} < ${CONFIDENCE_MEAN_FLOOR} — base band ${baseBand} demoted to ${band}`);
+    }
+    const corr = corroborateArtist(ev, ag.dominantRaw, trace);
+    // A claim the reference corroborates is firmer than one it is silent on. "none" holding
+    // a band lower is NOT treating absence as evidence against the artist — the verdict and
+    // the named candidate are untouched; only the certainty attached to them moves.
+    // Corroboration can only LOWER a band at n === 2, which is the one place the graph is
+    // genuinely the tie-breaker: two sources agreeing with the reference behind them is a
+    // different claim from two sources agreeing about an artist it has never heard of —
+    // the distinction A2/A3/A4 has always drawn.
+    //   n >= 3: agreement is its own justification (the pre-2026-09-09 A1 rule, "K_oeuvre = 0
+    //           — noted, not downgraded"). Three witnesses are not made doubtful by a graph
+    //           that does not hold them.
+    //   n === 1: the band already encodes that source's own confidence, and single-source
+    //           lots are exactly where coverage gaps bite — demoting again double-penalises.
+    const rawDelta = CORROBORATION_BAND_DELTA[corr.level];
+    const delta = rawDelta < 0 && ag.n !== 2 ? 0 : rawDelta;
+    if (delta !== rawDelta) {
+      trace.push(`corroboration ${corr.level} withheld from lowering the band at n=${ag.n} (absence is not evidence against)`);
+    }
+    if (delta !== 0) {
+      const moved = liftBand(band, delta);
+      if (moved !== band) {
+        trace.push(`corroboration ${corr.level} (${corr.basis}) moves ${band} -> ${moved}`);
+      }
+      band = moved;
+    }
+    return base(verdict, ag.dominantRaw, band, basis, [...flags, `corroboration:${corr.level}:${corr.basis}`, ...corr.notes]);
+  };
+
+  // A1 — n >= 3 (any three-plus of V/R/A/D agree)
+  if (ag.n >= 3) return scored("attributed", "HIGH", "A1");
+
+  // A2 / A3 / A4 — n = 2, separated by how well the ACKG corroborates. The codes are kept
+  // (routing, scenarios and the report renderer read them) but their meaning is now the
+  // corroboration cascade rather than raw kOeuvre/kId counts.
   if (ag.n === 2) {
-    if (ev.kOeuvreMatchCount != null && ev.kOeuvreMatchCount >= 1) {
-      return base("attributed", ag.dominantRaw, "HIGH", "A2", ["ackgCorroborated"]);
-    }
-    if (ev.kId === "true" || ev.kId === "unknown") {
-      return base("attributed", ag.dominantRaw, "MEDIUM_HIGH", "A3", ["recognisedArtist_noMatchingOeuvre"]);
-    }
-    return base("attributed", ag.dominantRaw, "MEDIUM", "A4", ["artistNotInACKG"]);
+    const corr = corroborateArtist(ev, ag.dominantRaw, []); // peek to pick the code; scored() re-derives and traces
+    // A2/A3/A4 keep their pre-existing bands (HIGH / MEDIUM_HIGH / MEDIUM); what selects
+    // between them is now the corroboration cascade.
+    const code = corr.level === "strong" || corr.level === "moderate" ? "A2" : corr.level === "weak" ? "A3" : "A4";
+    return scored("attributed", "MEDIUM_HIGH", code);
   }
 
-  // A5..A9 — n = 1 (or appraiser-hypothesis-only)
+  // A5..A9 — n = 1 (or appraiser-hypothesis-only). The base band is set by WHICH source is
+  // speaking and how sure it is; the corroboration cascade then moves it, exactly as at n=2.
+  // (A8K is gone — K no longer votes, so an ACKG title match alone names nobody.)
   if (ag.n === 1) {
     const only = ag.dominantVotes[0];
-    let v: ArtistVerdict;
+    let code: string;
+    let band: Confidence;
+    let flags: string[];
     if (only.source === "V") {
       const low = (ev.veaSignatureConfidence ?? 1) < 0.6;
-      v = base("candidate", only.raw, low ? "LOW" : "MEDIUM", "A5", ["singleSourceVEA"]);
+      code = "A5";
+      band = low ? "LOW" : "MEDIUM";
+      flags = ["singleSourceVEA"];
     } else if (only.source === "R") {
       const sim = ev.reverseImageSearch.kind === "names" ? ev.reverseImageSearch.sim ?? 0 : 0;
-      if (sim >= SIM_ARTIST_STRONG) v = base("candidate", only.raw, "MEDIUM", "A6", ["singleSourceImageMatch"]);
-      else v = base("candidate", only.raw, "LOW", "A7", ["weakImageMatchOnly"]);
-    } else if (only.source === "K") {
-      // ADR-0010 Decision 4a amendment: an ACKG work-level artist+title match, alone,
-      // makes a MEDIUM candidate (never "attributed" without a direct V/R/A signal).
-      v = base("candidate", only.raw, "MEDIUM", "A8K", ["ackgWorkAnchor"]);
+      code = sim >= SIM_ARTIST_STRONG ? "A6" : "A7";
+      band = sim >= SIM_ARTIST_STRONG ? "MEDIUM" : "LOW";
+      flags = [sim >= SIM_ARTIST_STRONG ? "singleSourceImageMatch" : "weakImageMatchOnly"];
     } else if (only.source === "D") {
-      // 2026-09-06 amendment: a lone HIGH-confidence Stage 1d embedding match, same
-      // treatment as a lone strong Stage 1b image match (A6) — a real signal, but never
-      // "attributed" on visual similarity alone (ADR-0002's documented false-positive:
-      // two different artists sharing style).
-      v = base("candidate", only.raw, "MEDIUM", "A6D", ["singleSourceEmbeddingMatch"]);
+      code = "A6D";
+      band = "MEDIUM";
+      flags = ["singleSourceEmbeddingMatch"];
     } else {
-      // A: only a documented_fact appraiser claim
-      v = base("candidate", only.raw, "MEDIUM", "A8", ["appraiserDocumentedOnly"]);
+      code = "A8";
+      band = "MEDIUM";
+      flags = ["appraiserDocumentedOnly"];
     }
-    return applyCorroborationLifts(v, ev, appraiserHypothesis, trace);
+    return applyHypothesisLift(scored("candidate", band, code, flags), ev, appraiserHypothesis, trace);
   }
 
   // A9 — the only signal is an appraiser hypothesis
@@ -458,38 +703,33 @@ export function classifyArtistPass(ev: ArtistEvidence): ArtistVerdict {
   return base("not_attributed", null, null, "A11", []);
 }
 
-/** ADR-0010 Decision 3 layered rules: ACKG (uniquely discriminating) and a corroborating
- *  appraiser hypothesis can each lift an *already-established* candidate/attributed verdict
- *  by at most one band. Never lifts "not_attributed". */
-function applyCorroborationLifts(
+/**
+ * The appraiser's HYPOTHESIS (not a documented fact, so not a vote) still counts for
+ * something when it names the candidate the real sources landed on. One band, and only on an
+ * already-established verdict — never lifts not_attributed or conflict.
+ *
+ * ACKG corroboration used to be applied here too; as of 2026-09-09 it is part of the main
+ * scoring path (corroborateArtist + CORROBORATION_BAND_DELTA) so that every branch — n=1 and
+ * n>=2 alike — is corroborated the same way rather than only the single-source ones.
+ */
+function applyHypothesisLift(
   v: ArtistVerdict,
   ev: ArtistEvidence,
   appraiserHypothesis: NamingSource | null,
   trace: string[],
 ): ArtistVerdict {
   if (v.verdict === "not_attributed" || v.verdict === "conflict" || v.confidence === null) return v;
-  let conf = v.confidence;
-  const lifts: string[] = [];
-
-  if ((ev.kOeuvreMatchCount ?? 0) >= KOEUVRE_DISCRIMINATING_MIN) {
-    conf = liftBand(conf);
-    lifts.push(`K_oeuvre=${ev.kOeuvreMatchCount} (>= ${KOEUVRE_DISCRIMINATING_MIN}) lifts one band`);
-  }
   if (
-    lifts.length === 0 && // ACKG and hypothesis don't stack — one band max, total
     appraiserHypothesis &&
     appraiserHypothesis.kind === "names" &&
     v.artistName &&
     nameSimilarity(appraiserHypothesis.raw, v.artistName) >= TAU_NAME
   ) {
-    conf = liftBand(conf);
-    lifts.push(`corroborating appraiser hypothesis lifts one band`);
-  }
-
-  if (conf !== v.confidence) {
-    for (const l of lifts) trace.push(l);
-    trace.push(`confidence ${v.confidence} -> ${conf}`);
-    return { ...v, confidence: conf };
+    const lifted = liftBand(v.confidence);
+    if (lifted !== v.confidence) {
+      trace.push(`corroborating appraiser hypothesis lifts ${v.confidence} -> ${lifted}`);
+      return { ...v, confidence: lifted, flags: [...v.flags, "appraiserHypothesisCorroborates"] };
+    }
   }
   return v;
 }

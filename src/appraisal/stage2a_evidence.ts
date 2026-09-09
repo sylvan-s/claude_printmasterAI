@@ -28,6 +28,7 @@ import {
   type NamingSource,
   type TitleSource,
   type KWorkResult,
+  type StyleConsistencyEvidence,
   type WorkEvidence,
   type Confidence,
 } from "./two_pass_attribution";
@@ -162,6 +163,7 @@ export function evidenceToTwoPassInput(
   veaHaltRecommended: boolean,
   stage1d?: Stage1dResult | null,
   appraiserInput?: AppraiserInputResult | null,
+  styleConsistency?: StyleConsistencyEvidence | null,
 ): TwoPassInput {
   const a = ev.artistEvidence;
   const w = ev.workEvidence;
@@ -310,6 +312,7 @@ export function evidenceToTwoPassInput(
       kOeuvreMatchCount: num(a.kOeuvreMatchCount),
       kSubject,
       kSubjectNote: a.kSubjectNote || "",
+      styleConsistency: styleConsistency ?? null,
       ackgWorkAnchor,
     },
     workEvidence: {
@@ -544,11 +547,12 @@ export function runEvidenceTree(
   veaHaltRecommended: boolean,
   stage1d?: Stage1dResult | null,
   appraiserInput?: AppraiserInputResult | null,
+  styleConsistency?: StyleConsistencyEvidence | null,
 ): {
   triage: TriageResult;
   twoPass: TwoPassResult;
 } {
-  const twoPass = classifyTwoPass(evidenceToTwoPassInput(ev, veaHaltRecommended, stage1d, appraiserInput));
+  const twoPass = classifyTwoPass(evidenceToTwoPassInput(ev, veaHaltRecommended, stage1d, appraiserInput, styleConsistency));
   return { triage: assembleTriageResult(ev, twoPass), twoPass };
 }
 

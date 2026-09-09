@@ -36,8 +36,9 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryImageEmbeddingMatches } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches } from "./knowledge_graph/index.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
+import type { StyleConsistencyEvidence } from "./two_pass_attribution";
 import { getImageEmbeddings } from "./embedding_client.js";
 import { techniqueFamily } from "./two_pass_attribution";
 import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../shared/text_extraction";
@@ -125,6 +126,33 @@ export interface AppraisalMethod {
   description: string;
   config: AppraisalMethodConfig;
   appraise(input: AppraisalInput): Promise<PrintAnalysisReport>;
+}
+
+/**
+ * One observable step of the Stage 2a ACKG tool loop.
+ *
+ * The loop used to write these straight to console.log, which made the queries the agent
+ * actually ran visible while a run was in flight and unavailable afterwards — the stored
+ * result recorded the verdict but not the questions that produced it. Routing them through
+ * an overridable hook lets a test harness record them (tests/backtest/evidence_capture.ts)
+ * without changing what production prints: `onAckgLoopEvent`'s default emits exactly the
+ * strings it always did.
+ */
+export interface AckgLoopEvent {
+  round: number;
+  kind: "reasoning" | "call" | "result" | "stop" | "max_rounds";
+  toolName?: string;
+  /** The tool-call arguments the model chose. */
+  input?: unknown;
+  /** Full reasoning text — the default handler truncates for the log, the event does not. */
+  reasoning?: string;
+  /** Pre-formatted result summary, so the logged line stays identical to before. */
+  summary?: string;
+  /** Rows/candidates returned. */
+  count?: number;
+  error?: string;
+  roundsUsed?: number;
+  maxRounds?: number;
 }
 
 export interface AppraisalMethodConfig {
@@ -942,6 +970,33 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
    * JSON-then-parse finalisation — more robust, and the full tool-call history
    * carries over into that final request at no extra cost.
    */
+  /**
+   * Default: log exactly what this loop has always logged. Override to also record.
+   * Deliberately never throws — an observability hook must not be able to fail a stage.
+   */
+  protected onAckgLoopEvent(e: AckgLoopEvent): void {
+    const p = `[Stage 2a ACKG loop] round ${e.round}`;
+    switch (e.kind) {
+      case "stop":
+        console.log(`${p}: no graph query — stopping loop (${e.roundsUsed} round(s) used)`);
+        break;
+      case "reasoning": {
+        const r = e.reasoning ?? "";
+        console.log(`${p} reasoning: ${r.slice(0, 400)}${r.length > 400 ? "…" : ""}`);
+        break;
+      }
+      case "call":
+        console.log(`${p} ${e.toolName} call: ${JSON.stringify(e.input || {})}`);
+        break;
+      case "result":
+        console.log(e.error ? `${p} result: ERROR — ${e.error}` : `${p} result: ${e.summary}`);
+        break;
+      case "max_rounds":
+        console.log(`[Stage 2a ACKG loop] hit MAX_ROUNDS=${e.maxRounds} — finalizing with whatever evidence was gathered`);
+        break;
+    }
+  }
+
   protected async callClaudeWithAckgTool(
     modelName: string,
     systemInstruction: string,
@@ -993,7 +1048,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       }
       const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use" && graphToolNames.has(b.name));
       if (clientToolUses.length === 0) {
-        console.log(`[Stage 2a ACKG loop] round ${round + 1}: no graph query — stopping loop (${roundsUsed} round(s) used)`);
+        this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
         break;
       }
       roundsUsed = round + 1;
@@ -1002,13 +1057,13 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       // the closest thing to "why" it's querying, since the API doesn't otherwise expose it.
       const reasoningText = (data.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").trim();
       if (reasoningText) {
-        console.log(`[Stage 2a ACKG loop] round ${round + 1} reasoning: ${reasoningText.slice(0, 400)}${reasoningText.length > 400 ? "…" : ""}`);
+        this.onAckgLoopEvent({ round: round + 1, kind: "reasoning", reasoning: reasoningText });
       }
 
       messages.push({ role: "assistant", content: data.content });
       const toolResults = await Promise.all(
         clientToolUses.map(async (b: any) => {
-          console.log(`[Stage 2a ACKG loop] round ${round + 1} ${b.name} call: ${JSON.stringify(b.input || {})}`);
+          this.onAckgLoopEvent({ round: round + 1, kind: "call", toolName: b.name, input: b.input || {} });
           let content: string;
           try {
             if (b.name === "query_ackg_work") {
@@ -1039,15 +1094,17 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
               }
               content = this.formatAckgWorksForClaude(works);
               const best = works[0];
-              console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${works.length} work row(s)${best ? ` — best: "${best.workTitle}" titleSim=${best.titleSim ?? "n/a"}` : ""}`);
+              this.onAckgLoopEvent({ round: round + 1, kind: "result", toolName: b.name, count: works.length,
+                summary: `${works.length} work row(s)${best ? ` — best: "${best.workTitle}" titleSim=${best.titleSim ?? "n/a"}` : ""}` });
             } else {
               const result = await queryAckg(b.input || {});
               content = this.formatAckgResultForClaude(result);
-              console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}`);
+              this.onAckgLoopEvent({ round: round + 1, kind: "result", toolName: b.name, count: result.length,
+                summary: `${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}` });
             }
           } catch (err: any) {
             content = `ACKG query failed: ${err.message}`;
-            console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ERROR — ${err.message}`);
+            this.onAckgLoopEvent({ round: round + 1, kind: "result", toolName: b.name, error: err.message });
           }
           return { type: "tool_result", tool_use_id: b.id, content };
         }),
@@ -1055,7 +1112,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       messages.push({ role: "user", content: toolResults });
 
       if (round === MAX_ROUNDS - 1) {
-        console.log(`[Stage 2a ACKG loop] hit MAX_ROUNDS=${MAX_ROUNDS} — finalizing with whatever evidence was gathered`);
+        this.onAckgLoopEvent({ round: round + 1, kind: "max_rounds", maxRounds: MAX_ROUNDS });
       }
     }
 
@@ -1509,6 +1566,7 @@ Return a single JSON object:
         matchConfidence,
         attributionCaveat: STAGE1D_ATTRIBUTION_CAVEAT,
         hypothesisWarning: STAGE1D_HYPOTHESIS_WARNING,
+        dinov2QueryVector: vectors.dinov2?.vector ?? null,
       };
     } catch (err: any) {
       console.warn(`[Stage 1d] Neo4j vector query failed — skipping: ${err.message}`);
@@ -1843,7 +1901,29 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       }
     }
 
-    const { triage, twoPass } = runEvidenceTree(ev, false, stage1d, appraiserInput);
+    // Scoped style check for whichever candidate the agent settled on. Run here rather than
+    // inside the tree because the tree is pure and synchronous, and offered to the tree as an
+    // EXCLUSION signal only (see queryArtistStyleConsistency for why it cannot discriminate).
+    const dominant = ev.artistEvidence?.dominantCandidateName?.trim();
+    let styleConsistency: StyleConsistencyEvidence | null = null;
+    if (dominant && stage1d?.dinov2QueryVector?.length) {
+      const sc = await queryArtistStyleConsistency(dominant, stage1d.dinov2QueryVector);
+      if (sc) {
+        styleConsistency = {
+          artistName: sc.artistName,
+          comparedWorks: sc.comparedWorks,
+          meanTopSimilarity: sc.meanTopSimilarity,
+          supportingText: sc.supportingText,
+        };
+        console.log(
+          `[Stage 2a style] "${dominant}": ${sc.comparedWorks} catalogued work(s) compared ` +
+            `(${sc.identityMatchesExcluded} identity match(es) excluded), mean-top ${sc.meanTopSimilarity.toFixed(3)}` +
+            (sc.supportingText.length ? `, ${sc.supportingText.length} catalogue description(s) carried through` : ""),
+        );
+      }
+    }
+
+    const { triage, twoPass } = runEvidenceTree(ev, false, stage1d, appraiserInput, styleConsistency);
     const rd = triage.routingDecision;
     console.log(
       `[Stage 2a evidence] artist=${twoPass.artistAttribution.evidenceBasis} ${twoPass.artistAttribution.verdict}/${twoPass.artistAttribution.confidence ?? "-"} "${twoPass.artistAttribution.artistName ?? "-"}"` +
@@ -2243,7 +2323,8 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const report = this.assembleReport(vea, attr, valuation, currency);
     report.stage1Result = vea;
     report.stage1cResult = appraiserInput;
-    report.stage1dResult = stage1d;
+    // Drop the transient query vector — it exists to reach Stage 2a, not to be stored.
+    report.stage1dResult = stage1d ? { ...stage1d, dinov2QueryVector: undefined } : stage1d;
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;

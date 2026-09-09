@@ -29,13 +29,14 @@ import { writeFileSync, mkdirSync } from "fs";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { GoogleGenAI } from "@google/genai";
-import { getAppraiserFromConfig, appraiserConfigs, type AppraisalInput } from "../../src/appraisal/appraiser";
+import { appraiserConfigs, type AppraisalInput } from "../../src/appraisal/appraiser";
 import { resolveSaleRef } from "../../benchmark/src/roseberys/discover";
 import { fetchLotByNumber, imageUrl, lotUrl, type RawLot } from "../../benchmark/src/roseberys/api";
 import { parseDescription, type ParsedLot } from "../../benchmark/src/roseberys/parse";
 import { compareResults, type BacktestComparison } from "./compare";
 import { buildBacktestReport } from "./build_report";
 import { assertBlindOrExit } from "./blindness";
+import { appraiserWithEvidenceCapture, buildEvidenceRecord } from "./evidence_capture";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -140,7 +141,9 @@ async function main() {
 
   const geminiKey = process.env.GEMINI_API_KEY;
   const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
-  const appraiser = getAppraiserFromConfig(config, ai);
+  // Same appraiser, but keeping a copy of the Stage 2a cells — the pipeline discards them
+  // and a stored result is much harder to diagnose without them (see ./evidence_capture.ts).
+  const { appraiser, getAgentCells, getAckgRounds } = appraiserWithEvidenceCapture(config, ai);
 
   // catalogueNotes gets the raw, unprocessed catalogue body verbatim — everything
   // between the title line and the "Provenance" heading (medium, support, sheet/
@@ -215,6 +218,13 @@ async function main() {
         lotUrl: lotUrl(rawLot),
         method,
         blindnessCompromised,
+        stage2aEvidence: buildEvidenceRecord(
+          getAgentCells(),
+          report.stage1dResult,
+          report.stage1cResult,
+          !!report.stage1Result?.imageAuthenticity?.haltRecommended,
+          getAckgRounds(),
+        ),
         appraiserInputNotes: {
           inscribedMarksNotes: input.inscribedMarksNotes ?? null,
           provenanceNotes: input.provenanceNotes ?? null,

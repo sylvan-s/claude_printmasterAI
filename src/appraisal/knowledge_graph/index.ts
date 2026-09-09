@@ -1,4 +1,5 @@
-export { queryAckg, queryAckgWorks, scoreWorkTitleMatches } from "./query.js";
+export { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency } from "./query.js";
+export type { ArtistStyleConsistency } from "./query.js";
 export { queryImageEmbeddingMatches, getStoredImageVectors } from "./query_image_similarity.js";
 export { closeDriver } from "./client.js";
 export { parseAckgDimMm } from "./dimension_parse.js";

@@ -471,6 +471,10 @@ export interface Stage1dResult {
    *  sharing style). */
   attributionCaveat: string;
   hypothesisWarning: string;
+  /** TRANSIENT. The submission's own DINOv2 vector, carried so Stage 2a can run a scoped
+   *  style comparison against a candidate artist's catalogued works. Stripped before the
+   *  result is stored — 1024 floats have no business in a saved report. */
+  dinov2QueryVector?: number[] | null;
 }
 
 export interface TriageResult {

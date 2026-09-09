@@ -92,19 +92,19 @@ export const a2_twoAgreeAckgSupport = artistEv({
   veaSignatureConfidence: 0.8,
   kId: "true",
   kOeuvreMatchCount: 6,
-  kSubject: "OCCASIONAL",
+  kSubject: "TYPICAL", // 2026-09-09: A2 now means the ACKG corroborates on technique AND subject
 });
 
 // A3 — n=2, K_oeuvre=0, but artist is a real authority record
 export const a3_recognisedNoOeuvre = artistEv({
   vea: { kind: "names", raw: "Henry Moore" },
-  reverseImageSearch: { kind: "names", raw: "Henry Moore", sim: 0.8 },
+  reverseImageSearch: { kind: "names", raw: "Henry Moore", sim: 0.9 },
   stage1bConsistentWithVea: true,
   veaAuthorshipSignalLegible: true,
-  veaSignatureConfidence: 0.75,
+  veaSignatureConfidence: 0.85, // comfortably above CONFIDENCE_MEAN_FLOOR — this fixture is about corroboration
   kId: "true",
-  kOeuvreMatchCount: 0,
-  kSubject: "UNASSESSABLE",
+  kOeuvreMatchCount: 6, // catalogued in this technique/period...
+  kSubject: "OCCASIONAL", // ...but the subject does not corroborate -> weak -> A3
 });
 
 // A4 — n=2, artist not in ACKG at all
@@ -113,7 +113,7 @@ export const a4_notInAckg = artistEv({
   appraiser: { kind: "names", raw: "Obscure Printmaker", trust: "documented_fact" },
   stage1bConsistentWithVea: null,
   veaAuthorshipSignalLegible: true,
-  veaSignatureConfidence: 0.7,
+  veaSignatureConfidence: 0.85, // comfortably above CONFIDENCE_MEAN_FLOOR — this fixture is about corroboration
   kId: "false",
   kOeuvreMatchCount: 0,
   kSubject: "UNASSESSABLE",

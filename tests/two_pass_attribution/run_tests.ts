@@ -11,6 +11,7 @@ import {
   classifyArtistPass,
   passTwoGate,
   classifyWorkPass,
+  sourceConfidence,
   classifyImpression,
   classifyDimensionMatch,
   classifyTechniqueMatch,
@@ -71,25 +72,28 @@ test("A1 — V+R+A agree -> ATTRIBUTED HIGH", () => {
   assert.deepEqual(v.agreementSet.sort(), ["A", "R", "V"]);
 });
 
-test("A2 — n=2 + K_oeuvre>=1 -> ATTRIBUTED HIGH (ackgCorroborated)", () => {
+test("A2 — n=2, ACKG corroborates on technique AND subject -> ATTRIBUTED HIGH", () => {
   const v = classifyArtistPass(f.a2_twoAgreeAckgSupport);
   assert.equal(v.evidenceBasis, "A2");
   assert.equal(v.confidence, "HIGH");
-  assert.ok(v.flags.includes("ackgCorroborated"));
+  assert.ok(v.flags.includes("corroboration:moderate:ackgOeuvreAndSubject"), v.flags.join(","));
 });
 
-test("A3 — n=2, K_oeuvre=0, K_id true -> MEDIUM_HIGH + recognisedArtist_noMatchingOeuvre", () => {
+test("A3 — n=2, only technique corroborates (weak) -> MEDIUM_HIGH", () => {
   const v = classifyArtistPass(f.a3_recognisedNoOeuvre);
   assert.equal(v.evidenceBasis, "A3");
   assert.equal(v.confidence, "MEDIUM_HIGH");
-  assert.ok(v.flags.includes("recognisedArtist_noMatchingOeuvre"));
+  assert.ok(v.flags.includes("corroboration:weak:ackgOeuvre"), v.flags.join(","));
 });
 
-test("A4 — n=2, K_id false -> MEDIUM (artistNotInACKG)", () => {
+test("A4 — n=2, ACKG corroborates nothing -> MEDIUM (held one band below a corroborated pair)", () => {
   const v = classifyArtistPass(f.a4_notInAckg);
   assert.equal(v.evidenceBasis, "A4");
   assert.equal(v.confidence, "MEDIUM");
-  assert.ok(v.flags.includes("artistNotInACKG"));
+  assert.ok(v.flags.includes("corroboration:none:ackgSilent"), v.flags.join(","));
+  // absence lowers certainty; it must not change the verdict or unname the artist
+  assert.equal(v.verdict, "attributed");
+  assert.equal(v.artistName, "Obscure Printmaker");
 });
 
 test("A5 — single VEA signature -> CANDIDATE MEDIUM", () => {
@@ -170,10 +174,14 @@ test(`Stage 1b hit below sim floor (${SIM_ARTIST_VOTE}) is dropped from the vote
   assert.equal(v.evidenceBasis, "A5");
 });
 
-test("subject ATYPICAL raises a flag but does NOT downgrade the verdict", () => {
+test("subject ATYPICAL withholds corroboration but does NOT change the attribution", () => {
+  // Pre-2026-09-09 kSubject was annotation-only and this scored A2/HIGH. Subject is now a
+  // corroboration dimension, so an atypical subject leaves only technique corroborating.
   const v = classifyArtistPass(f.subjectAtypicalFlag);
-  assert.equal(v.evidenceBasis, "A2"); // n=2 + K_oeuvre>=1
-  assert.equal(v.confidence, "HIGH");
+  assert.equal(v.evidenceBasis, "A3");
+  assert.equal(v.confidence, "MEDIUM_HIGH");
+  assert.equal(v.verdict, "attributed");
+  assert.equal(v.artistName, "Bridget Riley");
   assert.equal(v.subjectCorroboration, "atypical");
   assert.ok(v.flags.includes("subjectAtypicalForArtist"));
 });
@@ -189,20 +197,113 @@ test("Tate reversed-name form still agrees (n=3 -> A1)", () => {
   assert.equal(v.evidenceBasis, "A1");
 });
 
-// ── K vote — ADR-0010 Decision 4a amendment ──────────────────────────────────
+// ── per-source confidence modulates the band (2026-09-09) ──────────────────────
 
-test("K alone (ACKG work-level artist+title match) lifts NOT ATTRIBUTED -> CANDIDATE MEDIUM (A8K)", () => {
+test("sourceConfidence: V reports its signature confidence, capped when the mark is illegible", () => {
+  const legible = f.artistEv({ vea: { kind: "names", raw: "X" }, veaAuthorshipSignalLegible: true, veaSignatureConfidence: 0.9 });
+  const guessed = f.artistEv({ vea: { kind: "names", raw: "X" }, veaAuthorshipSignalLegible: false, veaSignatureConfidence: 0.9 });
+  const v = { source: "V" as const, raw: "X", identityKey: null };
+  assert.equal(sourceConfidence(v, legible), 0.9);
+  assert.equal(sourceConfidence(v, guessed), 0.5); // reconstructed mark
+});
+
+test("two agreeing but weak sources are demoted below a confident pair", () => {
+  const mk = (sig: number, sim: number) =>
+    f.artistEv({
+      vea: { kind: "names", raw: "Marc Chagall" },
+      veaAuthorshipSignalLegible: true,
+      veaSignatureConfidence: sig,
+      reverseImageSearch: { kind: "names", raw: "Marc Chagall", sim },
+      stage1bConsistentWithVea: true,
+      kOeuvreMatchCount: 6,
+      kSubject: "TYPICAL",
+    });
+  const confident = classifyArtistPass(mk(0.85, 0.9));
+  const weak = classifyArtistPass(mk(0.45, 0.78));
+  assert.equal(confident.confidence, "HIGH");
+  assert.equal(weak.confidence, "MEDIUM_HIGH", weak.ruleTrace.join(" | "));
+  assert.ok(weak.ruleTrace.some((t) => t.includes("only just cleared their gates")), weak.ruleTrace.join(" | "));
+  // same sources, same agreement, same corroboration — only their own confidence differs
+  assert.equal(confident.evidenceBasis, weak.evidenceBasis);
+});
+
+// ── style consistency: exclusion only (2026-09-09) ─────────────────────────────
+
+const style = (mean: number, n = 300, artistName = "Marc Chagall") => ({
+  artistName, comparedWorks: n, meanTopSimilarity: mean, supportingText: [] as string[],
+});
+
+/** n=2 agreeing sources with full ACKG corroboration — HIGH before any style check. */
+const corroboratedPair = (extra: Partial<Parameters<typeof f.artistEv>[0]> = {}) =>
+  f.artistEv({
+    vea: { kind: "names", raw: "Marc Chagall" },
+    veaAuthorshipSignalLegible: true,
+    veaSignatureConfidence: 0.85,
+    reverseImageSearch: { kind: "names", raw: "Marc Chagall", sim: 0.9 },
+    stage1bConsistentWithVea: true,
+    kOeuvreMatchCount: 6,
+    kSubject: "TYPICAL",
+    ...extra,
+  });
+
+test("a stylistically alien candidate has its corroboration withheld", () => {
+  const ok = classifyArtistPass(corroboratedPair({ styleConsistency: style(0.79) }));
+  const alien = classifyArtistPass(corroboratedPair({ styleConsistency: style(0.64) }));
+  assert.equal(ok.confidence, "HIGH");
+  assert.equal(alien.confidence, "MEDIUM"); // moderate lift withheld, then "none" lowers it
+  assert.ok(alien.flags.some((x) => x.startsWith("styleInconsistentWithCandidate")), alien.flags.join(","));
+  assert.ok(alien.ruleTrace.some((t) => t.includes("style EXCLUSION")), alien.ruleTrace.join(" | "));
+  // it withholds support; it must not rename or un-attribute
+  assert.equal(alien.verdict, "attributed");
+  assert.equal(alien.artistName, "Marc Chagall");
+});
+
+test("style never LIFTS — a high style score adds a note, not a band", () => {
+  const plain = classifyArtistPass(corroboratedPair({ kOeuvreMatchCount: 0, kSubject: "UNASSESSABLE" }));
+  const styled = classifyArtistPass(
+    corroboratedPair({ kOeuvreMatchCount: 0, kSubject: "UNASSESSABLE", styleConsistency: style(0.95) }),
+  );
+  assert.equal(styled.confidence, plain.confidence);
+  assert.ok(styled.flags.some((x) => x.startsWith("styleConsistent:")), styled.flags.join(","));
+});
+
+test("a catalogued title match is not overridden by stylistic distance", () => {
+  const v = classifyArtistPass(
+    corroboratedPair({
+      ackgWorkAnchor: { artist: "Marc Chagall", titleSim: 0.95 },
+      styleConsistency: style(0.60),
+    }),
+  );
+  assert.equal(v.confidence, "HIGH"); // strong corroboration stands
+  assert.ok(v.flags.some((x) => x.startsWith("styleInconsistentWithCandidate")), v.flags.join(",")); // ...but is flagged
+});
+
+test("too few embedded works -> the style check is skipped, not guessed", () => {
+  const v = classifyArtistPass(corroboratedPair({ styleConsistency: style(0.40, 3) }));
+  assert.equal(v.confidence, "HIGH");
+  assert.ok(v.ruleTrace.some((t) => t.includes("style check skipped")), v.ruleTrace.join(" | "));
+});
+
+test("style evidence for a DIFFERENT artist is ignored", () => {
+  const v = classifyArtistPass(corroboratedPair({ styleConsistency: style(0.40, 500, "Someone Else") }));
+  assert.equal(v.confidence, "HIGH");
+});
+
+// ── ACKG corroborates, it does not witness (2026-09-09, supersedes Decision 4a) ─────
+
+test("an ACKG title match ALONE names nobody — no source spoke, so A11", () => {
+  // Was A8K candidate/MEDIUM. The anchor's artist is back-propagated from a title that came
+  // from V_t/R_t/A_t/D_t, so letting it vote double-counted the sources it derives from.
   const v = classifyArtistPass(
     f.artistEv({ ackgWorkAnchor: { artist: "Rembrandt van Rijn", titleSim: 0.95 } }),
   );
-  assert.equal(v.evidenceBasis, "A8K");
-  assert.equal(v.verdict, "candidate");
-  assert.equal(v.confidence, "MEDIUM");
-  assert.equal(v.artistName, "Rembrandt van Rijn");
-  assert.deepEqual(v.agreementSet, ["K"]);
+  assert.equal(v.evidenceBasis, "A11");
+  assert.equal(v.verdict, "not_attributed");
+  assert.equal(v.artistName, null);
+  assert.deepEqual(v.agreementSet, []);
 });
 
-test("K below TAU_TITLE does not vote (stays NOT ATTRIBUTED)", () => {
+test("K below TAU_TITLE contributes nothing either (stays NOT ATTRIBUTED)", () => {
   const v = classifyArtistPass(
     f.artistEv({ ackgWorkAnchor: { artist: "Rembrandt van Rijn", titleSim: 0.5 } }),
   );
@@ -210,7 +311,7 @@ test("K below TAU_TITLE does not vote (stays NOT ATTRIBUTED)", () => {
   assert.equal(v.verdict, "not_attributed");
 });
 
-test("K + a consistent single VEA signature -> n=2 (A2/A3/A4 depending on K_oeuvre)", () => {
+test("a title match CORROBORATING the source's artist lifts the band, still n=1", () => {
   const v = classifyArtistPass(
     f.artistEv({
       vea: { kind: "names", raw: "Rembrandt van Rijn" },
@@ -220,12 +321,17 @@ test("K + a consistent single VEA signature -> n=2 (A2/A3/A4 depending on K_oeuv
       ackgWorkAnchor: { artist: "Rembrandt van Rijn", titleSim: 0.95 },
     }),
   );
-  assert.equal(v.verdict, "attributed");
-  assert.ok(["A2", "A3", "A4"].includes(v.evidenceBasis));
-  assert.ok(v.agreementSet.includes("K") && v.agreementSet.includes("V"));
+  // one witness (V), not two — but strongly corroborated
+  assert.equal(v.verdict, "candidate");
+  assert.equal(v.evidenceBasis, "A5");
+  assert.deepEqual(v.agreementSet, ["V"]);
+  assert.equal(v.confidence, "MEDIUM_HIGH"); // MEDIUM base, lifted by strong corroboration
+  assert.ok(v.flags.includes("corroboration:strong:ackgTitleMatch"), v.flags.join(","));
 });
 
-test("K naming a different identity than VEA -> CONFLICT (A10)", () => {
+test("a title match naming a DIFFERENT artist is recorded, but cannot create a conflict", () => {
+  // Was A10 conflict. A reference disagreeing with the only witness is not a second witness;
+  // it is a reason to look harder, surfaced as a flag rather than manufactured into a verdict.
   const v = classifyArtistPass(
     f.artistEv({
       vea: { kind: "names", raw: "Joan Miró" },
@@ -234,8 +340,12 @@ test("K naming a different identity than VEA -> CONFLICT (A10)", () => {
       ackgWorkAnchor: { artist: "Marc Chagall", titleSim: 0.9 },
     }),
   );
-  assert.equal(v.verdict, "conflict");
-  assert.equal(v.evidenceBasis, "A10");
+  assert.equal(v.verdict, "candidate");
+  assert.equal(v.artistName, "Joan Miró");
+  assert.ok(
+    v.flags.some((fl) => fl.startsWith("ackgTitleMatchNamesDifferentArtist:Marc Chagall")),
+    v.flags.join(","),
+  );
 });
 
 // ── D vote — Stage 1d DINOv2 match, 2026-09-06 amendment to ADR-0013 ────────

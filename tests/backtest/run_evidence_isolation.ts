@@ -49,12 +49,15 @@ import {
   type AppraisalMethodConfig,
 } from "../../src/appraisal/appraiser";
 import type { VisualExtractionResult } from "../../src/types";
+import type { EvidenceAgentOutput } from "../../src/appraisal/stage2a_evidence";
+import type { AckgLoopEvent } from "../../src/appraisal/appraiser";
 import { resolveSaleRef, type AuctionRef } from "../../benchmark/src/roseberys/discover";
 import { fetchLotByNumber, imageUrl, lotUrl, type RawLot } from "../../benchmark/src/roseberys/api";
 import { parseDescription, type ParsedLot } from "../../benchmark/src/roseberys/parse";
 import { compareResults, type BacktestComparison } from "./compare";
 import { buildBacktestReport } from "./build_report";
 import { assertBlindOrExit } from "./blindness";
+import { buildEvidenceRecord } from "./evidence_capture";
 import { closeDriver } from "../../src/appraisal/knowledge_graph/index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -112,6 +115,15 @@ function notRunVea(): VisualExtractionResult {
  */
 class EvidenceIsolationAppraiser extends FourStageAppraiser {
   public veaVoteSuppressed: { veaNamesArtist: boolean; veaArtistName: string; legible: boolean; sigConf: number } | null = null;
+  /** The Stage 2a cells exactly as the agent filled them — the pipeline itself keeps no copy. */
+  public agentCells: EvidenceAgentOutput | null = null;
+  /** Every ACKG tool-loop step, for the stored record. */
+  public ackgRounds: AckgLoopEvent[] = [];
+
+  protected onAckgLoopEvent(e: AckgLoopEvent): void {
+    this.ackgRounds.push(e);
+    super.onAckgLoopEvent(e); // keep the live log unchanged
+  }
 
   /** No vision call. Returns the "not run" stub without touching the model. */
   protected async runStage1VEA(): Promise<VisualExtractionResult> {
@@ -129,6 +141,8 @@ class EvidenceIsolationAppraiser extends FourStageAppraiser {
   ): Promise<any> {
     const out = await super.callClaudeWithAckgTool(modelName, systemInstruction, userText, maxTokens, finalTool, opts);
     if (finalTool?.name === "report_attribution_evidence" && out?.artistEvidence) {
+      // Snapshot BEFORE the VEA blanking below, so the record shows what the agent said.
+      this.agentCells = JSON.parse(JSON.stringify(out)) as EvidenceAgentOutput;
       const a = out.artistEvidence;
       this.veaVoteSuppressed = {
         veaNamesArtist: !!a.veaNamesArtist,
@@ -282,6 +296,13 @@ async function main() {
         lotUrl: lotUrl(rawLot),
         method: config.id,
         blindnessCompromised,
+        stage2aEvidence: buildEvidenceRecord(
+          appraiser.agentCells,
+          report.stage1dResult,
+          report.stage1cResult,
+          !!report.stage1Result?.imageAuthenticity?.haltRecommended,
+          appraiser.ackgRounds,
+        ),
         evidenceIsolation: {
           stage1aVeaRun: false,
           stage1aNote:
