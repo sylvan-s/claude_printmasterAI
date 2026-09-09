@@ -381,9 +381,17 @@ export interface ASAAttributionResult {
   };
   catalogueRaisonne: {
     referenceFound: boolean;
+    /** An actual publication ("Bloch", "Wiseman 1998") or null. Never a category of
+     *  resource — see ATTRIBUTION_RESEARCH_SYSTEM_PROMPT STEP 3. */
     catalogueName: string | null;
+    catalogueTitle?: string | null;
     plateOrCatalogueNumber: string | null;
     catalogueEditionInfo: string | null;
+    /** Where Stage 2b established it, when the ACKG index did not already hold it. */
+    sourceUrl?: string | null;
+    /** Researched, and no catalogue raisonné has ever been compiled for this artist. An
+     *  honest terminal answer, written back to the graph so it is researched once. */
+    noCatalogueRaisonneExists?: boolean;
     humanReferenceRequired: boolean;
   };
   reprintForgeryAssessment: {

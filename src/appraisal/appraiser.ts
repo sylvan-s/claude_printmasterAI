@@ -36,7 +36,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding } from "./knowledge_graph/index.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
 import type { StyleConsistencyEvidence } from "./two_pass_attribution";
 import { getImageEmbeddings } from "./embedding_client.js";
@@ -1138,6 +1138,17 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
 
   /** Merge near-duplicate ConceptualWork rows (un-merged re-ingests) and render the
    *  catalogued technique + dimension facts the impression check needs. */
+  /**
+   * Catalogued work rows rendered into a Stage 2a tool_result. `queryAckgWorks` fetches up to
+   * 60 so `scoreWorkTitleMatches` ranks over a wide field, but every rendered row is ~6 lines
+   * of UNCACHED input that then rides along in every later round of the loop. Measured on the
+   * 2026-09-09 A0793 attributed run: Stage 2a spent 40,441 uncached input tokens across 5
+   * lots, and single calls returned all 60 rows. The rows are already sorted by computed
+   * title similarity and the agent is told to use the top match, so the tail is paid for and
+   * unread. Ranking still happens over the full set in code — only the presentation is cut.
+   */
+  private static readonly MAX_ACKG_WORK_ROWS_RENDERED = 15;
+
   private formatAckgWorksForClaude(works: AckgWorkMatch[]): string {
     if (works.length === 0) {
       return "No catalogued work matches this artist + title in the graph's current sources. " +
@@ -1147,10 +1158,20 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const dl = (label: string, ds: { w: number; h: number }[]) =>
       ds.length ? `${label}=${[...new Set(ds.map((d) => `${d.w}x${d.h}mm`))].join(", ")}` : "";
     const scored = works.some((w) => w.titleSim != null);
+    const cap = MultiStageAppraiser.MAX_ACKG_WORK_ROWS_RENDERED;
+    const shown = works.slice(0, cap);
+    const suppressed = works.length - shown.length;
     const lines = [
       `${works.length} catalogued row(s)${scored ? ", ranked by computed title similarity (merge near-identical titles)" : " (merge near-identical titles)"}:`,
     ];
-    for (const w of works) {
+    if (suppressed > 0) {
+      lines.push(
+        scored
+          ? `Showing the ${shown.length} best-matching; ${suppressed} lower-similarity row(s) omitted. Re-query with a narrower workTitle or a technique/period filter if you need them.`
+          : `Showing ${shown.length} of them; ${suppressed} omitted and these are NOT ranked (no observed title was supplied to score against). Re-query with observedTitle set, or a narrower filter, if the answer is not here.`,
+      );
+    }
+    for (const w of shown) {
       const dims = [dl("plate", w.plateDimsMm), dl("image", w.imageDimsMm), dl("sheet", w.sheetDimsMm)].filter(Boolean).join("  ");
       lines.push(
         `\n"${w.workTitle}" — ${w.artistName}${w.dateLabel ? ` (${w.dateLabel})` : ""} [${w.impressionCount} impr., ${w.provenanceLayers.join("+") || "?"}]` +
@@ -2262,13 +2283,69 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
       : "";
 
     const appraiserPhysicalBlock = buildAppraiserPhysicalBlock(appraiserInput, veaRan);
-    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(veaSlim)}${appraiserPhysicalBlock}${visualSearchBlock}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
+    const crBlock = formatCatalogueRaisonneBlock(await this.lookupCatalogueRaisonne(triage));
+    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(veaSlim)}${appraiserPhysicalBlock}${crBlock}${visualSearchBlock}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
-    if (isClaude(stage2bModel)) {
-      return this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192);
-    } else {
-      return this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
+    const result: AttributionResearchResult = isClaude(stage2bModel)
+      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192)
+      : await this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
+    await this.persistCatalogueRaisonneFinding(result);
+    return result;
+  }
+
+  /**
+   * Look up the catalogues raisonnés the ACKG already associates with whichever artist(s)
+   * Stage 2a named, so Stage 2b can skip the "which catalogue raisonné exists for this
+   * artist?" search entirely. Runs in code rather than as a Stage 2b tool for the same
+   * reason ADR-0015 §6 runs the style query in code: the candidate names are already known,
+   * so a tool call would buy nothing but a round-trip and agent variance.
+   *
+   * Both the two-pass artist verdict and the rank-1 candidate are looked up — on a Scenario 5
+   * lot these differ, and the specialist is explicitly told to research every named candidate.
+   */
+  private async lookupCatalogueRaisonne(triage: TriageResult) {
+    const names = [
+      triage.artistAttribution?.artistName,
+      triage.candidateArtists?.[0]?.artistName,
+    ].filter((n): n is string => !!n?.trim());
+    const unique = [...new Map(names.map((n) => [n.trim().toLowerCase(), n.trim()])).values()];
+    if (unique.length === 0) return [];
+    const results = await Promise.all(unique.map((n) => queryCatalogueRaisonneForArtist(n)));
+    for (const r of results) {
+      if (!r) continue;
+      console.log(`[4-Stage] Stage 2b CR index: ${r.artistName} — ${r.references.length} reference(s)${r.noneKnown ? ", none-known recorded" : ""}${r.unconfirmedCitations.length ? `, ${r.unconfirmedCitations.length} unconfirmed` : ""}`);
+    }
+    return results;
+  }
+
+  /**
+   * Persist a catalogue raisonné Stage 2b had to go and find, so the next lot by the same
+   * artist reads it instead of searching for it (ADR-0007's learning loop, narrowed to the
+   * one finding that is reliably structured and reliably reusable).
+   *
+   * Deterministic code reads already-structured ASA cells; the model is never asked whether
+   * something is worth writing. Gated on a confident attribution — a catalogue raisonné
+   * attached to a name the specialist itself only rates "possible" is not a fact about the
+   * artist, and writing it would let a weak attribution seed the graph other appraisals read.
+   */
+  private async persistCatalogueRaisonneFinding(result: AttributionResearchResult): Promise<void> {
+    const cr: any = (result as any)?.catalogueRaisonne;
+    const conclusion: any = (result as any)?.attributionConclusion;
+    const artistName: string | undefined = conclusion?.attributedArtist;
+    const level: string | undefined = conclusion?.attributionLevel;
+    if (!artistName || (level !== "definitive" && level !== "probable")) return;
+
+    // referenceFound false is the honest "no catalogue raisonné exists" answer only when the
+    // specialist did not simultaneously name one; a named catalogue always wins.
+    const catalogueName: string | undefined = cr?.catalogueName?.trim?.();
+    const outcome = await recordCatalogueRaisonneFinding(
+      catalogueName
+        ? { artistName, catalogueName, title: cr?.catalogueTitle ?? null, sourceUrl: cr?.sourceUrl ?? null }
+        : { artistName, foundNone: cr?.noCatalogueRaisonneExists === true },
+    );
+    if (outcome === "written" || outcome === "recorded_none") {
+      console.log(`[4-Stage] Stage 2b CR write-back: ${outcome} for "${artistName}"${catalogueName ? ` (${catalogueName})` : ""}`);
     }
   }
 

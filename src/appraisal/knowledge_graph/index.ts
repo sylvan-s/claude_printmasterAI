@@ -2,6 +2,8 @@ export { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsi
 export type { ArtistStyleConsistency } from "./query.js";
 export { queryImageEmbeddingMatches, getStoredImageVectors } from "./query_image_similarity.js";
 export { queryAuctionComparables, parseExcludedListing } from "./query_comparables.js";
+export { queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, MIN_WORKS_FOR_DERIVED_CR } from "./catalogue_raisonne.js";
+export type { ArtistCatalogueRaisonne, CatalogueRaisonneRef, CatalogueRaisonneFinding, CatalogueRaisonneWriteOutcome } from "./catalogue_raisonne.js";
 export type { AuctionComparable, ComparablesSummary, ComparablesResult, ComparablesParams, ComparableTier } from "./query_comparables.js";
 export { closeDriver } from "./client.js";
 export { parseAckgDimMm } from "./dimension_parse.js";

@@ -376,8 +376,11 @@ export const SPECIALIST_ATTRIBUTION_SCHEMA = {
       properties: {
         referenceFound: { type: Type.BOOLEAN },
         catalogueName: { type: Type.STRING },
+        catalogueTitle: { type: Type.STRING },
         plateOrCatalogueNumber: { type: Type.STRING },
         catalogueEditionInfo: { type: Type.STRING },
+        sourceUrl: { type: Type.STRING },
+        noCatalogueRaisonneExists: { type: Type.BOOLEAN },
         humanReferenceRequired: { type: Type.BOOLEAN }
       },
       required: ["referenceFound", "humanReferenceRequired"]

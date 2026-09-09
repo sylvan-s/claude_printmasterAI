@@ -8,6 +8,7 @@ import { parseAckgDimMm } from "../../src/appraisal/knowledge_graph/dimension_pa
 import { normalizeTitleForEmbedding, isLowInformationTitle } from "../../src/appraisal/knowledge_graph/title_normalize";
 import { titleSimFromCosine, COSINE_FLOOR, COSINE_CEIL } from "../../src/appraisal/knowledge_graph/embed_text";
 import { parseExcludedListing } from "../../src/appraisal/knowledge_graph/query_comparables";
+import { formatCatalogueRaisonneBlock, MIN_WORKS_FOR_DERIVED_CR, type ArtistCatalogueRaisonne } from "../../src/appraisal/knowledge_graph/catalogue_raisonne";
 
 let passed = 0;
 let failed = 0;
@@ -150,6 +151,84 @@ test("parseExcludedListing finds a bare URL with no sale/lot phrasing", () => {
   const p = parseExcludedListing("https://www.roseberys.co.uk/bidding/x/1-y-2");
   assert.equal(p.listingUrl, "https://www.roseberys.co.uk/bidding/x/1-y-2");
   assert.equal(p.saleLot, null);
+});
+
+
+// ---- Stage 2b catalogue raisonné index block ---------------------------------------
+
+function cr(over: Partial<ArtistCatalogueRaisonne> = {}): ArtistCatalogueRaisonne {
+  return {
+    artistName: "Elisabeth Frink", queriedAs: "Elisabeth Frink",
+    references: [], unconfirmedCitations: [], unconfirmedCount: 0,
+    noneKnown: false, noneKnownCheckedAt: null, totalWorks: 342, ...over,
+  };
+}
+
+test("CR block: no lookups renders nothing at all (no wasted tokens)", () => {
+  assert.equal(formatCatalogueRaisonneBlock([]), "");
+  assert.equal(formatCatalogueRaisonneBlock([null, null]), "");
+});
+
+test("CR block: an established reference is named with its citation count", () => {
+  const out = formatCatalogueRaisonneBlock([cr({
+    references: [{ numberingPrefix: "Wiseman", title: null, works: 175, basis: "derived" }],
+  })]);
+  assert.match(out, /"Wiseman" \| cited by 175 catalogued work\(s\)/);
+  assert.match(out, /do not spend a web search asking which catalogue raisonné exists/);
+});
+
+test("CR block: an artist with citations but none above threshold is not given a reference", () => {
+  const out = formatCatalogueRaisonneBlock([cr({
+    artistName: "Banksy", queriedAs: "Banksy", totalWorks: 788,
+    unconfirmedCitations: [{ numberingPrefix: "V.", title: null, works: 1, basis: "derived" }],
+    unconfirmedCount: 1,
+  })]);
+  assert.match(out, /No catalogue raisonné citations ingested for this artist/);
+  assert.match(out, /Do not cite these without verifying/);
+});
+
+test("CR block: the unconfirmed tail is summarised by count, never listed in full", () => {
+  // Picasso really does have 295 of these; listing them cost more context than the block saves.
+  const out = formatCatalogueRaisonneBlock([cr({
+    references: [{ numberingPrefix: "Bloch", title: null, works: 520, basis: "derived" }],
+    unconfirmedCitations: [
+      { numberingPrefix: "M.A.", title: null, works: 1, basis: "derived" },
+      { numberingPrefix: "Czw", title: null, works: 2, basis: "derived" },
+    ],
+    unconfirmedCount: 295,
+  })]);
+  assert.match(out, /Plus 295 thinly-cited citation\(s\)/);
+  assert.ok(out.length < 1200, `block should stay compact, was ${out.length} chars`);
+});
+
+test("CR block: a recorded none-known result tells the specialist not to re-search", () => {
+  const out = formatCatalogueRaisonneBlock([cr({
+    artistName: "Banksy", queriedAs: "Banksy", noneKnown: true,
+    noneKnownCheckedAt: "2026-09-09T10:00:00.000Z",
+  })]);
+  assert.match(out, /NO CATALOGUE RAISONNÉ KNOWN/);
+  assert.match(out, /checked 2026-09-09/);
+  assert.match(out, /Do not spend searches re-establishing this/);
+});
+
+test("CR block: a written-back reference carries its research provenance", () => {
+  const out = formatCatalogueRaisonneBlock([cr({
+    references: [{
+      numberingPrefix: "Wiseman", title: "The Prints of Elisabeth Frink", works: 0,
+      basis: "recorded", sourceUrl: "https://example.org/frink",
+    }],
+  })]);
+  assert.match(out, /recorded by earlier Stage 2b research — https:\/\/example\.org\/frink/);
+  assert.match(out, /The Prints of Elisabeth Frink/);
+});
+
+test("CR block: the graph's canonical spelling is shown when it differs from the query", () => {
+  const out = formatCatalogueRaisonneBlock([cr({ artistName: "Pablo Picasso", queriedAs: "Picasso" })]);
+  assert.match(out, /Pablo Picasso \(queried as "Picasso"\)/);
+});
+
+test("MIN_WORKS_FOR_DERIVED_CR is above 1 — a single citation is the documented noise case", () => {
+  assert.ok(MIN_WORKS_FOR_DERIVED_CR > 1);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
