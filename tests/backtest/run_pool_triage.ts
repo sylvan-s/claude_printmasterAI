@@ -14,6 +14,8 @@
  *   npm run test:pool:triage -- --model claude-haiku-4-5
  *   npm run test:pool:triage -- --resume
  *   npm run test:pool:triage -- --dir tests/backtest/pool_output_angle   # degraded-pool fixture
+ *   npm run test:pool:triage -- --dir tests/backtest/fixtures --model claude-haiku-4-5
+ *                                                  # committed reproduction fixtures (A0793_303)
  *
  * Writes tests/backtest/pool_output/<id>/triage.json  (gitignored).
  *
@@ -59,8 +61,12 @@ const RESUME = process.argv.includes("--resume");
 
 // ── expose the protected triage method ───────────────────────────────────────
 class TriageRunner extends FourStageAppraiser {
-  runTriage(vea: VisualExtractionResult, appraiserInput?: AppraiserInputResult, visualSearch?: any) {
-    return (this as any).runStage2aTriage(vea, MODEL, undefined, appraiserInput, visualSearch) as Promise<TriageResult>;
+  // stage1d is optional so the existing pool fixtures (built before Stage 1d existed) keep
+  // working untouched, while a fixture captured from an isolation run can replay the D/D_t
+  // evidence it actually had. Without it a 1c+1d isolation lot cannot be reproduced here at
+  // all — D is the only voter those runs have.
+  runTriage(vea: VisualExtractionResult, appraiserInput?: AppraiserInputResult, visualSearch?: any, stage1d?: any) {
+    return (this as any).runStage2aTriage(vea, MODEL, undefined, appraiserInput, visualSearch, stage1d) as Promise<TriageResult>;
   }
 }
 
@@ -174,7 +180,7 @@ async function runOne(id: string) {
   const gtArtist: string = f.groundTruth?.poolArtistName ?? "?";
   try {
     const t0 = Date.now();
-    const triage = await runner.runTriage(f.stage1a_vea, f.stage1c_appraiserInput, f.stage1b_visualSearch);
+    const triage = await runner.runTriage(f.stage1a_vea, f.stage1c_appraiserInput, f.stage1b_visualSearch, f.stage1d_embeddingMatch);
     const ms = Date.now() - t0;
 
     const rd = triage.routingDecision ?? ({} as any);

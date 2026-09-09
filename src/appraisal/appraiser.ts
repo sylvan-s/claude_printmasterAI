@@ -710,7 +710,12 @@ function buildAppraiserPhysicalBlock(appraiserInput?: AppraiserInputResult, veaR
  * has nothing to do with the print, which is worse than leaving it null — absence of data
  * is the honest answer, manufactured data is not.
  */
-function isConstrainedAckgQuery(input: any): boolean {
+/**
+ * Does a query_ackg call narrow anything? Exported for test: this predicate is now a GATE
+ * (an unconstrained call is refused rather than executed), so its boundaries decide what
+ * reaches the evidence agent's context.
+ */
+export function isConstrainedAckgQuery(input: any): boolean {
   if (!input || typeof input !== "object") return false;
   return ["technique", "region", "subject", "paper", "workTitle"].some(
     (k) => typeof input[k] === "string" && input[k].trim().length > 0,
@@ -719,6 +724,22 @@ function isConstrainedAckgQuery(input: any): boolean {
 
 /** Graph rounds Stage 2a must run before an unforced report is accepted. */
 const MIN_ACKG_ROUNDS_BEFORE_REPORT = 1;
+/**
+ * How many times an early report is pushed back before the escape hatch opens.
+ *
+ * Was effectively 1. The refusal text deliberately offers a way out — "if you genuinely
+ * have nothing to filter on, report as-is and leave the cells empty" — because forcing a
+ * junk query is worse than honest absence. But a single refusal makes that hatch trivially
+ * cheap: on A0793/303 (Picasso) a weaker model reported, was refused, and reported again
+ * unchanged with ZERO graph rounds, landing A4/MEDIUM where the same lot reaches A2/HIGH
+ * with corroboration — and dropping out of the Scenario 2 authentication-risk profile that
+ * a Picasso print most needs. It had technique, region and a candidate title available; it
+ * simply declined to use them.
+ *
+ * Two refusals keeps the hatch for the genuinely evidence-free lot it was written for while
+ * making it something the agent has to insist on rather than fall through.
+ */
+const MAX_REPORT_REFUSALS = 2;
 
 /** Hard cap on Stage 2b's web searches, matching the number its prompt asks for. */
 const STAGE2B_MAX_WEB_SEARCHES = 5;
@@ -1398,7 +1419,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
 
     let roundsUsed = 0;
     let constrainedRounds = 0;
-    let refusedOnce = false;
+    let reportRefusals = 0;
     const trace_unconstrained = (r: number) =>
       console.log(`[Stage 2a ACKG loop] round ${r}: query carried no technique/region/subject/paper/title — not counted toward the minimum`);
     for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -1419,17 +1440,17 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       // until at least one graph round has run. The refusal is pushed back as a normal user
       // turn, so the agent keeps its context and simply queries first.
       const reported = (data.content || []).find((b: any) => b.type === "tool_use" && b.name === finalToolName);
-      if (reported?.input && (constrainedRounds >= MIN_ACKG_ROUNDS_BEFORE_REPORT || refusedOnce)) {
+      if (reported?.input && (constrainedRounds >= MIN_ACKG_ROUNDS_BEFORE_REPORT || reportRefusals >= MAX_REPORT_REFUSALS)) {
         this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
         console.log(`[Stage 2a ACKG loop] round ${round + 1}: reported without a forced call — ${roundsUsed} query round(s) used`);
         return reported.input;
       }
       if (reported?.input) {
-        // Refuse ONCE. If the agent still has nothing to filter on second time round, take
-        // the report with the cells honestly empty rather than forcing a junk query.
-        refusedOnce = true;
+        // Refuse up to MAX_REPORT_REFUSALS times. After that the report is taken with the
+        // cells honestly empty rather than forcing a junk query — see that constant.
+        reportRefusals++;
         console.log(
-          `[Stage 2a ACKG loop] round ${round + 1}: report refused once — ${constrainedRounds} constrained ` +
+          `[Stage 2a ACKG loop] round ${round + 1}: report refused (${reportRefusals}/${MAX_REPORT_REFUSALS}) — ${constrainedRounds} constrained ` +
             `graph round(s), ${MIN_ACKG_ROUNDS_BEFORE_REPORT} required. Asking for a narrowed query.`,
         );
         // The refusal must come back as a tool_result for THIS tool_use id — the API rejects
@@ -1483,6 +1504,30 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       const toolResults = await Promise.all(
         clientToolUses.map(async (b: any) => {
           this.onAckgLoopEvent({ round: round + 1, kind: "call", toolName: b.name, input: b.input || {} });
+          // GATE, not just a counter. An unconstrained query_ackg — no technique, region,
+          // subject, paper or title — returns the graph's most prolific artists regardless
+          // of this lot, and that noise then sits in the agent's context looking like
+          // evidence. Observed: a Peter Blake lot received "Pablo Picasso (support=670),
+          // Marc Chagall (428), Joan Miro (417)" from a bare period sweep. Previously this
+          // predicate only decided whether the round counted toward the minimum, so the
+          // query still ran and the rows still reached the model. Refusing costs one cheap
+          // round-trip and returns nothing misleading.
+          if (b.name === "query_ackg" && !isConstrainedAckgQuery(b.input)) {
+            this.onAckgLoopEvent({ round: round + 1, kind: "result", toolName: b.name, count: 0,
+              summary: "refused — unconstrained query" });
+            return {
+              type: "tool_result",
+              tool_use_id: b.id,
+              is_error: true,
+              content:
+                `Refused: this query carries no technique, region, subject, paper or workTitle, so it ` +
+                `would rank the graph's most prolific artists overall — Picasso, Chagall, Miro and so on ` +
+                `— with no relevance to this lot. A period range alone does not narrow anything. ` +
+                `Re-run with at least one real filter, or use query_ackg_work if you have a candidate ` +
+                `artist or title (query_ackg cannot be scoped to an artist). If you have nothing to ` +
+                `filter on at all, do not query — report with the ACKG cells honestly empty.`,
+            };
+          }
           let content: string;
           try {
             if (b.name === "query_ackg_work") {

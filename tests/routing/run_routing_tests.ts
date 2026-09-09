@@ -12,6 +12,7 @@
  * Run: npm run test:routing
  */
 import { injectTaskProfile } from "../../src/appraisal/prompts";
+import { isConstrainedAckgQuery } from "../../src/appraisal/appraiser";
 import assert from "node:assert/strict";
 import {
   matchSpecialistConfig,
@@ -83,6 +84,56 @@ test("veaRan=false appends the clause to EVERY scenario, profile intact", () => 
     // the specific failure it exists to prevent
     assert.ok(without.includes('Do NOT set attributionLevel to "unattributed"'), `Scenario ${s} missing the attribution guard`);
   }
+});
+
+
+// ---- query_ackg constraint gate ----------------------------------------------------
+// As of 2026-09-09 this is a GATE, not a round-counter: an unconstrained query_ackg is
+// refused with an is_error tool_result and never executed. It previously ran, and returned
+// the graph's most prolific artists — a Peter Blake lot was handed "Pablo Picasso
+// (support=670), Marc Chagall (428), Joan Miro (417)" off a bare period sweep.
+
+test("a bare period range does not constrain — this is the observed failure", () => {
+  assert.equal(isConstrainedAckgQuery({ periodStartYear: 1960, periodEndYear: 1970 }), false);
+  assert.equal(isConstrainedAckgQuery({ periodStartYear: 1880, periodEndYear: 2025 }), false);
+});
+
+test("an artist name does not constrain — query_ackg has no artist parameter", () => {
+  // The model invents this field; it is silently dropped, so it must not satisfy the gate.
+  assert.equal(isConstrainedAckgQuery({ artist: "Peter Blake" }), false);
+  assert.equal(isConstrainedAckgQuery({ artist: "Peter Blake", periodStartYear: 1960 }), false);
+});
+
+test("any one real filter constrains", () => {
+  for (const k of ["technique", "region", "subject", "paper", "workTitle"]) {
+    assert.equal(isConstrainedAckgQuery({ [k]: "x" }), true, `${k} should constrain`);
+  }
+});
+
+test("an empty or whitespace filter value does not constrain", () => {
+  assert.equal(isConstrainedAckgQuery({ technique: "" }), false);
+  assert.equal(isConstrainedAckgQuery({ technique: "   " }), false);
+  assert.equal(isConstrainedAckgQuery({ region: "", subject: "" }), false);
+});
+
+test("a non-string filter value does not constrain", () => {
+  assert.equal(isConstrainedAckgQuery({ technique: 1 as any }), false);
+  assert.equal(isConstrainedAckgQuery({ subject: true as any }), false);
+  assert.equal(isConstrainedAckgQuery({ workTitle: null as any }), false);
+});
+
+test("a missing or non-object input does not constrain", () => {
+  assert.equal(isConstrainedAckgQuery(undefined), false);
+  assert.equal(isConstrainedAckgQuery(null), false);
+  assert.equal(isConstrainedAckgQuery("technique"), false);
+  assert.equal(isConstrainedAckgQuery({}), false);
+});
+
+test("a real filter still constrains alongside ignored fields", () => {
+  assert.equal(
+    isConstrainedAckgQuery({ artist: "Peter Blake", technique: "Screenprint", periodStartYear: 1964 }),
+    true,
+  );
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
