@@ -12,6 +12,8 @@ import {
   passTwoGate,
   classifyWorkPass,
   sourceConfidence,
+  D_VOTE_FLOOR,
+  D_T_DINO_FLOOR,
   classifyImpression,
   classifyDimensionMatch,
   classifyTechniqueMatch,
@@ -227,6 +229,88 @@ test("two agreeing but weak sources are demoted below a confident pair", () => {
   assert.equal(confident.evidenceBasis, weak.evidenceBasis);
 });
 
+test("REGRESSION: the A0793 dino scores separate same-work from different-work", () => {
+  // The whole reason the work vote is dino-only. Same-work matches (Blake's Tate P04038 was
+  // visually confirmed) all sit above every different-work match; the dino/clip MEAN does
+  // not order them correctly, because Blake had no clip score and the wrong matches had
+  // high ones.
+  const votesForWork = (dino: number) =>
+    classifyWorkPass({
+      ...f.workEv(),
+      titleEmbeddingMatch: { kind: "names", raw: "Some Work", matchConfidence: "MEDIUM", dinoSimilarity: dino },
+    }).agreementSet.includes("D_t");
+
+  for (const [label, dino] of [["Banksy", 0.991], ["Frink", 0.974], ["Blake", 0.886]] as const) {
+    assert.equal(votesForWork(dino), true, `${label} (${dino}) is the same work and must vote`);
+  }
+  for (const [label, dino] of [["Villon", 0.876], ["Picasso", 0.851]] as const) {
+    assert.equal(votesForWork(dino), false, `${label} (${dino}) is a different work and must not`);
+  }
+});
+
+// ── Stage 1c as a physical-evidence source (2026-09-09) ────────────────────────
+
+test("sheet dimensions are compared, at a wider tolerance than plate", () => {
+  const sheet = (obs: { w: number; h: number }, cat: { w: number; h: number }) =>
+    classifyDimensionMatch({ observedSource: "appraiser", workIsIntaglio: false, observedSheetMm: obs, catalogueSheetMm: cat });
+
+  // 600x830 vs 620x845 — 3.3% / 1.8%, well inside sheet tolerance, outside plate tolerance
+  const close = sheet({ w: 600, h: 830 }, { w: 620, h: 845 });
+  assert.equal(close.match, "true");
+  assert.equal(close.comparedOn, "sheet");
+  assert.ok(close.note.includes("weakest dimension"), close.note);
+
+  // a genuinely different sheet still fails
+  assert.equal(sheet({ w: 600, h: 830 }, { w: 400, h: 500 }).match, "false");
+});
+
+test("plate is still preferred over sheet when both are available", () => {
+  const r = classifyDimensionMatch({
+    observedSource: "appraiser",
+    workIsIntaglio: true,
+    observedPlateMm: { w: 320, h: 240 },
+    cataloguePlateMm: { w: 320, h: 240 },
+    observedSheetMm: { w: 600, h: 830 },
+    catalogueSheetMm: { w: 400, h: 500 }, // would fail, must not be reached
+  });
+  assert.equal(r.comparedOn, "plate");
+  assert.equal(r.match, "true");
+});
+
+test("a CLAIMED technique corroborates a work but cannot establish a reproduction", () => {
+  const base = {
+    observedTechniques: ["giclee print"],
+    observedIsPhotomechanical: true,
+    catalogueTechniques: ["Etching"],
+    catalogueMediumRaw: "etching",
+    dimensions: { observedSource: "none" as const, workIsIntaglio: true },
+  };
+  // VEA actually saw halftone dots -> reproduction is a fair verdict
+  const observed = classifyImpression({ ...base, observedTechniqueSource: "vea" });
+  assert.equal(observed.divergence, "reproduction");
+
+  // the same words, but only because the appraiser wrote them -> capped at medium_divergence
+  const claimed = classifyImpression({ ...base, observedTechniqueSource: "appraiser" });
+  assert.equal(claimed.divergence, "medium_divergence");
+  assert.ok(claimed.ruleTrace.some((t) => t.includes("CLAIMED technique")), claimed.ruleTrace.join(" | "));
+});
+
+test("a Stage 1c technique still corroborates the work in Pass 2", () => {
+  // The A0793 shape: VEA skipped, Stage 1c said "lithograph in colours", ACKG says Lithograph.
+  const v = classifyWorkPass(f.t4_twoAgreeNoKwork, {
+    impression: {
+      observedTechniques: ["lithograph in colours"],
+      observedTechniqueSource: "appraiser",
+      observedIsPhotomechanical: false,
+      catalogueTechniques: ["Lithograph"],
+      catalogueMediumRaw: "lithograph",
+      dimensions: { observedSource: "appraiser", workIsIntaglio: false },
+    },
+  });
+  assert.ok(v.ruleTrace.some((t) => t.includes("work corroboration MODERATE")), v.ruleTrace.join(" | "));
+  assert.equal(v.evidenceBasis, "T2");
+});
+
 // ── style consistency: exclusion only (2026-09-09) ─────────────────────────────
 
 const style = (mean: number, n = 300, artistName = "Marc Chagall") => ({
@@ -361,21 +445,81 @@ test("D alone at HIGH confidence -> CANDIDATE MEDIUM (A6D)", () => {
   assert.deepEqual(v.agreementSet, ["D"]);
 });
 
-test("D alone at MEDIUM confidence is a 'don't know' — does NOT vote (stays NOT ATTRIBUTED)", () => {
+test("DINOv2 alone carries the artist vote — CLIP is not required", () => {
+  // A0793/122: Blake's clip was depressed to 0.863 by a colour-balance shift while dino
+  // still recognised the work at 0.886. Requiring both would have discarded a correct artist.
   const v = classifyArtistPass(
-    f.artistEv({ embeddingMatch: { kind: "names", raw: "Henry Moore", matchConfidence: "MEDIUM" } }),
+    f.artistEv({ embeddingMatch: { kind: "names", raw: "Peter Blake", dinoSimilarity: 0.886, clipSimilarity: 0.863 } }),
   );
-  assert.equal(v.evidenceBasis, "A11");
-  assert.equal(v.verdict, "not_attributed");
-  assert.ok(v.ruleTrace.some((l) => l.includes("D dropped from vote")));
+  assert.equal(v.evidenceBasis, "A6D");
+  assert.equal(v.artistName, "Peter Blake");
+  assert.ok(v.ruleTrace.some((l) => l.includes("DINOv2 only")), v.ruleTrace.join(" | "));
 });
 
-test("D alone at LOW confidence is a 'don't know' — does NOT vote", () => {
+test("both measures agreeing scores higher than either alone", () => {
+  const both = classifyArtistPass(
+    f.artistEv({ embeddingMatch: { kind: "names", raw: "X", dinoSimilarity: 0.97, clipSimilarity: 0.97 } }),
+  );
+  const dinoOnly = classifyArtistPass(
+    f.artistEv({ embeddingMatch: { kind: "names", raw: "X", dinoSimilarity: 0.97, clipSimilarity: 0.90 } }),
+  );
+  const clipOnly = classifyArtistPass(
+    f.artistEv({ embeddingMatch: { kind: "names", raw: "X", dinoSimilarity: 0.70, clipSimilarity: 0.97 } }),
+  );
+  assert.ok(both.ruleTrace.some((l) => l.includes("both measures agree")), both.ruleTrace.join(" | "));
+  assert.ok(dinoOnly.ruleTrace.some((l) => l.includes("DINOv2 only")));
+  assert.ok(clipOnly.ruleTrace.some((l) => l.includes("CLIP only")));
+  // CLIP alone is the weakest witness — it scores wrong artists at 0.94
+  assert.equal(clipOnly.confidence, "LOW");
+});
+
+test("confidence is ordered: both measures > DINOv2 alone > CLIP alone", () => {
+  const conf = (dino: number, clip: number) =>
+    sourceConfidence(
+      { source: "D", raw: "X", identityKey: null },
+      f.artistEv({ embeddingMatch: { kind: "names", raw: "X", dinoSimilarity: dino, clipSimilarity: clip } }),
+    );
+  const both = conf(0.97, 0.97);
+  const dinoOnly = conf(0.97, 0.90); // clip below its own floor
+  const clipOnly = conf(0.70, 0.97); // dino below its own floor
+  assert.ok(both > dinoOnly, `both ${both} should beat dino-only ${dinoOnly}`);
+  assert.ok(dinoOnly > clipOnly, `dino-only ${dinoOnly} should beat clip-only ${clipOnly}`);
+  // and nothing clearing either floor is not a vote at all
+  assert.equal(conf(0.70, 0.90), 0);
+});
+
+test("neither measure clearing its own floor -> D does not vote at all", () => {
+  // Stage 1d has no null result: it always hands back a top candidate. Whistler sat at
+  // dino 0.801 / clip 0.940 as a rival row on the Hockney lot — wrong artist, and CLIP
+  // alone at 0.940 must not be enough to name him.
   const v = classifyArtistPass(
-    f.artistEv({ embeddingMatch: { kind: "names", raw: "Henry Moore", matchConfidence: "LOW" } }),
+    f.artistEv({ embeddingMatch: { kind: "names", raw: "Whistler", dinoSimilarity: 0.801, clipSimilarity: 0.940 } }),
   );
   assert.equal(v.evidenceBasis, "A11");
   assert.equal(v.verdict, "not_attributed");
+  assert.ok(v.ruleTrace.some((l) => l.includes("neither clears its own floor")), v.ruleTrace.join(" | "));
+});
+
+test("just over the floor votes; just under does not", () => {
+  const over = classifyArtistPass(
+    f.artistEv({ embeddingMatch: { kind: "names", raw: "Henry Moore", matchConfidence: "LOW", dinoSimilarity: 0.85, clipSimilarity: 0.90 } }),
+  );
+  const under = classifyArtistPass(
+    f.artistEv({ embeddingMatch: { kind: "names", raw: "Henry Moore", matchConfidence: "HIGH", dinoSimilarity: 0.70, clipSimilarity: 0.90 } }),
+  );
+  assert.equal(over.evidenceBasis, "A6D");
+  // the measurement governs, not the band the source labelled itself with
+  assert.equal(under.evidenceBasis, "A11");
+});
+
+test("every correct A0793 match clears the floor", () => {
+  // Frink 0.974, Banksy 0.985, Villon 0.911, Picasso 0.894, Blake 0.886 (clip was null).
+  for (const measured of [0.974, 0.985, 0.911, 0.894, 0.886]) {
+    const v = classifyArtistPass(
+      f.artistEv({ embeddingMatch: { kind: "names", raw: "Henry Moore", matchConfidence: "MEDIUM", dinoSimilarity: measured, clipSimilarity: 0.90 } }),
+    );
+    assert.equal(v.evidenceBasis, "A6D", `measured ${measured} should vote`);
+  }
 });
 
 test("D (HIGH) + a consistent VEA signature -> n=2 (A2/A3/A4 depending on K_oeuvre)", () => {
@@ -452,13 +596,28 @@ test("T1 — all three title sources agree -> IDENTIFIED HIGH", () => {
   assert.equal(v.confidence, "HIGH");
 });
 
-test("T2 — 2 agree + K_work title match -> IDENTIFIED HIGH", () => {
+test("2 agree + a K_work TITLE match only -> MEDIUM_HIGH; matching words is not matching the object", () => {
+  // Pre-2026-09-09 a title-string match alone gave HIGH. Physical corroboration is what
+  // earns HIGH now — see the technique/dimensions test below.
   const v = classifyWorkPass(f.t2_twoAgreeKworkFullMatch);
-  assert.equal(v.evidenceBasis, "T2");
-  assert.equal(v.confidence, "HIGH");
+  assert.equal(v.evidenceBasis, "T4");
+  assert.equal(v.confidence, "MEDIUM_HIGH");
 });
 
-test("T4 — 2 agree, no K_work hit -> IDENTIFIED MEDIUM", () => {
+test("T2 — 2 agree + catalogued technique AND dimensions match -> IDENTIFIED HIGH", () => {
+  const v = classifyWorkPass(f.t2_twoAgreeKworkFullMatch, { impression: f.imp_cleanMatch });
+  assert.equal(v.evidenceBasis, "T2");
+  assert.equal(v.confidence, "HIGH");
+  assert.ok(v.ruleTrace.some((t) => t.includes("work corroboration STRONG")), v.ruleTrace.join(" | "));
+});
+
+test("a catalogued work whose technique CONTRADICTS the object loses a band at any n", () => {
+  const v = classifyWorkPass(f.t2_twoAgreeKworkFullMatch, { impression: f.imp_techniqueContradicts });
+  assert.ok(v.ruleTrace.some((t) => t.includes("work corroboration CONTRADICTED")), v.ruleTrace.join(" | "));
+  assert.equal(v.confidence, "MEDIUM"); // MEDIUM_HIGH base, contradiction -1
+});
+
+test("T4 — 2 agree, ACKG corroborates nothing -> IDENTIFIED MEDIUM", () => {
   const v = classifyWorkPass(f.t4_twoAgreeNoKwork);
   assert.equal(v.evidenceBasis, "T4");
   assert.equal(v.confidence, "MEDIUM");
@@ -527,10 +686,12 @@ test("a K_work hit with no matchedWorkTitle is unverifiable and does not corrobo
   assert.ok(v.ruleTrace.some((t) => t.includes("no matchedWorkTitle recorded")), v.ruleTrace.join(" | "));
 });
 
-test("a catalogued title carrying a series suffix still corroborates -> T2 HIGH", () => {
+test("a catalogued title carrying a series suffix still corroborates (via containment)", () => {
+  // No impression evidence, so this exercises the kWork title fallback — where the
+  // containment measure matters. Weak corroboration holds the band at MEDIUM_HIGH.
   const v = classifyWorkPass(f.t2_kworkSeriesSuffixStillAgrees);
-  assert.equal(v.evidenceBasis, "T2");
-  assert.equal(v.confidence, "HIGH");
+  assert.equal(v.evidenceBasis, "T4");
+  assert.equal(v.confidence, "MEDIUM_HIGH");
 });
 
 // ── D_t — Stage 1d's catalogued title as a title vote (2026-09-08) ──────────────
@@ -543,15 +704,50 @@ test("D_t — a lone HIGH Stage 1d title votes, and beats the K_work anchor to a
   assert.deepEqual(v.agreementSet, ["D_t"]);
 });
 
-test("D_t — MEDIUM Stage 1d does not vote; T8K still anchors on K_work", () => {
+test("D_t below the DINO work floor does not vote — CLIP does not speak to work identity", () => {
+  // dino 0.851 clears the artist floor but not the work floor. On A0793 this exact value was
+  // a Picasso print by the right artist and the wrong work, which CLIP scored 0.937.
   const v = classifyWorkPass(f.dt_embeddingTitleOnly_medium);
-  assert.equal(v.evidenceBasis, "T8K");
-  assert.equal(v.conceptualWorkTitle, "Reclining Figure");
-  assert.ok(v.ruleTrace.some((t) => t.includes("D_t dropped from vote")), v.ruleTrace.join(" | "));
+  assert.ok(v.ruleTrace.some((t) => t.includes(`< ${D_T_DINO_FLOOR}`)), v.ruleTrace.join(" | "));
+  assert.notEqual(v.evidenceBasis, "T5");
 });
 
-test("D_t — agreeing with the appraiser makes two sources -> T2 IDENTIFIED HIGH", () => {
-  const v = classifyWorkPass(f.dt_agreesWithAppraiser);
+test("a sub-floor D_t leaves T8K to answer for the work", () => {
+  const v = classifyWorkPass(f.dt_mediumButKworkAgrees);
+  assert.equal(v.evidenceBasis, "T8K");
+  assert.equal(v.confidence, "MEDIUM"); // T8K's own evidence is the anchor; silence does not demote it
+  assert.equal(v.verdict, "identified");
+});
+
+test("T8K is LIFTED when the catalogued record also matches", () => {
+  const v = classifyWorkPass(f.dt_mediumButKworkAgrees, { impression: f.imp_cleanMatch });
+  assert.equal(v.evidenceBasis, "T8K");
+  assert.equal(v.confidence, "MEDIUM_HIGH");
+});
+
+test("T8K is withheld entirely when the catalogued record contradicts the object", () => {
+  const v = classifyWorkPass(f.dt_mediumButKworkAgrees, { impression: f.imp_techniqueContradicts });
+  assert.notEqual(v.evidenceBasis, "T8K");
+  assert.ok(v.ruleTrace.some((t) => t.includes("T8K withheld")), v.ruleTrace.join(" | "));
+});
+
+test("...and a D_t measuring ABOVE the work floor does vote", () => {
+  const v = classifyWorkPass({
+    ...f.dt_mediumButKworkAgrees,
+    titleEmbeddingMatch: {
+      kind: "names",
+      raw: "Cold Water about to Hit the Prince",
+      matchConfidence: "HIGH",
+      embeddingConfidence: 0.974,
+      dinoSimilarity: 0.974, // clears D_T_DINO_FLOOR
+    },
+  });
+  assert.equal(v.evidenceBasis, "T5");
+  assert.deepEqual(v.agreementSet, ["D_t"]);
+});
+
+test("D_t — agreeing with the appraiser makes two sources, and the record confirms it -> T2 HIGH", () => {
+  const v = classifyWorkPass(f.dt_agreesWithAppraiser, { impression: f.imp_cleanMatch });
   assert.equal(v.evidenceBasis, "T2");
   assert.equal(v.verdict, "identified");
   assert.equal(v.confidence, "HIGH");
@@ -712,7 +908,7 @@ console.log("\nScenario mapping (Decision 8)\n");
 test("artist HIGH (A2) + work HIGH + no divergence -> Scenario 1", () => {
   const s = mapTwoPassToScenario({
     artist: classifyArtistPass(f.a2_twoAgreeAckgSupport),
-    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch),
+    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch, { impression: f.imp_cleanMatch }),
     impression: classifyImpression(f.imp_none),
     traditionConfidence: 0.8,
   });
@@ -742,7 +938,7 @@ test("attributed HIGH but only A3 (not A1/A2) + work identified HIGH -> Scenario
 test("medium_divergence -> Scenario 2 (elevated authentication risk), checked before a clean match", () => {
   const s = mapTwoPassToScenario({
     artist: classifyArtistPass(f.a2_twoAgreeAckgSupport),
-    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch),
+    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch, { impression: f.imp_cleanMatch }),
     impression: classifyImpression(f.imp_mediumDivergence),
     traditionConfidence: 0.8,
   });
@@ -792,7 +988,7 @@ test("not attributed + weak tradition -> Scenario 6", () => {
 test("riskFlags.forgeryRisk carries forward -> Scenario 2, even with an otherwise-clean A1/HIGH match", () => {
   const s = mapTwoPassToScenario({
     artist: classifyArtistPass(f.a1_threeAgree),
-    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch),
+    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch, { impression: f.imp_cleanMatch }),
     impression: classifyImpression(f.imp_none),
     traditionConfidence: 0.8,
     riskFlags: { forgeryRisk: true, misattributionRisk: false },
@@ -803,7 +999,7 @@ test("riskFlags.forgeryRisk carries forward -> Scenario 2, even with an otherwis
 test("riskFlags absent -> risk path is skipped (no crash on undefined)", () => {
   const s = mapTwoPassToScenario({
     artist: classifyArtistPass(f.a1_threeAgree),
-    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch),
+    work: classifyWorkPass(f.t2_twoAgreeKworkFullMatch, { impression: f.imp_cleanMatch }),
     impression: classifyImpression(f.imp_none),
     traditionConfidence: 0.8,
   });

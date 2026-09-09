@@ -331,25 +331,32 @@ export const t2_kworkSeriesSuffixStillAgrees = workEv({
   },
 });
 
+// A lone sub-HIGH D_t that K_work AGREES with — without the cap this would read MEDIUM,
+// i.e. as a corroborated identification, off a weak visual guess.
+export const dt_mediumButKworkAgrees = workEv({
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "MEDIUM", embeddingConfidence: 0.894, dinoSimilarity: 0.851 },
+  kWork: { titleSim: 0.93, matchedWorkTitle: "Cold Water about to Hit the Prince" },
+});
+
 // ── D_t (Stage 1d catalogued title, 2026-09-08 amendment) ───────────────────────
 
 // The A0793/148 shape: no title source of any kind, but Stage 1d matched the work at
 // HIGH. Before D_t this fell through to T8K and resolved to whatever K_work matched.
 export const dt_embeddingTitleOnly_high = workEv({
-  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "HIGH" },
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "HIGH", embeddingConfidence: 0.974, dinoSimilarity: 0.974 },
   kWork: { titleSim: 1.0, matchedWorkTitle: "Reclining Figure", backPropArtist: "David Hockney" },
 });
 
 // Same, but Stage 1d is not confident — D_t must NOT vote, and T8K takes over again.
 export const dt_embeddingTitleOnly_medium = workEv({
-  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "MEDIUM" },
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "MEDIUM", embeddingConfidence: 0.894, dinoSimilarity: 0.851 },
   kWork: { titleSim: 1.0, matchedWorkTitle: "Reclining Figure", backPropArtist: "David Hockney" },
 });
 
 // D_t agreeing with the appraiser: two sources -> T2/T4 rather than a lone candidate.
 export const dt_agreesWithAppraiser = workEv({
   titleAppraiser: { kind: "names", raw: "Cold water about to hit the Prince" },
-  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "HIGH" },
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "HIGH", embeddingConfidence: 0.974, dinoSimilarity: 0.974 },
   kWork: { titleSim: 0.93, matchedWorkTitle: "Cold Water about to Hit the Prince" },
 });
 
@@ -358,13 +365,13 @@ export const dt_fourSourcesAgree = workEv({
   titleVea: { kind: "names", raw: "The Great Wave off Kanagawa" },
   titleReverseImageSearch: { kind: "names", raw: "Great Wave off Kanagawa", sim: 0.97 },
   titleAppraiser: { kind: "names", raw: "The Great Wave, Kanagawa" },
-  titleEmbeddingMatch: { kind: "names", raw: "The Great Wave off Kanagawa", matchConfidence: "HIGH" },
+  titleEmbeddingMatch: { kind: "names", raw: "The Great Wave off Kanagawa", matchConfidence: "HIGH", embeddingConfidence: 0.974, dinoSimilarity: 0.974 },
 });
 
 // D_t contradicting the only other source, with no K_work anchor -> a real conflict.
 export const dt_contradictsAppraiser = workEv({
   titleAppraiser: { kind: "names", raw: "The Bathers" },
-  titleEmbeddingMatch: { kind: "names", raw: "Station Approach", matchConfidence: "HIGH" },
+  titleEmbeddingMatch: { kind: "names", raw: "Station Approach", matchConfidence: "HIGH", embeddingConfidence: 0.974, dinoSimilarity: 0.974 },
 });
 
 export const t6_titlesConflict = workEv({
@@ -399,6 +406,11 @@ export const backProp_workIdentifiesArtist = twoPass({
 // ── IMPRESSION DIVERGENCE (5b) ────────────────────────────────────────────────
 
 export const imp_none = impressionEv();
+
+// Used by Pass 2 (not just the impression layer) as of 2026-09-09: the catalogued record of
+// the candidate work either matches the object or contradicts it.
+export const imp_cleanMatch = impressionEv(); // Etching/Etching, plate 320x240 both sides
+export const imp_techniqueContradicts = impressionEv({ observedTechniques: ["Screenprint"] });
 
 export const imp_laterEdition = impressionEv({
   dimensions: {

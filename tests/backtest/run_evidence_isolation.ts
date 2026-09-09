@@ -47,6 +47,8 @@ import {
   appraiserConfigs,
   type AppraisalInput,
   type AppraisalMethodConfig,
+  printUsageSummary,
+  usageSummary,
 } from "../../src/appraisal/appraiser";
 import type { VisualExtractionResult } from "../../src/types";
 import type { EvidenceAgentOutput } from "../../src/appraisal/stage2a_evidence";
@@ -278,6 +280,8 @@ async function main() {
   // that was never called. Correct it rather than storing a claim that isn't true.
   if (report.modelUsed) report.modelUsed = report.modelUsed.replace(/S1: [^|\]]+/, "S1: skip (VEA not run) ");
 
+  printUsageSummary();
+
   const comparison: BacktestComparison = compareResults(report, groundTruth, rawLot);
   console.log(`[Isolation] Catalogue says: "${groundTruth.artist}" / "${groundTruth.title}"`);
   console.log(`[Isolation] Verdict: ${comparison.overallVerdict}`);
@@ -296,6 +300,7 @@ async function main() {
         lotUrl: lotUrl(rawLot),
         method: config.id,
         blindnessCompromised,
+        tokenUsage: usageSummary(),
         stage2aEvidence: buildEvidenceRecord(
           appraiser.agentCells,
           report.stage1dResult,

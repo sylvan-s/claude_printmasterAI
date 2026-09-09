@@ -11,6 +11,7 @@
  *
  * Run: npm run test:routing
  */
+import { injectTaskProfile } from "../../src/appraisal/prompts";
 import assert from "node:assert/strict";
 import {
   matchSpecialistConfig,
@@ -59,6 +60,28 @@ console.log("\nScenario surface\n");
 test("Every Scenario has a name in SCENARIO_NAMES", () => {
   for (const s of [1, 2, 3, 4, 5, 6] as const) {
     assert.ok(SCENARIO_NAMES[s as Scenario], `Scenario ${s} has no name`);
+  }
+});
+
+// ── the no-VEA clause on task profiles (2026-09-09) ────────────────────────────
+
+test("every scenario has a task profile, and none mentions the no-VEA clause by default", () => {
+  for (const s of Object.values(Scenario).filter((v) => typeof v === "number") as Scenario[]) {
+    const out = injectTaskProfile("[TASK_PROFILE]", s);
+    assert.ok(out.length > 50, `Scenario ${s} produced no profile`);
+    assert.ok(!out.includes("NO PHYSICAL OBSERVATION AVAILABLE"), `Scenario ${s} leaked the clause when VEA ran`);
+    assert.ok(!out.includes("[TASK_PROFILE]"), `Scenario ${s} left the placeholder unresolved`);
+  }
+});
+
+test("veaRan=false appends the clause to EVERY scenario, profile intact", () => {
+  for (const s of Object.values(Scenario).filter((v) => typeof v === "number") as Scenario[]) {
+    const withVea = injectTaskProfile("[TASK_PROFILE]", s, true);
+    const without = injectTaskProfile("[TASK_PROFILE]", s, false);
+    assert.ok(without.startsWith(withVea), `Scenario ${s}: the clause must EXTEND the profile, not replace it`);
+    assert.ok(without.includes("NO PHYSICAL OBSERVATION AVAILABLE"), `Scenario ${s} missing the clause`);
+    // the specific failure it exists to prevent
+    assert.ok(without.includes('Do NOT set attributionLevel to "unattributed"'), `Scenario ${s} missing the attribution guard`);
   }
 });
 

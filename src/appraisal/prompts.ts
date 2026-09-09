@@ -1122,10 +1122,10 @@ workEvidence — one cell per title source. veaTitle only from text within the i
 - kWorkTitleSim / kWorkMatchedTitle / kWorkBackPropArtist: TRANSCRIBE these from query_ackg_work's top row (see STEP 3). kWorkTitleSim ≥ 0.8 makes kWorkBackPropArtist VOTE for that artist (ADR-0010 Decision 4a) — it can lift an otherwise unattributed lot to a candidate, and (≥ 0.85) can identify the work even when the title SOURCES disagree. Leave kWorkBackPropArtist "" when the matched work is catalogued to several artists, or no confident match, or you did not call query_ackg_work.
 
 impressionEvidence — set assessable = false unless a Conceptual Work was identified or is a candidate. When assessable, call query_ackg_work for that work and TRANSCRIBE (do not judge) both sides; deterministic code does the comparison and the divergence call.
-- observedTechniques: VEA's printingTechniques verbatim, e.g. ["Etching","Drypoint"]. observedIsPhotomechanical: VEA saw halftone dots / offset / giclée / digital-pigment.
+- observedTechniques: VEA's printingTechniques verbatim, e.g. ["Etching","Drypoint"]. If VEA did not run or observed no technique, leave this EMPTY even when Stage 1c names one — the code fills it from Stage 1c and marks it as a claim, which is weaker than an observation and must not by itself establish a reproduction. observedIsPhotomechanical: VEA saw halftone dots / offset / giclée / digital-pigment.
 - catalogueTechniques: the "techniques" list from query_ackg_work, merged across duplicate rows. [] if the work is not in the graph. catalogueMediumRaw: the single most informative "media" string returned.
 - workIsIntaglio: is the IDENTIFIED work an intaglio process (etching family)?
-- Dimensions: observedDimSource = "appraiser" when Stage 1c stated the object's size (prefer this — dimensions are Stage 1c's job, not VEA's), "vea_scaled" only if VEA had a real ruler/coin/known-object reference, else "none". Fill observedPlateMm / observedImageMm from that source (0/0 for a side you don't have — never sheet). Fill cataloguePlateMm / catalogueImageMm from query_ackg_work's plate/image dims (0/0 if it only returned sheet, or nothing). Do NOT convert or compare yourself — just transcribe the mm values.
+- Dimensions: observedDimSource = "appraiser" when Stage 1c stated the object's size (prefer this — dimensions are Stage 1c's job, not VEA's), "vea_scaled" only if VEA had a real ruler/coin/known-object reference, else "none". Fill observedPlateMm / observedImageMm from that source (0/0 for a side you don't have). ALSO fill observedSheetMm and catalogueSheetMm when a sheet size is stated on either side — sheet is compared last and at a wider tolerance (paper gets trimmed), but 65% of auction lots state nothing else, so omitting it loses the only measurement available. Fill cataloguePlateMm / catalogueImageMm / catalogueSheetMm from query_ackg_work's plate/image/sheet dims (0/0 for any it did not return). Do NOT convert or compare yourself — just transcribe the mm values.
 
 riskFlags — DEFAULT FALSE. Set one true only with a specific cited observation (VEA reading, appraiser claim, Stage 1b/ACKG finding). Never from generic reasoning about the artist's fame, market value, or "forgeries exist for artists at this level" — that discriminates nothing.
 - forgeryRisk: VEA's observed signature/technique/paper actively CONFLICTS with the candidate's documented conventions, OR a documented facsimile line matches THIS composition specifically, OR claimed marks conflict with VEA's physical reading suggestive of an added/altered signature.
@@ -1382,8 +1382,52 @@ clear humanEscalationReason. Set attributionChallengeAssessment to NOT_APPLICABL
 skepticModeEngaged: false.`,
 };
 
-export function injectTaskProfile(template: string, scenario: Scenario): string {
-  return template.replace("[TASK_PROFILE]", TASK_PROFILES[scenario]);
+/**
+ * Appended to whichever task profile applies when Stage 1a did not run.
+ *
+ * Every profile above was written assuming VEA had examined the object — Scenario 1's
+ * "STEP 4/5 at normal depth" and Scenario 2's marker analysis both presuppose physical
+ * observations to check research against. Given none, the specialist has been observed
+ * defaulting to the most conservative posture it knows regardless of its profile: on
+ * Roseberys A0793 lot 148 Stage 2a returned "Elisabeth Frink" on the strongest embedding
+ * evidence in the set (DINOv2 0.974 AND CLIP 0.974, both measures agreeing) under a
+ * Scenario 3 profile that says the artist is settled, and Stage 2b returned
+ * attributedArtist: null / "unattributed" / confidence 0, reasoning that no physical
+ * observation existed. That is Scenario 6 behaviour executed under a Scenario 3 brief.
+ *
+ * The absence of an observation is not an observation of absence.
+ */
+const NO_VEA_CLAUSE = `
+
+═══════════════════════════════════════════════════════════════════════
+NO PHYSICAL OBSERVATION AVAILABLE — Stage 1a (VEA) DID NOT RUN
+═══════════════════════════════════════════════════════════════════════
+There are no observed technique, signature, paper, condition or dimension findings for this
+lot. That is because nothing was looked at — NOT because nothing was found. Treat it as a
+gap in the pipeline, never as evidence about the object.
+
+The task profile above still applies in full. In particular:
+
+1. IT DOES NOT LOWER THE ATTRIBUTION. Do NOT set attributionLevel to "unattributed" or
+   "tradition_only" merely because physical evidence is missing. Attribution on this run
+   rests on Stage 1c's documented catalogue claims and Stage 1d's embedding match against
+   the ACKG's own image index. Weigh those on their own terms and report the level they
+   actually support. If your profile says the artist is settled, it is settled — the absence
+   of VEA is not grounds to re-derive or discard it.
+2. STEPS THAT COMPARE RESEARCH AGAINST VEA ARE UNASSESSABLE, NOT FAILED. Authentication
+   marker analysis (STEP 4) and forgery/reprint assessment (STEP 5) depend on physical
+   observations you do not have. Mark each affected marker UNASSESSABLE and each risk
+   "cannot assess". Do not score a missing observation as a negative signal, and do not let
+   it raise reprintForgeryRisk.
+3. SAY SO PLAINLY. Set physicalExaminationRequired: true, and give a
+   humanEscalationReason naming the specific questions hands-on inspection would settle.
+4. THE RESEARCH STEPS THAT DO NOT NEED VEA ARE UNCHANGED. Catalogue raisonné
+   cross-reference, museum collection lookups and auction comparables all work from the
+   artist and title; give them the budget your profile assigns.`;
+
+export function injectTaskProfile(template: string, scenario: Scenario, veaRan = true): string {
+  const profile = veaRan ? TASK_PROFILES[scenario] : TASK_PROFILES[scenario] + NO_VEA_CLAUSE;
+  return template.replace("[TASK_PROFILE]", profile);
 }
 
 export const VALUATION_REPORT_SYSTEM_PROMPT = `You are the Valuation Synthesis Agent in a four-stage fine art print appraisal pipeline. You do NOT search the web — all auction comp data was already collected in Stage 2b and is provided in the input.

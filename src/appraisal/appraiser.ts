@@ -267,6 +267,82 @@ const sleepMs = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const anthropicBackoffMs = (attempt: number) =>
   Math.min(30_000, 1000 * 2 ** attempt) + Math.floor(Math.random() * 500);
 
+/**
+ * Per-run token accounting. The pipeline previously recorded nothing about what it spent, so
+ * "which stage is expensive" could only be guessed at. Every Anthropic call reports usage;
+ * this just keeps the tally and prints it, per label, at the end of a run.
+ *
+ * Prices are per million tokens, Sonnet 4.6 / Haiku 4.5 list at 2026-09. Cache writes cost
+ * 1.25x input, cache reads 0.1x — which is the whole point of the cache_control breakpoints.
+ */
+const TOKEN_PRICES: Record<string, { in: number; out: number }> = {
+  "claude-opus-4-8": { in: 15, out: 75 },
+  "claude-sonnet-4-6": { in: 3, out: 15 },
+  "claude-haiku-4-5": { in: 0.8, out: 4 },
+};
+const DEFAULT_PRICE = { in: 3, out: 15 };
+
+export interface CallUsage {
+  label: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheWriteTokens: number;
+  cacheReadTokens: number;
+  costUsd: number;
+}
+
+const usageLog: CallUsage[] = [];
+
+export function recordUsage(label: string, model: string, usage: any): void {
+  if (!usage) return;
+  const price = TOKEN_PRICES[model] ?? DEFAULT_PRICE;
+  const inputTokens = usage.input_tokens ?? 0;
+  const outputTokens = usage.output_tokens ?? 0;
+  const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
+  const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
+  const costUsd =
+    (inputTokens * price.in + cacheWriteTokens * price.in * 1.25 + cacheReadTokens * price.in * 0.1 + outputTokens * price.out) /
+    1_000_000;
+  usageLog.push({ label, model, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens, costUsd });
+}
+
+export function resetUsage(): void {
+  usageLog.length = 0;
+}
+
+/** Group by label so the answer is "which STAGE costs", not "which call". */
+export function usageSummary(): { rows: CallUsage[]; byLabel: Record<string, CallUsage & { calls: number }>; totalUsd: number } {
+  const byLabel: Record<string, CallUsage & { calls: number }> = {};
+  for (const u of usageLog) {
+    const b = (byLabel[u.label] ??= { ...u, inputTokens: 0, outputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, costUsd: 0, calls: 0 });
+    b.calls++;
+    b.inputTokens += u.inputTokens;
+    b.outputTokens += u.outputTokens;
+    b.cacheWriteTokens += u.cacheWriteTokens;
+    b.cacheReadTokens += u.cacheReadTokens;
+    b.costUsd += u.costUsd;
+  }
+  return { rows: [...usageLog], byLabel, totalUsd: usageLog.reduce((t, u) => t + u.costUsd, 0) };
+}
+
+export function printUsageSummary(): void {
+  const { byLabel, totalUsd } = usageSummary();
+  const entries = Object.values(byLabel).sort((a, b) => b.costUsd - a.costUsd);
+  if (!entries.length) return;
+  console.log(`\n[Cost] per-stage token usage (cache reads billed at 0.1x, writes at 1.25x)`);
+  console.log(`[Cost] ${"stage".padEnd(26)} ${"calls".padStart(5)} ${"in".padStart(9)} ${"cacheW".padStart(8)} ${"cacheR".padStart(8)} ${"out".padStart(8)} ${"USD".padStart(8)}  share`);
+  for (const e of entries) {
+    const share = totalUsd > 0 ? `${((100 * e.costUsd) / totalUsd).toFixed(0)}%` : "-";
+    console.log(
+      `[Cost] ${e.label.slice(0, 26).padEnd(26)} ${String(e.calls).padStart(5)} ${e.inputTokens.toLocaleString().padStart(9)} ` +
+        `${e.cacheWriteTokens.toLocaleString().padStart(8)} ${e.cacheReadTokens.toLocaleString().padStart(8)} ` +
+        `${e.outputTokens.toLocaleString().padStart(8)} ${e.costUsd.toFixed(4).padStart(8)}  ${share.padStart(5)}`,
+    );
+  }
+  console.log(`[Cost] TOTAL $${totalUsd.toFixed(4)}\n`);
+}
+
 export async function postAnthropicMessages(
   apiKey: string,
   body: Record<string, unknown>,
@@ -295,7 +371,11 @@ export async function postAnthropicMessages(
       continue;
     }
 
-    if (response.ok) return response.json();
+    if (response.ok) {
+      const json = await response.json();
+      recordUsage(label, String((body as any).model ?? "unknown"), (json as any)?.usage);
+      return json;
+    }
 
     const errorText = await response.text();
 
@@ -565,7 +645,110 @@ const STAGE1C_MODEL = "claude-haiku-4-5";
 // a poor guide to today's hammer; 2015 keeps ~a decade of history without letting the
 // pre-2010 tail dominate an artist whose market has since re-rated.
 const STAGE3_COMPS_SINCE = "2015-01-01";
+/**
+ * The physical facts Stage 1c extracted from the appraiser's notes, formatted for the
+ * later stages.
+ *
+ * Stage 2a has read these since ADR-0004, but Stage 2b and Stage 3 never received the Stage
+ * 1c result at all — both took only `vea`. With Stage 1a skipped that means they were handed
+ * an empty object under a heading reading "STAGE 1 VISUAL EXTRACTION (condition, technique,
+ * dimensions, paper)", and behaved accordingly: Stage 2b reported "no physical observation
+ * of any kind exists" and refused to attribute a lot Stage 2a had named on strong evidence,
+ * and Stage 3 priced with no technique, dimensions or condition to work from.
+ *
+ * These are CLAIMS from a catalogue description, not observations of the object, and are
+ * labelled as such — an auction house stating "etching, 60 x 83cm" is reliable about the
+ * medium and size but is not the same as having examined the print.
+ */
+function buildAppraiserPhysicalBlock(appraiserInput?: AppraiserInputResult, veaRan = true): string {
+  if (!appraiserInput) return "";
+  const a = appraiserInput;
+  const d = a.dimensionsClaim;
+  const lines = [
+    a.claimedAttribution?.technique ? `Technique / medium : ${a.claimedAttribution.technique}` : null,
+    d && (d.widthCm || d.heightCm)
+      ? `Dimensions         : ${d.widthCm ?? "?"} x ${d.heightCm ?? "?"} cm (${d.kind ?? "unspecified"})`
+      : null,
+    a.paperOrSupport ? `Paper / support    : ${a.paperOrSupport}` : null,
+    a.inscriptionClaims?.status !== "absent"
+      ? `Inscriptions       : ${[
+          a.inscriptionClaims?.signatureClaim,
+          a.inscriptionClaims?.editionClaim,
+          a.inscriptionClaims?.editionSizeClaim != null ? `edition of ${a.inscriptionClaims.editionSizeClaim}` : null,
+          a.inscriptionClaims?.monogramOrStampClaim,
+        ]
+          .filter(Boolean)
+          .join("; ") || "stated but unspecific"}`
+      : null,
+    a.conditionClaims?.length ? `Condition          : ${a.conditionClaims.map((c) => c.claim).join("; ")}` : null,
+    a.catalogueReferences?.length ? `Catalogue refs     : ${a.catalogueReferences.map((c: any) => c.ref).join(", ")}` : null,
+  ].filter(Boolean);
+  if (!lines.length) return "";
+
+  return (
+    `\n\nSTAGE 1c APPRAISER-STATED PHYSICAL FACTS (extracted from the catalogue/appraiser notes).\n` +
+    `These are CLAIMS about the object, not observations of it — reliable about medium, size and ` +
+    `edition markings, but not a substitute for physical examination.\n` +
+    lines.map((l) => `  ${l}`).join("\n") +
+    (veaRan
+      ? `\nWhere these conflict with VEA's observations, say so explicitly rather than silently preferring one.`
+      : `\n⚠️ Stage 1a (VEA) did not run, so these are the ONLY physical facts available. Treat them as the ` +
+        `technique/dimension/condition evidence for this lot — do not report that no physical information exists.`) +
+    `\n`
+  );
+}
+
+/**
+ * Does a query_ackg call actually narrow anything?
+ *
+ * Requiring "at least one graph round" before an early report was discharged with
+ * `{periodStartYear: 1880, periodEndYear: 2025}` — an unfiltered date sweep returning the
+ * graph's most prolific artists (Picasso 1601, Miro 1035, Warhol 1033) regardless of the
+ * lot. The agent said so itself: "the most constrained meaningful call possible... then
+ * report honestly that the result is uninformative." That fills kOeuvre with a number that
+ * has nothing to do with the print, which is worse than leaving it null — absence of data
+ * is the honest answer, manufactured data is not.
+ */
+function isConstrainedAckgQuery(input: any): boolean {
+  if (!input || typeof input !== "object") return false;
+  return ["technique", "region", "subject", "paper", "workTitle"].some(
+    (k) => typeof input[k] === "string" && input[k].trim().length > 0,
+  );
+}
+
+/** Graph rounds Stage 2a must run before an unforced report is accepted. */
+const MIN_ACKG_ROUNDS_BEFORE_REPORT = 1;
+
+/** Hard cap on Stage 2b's web searches, matching the number its prompt asks for. */
+const STAGE2B_MAX_WEB_SEARCHES = 5;
+
 const STAGE3_COMPS_LIMIT = 40;
+
+/**
+ * Stage 3's input is dominated by the comparables block: 40 rows x 15 fields, pretty-printed
+ * at indent 2, measured at ~18,200 input tokens on A0793/113 ($0.095, 23% of that lot's whole
+ * cost). Compacting the JSON and dropping fields a valuation judgement never reads —
+ * FX-rate plumbing, native-currency duplicates, internal sale ids — cuts that without
+ * removing a single comparable. `listingUrl` stays: the source-listing exclusion needs it.
+ */
+function compactComparableForValuation(c: any) {
+  return {
+    tier: c.tier,
+    house: c.institutionName ?? undefined,
+    date: c.saleDate ?? undefined,
+    lot: c.lotNumber ?? undefined,
+    title: c.workTitle ?? undefined,
+    techniques: c.techniques?.length ? c.techniques : undefined,
+    editionSize: c.editionSize ?? undefined,
+    realisedGBP: c.priceRealisedGBP,
+    estGBP:
+      c.estimateLowGBP != null || c.estimateHighGBP != null
+        ? [c.estimateLowGBP ?? null, c.estimateHighGBP ?? null]
+        : undefined,
+    url: c.listingUrl ?? undefined,
+  };
+}
+
 
 // Anthropic's Messages API defaults temperature to 1.0 when the key is absent. Every
 // Claude call site here used to omit it, so `AppraisalMethodConfig.temperature` was
@@ -757,7 +940,16 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
     if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
 
-    const tools = [{ type: "web_search_20250305", name: "web_search" }, MultiStageAppraiser.MUSEUM_LOOKUP_TOOL];
+    // max_uses ENFORCES the budget ATTRIBUTION_RESEARCH_SYSTEM_PROMPT already states ("at
+    // most 5 web searches total"). Without it that was a suggestion, and Stage 2b is the
+    // most expensive stage in the pipeline precisely because search results flow into the
+    // context and get cached and re-cached: measured at 23,745 cache-write + 45,814
+    // cache-read tokens on a single A0793 lot, 46% of its total cost. This changes nothing
+    // for a well-behaved run; it bounds a badly-behaved one.
+    const tools = [
+      { type: "web_search_20250305", name: "web_search", max_uses: STAGE2B_MAX_WEB_SEARCHES },
+      MultiStageAppraiser.MUSEUM_LOOKUP_TOOL,
+    ];
 
     const post = (messages: any[], forceFinal: boolean) =>
       postAnthropicMessages(
@@ -1023,9 +1215,18 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
     if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
 
-    const tools = [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
-    const graphToolNames = new Set(tools.map((t: any) => t.name));
+    const graphTools = [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
+    const graphToolNames = new Set(graphTools.map((t: any) => t.name));
     const finalToolName = finalTool.name;
+    // The report tool is offered from the FIRST call, not only on a forced final one.
+    // Measured on A0793/113: withholding it cost 8,553 cache-write tokens ($0.064, half of
+    // Stage 2a's spend) because adding a tool changes the cached prefix and forces a
+    // rewrite — and it cost a whole discarded generation, since the round where the agent
+    // decides it is finished produced text that was never pushed into `messages`.
+    const tools = [
+      ...graphTools,
+      { name: finalToolName, description: finalTool.description, input_schema: translateSchemaToStandardJsonSchema(finalTool.schema) },
+    ];
 
     const post = (messages: any[], forceFinalTool: boolean) =>
       postAnthropicMessages(
@@ -1043,9 +1244,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           // that one call rewrites — one rewrite per lot, still cheap.
           system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
           messages,
-          tools: forceFinalTool
-            ? [...tools, { name: finalToolName, description: finalTool.description, input_schema: translateSchemaToStandardJsonSchema(finalTool.schema) }]
-            : tools,
+          tools, // identical on every call, so the cached prefix stays valid
           ...(forceFinalTool ? { tool_choice: { type: "tool", name: finalToolName } } : {}),
         },
         { label: "Stage 2a ACKG tool" },
@@ -1056,16 +1255,79 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     let data: any = null;
 
     let roundsUsed = 0;
+    let constrainedRounds = 0;
+    let refusedOnce = false;
+    const trace_unconstrained = (r: number) =>
+      console.log(`[Stage 2a ACKG loop] round ${r}: query carried no technique/region/subject/paper/title — not counted toward the minimum`);
     for (let round = 0; round < MAX_ROUNDS; round++) {
       data = await post(messages, false);
       if (data.stop_reason === "max_tokens") {
         throw new Error("Claude (ACKG tool) hit max_tokens limit — response was truncated.");
       }
+      // Finished early? Take the report and skip the extra round-trip — but only once the
+      // graph has actually been consulted.
+      //
+      // Offering the report tool from call 1 removed a wasted generation and an 8,553-token
+      // cache rewrite, and then removed the incentive to research: on A0793/113 the agent
+      // reported immediately with ZERO query rounds, leaving kId "unknown", kOeuvre null and
+      // kSubject unassessable — the corroboration cascade had nothing to evaluate. The
+      // verdict survived only because Stage 1d's match happened to be strong.
+      //
+      // So the tool stays available (cheap, stable prefix) but an early report is refused
+      // until at least one graph round has run. The refusal is pushed back as a normal user
+      // turn, so the agent keeps its context and simply queries first.
+      const reported = (data.content || []).find((b: any) => b.type === "tool_use" && b.name === finalToolName);
+      if (reported?.input && (constrainedRounds >= MIN_ACKG_ROUNDS_BEFORE_REPORT || refusedOnce)) {
+        this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
+        console.log(`[Stage 2a ACKG loop] round ${round + 1}: reported without a forced call — ${roundsUsed} query round(s) used`);
+        return reported.input;
+      }
+      if (reported?.input) {
+        // Refuse ONCE. If the agent still has nothing to filter on second time round, take
+        // the report with the cells honestly empty rather than forcing a junk query.
+        refusedOnce = true;
+        console.log(
+          `[Stage 2a ACKG loop] round ${round + 1}: report refused once — ${constrainedRounds} constrained ` +
+            `graph round(s), ${MIN_ACKG_ROUNDS_BEFORE_REPORT} required. Asking for a narrowed query.`,
+        );
+        // The refusal must come back as a tool_result for THIS tool_use id — the API rejects
+        // an assistant turn containing a tool_use that the next message does not answer.
+        messages.push({ role: "assistant", content: data.content });
+        messages.push({
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: reported.id,
+              is_error: true,
+              content:
+                `Not accepted yet: the ACKG has not been consulted with a query that narrows anything. ` +
+                `Run a query_ackg carrying at least one of technique / region / subject / paper / workTitle ` +
+                `(and query_ackg_work if you have a candidate title), then call ${finalToolName} again ` +
+                `with what the graph returned. A bare period range is not a constrained query — it returns ` +
+                `the graph's most prolific artists regardless of this lot.\n\n` +
+                `If you genuinely have nothing to filter on, DO NOT invent a filter and DO NOT run an ` +
+                `unconstrained query: call ${finalToolName} again as-is and leave kId "unknown", ` +
+                `kOeuvreMatchCount -1 and kSubject UNASSESSABLE. Empty cells are the honest answer; ` +
+                `numbers from a query unrelated to this lot are not.`,
+            },
+          ],
+        });
+        continue;
+      }
+
       const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use" && graphToolNames.has(b.name));
       if (clientToolUses.length === 0) {
         this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
         break;
       }
+      // Only a query that narrows something counts toward the minimum — a bare date sweep
+      // discharges the requirement without producing usable corroboration.
+      const anyConstrained = clientToolUses.some(
+        (b: any) => b.name !== "query_ackg" || isConstrainedAckgQuery(b.input),
+      );
+      if (anyConstrained) constrainedRounds++;
+      else trace_unconstrained(round + 1);
       roundsUsed = round + 1;
 
       // Log any reasoning text Claude produced alongside the tool call(s) this round —
@@ -1956,7 +2218,8 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     stage2bModel: string,
     ai: GoogleGenAI,
     userNotes?: string,
-    visualSearch?: VisualSearchResult
+    visualSearch?: VisualSearchResult,
+    appraiserInput?: AppraiserInputResult
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
@@ -1964,9 +2227,15 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     // runStage2aTriage — default to LowSignalEverywhere only for pre-ADR-0006 stored
     // triage results that predate the scenario field existing.
     const scenario = (triage.routingDecision?.scenario ?? Scenario.LowSignalEverywhere) as Scenario;
+    // A real VEA run always examined a primary scan; the "not run" stub sets it false. When
+    // Stage 1a is absent the profile gains a clause telling the specialist not to read the
+    // missing observations as evidence against the attribution (see NO_VEA_CLAUSE).
+    const veaRan = !!vea.imagesReceived?.primaryScan;
+    if (!veaRan) console.log(`[4-Stage] Stage 2b: VEA did not run — task profile extended with the no-observation clause`);
     const asaSystemPrompt = injectTaskProfile(
       injectSpecialistConfig(ATTRIBUTION_RESEARCH_SYSTEM_PROMPT, specialistConfig),
-      scenario
+      scenario,
+      veaRan,
     );
     const notesBlock = userNotes?.trim()
       ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for attribution and title identification):\n"${userNotes.trim()}"\n\n`
@@ -1992,7 +2261,8 @@ STAGE 1b VISUAL SEARCH RESULT (Gemini ${this.config.stage1bModel || DEFAULT_STAG
 INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against VEA signatures, title inscriptions, and technique before accepting. If the visual similarity score is below 0.6, confidence is LOW, or evidence basis is "textual" or "none" (i.e. not genuinely confirmed against a reference image), treat with high scepticism — a "textual" basis means this is someone else's unverified written claim, not an independent visual match.\n`
       : "";
 
-    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage, null, 2)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(veaSlim, null, 2)}${visualSearchBlock}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
+    const appraiserPhysicalBlock = buildAppraiserPhysicalBlock(appraiserInput, veaRan);
+    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(veaSlim)}${appraiserPhysicalBlock}${visualSearchBlock}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
     if (isClaude(stage2bModel)) {
@@ -2031,7 +2301,8 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     ai: GoogleGenAI,
     currency: string,
     userNotes?: string,
-    testingExcludeSourceListing?: string
+    testingExcludeSourceListing?: string,
+    appraiserInput?: AppraiserInputResult
   ): Promise<Partial<PrintAnalysisReport>> {
     const systemInstruction = resolveCustomPrompt(VALUATION_REPORT_SYSTEM_PROMPT, currency, userNotes);
 
@@ -2081,7 +2352,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     const webComps = (attr as any).auctionComps;
     const hasWebComps = Array.isArray(webComps) && webComps.length > 0;
     const webCompsBlock = hasWebComps
-      ? `\n\nSECONDARY — STAGE 2b WEB-RESEARCH COMPS (free-text findings, unverified; use only to corroborate or to fill gaps the ACKG set leaves):\n${JSON.stringify(webComps, null, 2)}`
+      ? `\n\nSECONDARY — STAGE 2b WEB-RESEARCH COMPS (free-text findings, unverified; use only to corroborate or to fill gaps the ACKG set leaves):\n${JSON.stringify(webComps)}`
       : "\n\nSECONDARY — STAGE 2b WEB-RESEARCH COMPS: none found.";
 
     const compsNote = ackgComps && ackgComps.summary.count > 0
@@ -2092,7 +2363,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
         `Coverage caveat: ${ackgComps.coverageNote}\n` +
         `Tiers: "same_work" = the SAME print (strongest evidence — weight these highest); ` +
         `"same_artist_technique" = same artist and technique; "same_artist" = same artist only.\n` +
-        `${JSON.stringify(ackgComps.comparables, null, 2)}${webCompsBlock}`
+        `${JSON.stringify(ackgComps.comparables.map(compactComparableForValuation))}${webCompsBlock}`
       : `\n\nPRIMARY — ACKG REALISED AUCTION COMPARABLES: none. ` +
         `${ackgArtist ? `No dated, sold records for "${ackgArtist}" in the graph.` : "No artist was attributed, so the graph could not be queried."} ` +
         `The ACKG's dated auction coverage is Bonhams (2003-2026), Roseberys London (2014-2026) ` +
@@ -2111,7 +2382,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     const excludeSourceNote = testingExcludeSourceListing
       ? `\n\n⚠️ TESTING MODE — SOURCE LISTING EXCLUDED: This artwork's image and description were sourced directly from this auction listing: ${testingExcludeSourceListing}. If any entry in AUCTION COMPS above is that same listing (same auction house, matching sale/lot, or described as "the subject work" / "the identical work" / "the present lot"), you MUST exclude its estimate and price data from your valuation entirely — do not anchor on it, average it in, or cite it as a reason for your number. Value this work using only genuinely independent comps and evidence. If excluding it leaves no usable comps, say so explicitly in valuationContext and value from first principles as you would with zero comps.`
       : "";
-    const userText = `Synthesise a valuation for the following print from Stage 1 and Stage 2b findings.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea, null, 2)}\n\nSTAGE 2b ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity/discount factors, forgery risk):\n${JSON.stringify(attr, null, 2)}${compsNote}${excludeSourceNote}\n\n⚠️ CRITICAL: Output ONLY the valuation fields — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT search the web. Do NOT re-describe the artwork. Start your response with { and end with }.`;
+    const userText = `Synthesise a valuation for the following print from Stage 1 and Stage 2b findings.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea)}\n\nSTAGE 2b ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity/discount factors, forgery risk):\n${JSON.stringify(attr)}${buildAppraiserPhysicalBlock(appraiserInput, !!vea.imagesReceived?.primaryScan)}${compsNote}${excludeSourceNote}\n\n⚠️ CRITICAL: Output ONLY the valuation fields — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT search the web. Do NOT re-describe the artwork. Start your response with { and end with }.`;
     if (isClaude(stage3Model)) {
       console.log(`[4-Stage] Stage 3 pure reasoning (no web search) — model: ${stage3Model}`);
       return this.callClaude(stage3Model, systemInstruction, [{ type: "text", text: userText }], "report_valuation", "Report the structured print valuation synthesised from Stage 1 condition and Stage 2b findings.", STAGE3_VALUATION_ONLY_SCHEMA);
@@ -2386,14 +2657,14 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const t2b = Date.now();
     emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
     console.log(`[Timing] Stage 2b (Specialist) starting — model: ${stage2bModel}`);
-    const attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined);
+    const attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined, appraiserInput);
     console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
     emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
 
     const t3 = Date.now();
     emit({ stage: "stage3", status: "start", message: "Synthesising auction estimate and appraisal statement…", percent: 82 });
     console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
-    const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing);
+    const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput);
     console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });

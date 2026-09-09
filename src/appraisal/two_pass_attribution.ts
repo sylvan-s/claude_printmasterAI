@@ -36,6 +36,13 @@ export const TAU_DIM_PLATE_PCT = 0.03; // plate-mark dimension tolerance
 export const TAU_DIM_PLATE_MM = 2; // ...with an absolute floor
 export const TAU_DIM_IMAGE_PCT = 0.05; // image/composition dimension tolerance
 export const TAU_DIM_IMAGE_MM = 3; // ...with an absolute floor
+/** Sheet tolerance, deliberately far wider: the sheet is the paper, and the paper gets
+ *  trimmed, deckled and remargined. Two impressions of one work routinely differ by
+ *  centimetres at the sheet where the plate is identical to the millimetre. Admitted as a
+ *  comparison at all because 287 of 443 A0793 lots (65%) state ONLY a sheet size — a weak
+ *  signal that exists beats a strong one that does not. */
+export const TAU_DIM_SHEET_PCT = 0.08;
+export const TAU_DIM_SHEET_MM = 10;
 export const DIM_MATERIAL_PCT = 0.1; // beyond tolerance but below this = "minor"; at/above = "material"
 export const KOEUVRE_DISCRIMINATING_MIN = 3; // K_oeuvre matchCount that counts as "uniquely discriminating" for a one-band lift on an n=1 candidate
 
@@ -184,8 +191,13 @@ export type NamingSource =
       sim?: number;
       /** Appraiser only. */
       trust?: "documented_fact" | "hypothesis";
-      /** Stage 1d (D) only — Stage 1d's own self-reported match confidence. */
+      /** Stage 1d (D) only — Stage 1d's own self-reported match confidence band. */
       matchConfidence?: "HIGH" | "MEDIUM" | "LOW";
+      /** Stage 1d (D) only — the BEST DINOv2 similarity anywhere in this artist's rows. */
+      dinoSimilarity?: number;
+      /** Stage 1d (D) only — the BEST CLIP similarity anywhere in this artist's rows.
+       *  Scored on its own scale; never averaged with dino (they are different measures). */
+      clipSimilarity?: number;
     }
   | { kind: "silent" } // V: no nameable authorship signal
   | { kind: "no_match" } // R / D: search found nothing (or wasn't run)
@@ -297,13 +309,46 @@ function eligibleVotes(ev: ArtistEvidence, trace: string[]): { votes: Vote[]; ap
   // matchConfidence votes; MEDIUM/LOW is a "don't know" — dropped entirely, not even kept
   // as a corroborating note, since an uncalibrated embedding score below HIGH isn't known
   // to mean anything yet (ADR-0013's own "Not addressed" section).
+  // D votes at ANY confidence as of 2026-09-09, carrying its measured similarity so the
+  // scoring weighs it rather than discarding it.
+  //
+  // The HIGH-only gate was throwing away correct answers. Across five A0793 lots Stage 1d's
+  // top-1 was the RIGHT artist all five times, and three were dropped for missing the
+  // dino >= 0.90 leg while CLIP independently agreed at 0.937-0.946:
+  //
+  //     Frink   dino 0.974  clip 0.974  HIGH    -> voted, correct
+  //     Banksy  dino 0.991  clip 0.980  HIGH    -> voted, correct
+  //     Blake   dino 0.886  clip  null  MEDIUM  -> dropped, correct
+  //     Villon  dino 0.876  clip 0.946  MEDIUM  -> dropped, correct
+  //     Picasso dino 0.851  clip 0.937  MEDIUM  -> dropped, correct
+  //
+  // A weak match is now a weak vote, not silence: sourceConfidence() reports the measured
+  // similarity and CONFIDENCE_MEAN_FLOOR demotes a band built on it. Note there is no floor
+  // at all — Stage 1d always returns a top candidate, so D always votes; a poor match should
+  // surface as a LOW-confidence candidate rather than as "no evidence".
   if (ev.embeddingMatch.kind === "names") {
-    if (ev.embeddingMatch.matchConfidence === "HIGH") {
+    const { dinoOk, clipOk, scored } = embeddingSignals(ev.embeddingMatch);
+    const d = ev.embeddingMatch.dinoSimilarity;
+    const c = ev.embeddingMatch.clipSimilarity;
+    const shown = `dino=${d?.toFixed(3) ?? "—"} clip=${c?.toFixed(3) ?? "—"}`;
+    if (!scored) {
+      // No numbers at all — fall back to the band Stage 1d self-reported.
+      const band = D_BAND_CONFIDENCE[ev.embeddingMatch.matchConfidence ?? "LOW"] ?? D_BAND_CONFIDENCE.LOW;
+      if (band >= D_VOTE_FLOOR) {
+        votes.push({ source: "D", raw: ev.embeddingMatch.raw, identityKey: ev.embeddingMatch.identityKey ?? null });
+        trace.push(`D votes on its self-reported ${ev.embeddingMatch.matchConfidence} band (no similarity scores supplied)`);
+      } else {
+        trace.push(`D dropped: no similarity scores and band ${ev.embeddingMatch.matchConfidence ?? "unknown"} is below the floor`);
+      }
+    } else if (dinoOk || clipOk) {
+      // The artist counts as matched when ANY example in their corpus matches on EITHER
+      // measure — the scores below are the best each measure found across that artist's rows.
       votes.push({ source: "D", raw: ev.embeddingMatch.raw, identityKey: ev.embeddingMatch.identityKey ?? null });
-    } else {
       trace.push(
-        `D dropped from vote: matchConfidence=${ev.embeddingMatch.matchConfidence ?? "unknown"} (only HIGH votes; MEDIUM/LOW = don't know)`,
+        `D votes: ${shown} — ${dinoOk && clipOk ? "both measures agree" : dinoOk ? "DINOv2 only" : "CLIP only"}`,
       );
+    } else {
+      trace.push(`D dropped: ${shown} — neither clears its own floor (dino ${DINO_ARTIST_FLOOR} / clip ${CLIP_ARTIST_FLOOR})`);
     }
   }
 
@@ -338,7 +383,101 @@ function eligibleVotes(ev: ArtistEvidence, trace: string[]): { votes: Vote[]; ap
  */
 export const CONFIDENCE_MEAN_FLOOR = 0.8;
 const A_DOCUMENTED_CONFIDENCE = 0.85; // ordinal placeholder — paperwork cited, not verified
-const D_HIGH_CONFIDENCE = 0.9; // ordinal placeholder — only HIGH votes at all
+/**
+ * DINOv2 and CLIP are different measures on different scales and are never averaged.
+ * Each gets its own floor, read off its own behaviour on the A0793 + A0793/148 candidate
+ * lists:
+ *
+ *              dino    clip     artist is
+ *     Banksy   0.991   0.980    correct
+ *     Frink    0.974   0.974    correct
+ *     Blake    0.886   0.863    correct   (clip depressed by a large colour-balance shift)
+ *     Villon   0.876   0.946    correct
+ *     Picasso  0.851   0.937    correct
+ *     Whistler 0.801   0.940    WRONG     (a rival row on the Hockney lot)
+ *
+ * DINOv2 separates widely — 0.851 correct against 0.801 wrong. CLIP is compressed and high:
+ * a wrong artist still scores 0.940, so its floor has to sit up at 0.95 to mean anything, and
+ * even then it is the weaker witness. Hence the asymmetry in the confidences below.
+ *
+ * UNFITTED, and thin — a handful of lots. The floors sit in observed gaps, not on a curve.
+ */
+export const DINO_ARTIST_FLOOR = 0.84;
+export const CLIP_ARTIST_FLOOR = 0.95;
+
+/** Both measures agree the artist is present — the strongest embedding evidence available. */
+const D_BOTH_CONFIDENCE = 0.9;
+/** DINOv2 alone. Solid: it is the instance-level discriminator and separates cleanly. */
+const D_DINO_ONLY_CONFIDENCE = 0.8;
+/** CLIP alone. Weak: it scores wrong artists at 0.94, so on its own it says little. */
+const D_CLIP_ONLY_CONFIDENCE = 0.7;
+/** Last resort, when Stage 1d supplied a band but no numbers at all. */
+const D_BAND_CONFIDENCE: Record<string, number> = { HIGH: 0.9, MEDIUM: 0.75, LOW: 0.55 };
+
+/** Which of the two measures, independently, say this artist is present. */
+export function embeddingSignals(src: NamingSource): { dinoOk: boolean; clipOk: boolean; scored: boolean } {
+  if (src.kind !== "names") return { dinoOk: false, clipOk: false, scored: false };
+  const d = src.dinoSimilarity;
+  const c = src.clipSimilarity;
+  return {
+    dinoOk: d != null && d >= DINO_ARTIST_FLOOR,
+    clipOk: c != null && c >= CLIP_ARTIST_FLOOR,
+    scored: d != null || c != null,
+  };
+}
+
+/**
+ * Measured similarity below which Stage 1d does not vote at all.
+ *
+ * Stage 1d always returns a top candidate, so without a floor D would name somebody on every
+ * lot no matter how poor the match. 0.7 sits below every correct match observed on the A0793
+ * lots (0.886, 0.894, 0.911, 0.974, 0.985) and above the band fallback for a LOW result
+ * (0.55) — so a genuinely weak match is silence again, while the MEDIUM-band matches the old
+ * HIGH-only gate was discarding still vote.
+ */
+export const D_VOTE_FLOOR = 0.7;
+
+/**
+ * Stage 1d's floor for the WORK vote — DINOv2 ONLY, deliberately not the dino/clip mean the
+ * artist vote uses.
+ *
+ * Recognising whose hand made something and recognising WHICH print it is are different
+ * problems, and CLIP is the wrong instrument for the second. On the A0793 lots CLIP scored
+ * 0.937 and 0.946 against Picasso and Villon prints that were the WRONG WORKS by the right
+ * artists — it recognises style and medium, not the specific image. DINOv2 is the
+ * instance-level discriminator (ADR-0013's whole reason for using it), and on the same lots
+ * it orders correctly where the dino/clip mean does not:
+ *
+ *              dino    clip    mean     match is
+ *     Banksy   0.991   0.980   0.985    same work
+ *     Frink    0.974   0.974   0.974    same work
+ *     Blake    0.886   null    0.886    SAME WORK  (Tate P04038 — visually confirmed)
+ *     Villon   0.876   0.946   0.911    different work
+ *     Picasso  0.851   0.937   0.894    different work
+ *
+ * On dino every same-work match sits above every different-work match. On the mean Blake
+ * falls BELOW both wrong matches, because his clip score was null and the wrong matches got
+ * lifted by high clip scores. Blake's 0.886 is a correct same-work match degraded by nothing
+ * more than colour balance and photography — the two images are plainly the same print.
+ *
+ * Below this floor Stage 1d still names the ARTIST (that vote keeps the mean and its own
+ * lower floor); only the work stays unresolved, which is the honest answer rather than a
+ * confident wrong title propagating into Stage 2b's research and Stage 3's comparables.
+ *
+ * UNFITTED, and thin: five lots, with only 0.010 between the lowest same-work match (0.886)
+ * and the highest different-work one (0.876). The number is placed in that gap; do not read
+ * it as calibrated.
+ */
+export const D_T_DINO_FLOOR = 0.88;
+
+/** The measured similarity behind a Stage 1d source, or its band fallback. */
+export function embeddingSourceConfidence(
+  measured: number | undefined,
+  band: "HIGH" | "MEDIUM" | "LOW" | undefined,
+): number {
+  if (measured != null) return measured;
+  return D_BAND_CONFIDENCE[band ?? "LOW"] ?? D_BAND_CONFIDENCE.LOW;
+}
 const V_ILLEGIBLE_CAP = 0.5; // a reconstructed mark cannot be a confident read
 
 export function sourceConfidence(v: Vote, ev: ArtistEvidence): number {
@@ -351,8 +490,15 @@ export function sourceConfidence(v: Vote, ev: ArtistEvidence): number {
       return ev.reverseImageSearch.kind === "names" ? ev.reverseImageSearch.sim ?? 0 : 0;
     case "A":
       return A_DOCUMENTED_CONFIDENCE;
-    case "D":
-      return D_HIGH_CONFIDENCE;
+    case "D": {
+      if (ev.embeddingMatch.kind !== "names") return 0;
+      const { dinoOk, clipOk, scored } = embeddingSignals(ev.embeddingMatch);
+      if (!scored) return D_BAND_CONFIDENCE[ev.embeddingMatch.matchConfidence ?? "LOW"] ?? D_BAND_CONFIDENCE.LOW;
+      if (dinoOk && clipOk) return D_BOTH_CONFIDENCE;
+      if (dinoOk) return D_DINO_ONLY_CONFIDENCE;
+      if (clipOk) return D_CLIP_ONLY_CONFIDENCE;
+      return 0;
+    }
     default:
       return 0;
   }
@@ -778,7 +924,13 @@ export interface WorkEvidence {
    *  in `bestMatchConceptualWorkTitle`; before the 2026-09-08 amendment only its ARTIST was
    *  read, so on A0793 lot 148 the top three 1d candidates all named the correct Hockney
    *  work and the work pass still resolved to a different one off K_work alone. */
-  titleEmbeddingMatch: TitleSource & { matchConfidence?: "HIGH" | "MEDIUM" | "LOW" }; // D_t
+  titleEmbeddingMatch: TitleSource & {
+    matchConfidence?: "HIGH" | "MEDIUM" | "LOW";
+    /** The dino/clip mean, kept for reporting. NOT what gates the work vote. */
+    embeddingConfidence?: number;
+    /** DINOv2 similarity alone — the instance-level signal the work vote is gated on. */
+    dinoSimilarity?: number;
+  }; // D_t
   kWork: KWorkResult | null; // null = not queried / no hit
 }
 
@@ -806,12 +958,20 @@ function eligibleTitleVotes(ev: WorkEvidence, trace: string[]): TitleVote[] {
     else trace.push(`R_t dropped: sim=${sim.toFixed(2)} < ${SIM_WORK_VOTE}`);
   }
   if (ev.titleAppraiser.kind === "names") votes.push({ source: "A_t", raw: ev.titleAppraiser.raw });
+  // D_t votes at any confidence for the same reason D does (see eligibleVotes). Pass 2 has
+  // no band-modulation step of its own, so a lone low-confidence D_t is capped in the T5
+  // branch rather than being allowed to read like a confident identification.
   if (ev.titleEmbeddingMatch.kind === "names") {
-    if (ev.titleEmbeddingMatch.matchConfidence === "HIGH") {
+    const dino = ev.titleEmbeddingMatch.dinoSimilarity;
+    if (dino == null) {
+      trace.push(`D_t dropped from vote: no DINOv2 score — work identity is not scored on CLIP`);
+    } else if (dino >= D_T_DINO_FLOOR) {
       votes.push({ source: "D_t", raw: ev.titleEmbeddingMatch.raw });
+      trace.push(`D_t votes: dino ${dino.toFixed(3)} >= ${D_T_DINO_FLOOR}`);
     } else {
       trace.push(
-        `D_t dropped from vote: matchConfidence=${ev.titleEmbeddingMatch.matchConfidence ?? "unknown"} (only HIGH votes; MEDIUM/LOW = don't know)`,
+        `D_t dropped from vote: dino ${dino.toFixed(3)} < ${D_T_DINO_FLOOR} — close enough to place the ` +
+          `artist, not close enough to say WHICH print`,
       );
     }
   }
@@ -872,8 +1032,113 @@ function kWorkCorroborates(k: KWorkResult | null, dominantRaw: string | null, tr
   return false;
 }
 
+/**
+ * Per-source confidence for a TITLE vote, mirroring `sourceConfidence` in Pass 1.
+ * V_t and A_t are ordinal placeholders; R_t and D_t report real numbers.
+ */
+const V_T_LEGIBLE_CONFIDENCE = 0.9; // a clean in-image title/series cartouche
+const V_T_INFERRED_CONFIDENCE = 0.8; // a title VEA read but did not flag as cleanly legible
+const A_T_CONFIDENCE = 0.85; // the appraiser's stated title (Stage 1c owns this cell)
+
+export function titleSourceConfidence(
+  source: TitleSourceTag,
+  ev: WorkEvidence,
+  veaInImageTitleLegible = false,
+): number {
+  switch (source) {
+    case "V_t":
+      return veaInImageTitleLegible ? V_T_LEGIBLE_CONFIDENCE : V_T_INFERRED_CONFIDENCE;
+    case "R_t":
+      return ev.titleReverseImageSearch.kind === "names" ? ev.titleReverseImageSearch.sim ?? 0 : 0;
+    case "A_t":
+      return A_T_CONFIDENCE;
+    case "D_t":
+      // dino alone, matching the gate — CLIP does not speak to work identity.
+      return ev.titleEmbeddingMatch.kind === "names" ? ev.titleEmbeddingMatch.dinoSimilarity ?? 0 : 0;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Does the ACKG's record of the candidate work match the object in front of us?
+ *
+ * The Pass 1 cascade asks "is this artist consistent with what we see"; this asks the same of
+ * a *work*, using the physical facts the graph holds about it. Both comparisons already
+ * existed — `classifyTechniqueMatch` and `classifyDimensionMatch` were built for the
+ * impression layer (Decision 5b) and are reused verbatim here, one layer earlier.
+ *
+ *   1. CONTRADICTION FIRST. A catalogued technique or dimension that actively disagrees is
+ *      evidence the candidate title is WRONG, not merely uncorroborated — unlike Pass 1,
+ *      where the graph can only ever withhold support. A work catalogued as a 345x210mm
+ *      etching is not a 600x450mm screenprint, whatever the title matcher scored.
+ *   2. Otherwise technique and dimensions agreeing -> strong; one agreeing, the other
+ *      unassessable -> moderate; neither assessable -> fall through to
+ *   3. the embedding title similarity (`kWork`), the weakest of the three because it
+ *      compares words rather than the object.
+ *
+ * "Subject" is deliberately absent. At work level the only subject signal available is image
+ * similarity to that specific work — which IS D_t. Using it here would corroborate a vote
+ * with its own evidence, the circularity this design removed from K in Pass 1.
+ */
+export function corroborateWork(
+  ev: WorkEvidence,
+  impression: ImpressionEvidence | null,
+  dominantTitle: string | null,
+  trace: string[],
+): Corroboration {
+  const notes: string[] = [];
+  if (!dominantTitle) return { level: "none", basis: "noCandidate", notes };
+
+  let tech: TechniqueComparison["match"] = "unassessable";
+  let dim: DimensionComparison["match"] = "UNASSESSABLE";
+  if (impression) {
+    tech = classifyTechniqueMatch({
+      observedTechniques: impression.observedTechniques,
+      observedIsPhotomechanical: impression.observedIsPhotomechanical,
+      catalogueTechniques: impression.catalogueTechniques,
+      catalogueMediumRaw: impression.catalogueMediumRaw,
+    }).match;
+    dim = classifyDimensionMatch(impression.dimensions).match;
+    notes.push(`technique:${tech}`, `dimensions:${dim}`);
+  }
+
+  // 1 — an active contradiction says the candidate work is wrong.
+  if (tech === "false" || dim === "false") {
+    const which = [tech === "false" ? "technique" : null, dim === "false" ? "dimensions" : null]
+      .filter(Boolean)
+      .join(" and ");
+    trace.push(`work corroboration CONTRADICTED: catalogued ${which} disagree with the object for "${dominantTitle}"`);
+    return { level: "none", basis: `workContradictedBy_${which.replace(/ /g, "_")}`, notes: [...notes, "workPhysicallyContradicted"] };
+  }
+
+  // 2 — the physical record agrees.
+  if (tech === "true" && dim === "true") {
+    trace.push(`work corroboration STRONG: catalogued technique AND dimensions both match "${dominantTitle}"`);
+    return { level: "strong", basis: "ackgWorkTechniqueAndDimensions", notes };
+  }
+  if (tech === "true" || dim === "true") {
+    trace.push(`work corroboration MODERATE: catalogued ${tech === "true" ? "technique" : "dimensions"} matches, the other is unassessable`);
+    return { level: "moderate", basis: tech === "true" ? "ackgWorkTechnique" : "ackgWorkDimensions", notes };
+  }
+
+  // 3 — nothing physical to go on; fall back to the title matcher.
+  if (kWorkCorroborates(ev.kWork, dominantTitle, trace)) {
+    return { level: "weak", basis: "ackgWorkTitleSim", notes: [...notes, `titleSim=${ev.kWork!.titleSim.toFixed(2)}`] };
+  }
+  trace.push(`work corroboration NONE: nothing in the ACKG supports "${dominantTitle}" (absence is not evidence against)`);
+  return { level: "none", basis: "ackgWorkSilent", notes };
+}
+
 /** ADR-0010 Decision 5 — the T1..T7 table. */
-export function classifyWorkPass(ev: WorkEvidence): WorkVerdict {
+export interface WorkPassOptions {
+  /** The impression cells, read one layer earlier than Decision 5b uses them, so the
+   *  catalogued technique/dimensions can corroborate the TITLE and not only the impression. */
+  impression?: ImpressionEvidence | null;
+  veaInImageTitleLegible?: boolean;
+}
+
+export function classifyWorkPass(ev: WorkEvidence, opts: WorkPassOptions = {}): WorkVerdict {
   const trace: string[] = [];
   const votes = eligibleTitleVotes(ev, trace);
   const ag = agreeTitles(votes);
@@ -898,32 +1163,90 @@ export function classifyWorkPass(ev: WorkEvidence): WorkVerdict {
     };
   };
 
-  // T1 — three or more sources agree. Was `=== 3` when V_t/R_t/A_t were the only
-  // sources; D_t makes four possible, and a fourth agreeing source cannot mean less
-  // than three do (mirrors the artist pass's A1, which is already `n >= 3`).
-  if (ag.n >= 3) return mk("identified", ag.dominantRaw, "HIGH", "T1");
+  // ── Scoring, mirroring Pass 1: agreement sets the base band, the agreeing sources' own
+  // confidence modulates it, then ACKG corroboration (technique / dimensions / title
+  // similarity) moves it. ──
+  const agreeingConfidences = ag.set.map((src) => ({
+    source: src,
+    conf: titleSourceConfidence(src, ev, opts.veaInImageTitleLegible),
+  }));
+  const meanConf = agreeingConfidences.length
+    ? agreeingConfidences.reduce((t, c) => t + c.conf, 0) / agreeingConfidences.length
+    : 0;
+  const weakSources = agreeingConfidences.length > 0 && meanConf < CONFIDENCE_MEAN_FLOOR;
+  if (agreeingConfidences.length) {
+    trace.push(
+      `titleSourceConfidence=[${agreeingConfidences.map((c) => `${c.source}:${c.conf.toFixed(2)}`).join(", ")}] ` +
+        `mean=${meanConf.toFixed(2)}${weakSources ? ` < ${CONFIDENCE_MEAN_FLOOR}` : ""}`,
+    );
+  }
 
-  // T2 / T4 — two agree. The physical-vs-catalogued divergence that used to split T2/T3
-  // is now entirely the impression layer's job (Decision 5b, Part A): classifyImpression
-  // runs after this for any identified/candidate work and sets impressionAssessment.
+  const scoredWork = (verdict: WorkVerdict["verdict"], baseBand: Confidence, basis: string) => {
+    let band = baseBand;
+    if (weakSources) {
+      band = liftBand(band, -1);
+      trace.push(`mean title-source confidence ${meanConf.toFixed(2)} < ${CONFIDENCE_MEAN_FLOOR} — ${baseBand} demoted to ${band}`);
+    }
+    const corr = corroborateWork(ev, opts.impression ?? null, ag.dominantRaw, trace);
+    // Same asymmetry as Pass 1: silence only withholds, at n === 2 where the graph is the
+    // tie-breaker. But a CONTRADICTION is different — physical disagreement is real evidence
+    // the title is wrong, so it lowers the band at any n.
+    const contradicted = corr.notes.includes("workPhysicallyContradicted");
+    const rawDelta = CORROBORATION_BAND_DELTA[corr.level];
+    // Unlike Pass 1, silence also lowers a SINGLE-source work verdict. Naming an artist from
+    // one source is a reasonable candidate; naming which of their prints this is, from one
+    // source, with nothing in the record supporting it, is not. (Pass 1 protects n === 1
+    // because coverage gaps bite hardest there; here the same uncertainty is the point.)
+    const delta = contradicted ? -1 : rawDelta < 0 && ag.n >= 3 ? 0 : rawDelta;
+    if (delta !== 0) {
+      const moved = liftBand(band, delta);
+      if (moved !== band) trace.push(`work corroboration ${contradicted ? "contradiction" : corr.level} moves ${band} -> ${moved}`);
+      band = moved;
+    }
+    const v = mk(verdict, ag.dominantRaw, band, basis);
+    return { ...v, ruleTrace: trace };
+  };
+
+  // T1 — three or more sources agree (mirrors A1's `n >= 3`).
+  if (ag.n >= 3) return scoredWork("identified", "HIGH", "T1");
+
+  // T2 / T4 — two agree, separated by how well the ACKG's record of the work corroborates.
   if (ag.n === 2) {
-    if (kWorkCorroborates(k, ag.dominantRaw, trace)) return mk("identified", ag.dominantRaw, "HIGH", "T2");
-    return mk("identified", ag.dominantRaw, "MEDIUM", "T4"); // no / weak / mismatched K_work corroboration
+    const peek = corroborateWork(ev, opts.impression ?? null, ag.dominantRaw, []);
+    const code = peek.level === "strong" || peek.level === "moderate" ? "T2" : "T4";
+    return scoredWork("identified", "MEDIUM_HIGH", code);
   }
 
-  // T5 — single source
-  if (ag.n === 1) {
-    const conf: Confidence = kWorkCorroborates(k, ag.dominantRaw, trace) ? "MEDIUM" : "LOW";
-    return mk("candidate", ag.dominantRaw, conf, "T5");
-  }
+  // T5 — single source.
+  if (ag.n === 1) return scoredWork("candidate", "MEDIUM", "T5");
 
   // ── ag.n === 0: sources conflict or are all silent ────────────────────────────
   // T8K (Part B) — a strong ACKG embedding match to a specific catalogued work
   // identifies it even when the title SOURCES give no consensus. This is what rescues
   // the "same series, sources name different works" case (e.g. Hirst Empresses).
   if (k && k.titleSim >= TAU_TITLE_ANCHOR) {
-    trace.push(`T8K: K_work embedding match (titleSim=${k.titleSim.toFixed(2)} >= ${TAU_TITLE_ANCHOR}) identifies the work despite no source consensus`);
-    return mk("identified", k.matchedWorkTitle ?? ag.dominantRaw, "MEDIUM", "T8K");
+    // T8K identifies a work on title similarity alone, with no source consensus behind it —
+    // the weakest basis in the table, and the one that resolved A0793/148 to the wrong work.
+    // It now answers to the same physical record as every other path: a contradiction blocks
+    // it outright, and with nothing corroborating it degrades to a LOW candidate rather than
+    // a MEDIUM identification.
+    const corr = corroborateWork(ev, opts.impression ?? null, k.matchedWorkTitle ?? ag.dominantRaw, trace);
+    if (corr.notes.includes("workPhysicallyContradicted")) {
+      trace.push(`T8K withheld: the catalogued record of "${k.matchedWorkTitle}" contradicts the object`);
+    } else {
+      // T8K's own evidence IS the embedding title similarity, already gated at
+      // TAU_TITLE_ANCHOR — so the physical record can only ADD to it here. A negative delta
+      // would double-penalise, and the kWork title fallback would be self-referential
+      // anyway (the "candidate title" in this branch IS k.matchedWorkTitle, so comparing
+      // the two always agrees). Contradiction is handled above, by withholding T8K outright.
+      const level = corr.level === "strong" || corr.level === "moderate" ? corr.level : "weak";
+      const band = liftBand("MEDIUM", CORROBORATION_BAND_DELTA[level]);
+      trace.push(
+        `T8K: K_work embedding match (titleSim=${k.titleSim.toFixed(2)} >= ${TAU_TITLE_ANCHOR}) identifies the work despite no source consensus` +
+          ` — corroboration ${level} -> ${band}`,
+      );
+      return mk(band === "LOW" ? "candidate" : "identified", k.matchedWorkTitle ?? ag.dominantRaw, band, "T8K");
+    }
   }
 
   // T6 — title sources present but pointing at different works, none dominant
@@ -1028,11 +1351,14 @@ export interface DimensionEvidence {
   observedImageMm?: { w: number; h: number } | null;
   cataloguePlateMm?: { w: number; h: number } | null;
   catalogueImageMm?: { w: number; h: number } | null;
+  /** Sheet, compared last and at TAU_DIM_SHEET_* tolerance. */
+  observedSheetMm?: { w: number; h: number } | null;
+  catalogueSheetMm?: { w: number; h: number } | null;
 }
 
 export interface DimensionComparison {
   match: "true" | "false" | "UNASSESSABLE";
-  comparedOn: "plate" | "image" | null;
+  comparedOn: "plate" | "image" | "sheet" | null;
   direction: "larger" | "smaller" | "equal" | null; // observed vs catalogue
   severity: "within_tolerance" | "minor" | "material" | null;
   note: string;
@@ -1043,7 +1369,7 @@ function compareDims(
   cat: { w: number; h: number },
   pct: number,
   mmFloor: number,
-  on: "plate" | "image",
+  on: "plate" | "image" | "sheet",
   scaledCaveat: boolean,
 ): DimensionComparison {
   const dw = obs.w - cat.w;
@@ -1074,18 +1400,29 @@ export function classifyDimensionMatch(d: DimensionEvidence): DimensionCompariso
     return compareDims(d.observedPlateMm, d.cataloguePlateMm, TAU_DIM_PLATE_PCT, TAU_DIM_PLATE_MM, "plate", scaled);
   if (d.observedImageMm && d.catalogueImageMm)
     return compareDims(d.observedImageMm, d.catalogueImageMm, TAU_DIM_IMAGE_PCT, TAU_DIM_IMAGE_MM, "image", scaled);
+  // Sheet last, and only if nothing better exists — trimming makes it the weakest of the
+  // three, but for most auction lots it is the only measurement stated.
+  if (d.observedSheetMm && d.catalogueSheetMm) {
+    const r = compareDims(d.observedSheetMm, d.catalogueSheetMm, TAU_DIM_SHEET_PCT, TAU_DIM_SHEET_MM, "sheet", scaled);
+    return { ...r, note: `${r.note} (sheet comparison — trimming and margins make this the weakest dimension)` };
+  }
   return {
     match: "UNASSESSABLE",
     comparedOn: null,
     direction: null,
     severity: null,
-    note: "no like-for-like dimension pair (only sheet on one side, or a side missing)",
+    note: "no like-for-like dimension pair (nothing stated on one side, or different kinds)",
   };
 }
 
 export interface ImpressionEvidence {
-  /** VEA's observed printing technique name(s). */
+  /** Observed printing technique name(s) — from VEA when it ran, otherwise Stage 1c's
+   *  stated technique (see observedTechniqueSource). */
   observedTechniques: string[];
+  /** Where observedTechniques came from. "appraiser" is a CLAIM, not an observation: an
+   *  auction description saying "etching" is reliable about the family but is not the same
+   *  as VEA seeing a plate mark, so it must not on its own drive a reproduction verdict. */
+  observedTechniqueSource?: "vea" | "appraiser" | "none";
   /** VEA read the technique as photomechanical (halftone dots / offset / giclée). */
   observedIsPhotomechanical: boolean;
   /** Catalogued technique(s) for the identified work, from queryAckgWorks. */
@@ -1116,17 +1453,28 @@ export function classifyImpression(ev: ImpressionEvidence): ImpressionAssessment
   const dim = classifyDimensionMatch(ev.dimensions);
   trace.push(dim.note);
 
+  // An appraiser-STATED technique is a claim about the medium, not an observation of the
+  // object. It is reliable enough about the process family to corroborate a work (see
+  // corroborateWork), but calling something a reproduction is a serious verdict that should
+  // rest on VEA actually seeing halftone dots — not on a catalogue description disagreeing
+  // with the graph. Claimed techniques therefore cap out at medium_divergence.
+  const techniqueIsClaimOnly = ev.observedTechniqueSource === "appraiser";
   let divergence: ImpressionAssessment["divergence"];
   if (
     tech.match === "false" &&
     ev.observedIsPhotomechanical &&
-    tech.catalogueIsOriginalProcess
+    tech.catalogueIsOriginalProcess &&
+    !techniqueIsClaimOnly
   ) {
     divergence = "reproduction";
     trace.push("observed technique is photomechanical, catalogued work is a hand-pulled original -> reproduction / poster");
   } else if (tech.match === "false") {
     divergence = "medium_divergence";
-    trace.push("observed technique family differs from the catalogued record -> different production (reproduction after / other medium)");
+    trace.push(
+      techniqueIsClaimOnly
+        ? "stated technique family differs from the catalogued record -> medium divergence (a CLAIMED technique cannot establish a reproduction on its own)"
+        : "observed technique family differs from the catalogued record -> different production (reproduction after / other medium)",
+    );
   } else if (dim.match === "true" || dim.match === "UNASSESSABLE" || tech.match === "unassessable") {
     divergence = "none";
     trace.push(`technique ${tech.match}; dimensions ${dim.match} -> no divergence`);
@@ -1297,7 +1645,10 @@ export function classifyTwoPass(input: TwoPassInput): TwoPassResult {
   let impression: ImpressionAssessment | null = null;
 
   if (gate.runPass2) {
-    work = classifyWorkPass(input.workEvidence);
+    work = classifyWorkPass(input.workEvidence, {
+      impression: input.impressionEvidence,
+      veaInImageTitleLegible: input.veaInImageTitleLegible,
+    });
     // Splice in the work pass's own trace, not just its conclusion. Which title sources
     // voted, and why a K_work hit was or wasn't counted as corroboration, is the part
     // you need when a work verdict looks wrong — and it used to be dropped here.

@@ -28,6 +28,8 @@ import {
   type NamingSource,
   type TitleSource,
   type KWorkResult,
+  titleContainment,
+  TAU_TITLE_AGREE,
   type StyleConsistencyEvidence,
   type WorkEvidence,
   type Confidence,
@@ -118,6 +120,9 @@ export interface EvidenceAgentOutput {
     observedImageMm: WH;
     cataloguePlateMm: WH;
     catalogueImageMm: WH;
+    /** Sheet, added 2026-09-09 — compared last, at a wider tolerance. */
+    observedSheetMm?: WH;
+    catalogueSheetMm?: WH;
   };
   riskFlags: {
     forgeryRisk: boolean;
@@ -170,22 +175,59 @@ export function evidenceToTwoPassInput(
   const dom = a.dominantCandidateName || "";
   const domKey = a.dominantCandidateIdentityKey || "";
 
-  // D — Stage 1d DINOv2/CLIP match against the ACKG's own image index (ADR-0013 + the
-  // 2026-09-06 voting amendment). Computed entirely in code from Stage 1d's own output —
-  // no LLM judgement involved, unlike V/R/A/K — so this is built here rather than read off
-  // the evidence agent's tool-call output. eligibleVotes() below gates it to HIGH only.
+  // D / D_t — Stage 1d's DINOv2 + CLIP match against the ACKG's own image index (ADR-0013).
+  // Built here in code from Stage 1d's output; no LLM judgement, unlike V/R/A.
+  //
+  // BEST-OF ACROSS THE ARTIST'S ROWS, PER MEASURE. Stage 1d returns up to 10 candidate rows
+  // and the two vector searches do not return the same set — on A0793/122 the top row was
+  // Peter Blake with a dino score and NO clip, while rows 2 and 3 were also Peter Blake with
+  // clip scores and no dino. Reading only the top row threw away half the evidence for an
+  // artist who was, across those rows, plainly present. An artist counts as matched when any
+  // example in their corpus matches, so each measure is maxed over that artist's rows
+  // independently — and never averaged with the other, since they are different scales.
+  // Stage 1d's own top-level scores, used only as a fallback when candidateMatches is empty.
+  const dinoScore = typeof stage1d?.dinov2SimilarityScore === "number" ? stage1d.dinov2SimilarityScore : undefined;
+  const clipScore = typeof stage1d?.clipSimilarityScore === "number" ? stage1d.clipSimilarityScore : undefined;
+
+  const rows = stage1d?.candidateMatches ?? [];
+  const bestOf = (keep: (row: any) => boolean) => {
+    const sel = rows.filter(keep);
+    const pick = (f: (r: any) => unknown) => {
+      const vals = sel.map(f).filter((v): v is number => typeof v === "number");
+      return vals.length ? Math.max(...vals) : undefined;
+    };
+    return { dino: pick((r) => r.dinov2Similarity), clip: pick((r) => r.clipSimilarity) };
+  };
+
+  const bestArtist = stage1d?.bestMatchArtist ?? "";
+  const artistScores = bestArtist
+    ? bestOf((r) => !!r.artistName && nameSimilarity(r.artistName, bestArtist) >= TAU_NAME)
+    : { dino: undefined, clip: undefined };
+
+  const bestWork = stage1d?.bestMatchConceptualWorkTitle ?? "";
+  const workScores = bestWork
+    ? bestOf((r) => !!r.conceptualWorkTitle && titleContainment(r.conceptualWorkTitle, bestWork) >= TAU_TITLE_AGREE)
+    : { dino: undefined, clip: undefined };
+
   const embeddingMatch: NamingSource = stage1d?.bestMatchArtist
-    ? { kind: "names", raw: stage1d.bestMatchArtist, matchConfidence: stage1d.matchConfidence ?? undefined }
+    ? {
+        kind: "names",
+        raw: stage1d.bestMatchArtist,
+        matchConfidence: stage1d.matchConfidence ?? undefined,
+        // Fall back to the single top-row scores if the per-artist scan found nothing.
+        dinoSimilarity: artistScores.dino ?? dinoScore ?? undefined,
+        clipSimilarity: artistScores.clip ?? clipScore ?? undefined,
+      }
     : { kind: "no_match" };
 
-  // D_t — the catalogued title of that same Stage 1d match. Built here in code for the
-  // same reason as D above (no LLM judgement involved); eligibleTitleVotes() applies the
-  // HIGH-only gate.
   const titleEmbeddingMatch: WorkEvidence["titleEmbeddingMatch"] = stage1d?.bestMatchConceptualWorkTitle
     ? {
         kind: "names",
         raw: stage1d.bestMatchConceptualWorkTitle,
         matchConfidence: stage1d.matchConfidence ?? undefined,
+        // Work identity is DINOv2 only: on A0793 CLIP scored 0.937 and 0.946 against the
+        // WRONG works by the right artists — it recognises style and medium, not the image.
+        dinoSimilarity: workScores.dino ?? dinoScore ?? undefined,
       }
     : { kind: "silent" };
 
@@ -271,20 +313,65 @@ export function evidenceToTwoPassInput(
       : null;
 
   const imp = ev.impressionEvidence;
+
+  // Stage 1c is a first-class source for the physical facts, not just VEA. The evidence
+  // schema ties observedTechniques to VEA ("verbatim from VEA printingTechniques"), so with
+  // Stage 1a skipped the technique cell came back empty on every A0793 lot even though
+  // Stage 1c had extracted "lithograph in colours" / "silkscreen print in colours" from the
+  // catalogue text. Dimensions were already Stage 1c's job by design; technique now is too.
+  const claimedTechnique = appraiserInput?.claimedAttribution?.technique?.trim() || "";
+  const agentTechniques = (imp?.observedTechniques ?? []).filter((t) => t && t.trim());
+  const observedTechniques = agentTechniques.length
+    ? agentTechniques
+    : claimedTechnique
+      ? [claimedTechnique]
+      : [];
+  const observedTechniqueSource: "vea" | "appraiser" | "none" = agentTechniques.length
+    ? "vea"
+    : claimedTechnique
+      ? "appraiser"
+      : "none";
+
+  // Sheet dimensions, admitted at a wider tolerance because 65% of A0793 lots state nothing
+  // else. Stage 1c's dimensionsClaim carries the kind, so only a stated SHEET becomes one.
+  const dc = appraiserInput?.dimensionsClaim;
+  const observedSheetMm =
+    dc && dc.kind === "sheet" && dc.widthCm && dc.heightCm
+      ? { w: dc.widthCm * 10, h: dc.heightCm * 10 }
+      : wh(imp?.observedSheetMm);
   const observedDimSource: "appraiser" | "vea_scaled" | "none" =
     imp?.observedDimSource === "appraiser" || imp?.observedDimSource === "vea_scaled"
       ? imp.observedDimSource
       : "none";
-  // Only run the impression layer when there's something concrete to compare — a catalogued
-  // technique or a like-for-like dimension pair. Otherwise it's noise (T4 world).
-  const impressionAssessable =
-    !!imp?.assessable &&
-    ((imp.catalogueTechniques ?? []).length > 0 ||
-      (observedDimSource !== "none" &&
-        (!!wh(imp.cataloguePlateMm) || !!wh(imp.catalogueImageMm))));
+  // Assessable when a real PAIR exists to compare — both sides of a technique or of one
+  // dimension kind. Otherwise it is noise (T4 world).
+  //
+  // Rewritten 2026-09-09. The previous gate discarded everything the code now supplies:
+  // it required the agent's own `assessable` flag (false on all five A0793 lots, since the
+  // agent judges that before the tree has ruled on the work), it counted only CATALOGUE
+  // techniques so a Stage 1c-supplied observed technique could never satisfy it, and its
+  // dimension leg knew nothing about sheet. The result was `work corroboration NONE` on
+  // every lot with the comparison data sitting unused one line below.
+  //
+  // The agent's flag is no longer an AND: if it transcribed catalogue facts at all it
+  // queried a work, and the presence of a comparable pair is the more reliable signal.
+  // observedIsPhotomechanical is an observed technique family in its own right —
+  // classifyTechniqueMatch adds it even when no process was named — so it counts as the
+  // observed side of a pair. (VEA seeing halftone dots but naming nothing is exactly the
+  // Hirst Empresses case: giclée observed against giclée catalogued, which is NOT a
+  // reproduction.)
+  const haveObservedTechnique = observedTechniques.length > 0 || !!imp?.observedIsPhotomechanical;
+  const haveTechniquePair = haveObservedTechnique && (imp?.catalogueTechniques ?? []).length > 0;
+  const haveDimPair =
+    observedDimSource !== "none" &&
+    ((!!wh(imp?.observedPlateMm) && !!wh(imp?.cataloguePlateMm)) ||
+      (!!wh(imp?.observedImageMm) && !!wh(imp?.catalogueImageMm)) ||
+      (!!observedSheetMm && !!wh(imp?.catalogueSheetMm)));
+  const impressionAssessable = !!imp && (haveTechniquePair || haveDimPair);
   const impressionEvidence = impressionAssessable && imp
     ? {
-        observedTechniques: imp.observedTechniques ?? [],
+        observedTechniques,
+        observedTechniqueSource,
         observedIsPhotomechanical: !!imp.observedIsPhotomechanical,
         catalogueTechniques: imp.catalogueTechniques ?? [],
         catalogueMediumRaw: imp.catalogueMediumRaw || "",
@@ -295,6 +382,8 @@ export function evidenceToTwoPassInput(
           observedImageMm: wh(imp.observedImageMm),
           cataloguePlateMm: wh(imp.cataloguePlateMm),
           catalogueImageMm: wh(imp.catalogueImageMm),
+          observedSheetMm,
+          catalogueSheetMm: wh(imp.catalogueSheetMm),
         },
       }
     : null;

@@ -106,6 +106,10 @@ const stage1d = (
   bestMatchArtist,
   bestMatchConceptualWorkTitle,
   matchConfidence,
+  // Production always supplies these; the cell builder derives its measured confidence
+  // from them, and both D floors are read off that measurement.
+  dinov2SimilarityScore: matchConfidence === "HIGH" ? 0.974 : matchConfidence === "MEDIUM" ? 0.86 : 0.6,
+  clipSimilarityScore: matchConfidence === "HIGH" ? 0.974 : matchConfidence === "MEDIUM" ? 0.86 : 0.6,
   attributionCaveat: "",
   hypothesisWarning: "",
 });
@@ -199,14 +203,17 @@ test("end-to-end: a lone HIGH-confidence Stage 1d match (no other evidence) -> A
   assert.equal(twoPass.scenario, Scenario.ArtistConfirmedWorkUnresolved);
 });
 
-test("end-to-end: a lone MEDIUM-confidence Stage 1d match does NOT vote -> not attributed, Scenario 6", () => {
+test("end-to-end: a lone MEDIUM-confidence Stage 1d match now votes, weakly", () => {
   const { twoPass } = runEvidenceTree(
     f.evOut({ traditionIdentification: { traditionConfidence: 0.2 } }),
     false,
     stage1d("MEDIUM", "Barbara Hepworth"),
   );
-  assert.equal(twoPass.artistAttribution.verdict, "not_attributed");
-  assert.equal(twoPass.scenario, Scenario.LowSignalEverywhere);
+  assert.equal(twoPass.artistAttribution.verdict, "candidate");
+  assert.equal(twoPass.artistAttribution.evidenceBasis, "A6D");
+  assert.equal(twoPass.artistAttribution.artistName, "Barbara Hepworth");
+  // measured 0.86 clears both the 0.7 vote floor and the 0.8 confidence floor
+  assert.equal(twoPass.artistAttribution.confidence, "MEDIUM");
 });
 
 // ── end-to-end: runEvidenceTree ──────────────────────────────────────────────

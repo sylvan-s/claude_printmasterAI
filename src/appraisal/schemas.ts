@@ -829,7 +829,7 @@ export const ATTRIBUTION_EVIDENCE_SCHEMA = {
       type: Type.OBJECT,
       properties: {
         assessable: { type: Type.BOOLEAN, description: "true only when a Conceptual Work was identified/candidate. When true, call query_ackg_work for that work and fill the cells below from its catalogued facts. false ⇒ the whole block is ignored." },
-        observedTechniques: { type: Type.ARRAY, items: { type: Type.STRING }, description: "VEA's observed printing technique name(s), e.g. [\"Etching\", \"Drypoint\"]. Verbatim from VEA printingTechniques." },
+        observedTechniques: { type: Type.ARRAY, items: { type: Type.STRING }, description: "The observed printing technique name(s), e.g. [\"Etching\", \"Drypoint\"]. Verbatim from VEA printingTechniques when VEA observed one. If VEA did not run or saw none, and Stage 1c states a technique, leave this EMPTY — the code fills it from Stage 1c and records that it was a claim rather than an observation." },
         observedIsPhotomechanical: { type: Type.BOOLEAN, description: "VEA read halftone dot structure / offset / giclée / digital-pigment — i.e. NOT a hand-pulled process." },
         catalogueTechniques: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Catalogued technique(s) for the identified work, from query_ackg_work (the `techniques` field; merge across near-duplicate title rows). [] if the work is not in the graph." },
         catalogueMediumRaw: { type: Type.STRING, description: "The single most informative catalogued rawMedium string from query_ackg_work, e.g. \"Laminated giclée print in colours on aluminium composite panel\". \"\" if none." },
@@ -838,6 +838,8 @@ export const ATTRIBUTION_EVIDENCE_SCHEMA = {
         observedPlateMm: AEA_WH,
         observedImageMm: AEA_WH,
         cataloguePlateMm: AEA_WH,
+        observedSheetMm: { type: Type.OBJECT, properties: { width: { type: Type.NUMBER }, height: { type: Type.NUMBER } }, required: ["width", "height"], description: "Observed SHEET size in mm (0/0 if not stated). Compared last and at a wider tolerance than plate/image, since paper gets trimmed — but for most auction lots it is the only measurement given." },
+        catalogueSheetMm: { type: Type.OBJECT, properties: { width: { type: Type.NUMBER }, height: { type: Type.NUMBER } }, required: ["width", "height"], description: "Catalogued SHEET size in mm from query_ackg_work (0/0 if none)." },
         catalogueImageMm: AEA_WH,
       },
       required: [
