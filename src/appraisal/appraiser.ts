@@ -37,6 +37,7 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
 import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding } from "./knowledge_graph/index.js";
+import { assessComps, formatCompStorability, type CompStorabilityReport } from "./comp_storability.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
 import type { StyleConsistencyEvidence } from "./two_pass_attribution";
 import { getImageEmbeddings } from "./embedding_client.js";
@@ -2291,7 +2292,26 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
       ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192)
       : await this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
     await this.persistCatalogueRaisonneFinding(result);
+    // Phase 0 of the comps write-back is a measurement, not a feature: nothing is written,
+    // but every run now reports how many of Stage 2b's comps carry a key, a real number and
+    // an explicit price basis. Aggregated over a pool run, that ratio decides whether the
+    // rest of the write-back is worth building at all.
+    const compReport = assessComps((result as any)?.auctionComps);
+    (result as any).compStorability = compReport;
+    this.onCompStorability(compReport);
     return result;
+  }
+
+  /**
+   * Emitted once per Stage 2b run. Overridable so a harness can capture the report and
+   * aggregate it across a pool — the per-lot number means little, the pool-wide ratio is
+   * the whole Phase 0 measurement. Same hook idiom as `onAckgLoopEvent`; the default keeps
+   * the live log unchanged.
+   */
+  protected onCompStorability(report: CompStorabilityReport): void {
+    if (report.total > 0) {
+      console.log(`[4-Stage] Stage 2b comp storability: ${formatCompStorability(report)}`);
+    }
   }
 
   /**

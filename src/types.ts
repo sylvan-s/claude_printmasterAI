@@ -1,3 +1,5 @@
+import type { Stage2bComp, CompStorabilityReport } from "./appraisal/comp_storability.js";
+
 export interface AuctionEstimate {
   lowEstimate: number;
   highEstimate: number;
@@ -438,6 +440,15 @@ export interface ASAAttributionResult {
     /** What was tested and what was found/survived. Null only when verdict is NOT_APPLICABLE. */
     challengeNarrative: string | null;
   };
+  /** Web-research comps. Stage 3 reads ACKG comps first (ADR-0016) and treats these as the
+   *  fallback for artists the graph does not cover — 81% of ACKG artists have fewer than 3
+   *  priced records, so that fallback is not rare. */
+  auctionComps?: Stage2bComp[];
+  /** Attached by the pipeline, not the model: how many of the comps above carry a key, a
+   *  numeric price and an explicit price basis. Phase 0 of the comps write-back — a
+   *  measurement of whether those comps could ever be stored, not a decision to store them.
+   *  See src/appraisal/comp_storability.ts. */
+  compStorability?: CompStorabilityReport;
 }
 
 // Discriminated on schemaVersion: undefined → legacy 3-stage, "ASA-1.0" → 4-stage specialist.

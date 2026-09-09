@@ -53,6 +53,7 @@ import {
 import type { VisualExtractionResult } from "../../src/types";
 import type { EvidenceAgentOutput } from "../../src/appraisal/stage2a_evidence";
 import type { AckgLoopEvent } from "../../src/appraisal/appraiser";
+import type { CompStorabilityReport } from "../../src/appraisal/comp_storability";
 import { resolveSaleRef, type AuctionRef } from "../../benchmark/src/roseberys/discover";
 import { fetchLotByNumber, imageUrl, lotUrl, type RawLot } from "../../benchmark/src/roseberys/api";
 import { parseDescription, type ParsedLot } from "../../benchmark/src/roseberys/parse";
@@ -125,6 +126,14 @@ class EvidenceIsolationAppraiser extends FourStageAppraiser {
   protected onAckgLoopEvent(e: AckgLoopEvent): void {
     this.ackgRounds.push(e);
     super.onAckgLoopEvent(e); // keep the live log unchanged
+  }
+
+  /** Phase 0 of the comps write-back: whether Stage 2b's comps could ever be stored.
+   *  Captured per lot so a run over several can be aggregated. */
+  public compStorability: CompStorabilityReport | null = null;
+  protected onCompStorability(r: CompStorabilityReport): void {
+    this.compStorability = r;
+    super.onCompStorability(r);
   }
 
   /** No vision call. Returns the "not run" stub without touching the model. */
@@ -342,6 +351,7 @@ async function main() {
           !!report.stage1Result?.imageAuthenticity?.haltRecommended,
           appraiser.ackgRounds,
         ),
+        compStorability: appraiser.compStorability,
         attributionProvided: attributed,
         attributionHeaderSentToStage1c: attributionHeader,
         evidenceIsolation: {

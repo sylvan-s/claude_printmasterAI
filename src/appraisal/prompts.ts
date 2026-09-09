@@ -1201,7 +1201,19 @@ Identify edition type (first | later | reprint | posthumous | unknown) and valua
 
 STEP 7 — AUCTION COMP COLLECTION
 Use 1–2 web searches to find recent verifiable auction sales of identical or highly similar prints. Prioritise: Roseberys London, Sotheby's, Christie's, Phillips, Bonhams, Artnet. Aim for 2–3 comps. For each comp found:
-- Record: artworkTitle, artist, technique, hammerPrice (in "{currency}"), saleDate, auctionHouse, conditionState.
+- Record: artworkTitle, artist, technique, hammerPrice (human-readable, in "{currency}"), saleDate, auctionHouse, conditionState.
+- ALSO record the structured fields that make the comp checkable and re-usable, from the SAME page you took the price off:
+  · listingUrl — the exact result page. This is what lets the comp be verified and de-duplicated later; a comp without it can be read but never trusted twice.
+  · saleId and lotNumber — the sale/auction identifier and lot as the house prints them ("32236", "46a"). Together with auctionHouse these identify the sale when no URL is available.
+  · priceAmount — the price as a NUMBER, no currency symbol, no thousands separators, no range (5245.51, not "£5,245.51" and not "3,000-3,500").
+  · priceCurrency — the ISO code of that number: GBP, USD, EUR.
+  · priceBasis — WHAT THAT NUMBER IS. Read the page; do not infer from the size of the figure.
+      "hammer"            the price before buyer's premium, where the page says so
+      "premium_inclusive" the total the buyer paid, premium included ("price realised",
+                          "sold for", "result including premium")
+      "unknown"           the page does not say which
+    MOST HOUSE RESULT PAGES SHOW A PREMIUM-INCLUSIVE FIGURE WITHOUT LABELLING IT. If the page does not state the basis, the answer is "unknown". "unknown" is a correct, expected and useful answer — a comp honestly marked unknown is kept and used with care, whereas a comp wrongly marked "hammer" silently understates every valuation built on it by the premium, roughly 25-30%. Never guess to fill the field.
+- Leave any of these null when the source genuinely does not carry it. A null is a fact about the source; a fabricated URL, sale id or price is a corruption of the record.
 - Apply Fractional Lot Logic: if the print was sold in a group lot, calculate the individual fraction and record it in broaderLotPriceAdjustment (e.g. "1/4 fraction of total lot value £8,000 = £2,000").
 - If you cannot find verifiable comps after searching, set auctionComps to an empty array — do NOT fabricate results.
 
@@ -1314,10 +1326,16 @@ OUTPUT SCHEMA:
       "artworkTitle": "<title of the comparable work>",
       "artist": "<artist name>",
       "technique": "<printing technique>",
-      "hammerPrice": "<price in {currency} as plain string e.g. '£1,200'>",
-      "saleDate": "<YYYY-MM or YYYY>",
+      "hammerPrice": "<human-readable price in {currency}, e.g. '£1,200'>",
+      "saleDate": "<YYYY-MM-DD, YYYY-MM or YYYY>",
       "auctionHouse": "<house name>",
       "conditionState": "<condition description>",
+      "listingUrl": null,          // the exact result page, or null — never invented
+      "saleId": null,              // sale/auction id as the house prints it, or null
+      "lotNumber": null,           // lot as printed ("46", "46a"), or null
+      "priceAmount": null,         // NUMBER only: 5245.51 — no symbol, separators or range
+      "priceCurrency": null,       // ISO code of priceAmount: "GBP", "USD", "EUR"
+      "priceBasis": "unknown",     // "hammer" | "premium_inclusive" | "unknown" — read the page, never infer
       "wasSoldInBroaderLot": false,
       "broaderLotPriceAdjustment": "<fractional allocation note or null>"
     }

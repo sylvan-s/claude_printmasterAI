@@ -461,10 +461,18 @@ export const SPECIALIST_ATTRIBUTION_SCHEMA = {
           saleDate: { type: Type.STRING },
           auctionHouse: { type: Type.STRING },
           conditionState: { type: Type.STRING },
+          listingUrl: { type: Type.STRING },
+          saleId: { type: Type.STRING },
+          lotNumber: { type: Type.STRING },
+          priceAmount: { type: Type.NUMBER },
+          priceCurrency: { type: Type.STRING },
+          priceBasis: { type: Type.STRING },
           wasSoldInBroaderLot: { type: Type.BOOLEAN },
           broaderLotPriceAdjustment: { type: Type.STRING }
         },
-        required: ["artworkTitle", "artist", "technique", "hammerPrice", "saleDate", "auctionHouse", "conditionState", "wasSoldInBroaderLot", "broaderLotPriceAdjustment"]
+        // The structured keying/price fields are deliberately NOT required: a source that
+        // does not carry a URL or state its price basis must yield a null, not an invention.
+        required: ["artworkTitle", "artist", "technique", "hammerPrice", "saleDate", "auctionHouse", "conditionState", "priceBasis", "wasSoldInBroaderLot", "broaderLotPriceAdjustment"]
       }
     }
   },
