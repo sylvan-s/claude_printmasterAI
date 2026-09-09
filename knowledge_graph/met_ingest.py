@@ -86,6 +86,7 @@ MET_CSV_PATH = "/Users/sylvansitkey/PycharmProjects/claude_printmasterAI/benchma
 # roseberys_ingest.py — see that module for why (prevents the two source adapters'
 # vocabularies from silently drifting apart from each other).
 from crosswalk_matching import extract_techniques, extract_papers
+from embed_titles_hook import embed_new_titles
 
 # --- doc 09 §4 SEMANTIC_SPLIT: tags -> Genre vs Subject ---
 # Standard fine-art/print genre categories (a stable, well-established art-cataloguing
@@ -554,6 +555,7 @@ def run(df, chunk_size=200):
               f"est_remaining={(elapsed/done)*(total-done):.0f}s | resume_with: --skip {done}",
               flush=True)
     print(f"[DONE] total={total} elapsed={time.time()-start:.0f}s", flush=True)
+    embed_new_titles(total)
 
 
 if __name__ == "__main__":

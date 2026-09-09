@@ -22,6 +22,7 @@
     "test:kg-parse": "tsx tests/knowledge_graph/parse_tests.ts",
     "test:leak-detection": "tsx tests/benchmark_parse/leak_detection_tests.ts",
     "kg:embed-titles": "tsx src/appraisal/knowledge_graph/backfill_title_embeddings.ts",
+    "kg:title-coverage": "tsx src/appraisal/knowledge_graph/title_embedding_coverage.ts",
     "test:pool": "tsx tests/backtest/run_pool.ts",
     "show:pool": "tsx tests/backtest/show_pool.ts",
     "test:pool:triage": "tsx tests/backtest/run_pool_triage.ts"

@@ -120,6 +120,7 @@ from bonhams_parsing import (
     parse_lot_desc, detect_signed, extract_edition_size, extract_printer_publisher,
     extract_dimensions, detect_multi_work,
 )
+from embed_titles_hook import embed_new_titles
 
 
 def _require_env(name):
@@ -520,6 +521,7 @@ def run(records, chunk_size=200, dry_run=False):
         if dry_run:
             break
     print(f"[DONE] total={total} elapsed={time.time()-start:.0f}s", flush=True)
+    embed_new_titles(total, dry_run=dry_run)
 
 
 if __name__ == "__main__":

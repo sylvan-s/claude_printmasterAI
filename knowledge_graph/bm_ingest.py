@@ -185,6 +185,7 @@ from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques
 from catalogue_matching import build_conceptual_work_id
+from embed_titles_hook import embed_new_titles
 
 
 def _require_env(name):
@@ -865,6 +866,7 @@ def run(records, dry_run=False):
         driver.close()
     print(f"[DONE] loaded {len(print_rows)} print(s) + {len(matrix_rows)} matrix object(s), "
           f"skipped {len(excluded)} excluded record(s)", flush=True)
+    embed_new_titles(len(print_rows) + len(matrix_rows))
 
 
 if __name__ == "__main__":

@@ -71,6 +71,7 @@ from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
 from catalogue_matching import parse_catalogue_refs, build_conceptual_work_id
+from embed_titles_hook import embed_new_titles
 
 def _require_env(name):
     value = os.environ.get(name)
@@ -478,6 +479,7 @@ def run(df, chunk_size=200):
         print(f"[PROGRESS] {done}/{total} done | elapsed={elapsed:.0f}s "
               f"| est_remaining={(elapsed/done)*(total-done):.0f}s", flush=True)
     print(f"[DONE] total={total} elapsed={time.time()-start:.0f}s", flush=True)
+    embed_new_titles(total)
 
 
 if __name__ == "__main__":
