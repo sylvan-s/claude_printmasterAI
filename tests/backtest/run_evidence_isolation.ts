@@ -183,11 +183,12 @@ class EvidenceIsolationAppraiser extends FourStageAppraiser {
 // CLI
 // ───────────────────────────────────────────────────────────────────────────────
 
-interface Args { sale?: string; auctionId?: number; saleCode?: string; lot: string; method: string; allowLeak: boolean; attributed: boolean }
+interface Args { sale?: string; auctionId?: number; saleCode?: string; lot: string; method: string; allowLeak: boolean; attributed: boolean; stage2aModel?: string }
 
 function parseArgs(argv: string[]): Args {
   let sale: string | undefined, auctionId: number | undefined, saleCode: string | undefined;
   let lot: string | undefined, method = DEFAULT_METHOD, allowLeak = false, attributed = false;
+  let stage2aModel: string | undefined;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--sale") sale = argv[++i];
@@ -197,13 +198,16 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--method") method = argv[++i];
     else if (a === "--allow-leak") allowLeak = true;
     else if (a === "--attributed") attributed = true;
+    // Swap ONLY the Stage 2a model. The "claude-4stage-fast" config also moves Stage 3 to
+    // Haiku, which confounds any read on what the evidence agent alone is worth.
+    else if (a === "--stage2a-model") stage2aModel = argv[++i];
     else { console.error(`Unrecognised argument: ${a}`); process.exit(1); }
   }
   if (!lot || (!sale && !auctionId)) {
-    console.error("Usage: (--sale <ref> | --auction-id <id> [--sale-code <code>]) --lot <n> [--method <id>] [--allow-leak] [--attributed]");
+    console.error("Usage: (--sale <ref> | --auction-id <id> [--sale-code <code>]) --lot <n> [--method <id>] [--allow-leak] [--attributed] [--stage2a-model <model>]");
     process.exit(1);
   }
-  return { sale, auctionId, saleCode, lot, method, allowLeak, attributed };
+  return { sale, auctionId, saleCode, lot, method, allowLeak, attributed, stage2aModel };
 }
 
 async function downloadImageBase64(url: string): Promise<{ base64: string; mimeType: string }> {
@@ -218,7 +222,8 @@ const slugify = (s: string) => s.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g
 // ───────────────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const { sale, auctionId, saleCode, lot: lotNumber, method, allowLeak, attributed } = parseArgs(process.argv.slice(2));
+  const args = parseArgs(process.argv.slice(2));
+  const { sale, auctionId, saleCode, lot: lotNumber, method, allowLeak, attributed } = args;
 
   let auction: AuctionRef;
   if (auctionId) {
@@ -256,7 +261,11 @@ async function main() {
     name: `${baseConfig.name} — 1c+1d evidence isolation`,
     enableVisualSearch: false,   // kills the Stage 1b R vote
     enableEmbeddingMatch: true,  // Stage 1d D vote must be live
+    ...(args.stage2aModel ? { stage2aModel: args.stage2aModel } : {}),
   };
+  if (args.stage2aModel) {
+    console.log(`[Isolation] Stage 2a model overridden: ${baseConfig.stage2aModel} -> ${args.stage2aModel} (Stage 2b/3 unchanged)`);
+  }
 
   const geminiKey = process.env.GEMINI_API_KEY;
   const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;

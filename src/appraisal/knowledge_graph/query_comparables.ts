@@ -36,6 +36,7 @@
 import neo4j from "neo4j-driver";
 import { getDriver, getDatabase } from "./client.js";
 import { isLowInformationTitle } from "./title_normalize.js";
+import { foldAccents, cypherFold, cypherFoldTrim } from "./unaccent.js";
 
 export type ComparableTier = "same_work" | "same_artist_technique" | "same_artist";
 
@@ -97,7 +98,7 @@ export interface ComparablesParams {
 
 const QUERY = `
 MATCH (a:Artist)
-WHERE toLower(a.name) = toLower($artistName)
+WHERE ${cypherFold("a.name")} = $artistName
 MATCH (a)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)-[:INCLUDES]->(imp:Impression)
 MATCH (src:SourceRecord)-[:DOCUMENTS]->(imp)
 WHERE src.sourceType = 'auction'
@@ -117,9 +118,9 @@ WITH cw, src, er, techniques,
      CASE
        WHEN $conceptualWorkId IS NOT NULL AND cw.id = $conceptualWorkId THEN 0
        WHEN $workTitle IS NOT NULL
-            AND toLower(trim(cw.name)) = toLower(trim($workTitle)) THEN 0
+            AND ${cypherFoldTrim("cw.name")} = $workTitle THEN 0
        WHEN $technique IS NOT NULL
-            AND any(x IN techniques WHERE toLower(x) CONTAINS toLower($technique)) THEN 1
+            AND any(x IN techniques WHERE ${cypherFold("x")} CONTAINS $technique) THEN 1
        ELSE 2
      END AS tierRank
 // One row per SourceRecord, keeping its STRONGEST tier. Without this the match fans out:
@@ -202,10 +203,12 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
   const titleForExactMatch = rawTitle && !isLowInformationTitle(rawTitle) ? rawTitle : null;
   try {
     const res = await session.run(QUERY, {
-      artistName: params.artistName,
+      // Accent-folded to match the folded properties in QUERY — an unfolded "Peintre et
+      // Modele" never reached tier 0 against the graph's "Peintre et Modèle". See unaccent.ts.
+      artistName: foldAccents(params.artistName),
       conceptualWorkId: params.conceptualWorkId ?? null,
-      workTitle: titleForExactMatch,
-      technique: params.technique?.trim() || null,
+      workTitle: titleForExactMatch ? foldAccents(titleForExactMatch) : null,
+      technique: params.technique?.trim() ? foldAccents(params.technique.trim()) : null,
       sinceDate: params.sinceDate ?? null,
       excludeListingUrl: params.excludeListingUrl ?? null,
       excludeSaleId: params.excludeSaleLot?.saleId ?? null,

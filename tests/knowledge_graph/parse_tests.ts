@@ -10,6 +10,8 @@ import { titleSimFromCosine, COSINE_FLOOR, COSINE_CEIL } from "../../src/apprais
 import { parseExcludedListing } from "../../src/appraisal/knowledge_graph/query_comparables";
 import { formatCatalogueRaisonneBlock, MIN_WORKS_FOR_DERIVED_CR, type ArtistCatalogueRaisonne } from "../../src/appraisal/knowledge_graph/catalogue_raisonne";
 import { formatEditionRunsForClaude, type EditionQueryResult, type EditionWorkFact } from "../../src/appraisal/knowledge_graph/edition_runs";
+import { foldAccents, cypherFold } from "../../src/appraisal/knowledge_graph/unaccent";
+import { catalogueMergeKey } from "../../src/appraisal/knowledge_graph/catalogue_raisonne";
 
 let passed = 0;
 let failed = 0;
@@ -290,6 +292,78 @@ test("editions: a provenance note ingested as a title is truncated, not dumped",
   const out = formatEditionRunsForClaude(ed({ works: [work({ workTitle: long })] }));
   assert.ok(out.length < 900, `expected a compact block, got ${out.length} chars`);
   assert.match(out, /…/);
+});
+
+
+// ---- accent folding ---------------------------------------------------------------
+
+test("foldAccents fixes the measured miss: Peintre et Modele == Peintre et Modèle", () => {
+  assert.equal(foldAccents("Peintre et Modèle"), foldAccents("Peintre et Modele"));
+  assert.equal(foldAccents("Peintre et Modèle"), "peintre et modele");
+});
+
+test("foldAccents handles codepoints NFD cannot decompose", () => {
+  // ø, æ, œ, ß, ð, đ, ł are single indivisible codepoints — NFD alone leaves them intact.
+  assert.equal(foldAccents("Munch Løten"), "munch loten");
+  assert.equal(foldAccents("Æsop"), "aesop");
+  assert.equal(foldAccents("Œuvre"), "oeuvre");
+  assert.equal(foldAccents("Straße"), "strasse");
+  assert.equal(foldAccents("Łódź"), "lodz");
+});
+
+test("foldAccents covers the artist names this graph actually holds", () => {
+  assert.equal(foldAccents("Joan Miró"), "joan miro");
+  assert.equal(foldAccents("Käthe Kollwitz"), "kathe kollwitz");
+  assert.equal(foldAccents("Édouard Manet"), "edouard manet");
+});
+
+test("foldAccents leaves plain ASCII untouched apart from case", () => {
+  assert.equal(foldAccents("The Beach Boys"), "the beach boys");
+});
+
+test("cypherFold folds the stored side to match the folded parameter", () => {
+  const expr = cypherFold("cw.name");
+  assert.ok(expr.startsWith("replace("), "should be a replace() chain");
+  assert.ok(expr.includes("toLower(cw.name)"), "should lowercase the property first");
+  assert.ok(expr.includes("'è','e'"), "should fold e-grave");
+  assert.ok(expr.includes("'ß','ss'"), "should carry multi-char expansions");
+});
+
+test("the TS and Cypher sides fold the SAME table, so they cannot drift", () => {
+  // Every mapping foldAccents applies must also appear in the generated Cypher.
+  const expr = cypherFold("x");
+  for (const ch of ["à", "é", "ï", "ô", "ü", "ñ", "ç", "ø", "æ", "œ", "ß", "ł"]) {
+    assert.ok(expr.includes(`'${ch}',`), `Cypher chain missing ${ch}`);
+    assert.notEqual(foldAccents(ch), ch, `TS fold missing ${ch}`);
+  }
+});
+
+// ---- catalogue merge key ----------------------------------------------------------
+
+test("catalogueMergeKey folds a trailing year: Wiseman 1998 -> Wiseman", () => {
+  // The observed fork: the graph held "Wiseman" (106 entries), Stage 2b wrote "Wiseman 1998".
+  assert.equal(catalogueMergeKey("Wiseman 1998"), catalogueMergeKey("Wiseman"));
+  assert.equal(catalogueMergeKey("Bloch 1899"), catalogueMergeKey("Bloch"));
+  assert.equal(catalogueMergeKey("Physick, 1963"), catalogueMergeKey("Physick"));
+});
+
+test("catalogueMergeKey does NOT merge catalogues differing by a word", () => {
+  // "Cramer" and "Cramer Books" are genuinely different catalogues.
+  assert.notEqual(catalogueMergeKey("Cramer"), catalogueMergeKey("Cramer Books"));
+  assert.notEqual(catalogueMergeKey("Wiseman"), catalogueMergeKey("Wiseman Supplement"));
+});
+
+test("catalogueMergeKey strips only ONE trailing year, never an interior number", () => {
+  assert.equal(catalogueMergeKey("Bloch 1899"), "bloch");
+  // An entry number that is not year-shaped is left alone.
+  assert.equal(catalogueMergeKey("Delteil 42"), "delteil 42");
+  // A catalogue whose name genuinely ends in a non-year number keeps it.
+  assert.equal(catalogueMergeKey("Kelpra Prints"), "kelpra prints");
+});
+
+test("catalogueMergeKey is accent- and case-insensitive", () => {
+  assert.equal(catalogueMergeKey("Ginestet & Pouillon"), catalogueMergeKey("ginestet & pouillon"));
+  assert.equal(catalogueMergeKey("Reuße 2001"), catalogueMergeKey("Reusse"));
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

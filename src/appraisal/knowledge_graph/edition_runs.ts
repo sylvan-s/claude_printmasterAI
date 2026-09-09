@@ -37,6 +37,7 @@
 import neo4j from "neo4j-driver";
 import { getDriver, getDatabase } from "./client.js";
 import { isLowInformationTitle } from "./title_normalize.js";
+import { foldAccents, cypherFold, cypherFoldTrim } from "./unaccent.js";
 
 /** Proof/copy designations as the ingests normalise them. */
 export type CopyType = "numbered" | "AP" | "PP" | "HC" | "BAT" | "TP";
@@ -89,22 +90,25 @@ export interface EditionQueryParams {
 
 export const EDITION_DEFAULT_LIMIT = 12;
 
+// $artistName and $workTitle arrive ALREADY accent-folded by foldAccents(); the stored
+// properties are folded in-query so the two sides meet. Without this "Peintre et Modele"
+// never matched the graph's "Peintre et Modèle" — see unaccent.ts.
 const QUERY = `
 MATCH (a:Artist)
-WHERE toLower(a.name) = toLower($artistName)
-   OR any(alt IN coalesce(a.alternateNames, []) WHERE toLower(alt) = toLower($artistName))
+WHERE ${cypherFold("a.name")} = $artistName
+   OR any(alt IN coalesce(a.alternateNames, []) WHERE ${cypherFold("alt")} = $artistName)
 WITH a LIMIT 1
 MATCH (a)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)
 WITH a, cw, er,
      CASE
        WHEN $workTitle IS NULL THEN 'artist_only'
-       WHEN toLower(trim(cw.name)) = toLower(trim($workTitle)) THEN 'exact'
+       WHEN ${cypherFoldTrim("cw.name")} = $workTitle THEN 'exact'
        // Containment must run BOTH ways. Checking only cw.name CONTAINS $workTitle silently
        // misses every case where the searched title is the longer string — Stage 2b asked
        // for "The Beach Boys" and the graph holds "Beach Boys", so an obviously correct
        // match returned nothing at all.
-       WHEN toLower(cw.name) CONTAINS toLower(trim($workTitle))
-         OR toLower(trim($workTitle)) CONTAINS toLower(cw.name) THEN 'contains'
+       WHEN ${cypherFold("cw.name")} CONTAINS $workTitle
+         OR $workTitle CONTAINS ${cypherFold("cw.name")} THEN 'contains'
        ELSE NULL
      END AS matchType
 WHERE matchType IS NOT NULL
@@ -149,8 +153,8 @@ export async function queryEditionRuns(params: EditionQueryParams): Promise<Edit
   const session = getDriver().session({ database: getDatabase() });
   try {
     const res = await session.run(QUERY, {
-      artistName,
-      workTitle,
+      artistName: foldAccents(artistName),
+      workTitle: workTitle ? foldAccents(workTitle) : null,
       limit: neo4j.int(params.limit ?? EDITION_DEFAULT_LIMIT),
     });
     if (res.records.length === 0) return null;

@@ -45,6 +45,7 @@
  * corruption incidents ran through.
  */
 import { getDriver, getDatabase } from "./client.js";
+import { foldAccents } from "./unaccent.js";
 
 /**
  * Distinct works that must cite a catalogue before a DERIVED citation is presented as an
@@ -255,6 +256,24 @@ export function formatCatalogueRaisonneBlock(results: (ArtistCatalogueRaisonne |
 
 // ---- Write-back ------------------------------------------------------------------
 
+/**
+ * A trailing publication year is not a different catalogue.
+ *
+ * Observed live on 2026-09-09: the graph already held "Wiseman" for Elisabeth Frink with 106
+ * ingested entries, Stage 2b researched the same catalogue and reported it as "Wiseman 1998",
+ * and the write-back created a SECOND CatalogueRaisonne node with zero entries. Two nodes,
+ * one catalogue — node duplication of exactly the kind this project has had to repair before.
+ *
+ * The rule is deliberately narrow: strip one trailing 4-digit year and compare the rest
+ * exactly (accent- and case-folded). It merges "Wiseman 1998" onto "Wiseman" and leaves
+ * genuinely distinct catalogues alone — "Cramer" and "Cramer Books" differ by a word, not a
+ * year, so they stay separate. No similarity score is involved anywhere, which is the
+ * standing rule for catalogue identity.
+ */
+export function catalogueMergeKey(prefix: string): string {
+  return foldAccents(prefix.trim().replace(/[\s,]*\b(1[5-9]\d{2}|20\d{2})\s*$/, "").trim());
+}
+
 export interface CatalogueRaisonneFinding {
   artistName: string;
   /** The catalogue's citation shorthand — "Bloch", "Wiseman". MERGEd on the same key the
@@ -317,6 +336,29 @@ export async function recordCatalogueRaisonneFinding(
       return res.records.length > 0 ? "recorded_none" : "skipped_nothing_to_write";
     }
 
+    // Does this artist already have a catalogue that differs from the reported name only by
+    // a trailing year? If so, attach to THAT node and enrich it, rather than forking a
+    // near-duplicate. Both the ingested (derived) and previously-recorded nodes are checked.
+    const existing = await session.run(
+      `MATCH (a:Artist)
+       WHERE toLower(a.name) = toLower($artist)
+          OR any(alt IN coalesce(a.alternateNames, []) WHERE toLower(alt) = toLower($artist))
+       WITH a LIMIT 1
+       OPTIONAL MATCH (a)-[:CREATED]->(:ConceptualWork)<-[:DOCUMENTS]-(:CatalogueEntry)
+                     <-[:CONTAINS]-(dcr:CatalogueRaisonne)
+       OPTIONAL MATCH (rcr:CatalogueRaisonne)-[:CATALOGUES]->(a)
+       WITH collect(DISTINCT dcr.numberingPrefix) + collect(DISTINCT rcr.numberingPrefix) AS all
+       RETURN [p IN all WHERE p IS NOT NULL] AS prefixes`,
+      { artist },
+    );
+    const key = catalogueMergeKey(catalogue);
+    const mergeOnto = ((existing.records[0]?.get("prefixes") as string[]) ?? [])
+      .find((p) => p !== catalogue && catalogueMergeKey(p) === key);
+    if (mergeOnto) {
+      console.log(`[recordCatalogueRaisonneFinding] "${catalogue}" folds onto existing "${mergeOnto}" for ${artist} — same catalogue, differing only by a trailing year`);
+    }
+    const catalogueKey = mergeOnto ?? catalogue;
+
     const res = await session.run(
       // MATCH the artist, never MERGE — see the module docstring on duplicate artists.
       `MATCH (a:Artist)
@@ -333,7 +375,7 @@ export async function recordCatalogueRaisonneFinding(
        RETURN a.name AS name`,
       {
         artist,
-        catalogue,
+        catalogue: catalogueKey,
         title: finding.title?.trim() || null,
         sourceUrl: finding.sourceUrl?.trim() || null,
         now: new Date().toISOString(),

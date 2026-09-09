@@ -21,6 +21,7 @@ import type { AckgQueryParams, AckgCandidate, AckgWorkQueryParams, AckgWorkMatch
 import { parseAckgDimMm, type DimMm } from "./dimension_parse.js";
 import { normalizeTitleForEmbedding } from "./title_normalize.js";
 import { embedText, cosine, titleSimFromCosine } from "./embed_text.js";
+import { foldAccents, cypherFold } from "./unaccent.js";
 
 const QUERY = `
 MATCH (a:Artist)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)
@@ -33,7 +34,7 @@ WHERE ($technique IS NULL OR toLower(t.name) CONTAINS toLower($technique))
   AND ($paper IS NULL OR toLower(p.name) CONTAINS toLower($paper))
   AND ($subject IS NULL OR toLower(s.name) CONTAINS toLower($subject))
   AND ($region IS NULL OR toLower(a.nationality) CONTAINS toLower($region))
-  AND ($workTitle IS NULL OR toLower(cw.name) CONTAINS toLower($workTitle))
+  AND ($workTitle IS NULL OR ${cypherFold("cw.name")} CONTAINS $workTitle)
   AND ($periodStart IS NULL OR cw.dateCreated_year >= $periodStart)
   AND ($periodEnd IS NULL OR cw.dateCreated_year <= $periodEnd)
 WITH a, count(DISTINCT cw) AS supportCount,
@@ -64,7 +65,8 @@ export async function queryAckg(params: AckgQueryParams): Promise<AckgCandidate[
       paper: params.paper ?? null,
       subject: params.subject ?? null,
       region: params.region ?? null,
-      workTitle: params.workTitle ?? null,
+      // Folded to match the folded property — see unaccent.ts.
+      workTitle: params.workTitle ? foldAccents(params.workTitle) : null,
       periodStart: params.periodStartYear ?? null,
       periodEnd: params.periodEndYear ?? null,
       limit: neo4j.int(params.limit ?? 10),
@@ -93,8 +95,8 @@ const WORKS_QUERY = `
 MATCH (a:Artist)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)
       -[:INCLUDES]->(imp:Impression)
 MATCH (src:SourceRecord)-[:DOCUMENTS]->(imp)
-WHERE ($artist IS NULL OR toLower(a.name) CONTAINS toLower($artist))
-  AND ($workTitle IS NULL OR toLower(cw.name) CONTAINS toLower($workTitle))
+WHERE ($artist IS NULL OR ${cypherFold("a.name")} CONTAINS $artist)
+  AND ($workTitle IS NULL OR ${cypherFold("cw.name")} CONTAINS $workTitle)
   AND ($periodStart IS NULL OR cw.dateCreated_year >= $periodStart)
   AND ($periodEnd IS NULL OR cw.dateCreated_year <= $periodEnd)
 OPTIONAL MATCH (imp)-[:USES_TECHNIQUE]->(t:Technique)
@@ -135,8 +137,8 @@ export async function queryAckgWorks(params: AckgWorkQueryParams): Promise<AckgW
     // single-impression Rembrandt state) before scoreWorkTitleMatches ever sees it.
     const limit = params.limit ?? (params.workTitle ? 60 : 30);
     const result = await session.run(WORKS_QUERY, {
-      artist: params.artist ?? null,
-      workTitle: params.workTitle ?? null,
+      artist: params.artist ? foldAccents(params.artist) : null,
+      workTitle: params.workTitle ? foldAccents(params.workTitle) : null,
       technique: params.technique ?? null,
       periodStart: params.periodStartYear ?? null,
       periodEnd: params.periodEndYear ?? null,
