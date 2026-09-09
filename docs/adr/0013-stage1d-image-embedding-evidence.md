@@ -4,7 +4,9 @@
 **Status:** Implemented (Stage 1d itself: DINOv2-Large + CLIP-Base embedding service, ACKG
 vector-index lookup, `runStage1dEmbeddingMatch`, shadow-run in every 4-stage appraisal). See
 the **2026-09-06 amendment** below: the "Deliberately not proposed here" voting-rights
-deferral this ADR originally made is now superseded — D votes, gated to HIGH confidence.
+deferral this ADR originally made is now superseded — D votes, gated to HIGH confidence. The
+index-coverage figures quoted in Context and Decision 2 are also superseded — see the
+**2026-09-07 amendment**.
 
 ---
 
@@ -105,9 +107,10 @@ export interface Stage1dResult {
 
 `indexCoverageNote` exists for the same reason `query.ts`'s block comment exists for ULAN/ukiyo-e coverage: as of
 this ADR the ACKG's queryable image index is British Museum (1,691) + Tate (10,208) only — Forum and Roseberys are
-pending re-embedding (Decision 2). A weak or absent match reflects that coverage gap, not evidence against the
-submission's attribution — this has to be stated on the result itself, not just in a code comment, because it
-needs to reach the evidence agent's prompt and the human-facing report.
+pending re-embedding (Decision 2). *(Figures superseded — see the 2026-09-07 amendment; Bonhams has since been
+embedded, Forum and Roseberys still have not.)* A weak or absent match reflects that coverage gap, not evidence
+against the submission's attribution — this has to be stated on the result itself, not just in a code comment,
+because it needs to reach the evidence agent's prompt and the human-facing report.
 
 ### 2. Standardize on DINOv2-Large; Forum's stale small-model embeddings removed
 
@@ -116,7 +119,9 @@ The only outstanding work is re-embedding the 1,005 Forum images (now embedding-
 Roseberys catalogue (never embedded at all, despite ADR-0002 naming it the primary source) on `dinov2-large` —
 that's a straightforward batch job with `embed_images_dinov2.py` pointed at the right model, not an open design
 question. Until that batch job runs, Stage 1d's candidate pool is effectively British Museum + Tate only
-(12,061 images); Forum and Roseberys re-enter coverage once re-embedded.
+(12,061 images); Forum and Roseberys re-enter coverage once re-embedded. *(Superseded — the candidate pool is now
+52,939 images, Bonhams included; see the 2026-09-07 amendment. Forum and Roseberys are still not embedded, so the
+consequence for those two houses stands.)*
 
 ### 3. Candidate retrieval: Neo4j native vector index, not client-side cosine
 
@@ -218,7 +223,9 @@ ADR-0011 gates its riskier classifiers on labeled-data availability.
 ## Suggested implementation order
 
 1. ~~Resolve the multi-model embedding inconsistency~~ — done (Decision 2). **Next:** re-embed Forum's 1,005
-   images and the Roseberys catalogue on `dinov2-large` so they re-enter the candidate pool.
+   images and the Roseberys catalogue on `dinov2-large` so they re-enter the candidate pool. *(Still outstanding
+   as of 2026-09-07, and larger than stated — Forum is now 10,036 unembedded images and Roseberys 10,365; see the
+   2026-09-07 amendment.)*
 2. ~~Neo4j vector index + a minimal query function~~ — done.
 3. ~~Stage 1d as a pipeline stage producing `Stage1dResult`, shadow-run~~ — done; ran in production
    shadow-run for a period before the amendment below.
@@ -271,3 +278,72 @@ amendment's "HIGH only" gate is a conservative stand-in for that validation, not
 doing it. If Stage 1d's HIGH tier turns out to be poorly calibrated (too permissive or too rare) once real
 backtest data accumulates, revisit the gate — tighten to a numeric embedding-similarity floor (mirroring R's
 `SIM_ARTIST_VOTE`) rather than trusting the categorical label, or recalibrate what HIGH means at the source.
+
+
+## Amendment (2026-09-07): index coverage is Bonhams + Tate + British Museum, not BM + Tate
+
+The coverage figures this ADR states in Context (`indexCoverageNote`) and Decision 2 predate the Bonhams ingest
+and are stale. Verified against the live graph on 2026-09-07:
+
+| corpus | images with `embedding` + `clipImageEmbedding` | not yet embedded |
+|---|---|---|
+| Bonhams | 40,224 | 13,353 |
+| Tate | 10,208 | — |
+| British Museum | 2,507 | — |
+| Roseberys | **0** | 10,365 |
+| Forum Auctions | **0** | 10,036 |
+| **total** | **52,939** | 33,755 |
+
+(86,694 `DigitalImage` nodes in all; every embedded one carries both vectors. The unembedded column is 33,754
+across these five corpora plus one image whose `sourceUrl` matches none of them.) The British Museum figure has also
+grown from the 1,691 quoted above, via the 10-artist extraction.
+
+**What changes.** Stage 1d's candidate pool is 4.4x the size this ADR assumed, and its centre of gravity is now
+auction rather than institutional — 40,224 of 52,939 images resolve to 3,717 Artists and 35,972 ConceptualWorks
+in the Bonhams corpus. `STAGE1D_INDEX_COVERAGE_NOTE` in `appraiser.ts` has been corrected to match, since that
+string reaches both the evidence agent's prompt and the human-facing report.
+
+**What does not change.** The Decision 2 batch job is still outstanding for the two houses that matter most to
+the backtest: Roseberys (10,365 images, never embedded, despite ADR-0002 naming it the primary source) and Forum
+(10,036). `tests/backtest/test_pool_100.json` is 100% Roseberys/Forum, so a pool lot's own image file is still
+never in the index — there is no self-match.
+
+**But that does not make the exact work unreachable, which an earlier draft of this amendment got wrong.** Prints
+are editions: the pool lot is one impression of a `ConceptualWork` that Bonhams, Tate or the BM frequently hold
+*another* impression of, and those images are indexed. Measured over the 99-lot pool, Stage 1d returns the
+correct work in its top 3 for **24.2%** of lots — Banksy's *Happy Chopper* at dino=0.990, Damien Hirst's
+*Fruitful (Small)* at 0.988, Rembrandt's *Death of the Virgin* at 0.974, all matched against a different
+impression of the same edition. So exact-work retrieval is a live capability on this pool, not a structural
+impossibility; what is impossible is a trivial self-match, and the ~24% is a floor set by edition overlap
+between the pool's two houses and the three embedded corpora, not by the model.
+
+(That 24.2% is measured with the title-agreement proxy in `run_noise_robustness.ts`; all 27 title agreements were
+inspected by hand and 26 were genuine work matches, the exception being an `Untitled` / `Untitled` collision.)
+
+**Measured consequence.** A paired clean-vs-degraded run over the whole pool on 2026-09-07
+(`tests/backtest/run_noise_robustness.ts`, report in `tests/backtest/output/noise_robustness.md`) separates two
+populations that the headline averages hide:
+
+| | clean | degraded |
+|---|---|---|
+| correct artist, top 1 | 41.4% | 28.3% |
+| correct artist, top 3 | 48.5% | 37.4% |
+| correct work, top 1 | 22.2% | 14.1% |
+| **correct work, top 3** | **24.2%** | **23.2%** |
+
+Aggregate top-3 retrieval stability is only **25-32%** mean overlap, with 53 of 99 lots returning a completely
+disjoint top 3 — but that number is dominated by the lots with no true match to find. (It is a bracket because
+neither available identity is exact: keying on the resolved `ConceptualWork` id under-counts, since the ACKG
+holds separate work nodes for the same print sold at Bonhams more than once — 35 of 99 lots have such a collision
+inside a single top 3, which is itself worth a dedupe pass; keying on normalised artist+title over-counts by
+merging different works that share a title.) Split by the strength of the clean top-1: lots scoring
+**dino >= 0.95** (n=20, i.e. a genuine instance match on another impression) hold **49-68%** top-3 overlap
+through degradation, against **18-21%** for the rest — roughly 3x, under either identity. Correct-work-in-top-3
+barely moves at all (24.2% -> 23.2%); what noise does is demote the true work from first place to somewhere in
+the top 3 (22.2% -> 14.1% at top-1).
+
+The read: **DINOv2 instance matching is robust to bad photography; DINOv2 stylistic-neighbour ranking is not.**
+The churn is concentrated in exactly the cases that carry no signal. That supports the HIGH-confidence gate in
+the 2026-09-06 amendment rather than undermining it, and it argues that a numeric similarity floor (the
+alternative that amendment flags) would be a sound tightening — the >= 0.95 population behaves like a different
+mechanism from the rest, not a better-scoring sample of the same one.

@@ -3,11 +3,16 @@
  * Stage 1d (DINOv2/CLIP embedding match, top 3) run independently (no full
  * pipeline) against N random images from the backtest test pool.
  *
- * Caveat (see docs/adr/0013-stage1d-image-embedding-evidence.md): the test pool
- * is 100% Roseberys/Forum Auctions lots, and the ACKG's image-embedding index
- * currently covers British Museum + Tate only — Stage 1d cannot find the real
- * match for any pool image today. This script surfaces what it *does* return
- * (cross-corpus stylistic neighbours), not an accuracy benchmark.
+ * Caveat (see docs/adr/0013-stage1d-image-embedding-evidence.md): the test pool is
+ * 100% Roseberys/Forum Auctions lots, and neither house is embedded in the ACKG's
+ * image index — Bonhams (40,224) + Tate (10,208) + British Museum (2,507), 52,939
+ * images verified 2026-09-07. The lot's own image file is therefore never in the
+ * index — there is no self-match. The exact *work* is still often reachable, though:
+ * prints are editions, and Bonhams/Tate/BM frequently hold another impression of the
+ * same ConceptualWork, which is indexed. Measured over the pool, Stage 1d returns the
+ * correct work in its top 3 for 24.2% of lots. So this script is a partial accuracy
+ * benchmark bounded by edition overlap, not the pure stylistic-neighbour dump the
+ * original caveat described.
  *
  * Usage: npx tsx tests/backtest/run_stage1d_comparison.ts [--n 20] [--concurrency 4]
  *

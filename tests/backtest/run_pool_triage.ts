@@ -13,6 +13,7 @@
  *   npm run test:pool:triage -- --two-pass         # also run classifyTwoPass (coarse fixture adapter), for comparison
  *   npm run test:pool:triage -- --model claude-haiku-4-5
  *   npm run test:pool:triage -- --resume
+ *   npm run test:pool:triage -- --dir tests/backtest/pool_output_angle   # degraded-pool fixture
  *
  * Writes tests/backtest/pool_output/<id>/triage.json  (gitignored).
  *
@@ -23,7 +24,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { GoogleGenAI } from "@google/genai";
 import { FourStageAppraiser, appraiserConfigs } from "../../src/appraisal/appraiser";
 import type { VisualExtractionResult, AppraiserInputResult, TriageResult } from "../../src/types";
@@ -38,8 +39,6 @@ import {
   type NamingSource,
 } from "../../src/appraisal/two_pass_attribution";
 
-const DIR = join(process.cwd(), "tests/backtest/pool_output");
-
 function intArg(n: string, d: number) {
   const i = process.argv.indexOf(`--${n}`);
   return i >= 0 ? Number(process.argv[i + 1]) : d;
@@ -48,6 +47,10 @@ function strArg(n: string, d: string) {
   const i = process.argv.indexOf(`--${n}`);
   return i >= 0 ? process.argv[i + 1] : d;
 }
+
+// --dir points triage at a different fixture set — e.g. the one run_pool.ts wrote for a
+// degraded copy of the pool (--out tests/backtest/pool_output_angle).
+const DIR = resolve(strArg("dir", join(process.cwd(), "tests/backtest/pool_output")));
 const LIMIT = intArg("limit", 999);
 const CONCURRENCY = intArg("concurrency", 2);
 const MODEL = strArg("model", "claude-sonnet-4-6");
