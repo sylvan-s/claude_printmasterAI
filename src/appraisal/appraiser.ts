@@ -1481,6 +1481,46 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
 
       const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use" && graphToolNames.has(b.name));
       if (clientToolUses.length === 0) {
+        // THIRD EXIT, and the one that actually leaked. Reaching here means the agent
+        // emitted no tool call at all — no graph query AND no report (an early report is
+        // caught above). Breaking drops straight into the forced finalise below, which
+        // extracts a report without ever passing the minimum-rounds check, so the whole
+        // requirement is bypassed by simply saying nothing.
+        //
+        // Measured on tests/backtest/fixtures/A0793_303 (Picasso, 1c+1d isolation, Haiku):
+        // "round 1: no graph query — stopping loop (0 round(s) used)", then A4/MEDIUM and
+        // Scenario 3 off empty corroboration cells — where the same lot reaches A2/HIGH and
+        // Scenario 2 with the graph consulted. Losing Scenario 2 on a Picasso print means
+        // losing the adversarial authentication pass on the lot most likely to need it.
+        //
+        // Shares the refusal budget with the early-report path, so an agent that genuinely
+        // has nothing to filter on still terminates rather than looping.
+        if (constrainedRounds < MIN_ACKG_ROUNDS_BEFORE_REPORT && reportRefusals < MAX_REPORT_REFUSALS) {
+          reportRefusals++;
+          console.log(
+            `[Stage 2a ACKG loop] round ${round + 1}: no tool call and no constrained graph round ` +
+              `(refusal ${reportRefusals}/${MAX_REPORT_REFUSALS}) — asking for a query before the report.`,
+          );
+          // No tool_use in this turn, so no tool_result is owed; a plain user turn is the
+          // correct pushback. Guard the empty-content case — the API rejects an assistant
+          // message with no content blocks.
+          if (Array.isArray(data.content) && data.content.length > 0) {
+            messages.push({ role: "assistant", content: data.content });
+          }
+          messages.push({
+            role: "user",
+            content:
+              `You have not consulted the ACKG. Do not report yet.\n\n` +
+              `Being handed a candidate artist or title by Stage 1c is NOT corroboration — it is the ` +
+              `claim under test, and the graph is what tests it. Run query_ackg with at least one of ` +
+              `technique / region / subject / paper / workTitle, and query_ackg_work with the artist ` +
+              `and title if you have them, then report with what the graph returned.\n\n` +
+              `If you truly have nothing to filter on, say so in one line and report with the ACKG ` +
+              `cells honestly empty — kId "unknown", kOeuvreMatchCount -1, kSubject UNASSESSABLE. ` +
+              `Empty cells are an acceptable answer; skipping the check silently is not.`,
+          });
+          continue;
+        }
         this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
         break;
       }

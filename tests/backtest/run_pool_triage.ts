@@ -31,6 +31,7 @@ import { GoogleGenAI } from "@google/genai";
 import { FourStageAppraiser, appraiserConfigs } from "../../src/appraisal/appraiser";
 import type { VisualExtractionResult, AppraiserInputResult, TriageResult } from "../../src/types";
 import { SCENARIO_NAMES, Scenario } from "../../src/appraisal/routing";
+import { closeDriver } from "../../src/appraisal/knowledge_graph/index";
 import {
   classifyTwoPass,
   nameSimilarity,
@@ -307,6 +308,10 @@ if (ok) {
     const agree = rows.filter((r) => r.twoPass?.agreesWithRouter).length;
     console.log(`two-pass scenario == router scenario: ${agree}/${ok}   (thresholds: SIM_ARTIST_VOTE=${SIM_ARTIST_VOTE}, SIM_WORK_VOTE=${SIM_WORK_VOTE})`);
   }
-  console.log(`written to tests/backtest/pool_output/<id>/triage.json`);
+  console.log(`written to ${DIR}/<id>/triage.json`);
 }
+// The Neo4j driver holds an open connection pool, so without this the process finishes its
+// work and then hangs forever — which silently blocks any shell loop running several
+// invocations in sequence, and leaves a node process per run.
+await closeDriver();
 if (failed) process.exitCode = 1;

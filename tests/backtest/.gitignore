@@ -2,3 +2,6 @@
 pool_output/
 noisy_pool/
 pool_output_*/
+
+# Replay output written next to the committed input fixtures
+fixtures/*/triage.json
