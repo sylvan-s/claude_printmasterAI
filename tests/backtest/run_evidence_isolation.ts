@@ -174,11 +174,11 @@ class EvidenceIsolationAppraiser extends FourStageAppraiser {
 // CLI
 // ───────────────────────────────────────────────────────────────────────────────
 
-interface Args { sale?: string; auctionId?: number; saleCode?: string; lot: string; method: string; allowLeak: boolean }
+interface Args { sale?: string; auctionId?: number; saleCode?: string; lot: string; method: string; allowLeak: boolean; attributed: boolean }
 
 function parseArgs(argv: string[]): Args {
   let sale: string | undefined, auctionId: number | undefined, saleCode: string | undefined;
-  let lot: string | undefined, method = DEFAULT_METHOD, allowLeak = false;
+  let lot: string | undefined, method = DEFAULT_METHOD, allowLeak = false, attributed = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--sale") sale = argv[++i];
@@ -187,13 +187,14 @@ function parseArgs(argv: string[]): Args {
     else if (a === "--lot") lot = argv[++i];
     else if (a === "--method") method = argv[++i];
     else if (a === "--allow-leak") allowLeak = true;
+    else if (a === "--attributed") attributed = true;
     else { console.error(`Unrecognised argument: ${a}`); process.exit(1); }
   }
   if (!lot || (!sale && !auctionId)) {
-    console.error("Usage: (--sale <ref> | --auction-id <id> [--sale-code <code>]) --lot <n> [--method <id>] [--allow-leak]");
+    console.error("Usage: (--sale <ref> | --auction-id <id> [--sale-code <code>]) --lot <n> [--method <id>] [--allow-leak] [--attributed]");
     process.exit(1);
   }
-  return { sale, auctionId, saleCode, lot, method, allowLeak };
+  return { sale, auctionId, saleCode, lot, method, allowLeak, attributed };
 }
 
 async function downloadImageBase64(url: string): Promise<{ base64: string; mimeType: string }> {
@@ -208,7 +209,7 @@ const slugify = (s: string) => s.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g
 // ───────────────────────────────────────────────────────────────────────────────
 
 async function main() {
-  const { sale, auctionId, saleCode, lot: lotNumber, method, allowLeak } = parseArgs(process.argv.slice(2));
+  const { sale, auctionId, saleCode, lot: lotNumber, method, allowLeak, attributed } = parseArgs(process.argv.slice(2));
 
   let auction: AuctionRef;
   if (auctionId) {
@@ -233,7 +234,10 @@ async function main() {
   const groundTruth: ParsedLot = parseDescription(rawLot.description);
   // Hard-stops unless --allow-leak: a body that names the artist makes the run
   // non-blind, and Stage 1c gets that text verbatim. See ./blindness.ts.
-  const blindnessCompromised = assertBlindOrExit(groundTruth.leakRisks, { allowLeak, tag: "Isolation" });
+  // Under --attributed the run is deliberately NOT blind, so the guard does not apply.
+  const blindnessCompromised = attributed
+    ? "attribution deliberately supplied (--attributed) — this run is not blind by design"
+    : assertBlindOrExit(groundTruth.leakRisks, { allowLeak, tag: "Isolation" });
 
   const baseConfig = appraiserConfigs.find((c) => c.id === method);
   if (!baseConfig) throw new Error(`Unknown method "${method}"`);
@@ -252,8 +256,23 @@ async function main() {
   const catalogueRefsLine = groundTruth.catalogueRefs.length
     ? `Catalogue reference(s): ${groundTruth.catalogueRefs.join(", ")}`
     : null;
+  // --attributed: hand Stage 1c the artist and title the blind runs withhold, in the
+  // catalogue's own header form — what an appraiser transcribing an attributed lot would
+  // type. The qualifier matters and is kept: "after Picasso" is a different object, and a
+  // different value, from "Picasso". Nationality/life dates are deliberately omitted —
+  // parseDescription mis-assigns them on some lots (A0793/113 put the title in
+  // `nationality`), and they add nothing to a valuation.
+  const attributionHeader = attributed
+    ? [
+        `${groundTruth.artistQualifier && groundTruth.artistQualifier !== "certain" ? `${groundTruth.artistQualifier} ` : ""}${groundTruth.artist ?? ""}`.trim(),
+        `${groundTruth.title ?? ""}${groundTruth.year ? `, ${groundTruth.year}` : ""}`.trim(),
+      ]
+        .filter(Boolean)
+        .join(",\n") + ";"
+    : null;
+
   const rawCatalogueNotes =
-    [groundTruth.bodyLines.join("\n"), catalogueRefsLine].filter(Boolean).join("\n\n") || undefined;
+    [attributionHeader, groundTruth.bodyLines.join("\n"), catalogueRefsLine].filter(Boolean).join("\n\n") || undefined;
 
   const input: AppraisalInput = {
     imageBase64: base64,
@@ -269,7 +288,7 @@ async function main() {
   const notesFieldsUsed = (["inscribedMarksNotes", "provenanceNotes", "conditionNotes", "catalogueNotes"] as const)
     .filter((k) => input[k]);
   console.log(`[Isolation] Stage 1c notes populated: ${notesFieldsUsed.join(", ") || "(none)"}`);
-  console.log(`[Isolation] Stage 1a (VEA): NOT RUN | Stage 1b: DISABLED | Stage 1d: ON | ACKG K/K_work: ON`);
+  console.log(`[Isolation] Stage 1a (VEA): NOT RUN | Stage 1b: DISABLED | Stage 1d: ON | ACKG K/K_work: ON | attribution: ${attributed ? "SUPPLIED to Stage 1c" : "withheld (blind)"}`);
 
   const t0 = Date.now();
   const report = await appraiser.appraise(input);
@@ -283,11 +302,26 @@ async function main() {
   printUsageSummary();
 
   const comparison: BacktestComparison = compareResults(report, groundTruth, rawLot);
+  const est = report.auctionEstimate;
+  const gtLow = rawLot.low_estimate ?? null;
+  const gtHigh = rawLot.high_estimate ?? null;
+  if (est && gtLow != null && gtHigh != null) {
+    const appMid = ((est.lowEstimate ?? 0) + (est.highEstimate ?? 0)) / 2;
+    const gtMid = (gtLow + gtHigh) / 2;
+    const ratio = gtMid > 0 ? appMid / gtMid : 0;
+    const overlaps = (est.lowEstimate ?? 0) <= gtHigh && (est.highEstimate ?? 0) >= gtLow;
+    const midInRange = appMid >= gtLow && appMid <= gtHigh;
+    console.log(
+      `[Valuation] app ${est.lowEstimate}-${est.highEstimate} vs catalogue ${gtLow}-${gtHigh} | ` +
+        `midpoint ratio ${ratio.toFixed(2)} | ranges ${overlaps ? "OVERLAP" : "DISJOINT"} | ` +
+        `app midpoint ${midInRange ? "inside" : "OUTSIDE"} the catalogue range`,
+    );
+  }
   console.log(`[Isolation] Catalogue says: "${groundTruth.artist}" / "${groundTruth.title}"`);
   console.log(`[Isolation] Verdict: ${comparison.overallVerdict}`);
   for (const d of comparison.materialDifferences) console.log(`  - ${d}`);
 
-  const lotId = `${auction.saleCode}-${rawLot.lot_number}-1c1d`;
+  const lotId = `${auction.saleCode}-${rawLot.lot_number}-1c1d${attributed ? "-attr" : ""}`;
   const outDir = `${__dirname}/output/${slugify(lotId)}`;
   mkdirSync(outDir, { recursive: true });
 
@@ -308,6 +342,8 @@ async function main() {
           !!report.stage1Result?.imageAuthenticity?.haltRecommended,
           appraiser.ackgRounds,
         ),
+        attributionProvided: attributed,
+        attributionHeaderSentToStage1c: attributionHeader,
         evidenceIsolation: {
           stage1aVeaRun: false,
           stage1aNote:
