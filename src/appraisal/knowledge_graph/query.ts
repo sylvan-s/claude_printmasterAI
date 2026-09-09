@@ -30,9 +30,9 @@ OPTIONAL MATCH (imp)-[:USES_TECHNIQUE]->(t:Technique)
 OPTIONAL MATCH (imp)-[:PRINTED_ON]->(p:Paper)
 OPTIONAL MATCH (imp)-[:DEPICTS]->(s:Subject)
 MATCH (src:SourceRecord)-[:DOCUMENTS]->(imp)
-WHERE ($technique IS NULL OR toLower(t.name) CONTAINS toLower($technique))
-  AND ($paper IS NULL OR toLower(p.name) CONTAINS toLower($paper))
-  AND ($subject IS NULL OR toLower(s.name) CONTAINS toLower($subject))
+WHERE ($technique IS NULL OR ${cypherFold("t.name")} CONTAINS $technique)
+  AND ($paper IS NULL OR ${cypherFold("p.name")} CONTAINS $paper)
+  AND ($subject IS NULL OR ${cypherFold("s.name")} CONTAINS $subject)
   AND ($region IS NULL OR toLower(a.nationality) CONTAINS toLower($region))
   AND ($workTitle IS NULL OR ${cypherFold("cw.name")} CONTAINS $workTitle)
   AND ($periodStart IS NULL OR cw.dateCreated_year >= $periodStart)
@@ -61,9 +61,9 @@ export async function queryAckg(params: AckgQueryParams): Promise<AckgCandidate[
   const session = driver.session({ database: getDatabase() });
   try {
     const result = await session.run(QUERY, {
-      technique: params.technique ?? null,
-      paper: params.paper ?? null,
-      subject: params.subject ?? null,
+      technique: params.technique ? foldAccents(params.technique) : null,
+      paper: params.paper ? foldAccents(params.paper) : null,
+      subject: params.subject ? foldAccents(params.subject) : null,
       region: params.region ?? null,
       // Folded to match the folded property — see unaccent.ts.
       workTitle: params.workTitle ? foldAccents(params.workTitle) : null,
@@ -109,7 +109,7 @@ WITH cw, a,
      collect(DISTINCT imp.sheetDimensions) AS sheetDims,
      collect(DISTINCT er.declaredSize) AS editionSizes,
      collect(DISTINCT src.sourceType) AS sourceTypes
-WHERE ($technique IS NULL OR any(x IN techniques WHERE toLower(x) CONTAINS toLower($technique)))
+WHERE ($technique IS NULL OR any(x IN techniques WHERE ${cypherFold("x")} CONTAINS $technique))
 RETURN cw.name AS workTitle, a.name AS artistName, a.ulanUrl AS artistUlanUrl,
        cw.dateCreated_displayLabel AS dateLabel,
        techniques, rawMediums, plateDims, imageDims, sheetDims, editionSizes, sourceTypes,
@@ -139,7 +139,7 @@ export async function queryAckgWorks(params: AckgWorkQueryParams): Promise<AckgW
     const result = await session.run(WORKS_QUERY, {
       artist: params.artist ? foldAccents(params.artist) : null,
       workTitle: params.workTitle ? foldAccents(params.workTitle) : null,
-      technique: params.technique ?? null,
+      technique: params.technique ? foldAccents(params.technique) : null,
       periodStart: params.periodStartYear ?? null,
       periodEnd: params.periodEndYear ?? null,
       limit: neo4j.int(limit),

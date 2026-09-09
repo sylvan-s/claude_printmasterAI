@@ -1186,14 +1186,19 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       "evidence against a candidate. Coverage is strong for Western 19th-20th century " +
       "prints. It is ABSENT for ukiyo-e specifically — as at 2026-09-08 the graph holds no " +
       "Hokusai, Hiroshige, Utamaro, Kunisada or Yoshitoshi at all — so treat a zero result " +
-      "for an East Asian candidate as a coverage gap, never as disqualifying.",
+      "for an East Asian candidate as a coverage gap, never as disqualifying. " +
+      "THIS TOOL HAS NO artist PARAMETER and cannot be scoped to one artist — it answers " +
+      "\"which artists made work like this?\", not \"what did this artist make?\". Passing " +
+      "an artist name here is silently ignored and you will get the graph's GLOBAL top " +
+      "artists back, which reads as evidence for Picasso/Chagall/Miro on any lot. To ask " +
+      "about a NAMED artist, use query_ackg_work, which does take artist.",
     input_schema: {
       type: "object" as const,
       properties: {
-        technique: { type: "string" as const, description: "Printing technique, e.g. \"Etching\", \"Screenprint\"." },
+        technique: { type: "string" as const, description: "Printing technique. CONTROLLED VOCABULARY, matched as a case-insensitive SUBSTRING of the stored name — a synonym that is not a substring returns zero results with no error. Use one of: Lithograph, Etching, Screenprint (stored as \"Screenprint / Serigraphy\"), Aquatint, Offset lithograph, Drypoint, Woodcut, Engraving, Linocut, Wood engraving, Intaglio, Mezzotint, Photogravure, Monotype, Collage, Embossing, Giclee. In particular use \"Screenprint\", NOT \"Silkscreen\" or \"Serigraph\"; and \"Woodcut\", NOT \"Woodblock\"." },
         periodStartYear: { type: "integer" as const, description: "Inclusive lower bound on creation year." },
         periodEndYear: { type: "integer" as const, description: "Inclusive upper bound on creation year." },
-        paper: { type: "string" as const, description: "Paper type, e.g. \"wove\", \"laid\"." },
+        paper: { type: "string" as const, description: "Paper type. Controlled vocabulary, substring-matched: wove, laid, BFK, japanese, card, vellum, fabric. Anything else returns zero." },
         region: { type: "string" as const, description: "Artist nationality/region hint, e.g. \"British\", \"Japanese\"." },
         subject: { type: "string" as const, description: "Depicted subject, e.g. \"Portraits\", \"Horses\"." },
         workTitle: { type: "string" as const, description: "A specific work title to look for, e.g. \"Death of the Virgin\". Substring, case-insensitive, against catalogued work names. Use this to check whether a title from VEA text / Stage 1b / the appraiser is catalogued in the graph and to which artist — supportCount and sample works then reflect only that artist's title-matching works." },
@@ -1213,7 +1218,11 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       "the physical object in hand can be checked against it (later edition, restrike, " +
       "photomechanical reproduction, medium variant). Pass `artist` AND `workTitle` (a short " +
       "distinctive fragment). Near-duplicate title rows are un-merged re-ingests — merge them. " +
-      "An empty result is absence-of-coverage, not evidence the work is fake.",
+      "An empty result is absence-of-coverage, not evidence the work is fake. " +
+      "THIS is the tool that takes an artist — query_ackg does not. When you want to know " +
+      "what a NAMED artist made, or to corroborate a named candidate against the graph, " +
+      "come here, not to query_ackg. `workTitle` may be omitted to see the artist's " +
+      "catalogued works generally.",
     input_schema: {
       type: "object" as const,
       properties: {
