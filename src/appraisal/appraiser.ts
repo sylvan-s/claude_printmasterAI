@@ -38,6 +38,7 @@ import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
 import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude } from "./knowledge_graph/index.js";
 import { assessComps, formatCompStorability, type CompStorabilityReport } from "./comp_storability.js";
+import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
 import type { StyleConsistencyEvidence } from "./two_pass_attribution";
 import { getImageEmbeddings } from "./embedding_client.js";
@@ -934,8 +935,24 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     toolDescription: string,
     inputSchema: any
   ): Promise<any> {
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
-    if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
+    // Same Anthropic-compatible routing the Stage 2a loop uses: a bare Qwen ID runs against
+    // DashScope's /apps/anthropic endpoint with the DashScope key. Safe ONLY for stages that
+    // do not need Anthropic's server-side web_search — DashScope accepts that tool
+    // declaration with a 200 and then silently does not search, leaving the model to
+    // confabulate (measured 2026-09-10: it invented a GBP 3,486,000 Sotheby's sale for a
+    // Banksy edition print that actually trades at GBP 800-1,430). Stage 3 is pure
+    // reasoning, so it is fine; Stage 2b is not and must stay on Anthropic.
+    const compatBaseUrl = anthropicCompatBaseUrl(modelName);
+    const apiKey = compatBaseUrl
+      ? process.env.DASHSCOPE_API_KEY
+      : process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        compatBaseUrl
+          ? `DASHSCOPE_API_KEY is not set — needed to run "${modelName}" against ${compatBaseUrl}.`
+          : "Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.",
+      );
+    }
 
     // Prompt caching: `tools` and `system` render before `messages`, so a breakpoint on
     // the system block caches the (static) tool schema + system prompt together. Big win
@@ -954,7 +971,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         tools: [{ name: toolName, description: toolDescription, input_schema: translateSchemaToStandardJsonSchema(inputSchema) }],
         tool_choice: { type: "tool", name: toolName },
       },
-      { label: `Claude ${toolName}` },
+      { label: `${compatBaseUrl ? "Qwen" : "Claude"} ${toolName}`, baseUrl: compatBaseUrl ?? undefined },
     );
 
     const toolUseBlock = data.content?.find((b: any) => b.type === "tool_use");
@@ -1006,6 +1023,38 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
   // graph is an order of magnitude cheaper. Adding tools does invalidate the cached prompt
   // prefix, but that prefix is written once per lot and the searches it displaces are far
   // larger.
+
+  /**
+   * CLIENT-side web search, as opposed to Anthropic's server-side web_search.
+   *
+   * Declared as an ordinary tool so any provider speaking the Messages API can drive it —
+   * which is the point. Anthropic's server-side tool is accepted by DashScope with a 200 and
+   * then silently not executed, so a Qwen-driven Stage 2b answers from training data: it
+   * invented a GBP 3,486,000 Sotheby's sale for a print trading at GBP 800-1,430. Supplying
+   * results as content leaves the model only the synthesis, which is the half it does well.
+   */
+  private static readonly WEB_SEARCH_TOOL = {
+    name: "web_search",
+    description:
+      "Search the web and get back extracted page content with URLs. Use it for what the " +
+      "knowledge graph does not cover: an artist or work with no ACKG records, a catalogue " +
+      "raisonné reference the ACKG index did not supply, or a recent sale too new to be " +
+      "ingested. PREFER query_ackg_comparables for prices where the graph has them — those " +
+      "records are structured, dated and premium-normalised, whereas these are page extracts " +
+      "you must read. Every figure you take from here must be attributable to one of the " +
+      "returned URLs; a price you cannot cite is not a comparable.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: {
+          type: "string" as const,
+          description: "Search query. Be specific — artist, title, technique, and the word " +
+            "'auction' or a house name where you want sale results.",
+        },
+      },
+      required: ["query"],
+    },
+  };
 
   private static readonly COMPARABLES_TOOL = {
     name: "query_ackg_comparables",
@@ -1093,8 +1142,17 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
      *  sale record as a comparable. */
     testingExcludeSourceListing?: string,
   ): Promise<any> {
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
-    if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
+    const compatBaseUrl = anthropicCompatBaseUrl(modelName);
+    const apiKey = compatBaseUrl
+      ? process.env.DASHSCOPE_API_KEY
+      : process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        compatBaseUrl
+          ? `DASHSCOPE_API_KEY is not set — needed to run "${modelName}" against ${compatBaseUrl}.`
+          : "Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.",
+      );
+    }
 
     // max_uses ENFORCES the budget ATTRIBUTION_RESEARCH_SYSTEM_PROMPT already states ("at
     // most 5 web searches total"). Without it that was a suggestion, and Stage 2b is the
@@ -1102,12 +1160,36 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     // context and get cached and re-cached: measured at 23,745 cache-write + 45,814
     // cache-read tokens on a single A0793 lot, 46% of its total cost. This changes nothing
     // for a well-behaved run; it bounds a badly-behaved one.
+    // TESTED AND REJECTED FOR PRODUCTION 2b (qwen3-max, 2026-09-10). Giving Qwen a working
+    // client-side search removes the capability gap but not the behavioural one. Probed with
+    // a question it cannot answer from training data, it DID call the tool, Tavily returned
+    // five real sources — and it then dismissed them: "the search results appear to be
+    // fabricated or from fictional/future-dated sources (e.g. matches scheduled for 2026).
+    // In reality, as of 2024..." It reported searchedWeb: true and a probability of 0.
+    //
+    // Retrieved evidence losing to a stale parametric prior is worse for this stage than not
+    // searching at all, and it is specifically disqualifying here: the comps that matter are
+    // 2025-2026 sales, which is exactly the post-cutoff material it called fabricated.
+    // On A0793/210 it made ZERO searches and answered from graph comps alone.
+    //
+    // Anthropic's server-side web_search is used where it actually works. Everywhere else —
+    // and DashScope is the case in hand — it is accepted with a 200 and silently not run, so
+    // the client-side tool is substituted and the search happens here. Same tool NAME either
+    // way, so the prompt does not change and the two are directly comparable.
+    // FORCE_CLIENT_WEB_SEARCH=1 uses the client-side tool on Anthropic too, for A/B.
+    const useClientSearch = !!compatBaseUrl || process.env.FORCE_CLIENT_WEB_SEARCH === "1";
     const tools = [
-      { type: "web_search_20250305", name: "web_search", max_uses: STAGE2B_MAX_WEB_SEARCHES },
+      useClientSearch
+        ? MultiStageAppraiser.WEB_SEARCH_TOOL
+        : { type: "web_search_20250305", name: "web_search", max_uses: STAGE2B_MAX_WEB_SEARCHES },
       MultiStageAppraiser.MUSEUM_LOOKUP_TOOL,
       MultiStageAppraiser.COMPARABLES_TOOL,
       MultiStageAppraiser.EDITION_TOOL,
     ];
+    if (useClientSearch) {
+      resetWebSearchUsage();
+      console.log(`[4-Stage] Stage 2b using CLIENT-side web_search (${compatBaseUrl ? "compat endpoint" : "forced"})`);
+    }
     const excludedListing = parseExcludedListing(testingExcludeSourceListing);
 
     const post = (messages: any[], forceFinal: boolean) =>
@@ -1125,7 +1207,12 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           tools,
           ...(forceFinal ? { tool_choice: { type: "none" } } : {}),
         },
-        { label: "Claude web-search", betaHeader: "web-search-2025-03-05" },
+        {
+          label: compatBaseUrl ? "Qwen web-search" : "Claude web-search",
+          // The beta header is Anthropic's; a compat endpoint has no use for it.
+          betaHeader: compatBaseUrl ? undefined : "web-search-2025-03-05",
+          baseUrl: compatBaseUrl ?? undefined,
+        },
       );
 
     // Loop while Claude is still requesting client-executed tools (lookup_museum_collections).
@@ -1163,6 +1250,12 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
               content = `Museum lookup failed: ${err.message}`;
             }
             return { type: "tool_result", tool_use_id: b.id, content };
+          }
+          if (b.name === "web_search") {
+            const q = typeof b.input?.query === "string" ? b.input.query : "";
+            const r = await tavilySearch(q, { maxResults: SEARCH_MAX_RESULTS });
+            console.log(`[4-Stage] Stage 2b web_search "${q.slice(0, 70)}": ${r.results.length} result(s)${r.error ? ` — ${r.error.slice(0, 60)}` : ""}`);
+            return { type: "tool_result", tool_use_id: b.id, content: formatSearchForModel(r) };
           }
           if (b.name === "query_ackg_comparables") {
             let content: string;
@@ -2319,7 +2412,24 @@ CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
       includeAux ? (input.supplementaryImages || []).map((i) => i.caption) : []
     );
 
-    if (isClaude(stage1Model)) {
+    // A bare Qwen ID routes to DashScope's Anthropic-compatible endpoint via callClaude.
+    // The transport works: WebP accepted, forced tool_choice honoured, structured tool_use
+    // returned, and vision has no search dependency so it cannot hit what rules Qwen out of
+    // Stage 2b.
+    //
+    // TESTED AND REJECTED FOR PRODUCTION VEA (qwen3.6-plus, A0793/494, 2026-09-10). It read
+    // the printing technique as RELIEF where every catalogued source says screenprint, and
+    // reported overallExtractionConfidence 0.90 on that reading — against Opus's 0.55 on a
+    // correct one. The two-pass tree did its job and caught the contradiction, raising
+    // impression=medium_divergence and escalating the lot to Scenario 2, but the divergence
+    // was the model's error: it bought a needless adversarial pass and widened the estimate
+    // from GBP 550-900 to GBP 400-1,200. Overconfidence on a physical observation is the
+    // worst failure mode here, because Stage 2a weighs veaSignatureConfidence when deciding
+    // how far to trust the observation.
+    //
+    // The routing stays because it is the same mechanism Stage 3 uses and costs nothing
+    // while unused — a future vision model can be tried by changing stage1Model alone.
+    if (isClaude(stage1Model) || anthropicCompatBaseUrl(stage1Model)) {
       const blocks = buildClaudeImageBlocks(input, includeAux);
       blocks.push({ type: "text", text: textPrompt });
       return this.callClaude(stage1Model, systemPrompt, blocks, "report_visual_extraction", "Report the structured visual extraction findings.", VISUAL_EXTRACTION_SCHEMA);
@@ -2612,7 +2722,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(veaSlim)}${appraiserPhysicalBlock}${crBlock}${visualSearchBlock}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
-    const result: AttributionResearchResult = isClaude(stage2bModel)
+    const result: AttributionResearchResult = isClaude(stage2bModel) || anthropicCompatBaseUrl(stage2bModel)
       ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing)
       : await this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
     await this.persistCatalogueRaisonneFinding(result);
@@ -2804,7 +2914,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
       ? `\n\n⚠️ TESTING MODE — SOURCE LISTING EXCLUDED: This artwork's image and description were sourced directly from this auction listing: ${testingExcludeSourceListing}. If any entry in AUCTION COMPS above is that same listing (same auction house, matching sale/lot, or described as "the subject work" / "the identical work" / "the present lot"), you MUST exclude its estimate and price data from your valuation entirely — do not anchor on it, average it in, or cite it as a reason for your number. Value this work using only genuinely independent comps and evidence. If excluding it leaves no usable comps, say so explicitly in valuationContext and value from first principles as you would with zero comps.`
       : "";
     const userText = `Synthesise a valuation for the following print from Stage 1 and Stage 2b findings.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea)}\n\nSTAGE 2b ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity/discount factors, forgery risk):\n${JSON.stringify(attr)}${buildAppraiserPhysicalBlock(appraiserInput, !!vea.imagesReceived?.primaryScan)}${compsNote}${excludeSourceNote}\n\n⚠️ CRITICAL: Output ONLY the valuation fields — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT search the web. Do NOT re-describe the artwork. Start your response with { and end with }.`;
-    if (isClaude(stage3Model)) {
+    if (isClaude(stage3Model) || anthropicCompatBaseUrl(stage3Model)) {
       console.log(`[4-Stage] Stage 3 pure reasoning (no web search) — model: ${stage3Model}`);
       return this.callClaude(stage3Model, systemInstruction, [{ type: "text", text: userText }], "report_valuation", "Report the structured print valuation synthesised from Stage 1 condition and Stage 2b findings.", STAGE3_VALUATION_ONLY_SCHEMA);
     } else {
@@ -3281,6 +3391,26 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     stage2aModel: "claude-sonnet-4-6",
     stage2bModel: "claude-sonnet-4-6",
     stage3Model: "claude-sonnet-4-6",
+    enableVisualSearch: true,
+  },
+  {
+    id: "claude-4stage-qwen3",
+    name: "Claude 4-Stage, Qwen-Plus Valuation (DashScope)",
+    description:
+      "Sonnet everywhere except Stage 3 valuation, which runs on qwen-plus. Stage 3 is pure " +
+      "reasoning over comps already gathered, so it cannot hit the failure that rules Qwen out " +
+      "for Stage 2b: DashScope accepts Anthropic's server-side web_search with a 200 and then " +
+      "silently does not search, leaving the model to confabulate. Stage 3 is ~21% of pipeline cost.",
+    modelName: "claude-opus-4-8",
+    temperature: 0.1,
+    promptKey: "standard",
+    imageQuality: "original",
+    includeAuxiliaryScans: true,
+    provider: "anthropic",
+    stage1Model: "claude-opus-4-8",
+    stage2aModel: "claude-sonnet-4-6",
+    stage2bModel: "claude-sonnet-4-6",
+    stage3Model: "qwen-plus",
     enableVisualSearch: true,
   },
   {
