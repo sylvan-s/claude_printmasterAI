@@ -26,6 +26,15 @@ export interface AckgQueryParams {
    *  ONLY each artist's works whose title matches — this is the ADR-0010 Decision 4a K_work
    *  probe: "does the ACKG catalogue a work by this title, and to whom?" */
   workTitle?: string;
+  /** Suppress every impression documented by this sale. Once an upcoming catalogue is
+   *  ingested, a lot's own record is in the graph and the lot corroborates ITSELF: the
+   *  catalogued dimensions "match" because they were copied from the same catalogue entry
+   *  the object is being compared against. Measured on A0793/303 — an ingested
+   *  "37.0x46.0cm" row turned Sonnet's CONTRADICTED into STRONG for one model and flipped
+   *  the routing from Scenario 2 (authentication risk) to Scenario 3. Same circularity
+   *  queryImageEmbeddingMatches and queryAuctionComparables already guard, on the price
+   *  and image sides. */
+  excludeSaleId?: string | null;
   /** Max candidates returned, ranked by supportCount descending. Defaults to 10. */
   limit?: number;
 }
@@ -46,6 +55,11 @@ export interface AckgWorkQueryParams {
   technique?: string;
   periodStartYear?: number;
   periodEndYear?: number;
+  /** Suppress every impression documented by this sale — see AckgQueryParams.excludeSaleId.
+   *  This is the query where it matters most: a work whose ONLY impressions come from the
+   *  sale under appraisal drops out entirely, which is correct — there is no independent
+   *  record of it. */
+  excludeSaleId?: string | null;
   /** Max works returned, ranked by impression count descending. Default 8. */
   limit?: number;
 }

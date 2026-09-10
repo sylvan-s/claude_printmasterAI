@@ -313,12 +313,19 @@ const TOKEN_PRICES: Record<string, { in: number; out: number }> = {
   // reachable without a login. qwen-plus is an ALIAS onto the current -plus snapshot
   // (qwen3.7-plus as at 2026-09), so its rate can move under you without the ID changing.
   "qwen-plus": { in: 0.4, out: 1.2 },
+  // qwen3.8-max — the current head of the -max line (snapshot qwen3.8-max-0902, listed by
+  // DashScope's /models on 2026-09-10). The rate below is the widely-quoted qwen3-max
+  // first-tier international figure carried forward, NOT a reading of the billing console:
+  // it is here so a max-line run is not silently priced at Sonnet's DEFAULT_PRICE, which
+  // would overstate it several-fold. Treat every USD figure for this model as indicative.
+  "qwen3.8-max": { in: 1.2, out: 6 },
 };
 /** Model IDs whose TOKEN_PRICES entry is a guess — cost columns for these are estimates,
  *  not measurements, and must not be quoted in a cost comparison until set from the
  *  provider's billing console. */
 export const UNVERIFIED_PRICE_MODELS = new Set([
   "qwen-plus",
+  "qwen3.8-max",
 ]);
 const DEFAULT_PRICE = { in: 3, out: 15 };
 
@@ -1395,6 +1402,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     toolName: string,
     input: any,
     round: number,
+    /** Sale under appraisal. Its own ingested records are suppressed so the lot cannot
+     *  corroborate itself off the catalogue entry it was ingested from. */
+    excludeSaleId?: string | null,
   ): Promise<{ content: string; isError: boolean }> {
     this.onAckgLoopEvent({ round, kind: "call", toolName, input: input || {} });
 
@@ -1433,9 +1443,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
             .split(/\s+/)
             .filter((w: string) => w.length >= 4)
             .sort((a: string, b: string) => b.length - a.length)[0] || undefined);
-        let works = await queryAckgWorks({ ...inp, workTitle: preFilter });
+        let works = await queryAckgWorks({ ...inp, workTitle: preFilter, excludeSaleId });
         if (works.length === 0 && preFilter) {
-          works = await queryAckgWorks({ ...inp, workTitle: undefined }); // last resort: artist only
+          works = await queryAckgWorks({ ...inp, workTitle: undefined, excludeSaleId }); // last resort: artist only
         }
         if (observed && works.length) {
           const obsFam = inp.observedTechnique ? techniqueFamily(inp.observedTechnique) : null;
@@ -1450,7 +1460,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           summary: `${works.length} work row(s)${best ? ` — best: "${best.workTitle}" titleSim=${best.titleSim ?? "n/a"}` : ""}` });
         return { content: this.formatAckgWorksForClaude(works), isError: false };
       }
-      const result = await queryAckg(input || {});
+      const result = await queryAckg({ ...(input || {}), excludeSaleId });
       this.onAckgLoopEvent({ round, kind: "result", toolName, count: result.length,
         summary: `${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}` });
       return { content: this.formatAckgResultForClaude(result), isError: false };
@@ -1506,7 +1516,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     userText: string,
     maxTokens: number = 8192,
     finalTool: { name: string; description: string; schema: any },
-    opts: { extraTools?: any[]; maxRounds?: number } = {}
+    opts: { extraTools?: any[]; maxRounds?: number; excludeSaleId?: string | null } = {}
   ): Promise<any> {
     // Same wire format, different origin and key when the model is a DashScope Qwen.
     const compatBaseUrl = anthropicCompatBaseUrl(modelName);
@@ -1686,7 +1696,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       messages.push({ role: "assistant", content: data.content });
       const toolResults = await Promise.all(
         clientToolUses.map(async (b: any) => {
-          const r = await this.executeGraphTool(b.name, b.input, round + 1);
+          const r = await this.executeGraphTool(b.name, b.input, round + 1, opts.excludeSaleId ?? null);
           return r.isError
             ? { type: "tool_result", tool_use_id: b.id, is_error: true, content: r.content }
             : { type: "tool_result", tool_use_id: b.id, content: r.content };
@@ -2442,7 +2452,10 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     userNotes?: string,
     appraiserInput?: AppraiserInputResult,
     visualSearch?: VisualSearchResult,
-    stage1d?: Stage1dResult
+    stage1d?: Stage1dResult,
+    /** Sale under appraisal — see executeGraphTool. Omitted for a lot that is not itself
+     *  in the graph; supplying it for one that is, is not optional. */
+    excludeSaleId?: string | null
   ): Promise<TriageResult> {
     if (vea.imageAuthenticity?.haltRecommended) {
       // VEA already halted — no original work to attribute. Skip the call; run the tree
@@ -2462,7 +2475,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     };
     const buildUserText = (slim: unknown) =>
       `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(slim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
-    const evidenceOpts = { extraTools: [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL], maxRounds: 5 };
+    const evidenceOpts = { extraTools: [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL], maxRounds: 5, excludeSaleId: excludeSaleId ?? null };
     // One dispatch point for both wire formats. The two loops keep identical control flow
     // (see callGroqWithAckgTool) — only the transport differs.
     const runEvidenceAgent = (prompt: string, text: string) =>
@@ -3054,7 +3067,12 @@ export class FourStageAppraiser extends MultiStageAppraiser {
         ]);
         const t2a = Date.now();
         console.log(`[Timing] Stage 2a (Triage) starting — model: ${stage2aModel}`);
-        const r = await this.runStage2aTriage(vea, stage2aModel, input.userNotes, appraiserInputResult, visualSearchResult, stage1dResult);
+        const r = await this.runStage2aTriage(
+          vea, stage2aModel, input.userNotes, appraiserInputResult, visualSearchResult, stage1dResult,
+          // Same source Stage 1d's guard reads from, so the image side and the graph side
+          // exclude the same sale rather than drifting apart.
+          parseExcludedListing(input.testingExcludeSourceListing).saleLot?.saleId ?? null,
+        );
         console.log(`[Timing] Stage 2a (Triage) done — ${((Date.now() - t2a) / 1000).toFixed(1)}s`);
         emit({ stage: "stage2a", status: "done", message: "Triage complete — specialist routing confirmed", percent: 40 });
         return r;

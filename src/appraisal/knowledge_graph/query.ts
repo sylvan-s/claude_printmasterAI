@@ -37,6 +37,7 @@ WHERE ($technique IS NULL OR ${cypherFold("t.name")} CONTAINS $technique)
   AND ($workTitle IS NULL OR ${cypherFold("cw.name")} CONTAINS $workTitle)
   AND ($periodStart IS NULL OR cw.dateCreated_year >= $periodStart)
   AND ($periodEnd IS NULL OR cw.dateCreated_year <= $periodEnd)
+  AND ($excludeSaleId IS NULL OR src.saleId IS NULL OR src.saleId <> $excludeSaleId)
 WITH a, count(DISTINCT cw) AS supportCount,
      count(DISTINCT CASE WHEN src.sourceType = 'institutional' THEN cw END) AS institutionalSupportCount,
      count(DISTINCT CASE WHEN src.sourceType = 'auction' THEN cw END) AS auctionSupportCount,
@@ -69,6 +70,7 @@ export async function queryAckg(params: AckgQueryParams): Promise<AckgCandidate[
       workTitle: params.workTitle ? foldAccents(params.workTitle) : null,
       periodStart: params.periodStartYear ?? null,
       periodEnd: params.periodEndYear ?? null,
+      excludeSaleId: params.excludeSaleId ?? null,
       limit: neo4j.int(params.limit ?? 10),
     });
     return result.records.map((record) => ({
@@ -99,6 +101,7 @@ WHERE ($artist IS NULL OR ${cypherFold("a.name")} CONTAINS $artist)
   AND ($workTitle IS NULL OR ${cypherFold("cw.name")} CONTAINS $workTitle)
   AND ($periodStart IS NULL OR cw.dateCreated_year >= $periodStart)
   AND ($periodEnd IS NULL OR cw.dateCreated_year <= $periodEnd)
+  AND ($excludeSaleId IS NULL OR src.saleId IS NULL OR src.saleId <> $excludeSaleId)
 OPTIONAL MATCH (imp)-[:USES_TECHNIQUE]->(t:Technique)
 WITH cw, a,
      count(DISTINCT imp) AS impressionCount,
@@ -142,6 +145,7 @@ export async function queryAckgWorks(params: AckgWorkQueryParams): Promise<AckgW
       technique: params.technique ? foldAccents(params.technique) : null,
       periodStart: params.periodStartYear ?? null,
       periodEnd: params.periodEndYear ?? null,
+      excludeSaleId: params.excludeSaleId ?? null,
       limit: neo4j.int(limit),
     });
     return result.records.map((record) => {

@@ -28,7 +28,7 @@ dotenv.config();
 import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { GoogleGenAI } from "@google/genai";
-import { FourStageAppraiser, appraiserConfigs } from "../../src/appraisal/appraiser";
+import { FourStageAppraiser, appraiserConfigs, printUsageSummary, UNVERIFIED_PRICE_MODELS } from "../../src/appraisal/appraiser";
 import type { VisualExtractionResult, AppraiserInputResult, TriageResult } from "../../src/types";
 import { SCENARIO_NAMES, Scenario } from "../../src/appraisal/routing";
 import { closeDriver } from "../../src/appraisal/knowledge_graph/index";
@@ -66,8 +66,8 @@ class TriageRunner extends FourStageAppraiser {
   // working untouched, while a fixture captured from an isolation run can replay the D/D_t
   // evidence it actually had. Without it a 1c+1d isolation lot cannot be reproduced here at
   // all — D is the only voter those runs have.
-  runTriage(vea: VisualExtractionResult, appraiserInput?: AppraiserInputResult, visualSearch?: any, stage1d?: any) {
-    return (this as any).runStage2aTriage(vea, MODEL, undefined, appraiserInput, visualSearch, stage1d) as Promise<TriageResult>;
+  runTriage(vea: VisualExtractionResult, appraiserInput?: AppraiserInputResult, visualSearch?: any, stage1d?: any, excludeSaleId?: string | null) {
+    return (this as any).runStage2aTriage(vea, MODEL, undefined, appraiserInput, visualSearch, stage1d, excludeSaleId) as Promise<TriageResult>;
   }
 }
 
@@ -181,10 +181,21 @@ async function runOne(id: string) {
   const gtArtist: string = f.groundTruth?.poolArtistName ?? "?";
   try {
     const t0 = Date.now();
-    const triage = await runner.runTriage(f.stage1a_vea, f.stage1c_appraiserInput, f.stage1b_visualSearch, f.stage1d_embeddingMatch);
+    // A0793 is now ingested, so without this the fixture lot retrieves its OWN catalogue
+    // row and corroborates itself — the replay would measure the graph, not the model.
+    const triage = await runner.runTriage(f.stage1a_vea, f.stage1c_appraiserInput, f.stage1b_visualSearch, f.stage1d_embeddingMatch, f.lot?.saleId ?? null);
     const ms = Date.now() - t0;
 
     const rd = triage.routingDecision ?? ({} as any);
+    // Both Stage 2a degradation paths — output blocked twice by content filtering, and a
+    // report tool call that omitted its required evidence blocks — return an empty evidence
+    // set that the tree still routes off Stage 1c/1d alone. The lot then prints as a normal
+    // "ok ... MATCH" while the agent contributed nothing, which is exactly how two of five
+    // qwen3.8-max lots nearly went unnoticed. Name it on the line.
+    const degradedReason: string | null =
+      typeof rd.humanEscalationReason === "string" && /needs manual triage/i.test(rd.humanEscalationReason)
+        ? rd.humanEscalationReason
+        : null;
     const top: any = (triage.candidateArtists ?? [])[0] ?? {};
     const artistHit = top.artistName && gtArtist !== "?" ? nameSimilarity(top.artistName, gtArtist) >= TAU_NAME : false;
 
@@ -263,17 +274,18 @@ async function runOne(id: string) {
     );
 
     done++;
-    rows.push({ id, gtArtist, ms, scenario: rd.scenario, artistHit, twoPass: twoPassAdapterComparison });
+    rows.push({ id, gtArtist, ms, scenario: rd.scenario, artistHit, degraded: !!degradedReason, twoPass: twoPassAdapterComparison });
     console.log(
-      `  ok  ${id.padEnd(13)} ${gtArtist.slice(0, 20).padEnd(21)} ${(ms / 1000).toFixed(0)}s  ` +
+      `  ${degradedReason ? "DEGR" : "ok  "}${id.padEnd(13)} ${gtArtist.slice(0, 20).padEnd(21)} ${(ms / 1000).toFixed(0)}s  ` +
         `Sc.${rd.scenario} ${(rd.scenarioName ?? "").slice(0, 22).padEnd(23)} ` +
         `top="${(top.artistName ?? "-").slice(0, 20)}" ${artistHit ? "MATCH" : ""}` +
+        (degradedReason ? `  | AGENT PRODUCED NO EVIDENCE — routed off Stage 1c/1d alone` : "") +
         (twoPassAdapterComparison ? `  | 2pass Sc.${twoPassAdapterComparison.scenario}${twoPassAdapterComparison.agreesWithRouter ? "=" : "≠"}` : "") +
         `  (${done + failed}/${ids.length})`,
     );
   } catch (err: any) {
     failed++;
-    console.error(`  FAIL ${id.padEnd(13)} ${String(err?.message ?? err).slice(0, 160)}`);
+    console.error(`  FAIL ${id.padEnd(13)} ${String(err?.message ?? err).slice(0, 500)}`);
   }
 }
 
@@ -294,11 +306,16 @@ if (ok) {
   const scDist: Record<number, number> = {};
   for (const r of rows) scDist[r.scenario] = (scDist[r.scenario] ?? 0) + 1;
   const hits = rows.filter((r) => r.artistHit).length;
+  const degraded = rows.filter((r) => r.degraded).length;
 
   console.log(`\n${"─".repeat(70)}`);
   console.log(`${ok} ok, ${failed} failed  —  ${((Date.now() - started) / 60000).toFixed(1)} min`);
   console.log(`Stage 2a mean duration: ${(meanMs / 1000).toFixed(0)}s   (min ${(Math.min(...rows.map((r) => r.ms)) / 1000).toFixed(0)}s, max ${(Math.max(...rows.map((r) => r.ms)) / 1000).toFixed(0)}s)`);
   console.log(`artist matches ground truth: ${hits}/${ok}`);
+  // Counted separately from `failed`: a degraded lot did not throw, so it is not a failure
+  // in the harness's sense — but the stage under test contributed nothing to it, so it is
+  // not a success either, and averaging it in with the rest would flatter the model.
+  console.log(`lots where the agent produced no evidence: ${degraded}/${ok}`);
   console.log(
     `router scenario distribution: ${Object.entries(scDist)
       .map(([s, n]) => `Sc.${s} ${SCENARIO_NAMES[Number(s) as Scenario]}=${n}`)
@@ -309,6 +326,12 @@ if (ok) {
     console.log(`two-pass scenario == router scenario: ${agree}/${ok}   (thresholds: SIM_ARTIST_VOTE=${SIM_ARTIST_VOTE}, SIM_WORK_VOTE=${SIM_WORK_VOTE})`);
   }
   console.log(`written to ${DIR}/<id>/triage.json`);
+  // Comparing models at this stage is as much a cost question as an accuracy one, and the
+  // triage runner was the one harness that gathered usage and then threw it away.
+  printUsageSummary();
+  if (UNVERIFIED_PRICE_MODELS.has(MODEL)) {
+    console.log(`[Cost] NOTE: ${MODEL} has no verified price — the USD column above is indicative only.`);
+  }
 }
 // The Neo4j driver holds an open connection pool, so without this the process finishes its
 // work and then hangs forever — which silently blocks any shell loop running several
