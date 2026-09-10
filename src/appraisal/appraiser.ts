@@ -2472,6 +2472,23 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       }
     }
 
+    // A structurally incomplete report is not a verdict. The tool schema marks
+    // artistEvidence/workEvidence required, but a model can still return a tool call
+    // omitting them — qwen-plus did exactly that on A0793/122, and the unguarded
+    // `a.dominantCandidateName` downstream took the whole lot down with a TypeError rather
+    // than degrading. Escalating is the honest outcome: the alternative is manufacturing a
+    // verdict out of empty cells, which reads downstream as a confident "not attributed".
+    if (!ev?.artistEvidence || !ev?.workEvidence) {
+      const missing = [!ev?.artistEvidence && "artistEvidence", !ev?.workEvidence && "workEvidence"]
+        .filter(Boolean).join(" and ");
+      console.warn(`[Stage 2a evidence] report omitted ${missing} — emitting escalate-only result`);
+      const degraded = emptyEvidenceOutput(vea.overallExtractionConfidence ?? 0, {
+        reason: `Stage 2a evidence agent returned a report with no ${missing} — needs manual triage.`,
+        narrative: `The evidence agent's structured report omitted ${missing}, so no evidence cells were produced. No automated attribution was made; route to a human.`,
+      });
+      return runEvidenceTree(degraded, false, stage1d, appraiserInput).triage;
+    }
+
     // Scoped style check for whichever candidate the agent settled on. Run here rather than
     // inside the tree because the tree is pure and synchronous, and offered to the tree as an
     // EXCLUSION signal only (see queryArtistStyleConsistency for why it cannot discriminate).

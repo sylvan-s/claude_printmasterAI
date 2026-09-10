@@ -170,8 +170,11 @@ export function evidenceToTwoPassInput(
   appraiserInput?: AppraiserInputResult | null,
   styleConsistency?: StyleConsistencyEvidence | null,
 ): TwoPassInput {
-  const a = ev.artistEvidence;
-  const w = ev.workEvidence;
+  // Defensive: callers should reject a report missing these (runStage2aTriage does), but
+  // this function is exported and also drives the fixture adapters and tests. A missing
+  // block yields empty cells and a not_attributed verdict rather than a TypeError.
+  const a = ev.artistEvidence ?? ({} as NonNullable<typeof ev.artistEvidence>);
+  const w = ev.workEvidence ?? ({} as NonNullable<typeof ev.workEvidence>);
   const dom = a.dominantCandidateName || "";
   const domKey = a.dominantCandidateIdentityKey || "";
 

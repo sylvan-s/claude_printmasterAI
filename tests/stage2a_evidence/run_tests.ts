@@ -505,5 +505,27 @@ test("a non-4-stage config still runs, capturing nothing", async () => {
   assert.deepEqual(getAckgRounds(), []);
 });
 
+
+// ---- malformed agent report --------------------------------------------------------
+// A model can return a report tool call omitting a required block. qwen-plus did on
+// A0793/122, and the unguarded read downstream took the lot down with a TypeError.
+
+test("evidenceToTwoPassInput survives a report with no artistEvidence", () => {
+  const ev: any = { workEvidence: {} };
+  const out = evidenceToTwoPassInput(ev, false);
+  assert.ok(out, "should return an input, not throw");
+});
+
+test("evidenceToTwoPassInput survives a report with no workEvidence", () => {
+  const ev: any = { artistEvidence: {} };
+  const out = evidenceToTwoPassInput(ev, false);
+  assert.ok(out, "should return an input, not throw");
+});
+
+test("evidenceToTwoPassInput survives an entirely empty report", () => {
+  const out = evidenceToTwoPassInput({} as any, false);
+  assert.ok(out);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
