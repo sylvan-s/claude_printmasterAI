@@ -12,7 +12,7 @@
  * Run: npm run test:routing
  */
 import { injectTaskProfile } from "../../src/appraisal/prompts";
-import { isConstrainedAckgQuery } from "../../src/appraisal/appraiser";
+import { isConstrainedAckgQuery, anthropicCompatBaseUrl } from "../../src/appraisal/appraiser";
 import assert from "node:assert/strict";
 import {
   matchSpecialistConfig,
@@ -134,6 +134,35 @@ test("a real filter still constrains alongside ignored fields", () => {
     isConstrainedAckgQuery({ artist: "Peter Blake", technique: "Screenprint", periodStartYear: 1964 }),
     true,
   );
+});
+
+
+// ---- Anthropic-compatible provider routing ------------------------------------------
+// Alibaba/QwenCloud expose an Anthropic Messages API at /apps/anthropic, so a bare Qwen ID
+// runs through the SAME hardened Stage 2a loop as Claude — only the origin and key differ.
+
+test("bare qwen names route to the DashScope Anthropic endpoint", () => {
+  for (const m of ["qwen-plus", "qwen-max", "qwen3.7-plus", "qwen-flash", "QWEN-PLUS"]) {
+    assert.match(anthropicCompatBaseUrl(m) ?? "", /\/apps\/anthropic$/, `${m} should route`);
+  }
+});
+
+test("Claude and Gemini models use the native Anthropic origin", () => {
+  for (const m of ["claude-sonnet-4-6", "claude-haiku-4-5", "gemini-2.5-pro"]) {
+    assert.equal(anthropicCompatBaseUrl(m), null, `${m} should not route to DashScope`);
+  }
+});
+
+test("a model merely containing 'qwen' does not route to DashScope", () => {
+  // The pattern must anchor at the start, or an unrelated vendor's ID with qwen in the
+  // middle would be sent to Alibaba with an Alibaba key.
+  assert.equal(anthropicCompatBaseUrl("my-qwen-finetune"), null);
+  assert.equal(anthropicCompatBaseUrl("acme/qwen-plus"), null);
+});
+
+test("the compat base URL has no trailing /v1 — the caller appends /v1/messages", () => {
+  // Alibaba's docs flag this: a base ending in /v1 yields /v1/v1/messages and a 404.
+  assert.doesNotMatch(anthropicCompatBaseUrl("qwen-plus")!, /\/v1\/?$/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

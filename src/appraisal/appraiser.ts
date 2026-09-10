@@ -188,15 +188,28 @@ function isClaude(model: string): boolean {
 }
 
 /**
- * Groq serves OpenAI-shaped chat/completions for several open-weight families. Matched on
- * the vendor prefix Groq itself uses in its model IDs, so "qwen/qwen3.6-27b" routes to the
- * Groq loop while "claude-*" and Gemini names do not.
+ * Alibaba/QwenCloud expose an ANTHROPIC-compatible Messages API at /apps/anthropic, not just
+ * an OpenAI-compatible one. That is the better target: the Stage 2a loop's control flow —
+ * three exits, refusal budget, constraint gate — was derived empirically against the
+ * Anthropic wire format, so pointing it at a different base URL reuses all of it instead of
+ * re-deriving it in a second dialect.
+ *
+ * Verified live 2026-09-10: 200 OK for qwen-plus, native Messages response shape, and usage
+ * carrying cache_creation_input_tokens / cache_read_input_tokens, so recordUsage needs no
+ * change. Both x-api-key and Authorization: Bearer are accepted; x-api-key matches what
+ * postAnthropicMessages already sends.
+ *
+ * The base URL deliberately has no trailing /v1 — the caller appends /v1/messages. Alibaba's
+ * own docs flag this: a base ending in /v1 yields /v1/v1/messages and a 404.
  */
-function isGroqModel(model: string): boolean {
-  const m = model.toLowerCase();
-  return m.startsWith("qwen/") || m.startsWith("openai/gpt-oss") || m.startsWith("minimaxai/")
-    || m.startsWith("llama-") || m.startsWith("groq/");
+const DASHSCOPE_ANTHROPIC_BASE_URL =
+  process.env.DASHSCOPE_ANTHROPIC_BASE_URL || "https://dashscope-intl.aliyuncs.com/apps/anthropic";
+
+/** Bare Qwen model IDs run on DashScope's Anthropic-compatible endpoint. */
+export function anthropicCompatBaseUrl(model: string): string | null {
+  return /^qwen[0-9._-]*(-|$)/.test(model.toLowerCase()) ? DASHSCOPE_ANTHROPIC_BASE_URL : null;
 }
+
 
 function getCurrencySymbol(code: string): string {
   if (code === "USD") return "$";
@@ -295,11 +308,18 @@ const TOKEN_PRICES: Record<string, { in: number; out: number }> = {
   // console login, so these are placeholders and every Qwen cost figure derived from them
   // is an estimate, not a measurement. Set them from console.groq.com/settings/billing
   // before quoting a Qwen-vs-Haiku cost comparison.
-  "qwen/qwen3.6-27b": { in: 0.3, out: 0.5 },
-  "qwen/qwen3.8-27b": { in: 0.3, out: 0.5 },
+  // DashScope (Alibaba Model Studio), pay-as-you-go. Also unverified: Alibaba publishes
+  // rates in the Model Studio console per region and per model snapshot, not on a page
+  // reachable without a login. qwen-plus is an ALIAS onto the current -plus snapshot
+  // (qwen3.7-plus as at 2026-09), so its rate can move under you without the ID changing.
+  "qwen-plus": { in: 0.4, out: 1.2 },
 };
-/** Model IDs whose TOKEN_PRICES entry is a guess — cost columns for these are estimates. */
-export const UNVERIFIED_PRICE_MODELS = new Set(["qwen/qwen3.6-27b", "qwen/qwen3.8-27b"]);
+/** Model IDs whose TOKEN_PRICES entry is a guess — cost columns for these are estimates,
+ *  not measurements, and must not be quoted in a cost comparison until set from the
+ *  provider's billing console. */
+export const UNVERIFIED_PRICE_MODELS = new Set([
+  "qwen-plus",
+]);
 const DEFAULT_PRICE = { in: 3, out: 15 };
 
 export interface CallUsage {
@@ -366,9 +386,13 @@ export function printUsageSummary(): void {
 export async function postAnthropicMessages(
   apiKey: string,
   body: Record<string, unknown>,
-  opts: { betaHeader?: string; label?: string; maxAttempts?: number } = {},
+  opts: { betaHeader?: string; label?: string; maxAttempts?: number; baseUrl?: string } = {},
 ): Promise<any> {
   const { betaHeader, label = "Anthropic", maxAttempts = 4 } = opts;
+  // Anthropic-compatible providers (Alibaba/QwenCloud at /apps/anthropic) speak the same
+  // wire format, so only the origin changes. Everything below — retry/backoff, the
+  // content-filter classifier, usage recording — applies unchanged.
+  const endpoint = `${opts.baseUrl ?? "https://api.anthropic.com"}/v1/messages`;
   const headers: Record<string, string> = {
     "x-api-key": apiKey,
     "anthropic-version": "2023-06-01",
@@ -381,7 +405,7 @@ export async function postAnthropicMessages(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let response: Response;
     try {
-      response = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: payload });
+      response = await fetch(endpoint, { method: "POST", headers, body: payload });
     } catch (err: any) {
       lastNetworkErr = err;
       if (attempt >= maxAttempts) break;
@@ -1347,205 +1371,6 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
   }
 
   /**
-   * Stage 2a tool loop against Groq's OpenAI-shaped chat/completions API.
-   *
-   * A sibling of callClaudeWithAckgTool rather than a branch inside it: the two wire
-   * formats disagree about almost everything structural. Anthropic puts tool calls in
-   * `content` blocks and answers them with `tool_result` blocks carrying `is_error`; OpenAI
-   * puts them in `message.tool_calls` and answers with `{role:"tool", tool_call_id}` where
-   * an error is just prose. Anthropic caches a system prefix with `cache_control`; Groq has
-   * no equivalent, so every round re-sends the prompt at full price — the reason a cheap
-   * per-token model is not automatically a cheap stage.
-   *
-   * What is deliberately IDENTICAL is the control flow, because that is what this session
-   * measured and fixed: the same three exits (early report, graph query, no tool call at
-   * all), the same MIN_ACKG_ROUNDS_BEFORE_REPORT gate, the same MAX_REPORT_REFUSALS budget
-   * shared across the report and no-call paths, and the same executeGraphTool dispatch with
-   * its unconstrained-query gate. A second loop that drifted on any of those would silently
-   * reintroduce the zero-graph-round failure this fixture exists to catch.
-   */
-  protected async callGroqWithAckgTool(
-    modelName: string,
-    systemInstruction: string,
-    userText: string,
-    maxTokens: number = 8192,
-    finalTool: { name: string; description: string; schema: any },
-    opts: { extraTools?: any[]; maxRounds?: number } = {},
-  ): Promise<any> {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      throw new Error(
-        "GROQ_API_KEY is not set. Add it to .env (get one at console.groq.com/keys) to run " +
-        `Stage 2a on "${modelName}".`,
-      );
-    }
-
-    const graphTools = [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
-    const graphToolNames = new Set(graphTools.map((t: any) => t.name));
-    const finalToolName = finalTool.name;
-    // OpenAI wraps each tool as {type:"function", function:{...}} and calls the schema
-    // `parameters`, where Anthropic calls it `input_schema`. Same JSON Schema underneath.
-    const tools = [
-      ...graphTools.map((t: any) => ({
-        type: "function",
-        function: { name: t.name, description: t.description, parameters: t.input_schema },
-      })),
-      {
-        type: "function",
-        function: {
-          name: finalToolName,
-          description: finalTool.description,
-          parameters: translateSchemaToStandardJsonSchema(finalTool.schema),
-        },
-      },
-    ];
-
-    const post = async (messages: any[], forceFinalTool: boolean) => {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({
-          model: modelName,
-          max_tokens: maxTokens,
-          temperature: this.config.temperature ?? DEFAULT_CLAUDE_TEMPERATURE,
-          messages,
-          tools,
-          ...(forceFinalTool
-            ? { tool_choice: { type: "function", function: { name: finalToolName } } }
-            : {}),
-        }),
-      });
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`Groq request failed: ${res.status}: ${body.slice(0, 500)}`);
-      }
-      const json: any = await res.json();
-      // OpenAI usage shape -> the Anthropic-named fields recordUsage expects. Groq reports
-      // no cache tokens, so those stay zero and the cost is plain input + output.
-      recordUsage("Groq Stage 2a ACKG tool", modelName, {
-        input_tokens: json?.usage?.prompt_tokens ?? 0,
-        output_tokens: json?.usage?.completion_tokens ?? 0,
-      });
-      return json;
-    };
-
-    const messages: any[] = [
-      { role: "system", content: systemInstruction },
-      { role: "user", content: userText },
-    ];
-    const MAX_ROUNDS = opts.maxRounds ?? 4;
-    let roundsUsed = 0;
-    let constrainedRounds = 0;
-    let reportRefusals = 0;
-    let data: any = null;
-
-    const parseArgs = (raw: any) => {
-      if (raw == null) return {};
-      if (typeof raw === "object") return raw;
-      try { return JSON.parse(raw); } catch { return {}; }
-    };
-
-    for (let round = 0; round < MAX_ROUNDS; round++) {
-      data = await post(messages, false);
-      const msg = data?.choices?.[0]?.message;
-      if (!msg) throw new Error("Groq (ACKG tool) returned no message.");
-      const toolCalls: any[] = msg.tool_calls ?? [];
-
-      const reported = toolCalls.find((c) => c.function?.name === finalToolName);
-      if (reported && (constrainedRounds >= MIN_ACKG_ROUNDS_BEFORE_REPORT || reportRefusals >= MAX_REPORT_REFUSALS)) {
-        this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
-        console.log(`[Stage 2a ACKG loop] round ${round + 1}: reported without a forced call — ${roundsUsed} query round(s) used`);
-        return parseArgs(reported.function?.arguments);
-      }
-      if (reported) {
-        reportRefusals++;
-        console.log(
-          `[Stage 2a ACKG loop] round ${round + 1}: report refused (${reportRefusals}/${MAX_REPORT_REFUSALS}) — ${constrainedRounds} constrained ` +
-            `graph round(s), ${MIN_ACKG_ROUNDS_BEFORE_REPORT} required. Asking for a narrowed query.`,
-        );
-        messages.push(msg);
-        // OpenAI requires EVERY tool_call in an assistant turn to be answered, so any graph
-        // calls issued alongside the refused report must still get a tool message back.
-        for (const c of toolCalls) {
-          if (c.id === reported.id) {
-            messages.push({
-              role: "tool", tool_call_id: c.id,
-              content:
-                `Not accepted yet: the ACKG has not been consulted with a query that narrows anything. ` +
-                `Run a query_ackg carrying at least one of technique / region / subject / paper / workTitle ` +
-                `(and query_ackg_work if you have a candidate title), then call ${finalToolName} again ` +
-                `with what the graph returned. A bare period range is not a constrained query.\n\n` +
-                `If you genuinely have nothing to filter on, call ${finalToolName} again as-is and leave ` +
-                `kId "unknown", kOeuvreMatchCount -1 and kSubject UNASSESSABLE. Empty cells are the ` +
-                `honest answer; numbers from a query unrelated to this lot are not.`,
-            });
-          } else if (graphToolNames.has(c.function?.name)) {
-            const r = await this.executeGraphTool(c.function.name, parseArgs(c.function?.arguments), round + 1);
-            messages.push({ role: "tool", tool_call_id: c.id, content: r.content });
-          } else {
-            messages.push({ role: "tool", tool_call_id: c.id, content: "Unknown tool." });
-          }
-        }
-        continue;
-      }
-
-      const graphCalls = toolCalls.filter((c) => graphToolNames.has(c.function?.name));
-      if (graphCalls.length === 0) {
-        // Third exit — see the Anthropic loop. No query and no report; breaking here would
-        // fall through to the forced finalise and bypass the minimum-rounds check entirely.
-        if (constrainedRounds < MIN_ACKG_ROUNDS_BEFORE_REPORT && reportRefusals < MAX_REPORT_REFUSALS) {
-          reportRefusals++;
-          console.log(
-            `[Stage 2a ACKG loop] round ${round + 1}: no tool call and no constrained graph round ` +
-              `(refusal ${reportRefusals}/${MAX_REPORT_REFUSALS}) — asking for a query before the report.`,
-          );
-          messages.push(msg);
-          messages.push({
-            role: "user",
-            content:
-              `You have not consulted the ACKG. Do not report yet.\n\n` +
-              `Being handed a candidate artist or title by Stage 1c is NOT corroboration — it is the ` +
-              `claim under test, and the graph is what tests it. Run query_ackg with at least one of ` +
-              `technique / region / subject / paper / workTitle, and query_ackg_work with the artist ` +
-              `and title if you have them, then report with what the graph returned.\n\n` +
-              `If you truly have nothing to filter on, say so in one line and report with the ACKG ` +
-              `cells honestly empty — kId "unknown", kOeuvreMatchCount -1, kSubject UNASSESSABLE.`,
-          });
-          continue;
-        }
-        this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
-        break;
-      }
-
-      const anyConstrained = graphCalls.some(
-        (c) => c.function.name !== "query_ackg" || isConstrainedAckgQuery(parseArgs(c.function?.arguments)),
-      );
-      if (anyConstrained) constrainedRounds++;
-      roundsUsed = round + 1;
-
-      if (typeof msg.content === "string" && msg.content.trim()) {
-        this.onAckgLoopEvent({ round: round + 1, kind: "reasoning", reasoning: msg.content.trim() });
-      }
-      messages.push(msg);
-      for (const c of toolCalls) {
-        const r = graphToolNames.has(c.function?.name)
-          ? await this.executeGraphTool(c.function.name, parseArgs(c.function?.arguments), round + 1)
-          : { content: "Unknown tool.", isError: false };
-        messages.push({ role: "tool", tool_call_id: c.id, content: r.content });
-      }
-      if (round === MAX_ROUNDS - 1) {
-        this.onAckgLoopEvent({ round: round + 1, kind: "max_rounds", maxRounds: MAX_ROUNDS });
-      }
-    }
-
-    messages.push({ role: "user", content: `Now report your final structured result via the ${finalToolName} tool.` });
-    const finalData = await post(messages, true);
-    const finalCall = finalData?.choices?.[0]?.message?.tool_calls?.find((c: any) => c.function?.name === finalToolName);
-    if (!finalCall) throw new Error(`Groq (ACKG tool) did not return a ${finalToolName} tool call.`);
-    return parseArgs(finalCall.function?.arguments);
-  }
-
-  /**
    * Execute one ACKG graph tool call and render its result for the model.
    *
    * Provider-neutral on purpose: the Anthropic loop wraps this in tool_result content
@@ -1671,8 +1496,18 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     finalTool: { name: string; description: string; schema: any },
     opts: { extraTools?: any[]; maxRounds?: number } = {}
   ): Promise<any> {
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
-    if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
+    // Same wire format, different origin and key when the model is a DashScope Qwen.
+    const compatBaseUrl = anthropicCompatBaseUrl(modelName);
+    const apiKey = compatBaseUrl
+      ? process.env.DASHSCOPE_API_KEY
+      : process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        compatBaseUrl
+          ? `DASHSCOPE_API_KEY is not set — needed to run "${modelName}" against ${compatBaseUrl}.`
+          : "Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.",
+      );
+    }
 
     const graphTools = [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
     const graphToolNames = new Set(graphTools.map((t: any) => t.name));
@@ -1706,7 +1541,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           tools, // identical on every call, so the cached prefix stays valid
           ...(forceFinalTool ? { tool_choice: { type: "tool", name: finalToolName } } : {}),
         },
-        { label: "Stage 2a ACKG tool" },
+        { label: "Stage 2a ACKG tool", baseUrl: compatBaseUrl ?? undefined },
       );
 
     const messages: any[] = [{ role: "user", content: userText }];
@@ -2612,9 +2447,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     // One dispatch point for both wire formats. The two loops keep identical control flow
     // (see callGroqWithAckgTool) — only the transport differs.
     const runEvidenceAgent = (prompt: string, text: string) =>
-      isGroqModel(stage2aModel)
-        ? this.callGroqWithAckgTool(stage2aModel, prompt, text, 8192, evidenceTool, evidenceOpts)
-        : this.callClaudeWithAckgTool(stage2aModel, prompt, text, 8192, evidenceTool, evidenceOpts);
+      this.callClaudeWithAckgTool(stage2aModel, prompt, text, 8192, evidenceTool, evidenceOpts);
 
     let ev: EvidenceAgentOutput;
     try {
@@ -3393,13 +3226,13 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     enableVisualSearch: true,
   },
   {
-    id: "claude-4stage-qwen2a",
-    name: "Claude 4-Stage, Qwen Evidence Agent (Groq)",
+    id: "claude-4stage-qwenplus2a",
+    name: "Claude 4-Stage, Qwen-Plus Evidence Agent (DashScope)",
     description:
-      "Opus for vision (S1), Qwen 3.6 27B via Groq for the Stage 2a Evidence Agent, Sonnet " +
-      "for specialist search (S2b) and valuation (S3). Only S2a changes, so a run is directly " +
-      "comparable to claude-4stage. Needs GROQ_API_KEY. Both Groq Qwen models are PREVIEW — " +
-      "Groq states they may be discontinued at short notice, so this is for evaluation.",
+      "Opus for vision (S1), Alibaba qwen-plus for the Stage 2a Evidence Agent, Sonnet for " +
+      "specialist search (S2b) and valuation (S3). Only S2a changes, so a run is directly " +
+      "comparable to claude-4stage. Needs DASHSCOPE_API_KEY, and DASHSCOPE_BASE_URL if the " +
+      "key was issued outside the international region.",
     modelName: "claude-opus-4-8",
     temperature: 0.1,
     promptKey: "standard",
@@ -3407,7 +3240,7 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     includeAuxiliaryScans: true,
     provider: "anthropic",
     stage1Model: "claude-opus-4-8",
-    stage2aModel: "qwen/qwen3.6-27b",
+    stage2aModel: "qwen-plus",
     stage2bModel: "claude-sonnet-4-6",
     stage3Model: "claude-sonnet-4-6",
     enableVisualSearch: true,
