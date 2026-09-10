@@ -1,0 +1,216 @@
+{
+  "lot": {
+    "house": "Roseberys London",
+    "saleId": "A0793",
+    "lotNumber": "2",
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0793-prints-multiples-673/2-jacques-villonfrench-1875-1963le-petit-quilibrist-623275",
+    "lotUrl": "https://www.roseberys.co.uk/bidding/A0793-prints-multiples-673/2-jacques-villonfrench-1875-1963le-petit-quilibrist-623275",
+    "estimateLow": 800,
+    "estimateHigh": 1200
+  },
+  "groundTruth": {
+    "poolArtistName": "Jacques Villon",
+    "artist": "Jacques Villon",
+    "title": "Le Petit &Eacute;quilibrist",
+    "medium": "etching",
+    "editionSize": 50
+  },
+  "resolvedFrom": "a0793-isolation-capture",
+  "method": "claude-4stage-1c1d",
+  "note": "Captured from the A0793 1c+1d isolation run so Stage 2a can be replayed alone. VEA did not run and Stage 1b was disabled, so Stage 1d plus Stage 1c's documented claims are the only evidence \u2014 the configuration the Sonnet/Haiku/Qwen comparison uses.",
+  "imageUrl": null,
+  "appraiserInputNotes": {
+    "inscribedMarksNotes": "signed and dated in the plate",
+    "provenanceNotes": "The Agathe Sorel and Gabor Sitkey Print Collection",
+    "conditionNotes": null,
+    "catalogueNotes": "Jacques Villon,\nLe Petit &Eacute;quilibrist, 1914;\n\netching on wove,\nsigned and dated in the plate,\nan unsigned proof aside from the edition of 50,\nplate: 22.2 x 16.3cm,\n(unframed)\n(ARR)"
+  },
+  "stage1a_vea": {
+    "schemaVersion": "VEA-1.1",
+    "inspectionTimestamp": "2026-09-09T16:58:21.626Z",
+    "imagesReceived": {
+      "primaryScan": false,
+      "supplementaryScanCount": 0
+    },
+    "imageAuthenticity": {
+      "haltRecommended": false
+    },
+    "titleInscriptions": [],
+    "signatures": [],
+    "editionInfo": [],
+    "editionInfoAbsent": true,
+    "printingTechniques": [],
+    "plateMark": {},
+    "dimensions": {},
+    "paper": {},
+    "condition": {},
+    "inkAndColour": {},
+    "stampsAndLabels": [],
+    "composition": {},
+    "photographicQuality": {},
+    "visualEvidenceHighlights": [],
+    "overallExtractionConfidence": 0,
+    "lowConfidenceFlags": [
+      "Stage 1a (Visual Extraction Agent) WAS NOT RUN in this appraisal \u2014 no image was examined and no physical observation exists. Every field below is empty because nothing was looked at, NOT because the work lacks those features. Draw no inference from the absence of signatures, inscriptions, technique or condition data."
+    ],
+    "provisionalOutput": true
+  },
+  "stage1b_visualSearch": null,
+  "stage1c_appraiserInput": {
+    "schemaVersion": "AIA-1.0",
+    "inputReceived": {
+      "inscribedMarksNotes": true,
+      "provenanceNotes": true,
+      "conditionNotes": false,
+      "catalogueNotes": true
+    },
+    "claimedAttribution": {
+      "artist": "Jacques Villon",
+      "title": "Le Petit \u00c9quilibrist",
+      "period": "1914",
+      "technique": "etching",
+      "status": "documented_fact",
+      "sourceField": "catalogueNotes",
+      "sourceExcerpt": "Jacques Villon, Le Petit \u00c9quilibrist, 1914; etching on wove, signed and dated in the plate"
+    },
+    "inscriptionClaims": {
+      "signatureClaim": "signed and dated in the plate",
+      "editionClaim": null,
+      "editionSizeClaim": 50,
+      "monogramOrStampClaim": null,
+      "status": "documented_fact"
+    },
+    "provenanceChain": [
+      {
+        "ownerOrEntity": "The Agathe Sorel and Gabor Sitkey Print Collection",
+        "dateOrPeriod": null,
+        "status": "hypothesis",
+        "sourceExcerpt": "The Agathe Sorel and Gabor Sitkey Print Collection"
+      }
+    ],
+    "conditionClaims": [
+      {
+        "claim": "unframed",
+        "status": "documented_fact",
+        "sourceExcerpt": "(unframed)"
+      }
+    ],
+    "catalogueReferences": [],
+    "literatureOrExhibitionClaims": [],
+    "dimensionsClaim": {
+      "widthCm": 22.2,
+      "heightCm": 16.3,
+      "kind": "plate",
+      "source": "both"
+    },
+    "paperOrSupport": "wove",
+    "rawNotes": {
+      "inscribedMarksNotes": "signed and dated in the plate",
+      "provenanceNotes": "The Agathe Sorel and Gabor Sitkey Print Collection",
+      "conditionNotes": null,
+      "catalogueNotes": "Jacques Villon, Le Petit \u00c9quilibrist, 1914; etching on wove, signed and dated in the plate, an unsigned proof aside from the edition of 50, plate: 22.2 x 16.3cm, (unframed) (ARR)"
+    },
+    "overallExtractionConfidence": 0.95,
+    "lowConfidenceFlags": [
+      "edition status ambiguous: 'an unsigned proof aside from the edition of 50' \u2014 unclear if this lot is the proof or one of the 50; no specific edition number (e.g. 1/50) stated"
+    ]
+  },
+  "stage1d_embeddingMatch": {
+    "schemaVersion": "IES-1.0",
+    "embeddingModelsUsed": {
+      "dinov2": "facebook/dinov2-large",
+      "clip": "openai/clip-vit-base-patch32"
+    },
+    "indexCoverageNote": "ACKG image index currently covers Bonhams (40,224), Tate (10,208) and the British Museum (2,507) \u2014 52,939 images on DINOv2-Large/CLIP, verified 2026-09-07. Roseberys and Forum Auctions are not yet embedded \u2014 a weak or absent match reflects this coverage gap, not evidence against attribution.",
+    "candidateMatches": [
+      {
+        "artistName": "Jacques Villon",
+        "conceptualWorkTitle": "Or\u00e9noque; Cr\u00e9ation du Monde, from Oeuvre Po\u00e9tique",
+        "impressionId": "bonhams-19159-7202",
+        "dinov2Similarity": 0.8761909008026123,
+        "clipSimilarity": 0.9463462829589844,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Jacques Villon",
+        "conceptualWorkTitle": "Le petit Equilibrist",
+        "impressionId": "bonhams-11968-444",
+        "dinov2Similarity": 0.960230827331543,
+        "clipSimilarity": null,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Edward Wadsworth",
+        "conceptualWorkTitle": "Yorkshire Village",
+        "impressionId": "bonhams-24646-2",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9529609680175781,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Jasper Johns",
+        "conceptualWorkTitle": "0 through 9",
+        "impressionId": "bonhams-22259-187",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9521293640136719,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "John Wells",
+        "conceptualWorkTitle": "Personage",
+        "impressionId": "bonhams-19786-117",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9515876770019531,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Richard Diebenkorn",
+        "conceptualWorkTitle": "Trip on the Ground",
+        "impressionId": "bonhams-20911-167",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9507102966308594,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Jacques Villon",
+        "conceptualWorkTitle": "Table d'\u00c9checs, from Die Schaffenden",
+        "impressionId": "bonhams-17681-158",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.949249267578125,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Edwin Wenger",
+        "conceptualWorkTitle": "No. 58",
+        "impressionId": "bonhams-19982-5169",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9491691589355469,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Edward Wadsworth",
+        "conceptualWorkTitle": "Top of the town",
+        "impressionId": "bm-P_1983-1001-25",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9478988647460938,
+        "provenanceLayer": "institutional"
+      },
+      {
+        "artistName": "Dora Maurer",
+        "conceptualWorkTitle": "Seven Foldings",
+        "impressionId": "tate-P77124",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.947265625,
+        "provenanceLayer": "institutional"
+      }
+    ],
+    "bestMatchArtist": "Jacques Villon",
+    "bestMatchConceptualWorkTitle": "Or\u00e9noque; Cr\u00e9ation du Monde, from Oeuvre Po\u00e9tique",
+    "dinov2SimilarityScore": 0.8761909008026123,
+    "clipSimilarityScore": 0.9463462829589844,
+    "matchConfidence": "MEDIUM",
+    "attributionCaveat": "DINOv2/CLIP similarity reflects visual/stylistic closeness, not verified authorship \u2014 one corroborating evidence point, never a standalone attribution (see ADR-0002, ADR-0013).",
+    "hypothesisWarning": "\u26a0\ufe0f HYPOTHESIS ONLY \u2014 Stage 1d image-embedding match. Shadow-run: not yet used in attribution. DINOv2/CLIP visual similarity, not verified authorship. Do not treat as confirmed attribution."
+  },
+  "generatedAt": "2026-09-10T00:00:00.000Z"
+}

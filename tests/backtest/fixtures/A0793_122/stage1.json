@@ -1,0 +1,216 @@
+{
+  "lot": {
+    "house": "Roseberys London",
+    "saleId": "A0793",
+    "lotNumber": "122",
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0793-prints-multiples-673/122-sir-peter-blake-cbe-rdi-ra-british-b1932the-beach-boys-623396",
+    "lotUrl": "https://www.roseberys.co.uk/bidding/A0793-prints-multiples-673/122-sir-peter-blake-cbe-rdi-ra-british-b1932the-beach-boys-623396",
+    "estimateLow": 7000,
+    "estimateHigh": 10000
+  },
+  "groundTruth": {
+    "poolArtistName": "Sir Peter Blake",
+    "artist": "Sir Peter Blake",
+    "title": "The Beach Boys",
+    "medium": "silkscreen print in colours",
+    "editionSize": 40
+  },
+  "resolvedFrom": "a0793-isolation-capture",
+  "method": "claude-4stage-1c1d",
+  "note": "Captured from the A0793 1c+1d isolation run so Stage 2a can be replayed alone. VEA did not run and Stage 1b was disabled, so Stage 1d plus Stage 1c's documented claims are the only evidence \u2014 the configuration the Sonnet/Haiku/Qwen comparison uses.",
+  "imageUrl": null,
+  "appraiserInputNotes": {
+    "inscribedMarksNotes": "silkscreen print in colours on wove, signed in pencil and numbered 14/40, printed at Kelpra Studio for the ICA, sheet 75 x 50.8 cm (ARR) (framed)",
+    "provenanceNotes": null,
+    "conditionNotes": null,
+    "catalogueNotes": "Sir Peter Blake,\nThe Beach Boys, 1964;\n\nsilkscreen print in colours on wove, signed in pencil and numbered 14/40, printed at Kelpra Studio for the ICA, sheet 75 x 50.8 cm (ARR) (framed)\nThis is a very rare print, being one of an edition of only 40, it is in the Tate and Arts Council Collections, the last one to appear at auction was circa 2005."
+  },
+  "stage1a_vea": {
+    "schemaVersion": "VEA-1.1",
+    "inspectionTimestamp": "2026-09-09T16:34:32.502Z",
+    "imagesReceived": {
+      "primaryScan": false,
+      "supplementaryScanCount": 0
+    },
+    "imageAuthenticity": {
+      "haltRecommended": false
+    },
+    "titleInscriptions": [],
+    "signatures": [],
+    "editionInfo": [],
+    "editionInfoAbsent": true,
+    "printingTechniques": [],
+    "plateMark": {},
+    "dimensions": {},
+    "paper": {},
+    "condition": {},
+    "inkAndColour": {},
+    "stampsAndLabels": [],
+    "composition": {},
+    "photographicQuality": {},
+    "visualEvidenceHighlights": [],
+    "overallExtractionConfidence": 0,
+    "lowConfidenceFlags": [
+      "Stage 1a (Visual Extraction Agent) WAS NOT RUN in this appraisal \u2014 no image was examined and no physical observation exists. Every field below is empty because nothing was looked at, NOT because the work lacks those features. Draw no inference from the absence of signatures, inscriptions, technique or condition data."
+    ],
+    "provisionalOutput": true
+  },
+  "stage1b_visualSearch": null,
+  "stage1c_appraiserInput": {
+    "schemaVersion": "AIA-1.0",
+    "inputReceived": {
+      "inscribedMarksNotes": true,
+      "provenanceNotes": false,
+      "conditionNotes": false,
+      "catalogueNotes": true
+    },
+    "claimedAttribution": {
+      "artist": "Peter Blake",
+      "title": "The Beach Boys",
+      "period": "1964",
+      "technique": "silkscreen print in colours",
+      "status": "documented_fact",
+      "sourceField": "catalogueNotes",
+      "sourceExcerpt": "Sir Peter Blake,\nThe Beach Boys, 1964;\n\nsilkscreen print in colours on wove, signed in pencil and numbered 14/40, printed at Kelpra Studio for the ICA"
+    },
+    "inscriptionClaims": {
+      "signatureClaim": "signed in pencil",
+      "editionClaim": "14/40",
+      "editionSizeClaim": 40,
+      "monogramOrStampClaim": null,
+      "status": "documented_fact"
+    },
+    "provenanceChain": [
+      {
+        "ownerOrEntity": "Tate Collection",
+        "dateOrPeriod": null,
+        "status": "documented_fact",
+        "sourceExcerpt": "it is in the Tate and Arts Council Collections"
+      },
+      {
+        "ownerOrEntity": "Arts Council Collection",
+        "dateOrPeriod": null,
+        "status": "documented_fact",
+        "sourceExcerpt": "it is in the Tate and Arts Council Collections"
+      }
+    ],
+    "conditionClaims": [],
+    "catalogueReferences": [],
+    "literatureOrExhibitionClaims": [],
+    "dimensionsClaim": {
+      "widthCm": 75,
+      "heightCm": 50.8,
+      "kind": "sheet",
+      "source": "both"
+    },
+    "paperOrSupport": "wove",
+    "rawNotes": {
+      "inscribedMarksNotes": "silkscreen print in colours on wove, signed in pencil and numbered 14/40, printed at Kelpra Studio for the ICA, sheet 75 x 50.8 cm (ARR) (framed)",
+      "provenanceNotes": null,
+      "conditionNotes": null,
+      "catalogueNotes": "Sir Peter Blake,\nThe Beach Boys, 1964;\n\nsilkscreen print in colours on wove, signed in pencil and numbered 14/40, printed at Kelpra Studio for the ICA, sheet 75 x 50.8 cm (ARR) (framed)\nThis is a very rare print, being one of an edition of only 40, it is in the Tate and Arts Council Collections, the last one to appear at auction was circa 2005."
+    },
+    "overallExtractionConfidence": 0.95,
+    "lowConfidenceFlags": [
+      "ARR notation in original text \u2014 meaning not extracted (likely Artist's Resale Right marker)"
+    ]
+  },
+  "stage1d_embeddingMatch": {
+    "schemaVersion": "IES-1.0",
+    "embeddingModelsUsed": {
+      "dinov2": "facebook/dinov2-large",
+      "clip": "openai/clip-vit-base-patch32"
+    },
+    "indexCoverageNote": "ACKG image index currently covers Bonhams (40,224), Tate (10,208) and the British Museum (2,507) \u2014 52,939 images on DINOv2-Large/CLIP, verified 2026-09-07. Roseberys and Forum Auctions are not yet embedded \u2014 a weak or absent match reflects this coverage gap, not evidence against attribution.",
+    "candidateMatches": [
+      {
+        "artistName": "Peter Blake",
+        "conceptualWorkTitle": "Beach Boys",
+        "impressionId": "tate-P04038",
+        "dinov2Similarity": 0.8856024742126465,
+        "clipSimilarity": null,
+        "provenanceLayer": "institutional"
+      },
+      {
+        "artistName": "Peter Blake",
+        "conceptualWorkTitle": "Beatles",
+        "impressionId": "bonhams-21589-308",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.8629341125488281,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Peter Blake",
+        "conceptualWorkTitle": "The Beatles",
+        "impressionId": "bonhams-23544-246",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.8613433837890625,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Peter Blake",
+        "conceptualWorkTitle": "The Beatles",
+        "impressionId": "bonhams-22574-190",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.8613433837890625,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Peter Blake",
+        "conceptualWorkTitle": "The Beatles",
+        "impressionId": "bonhams-22572-174",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.858673095703125,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Henry Moore",
+        "conceptualWorkTitle": "Reclining Figures with Blue Central Composition",
+        "impressionId": "bonhams-26026-39",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.8518867492675781,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Henry Moore",
+        "conceptualWorkTitle": "Four standing figures",
+        "impressionId": "bonhams-11965-322",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.8479766845703125,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Peter Blake",
+        "conceptualWorkTitle": "Marilyn Monroe (Yellow & Red)",
+        "impressionId": "bonhams-25380-32",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.8471755981445312,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Peter Blake",
+        "conceptualWorkTitle": "Marilyn Monroe (Yellow & Red)",
+        "impressionId": "bonhams-25381-92",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.8471755981445312,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "James Rosenquist",
+        "conceptualWorkTitle": "Flamingo Capsule",
+        "impressionId": "bonhams-22475-262",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.84429931640625,
+        "provenanceLayer": "auction_history"
+      }
+    ],
+    "bestMatchArtist": "Peter Blake",
+    "bestMatchConceptualWorkTitle": "Beach Boys",
+    "dinov2SimilarityScore": 0.8856024742126465,
+    "clipSimilarityScore": null,
+    "matchConfidence": "MEDIUM",
+    "attributionCaveat": "DINOv2/CLIP similarity reflects visual/stylistic closeness, not verified authorship \u2014 one corroborating evidence point, never a standalone attribution (see ADR-0002, ADR-0013).",
+    "hypothesisWarning": "\u26a0\ufe0f HYPOTHESIS ONLY \u2014 Stage 1d image-embedding match. Shadow-run: not yet used in attribution. DINOv2/CLIP visual similarity, not verified authorship. Do not treat as confirmed attribution."
+  },
+  "generatedAt": "2026-09-10T00:00:00.000Z"
+}

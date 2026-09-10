@@ -1,0 +1,203 @@
+{
+  "lot": {
+    "house": "Roseberys London",
+    "saleId": "A0793",
+    "lotNumber": "512",
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0793-prints-multiples-673/512-banksybritish-b1974flag-2006screenprint-on-silver-chromolux-623796",
+    "lotUrl": "https://www.roseberys.co.uk/bidding/A0793-prints-multiples-673/512-banksybritish-b1974flag-2006screenprint-on-silver-chromolux-623796",
+    "estimateLow": 6000,
+    "estimateHigh": 8000
+  },
+  "groundTruth": {
+    "poolArtistName": "Banksy",
+    "artist": "Banksy",
+    "title": "Flag",
+    "medium": "screenprint",
+    "editionSize": 1000
+  },
+  "resolvedFrom": "a0793-isolation-capture",
+  "method": "claude-4stage-1c1d",
+  "note": "Captured from the A0793 1c+1d isolation run so Stage 2a can be replayed alone. VEA did not run and Stage 1b was disabled, so Stage 1d plus Stage 1c's documented claims are the only evidence \u2014 the configuration the Sonnet/Haiku/Qwen comparison uses.",
+  "imageUrl": null,
+  "appraiserInputNotes": {
+    "inscribedMarksNotes": "numbered 725/1000, printed by Pictures on Walls, with their blindstamp,; With Certificate of Authenticity from Pest Control, dated 2014",
+    "provenanceNotes": null,
+    "conditionNotes": null,
+    "catalogueNotes": "Banksy,\nFlag, 2006;\n\nscreenprint on silver Chromolux paper,\nnumbered 725/1000, printed by Pictures on Walls, with their blindstamp,\nsheet 50 x 70 cm, (framed) (ARR)\nWith Certificate of Authenticity from Pest Control, dated 2014"
+  },
+  "stage1a_vea": {
+    "schemaVersion": "VEA-1.1",
+    "inspectionTimestamp": "2026-09-09T17:05:52.887Z",
+    "imagesReceived": {
+      "primaryScan": false,
+      "supplementaryScanCount": 0
+    },
+    "imageAuthenticity": {
+      "haltRecommended": false
+    },
+    "titleInscriptions": [],
+    "signatures": [],
+    "editionInfo": [],
+    "editionInfoAbsent": true,
+    "printingTechniques": [],
+    "plateMark": {},
+    "dimensions": {},
+    "paper": {},
+    "condition": {},
+    "inkAndColour": {},
+    "stampsAndLabels": [],
+    "composition": {},
+    "photographicQuality": {},
+    "visualEvidenceHighlights": [],
+    "overallExtractionConfidence": 0,
+    "lowConfidenceFlags": [
+      "Stage 1a (Visual Extraction Agent) WAS NOT RUN in this appraisal \u2014 no image was examined and no physical observation exists. Every field below is empty because nothing was looked at, NOT because the work lacks those features. Draw no inference from the absence of signatures, inscriptions, technique or condition data."
+    ],
+    "provisionalOutput": true
+  },
+  "stage1b_visualSearch": null,
+  "stage1c_appraiserInput": {
+    "schemaVersion": "AIA-1.0",
+    "inputReceived": {
+      "inscribedMarksNotes": true,
+      "provenanceNotes": false,
+      "conditionNotes": false,
+      "catalogueNotes": true
+    },
+    "claimedAttribution": {
+      "artist": "Banksy",
+      "title": "Flag",
+      "period": "2006",
+      "technique": "screenprint",
+      "status": "documented_fact",
+      "sourceField": "catalogueNotes",
+      "sourceExcerpt": "Banksy, Flag, 2006; screenprint on silver Chromolux paper"
+    },
+    "inscriptionClaims": {
+      "signatureClaim": null,
+      "editionClaim": "725/1000",
+      "editionSizeClaim": 1000,
+      "monogramOrStampClaim": "blindstamp from Pictures on Walls",
+      "status": "documented_fact"
+    },
+    "provenanceChain": [],
+    "conditionClaims": [],
+    "catalogueReferences": [],
+    "literatureOrExhibitionClaims": [],
+    "dimensionsClaim": {
+      "widthCm": 50,
+      "heightCm": 70,
+      "kind": "sheet",
+      "source": "regex"
+    },
+    "paperOrSupport": "silver Chromolux paper",
+    "rawNotes": {
+      "inscribedMarksNotes": "numbered 725/1000, printed by Pictures on Walls, with their blindstamp,; With Certificate of Authenticity from Pest Control, dated 2014",
+      "provenanceNotes": null,
+      "conditionNotes": null,
+      "catalogueNotes": "Banksy, Flag, 2006; screenprint on silver Chromolux paper, numbered 725/1000, printed by Pictures on Walls, with their blindstamp, sheet 50 x 70 cm, (framed) (ARR) With Certificate of Authenticity from Pest Control, dated 2014"
+    },
+    "overallExtractionConfidence": 0.95,
+    "lowConfidenceFlags": [
+      "Certificate of Authenticity from Pest Control is referenced but not independently verified; Pest Control is the publisher/distributor entity, not a traditional certificate issuer"
+    ]
+  },
+  "stage1d_embeddingMatch": {
+    "schemaVersion": "IES-1.0",
+    "embeddingModelsUsed": {
+      "dinov2": "facebook/dinov2-large",
+      "clip": "openai/clip-vit-base-patch32"
+    },
+    "indexCoverageNote": "ACKG image index currently covers Bonhams (40,224), Tate (10,208) and the British Museum (2,507) \u2014 52,939 images on DINOv2-Large/CLIP, verified 2026-09-07. Roseberys and Forum Auctions are not yet embedded \u2014 a weak or absent match reflects this coverage gap, not evidence against attribution.",
+    "candidateMatches": [
+      {
+        "artistName": "Banksy",
+        "conceptualWorkTitle": "Silver Flag",
+        "impressionId": "bonhams-23451-79",
+        "dinov2Similarity": 0.9906966686248779,
+        "clipSimilarity": 0.9802398681640625,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Banksy",
+        "conceptualWorkTitle": "Flag (Silver)",
+        "impressionId": "bonhams-26709-137",
+        "dinov2Similarity": 0.9836440086364746,
+        "clipSimilarity": 0.9793815612792969,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Banksy",
+        "conceptualWorkTitle": "Flag (Silver)",
+        "impressionId": "bonhams-26782-165",
+        "dinov2Similarity": 0.9825282096862793,
+        "clipSimilarity": 0.9760017395019531,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Banksy",
+        "conceptualWorkTitle": "Gold Flag",
+        "impressionId": "bonhams-23451-80",
+        "dinov2Similarity": 0.980377197265625,
+        "clipSimilarity": 0.9611053466796875,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Banksy",
+        "conceptualWorkTitle": "Flag (Silver)",
+        "impressionId": "bonhams-26785-246",
+        "dinov2Similarity": 0.976940393447876,
+        "clipSimilarity": 0.9563255310058594,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Banksy",
+        "conceptualWorkTitle": "Silver Flag",
+        "impressionId": "bonhams-24140-291",
+        "dinov2Similarity": 0.9761476516723633,
+        "clipSimilarity": 0.9601821899414062,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Banksy",
+        "conceptualWorkTitle": "Silver Flag",
+        "impressionId": "bonhams-25381-295",
+        "dinov2Similarity": 0.9747090339660645,
+        "clipSimilarity": 0.9517860412597656,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Banksy",
+        "conceptualWorkTitle": "Flag (Silver)",
+        "impressionId": "bonhams-26026-227",
+        "dinov2Similarity": 0.9730238914489746,
+        "clipSimilarity": 0.9609718322753906,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Banksy",
+        "conceptualWorkTitle": "Flag (Silver)",
+        "impressionId": "bonhams-27493-216",
+        "dinov2Similarity": 0.9710805416107178,
+        "clipSimilarity": 0.9702911376953125,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Banksy",
+        "conceptualWorkTitle": "Formica Flag - Silver",
+        "impressionId": "bonhams-27252-211",
+        "dinov2Similarity": 0.9616096019744873,
+        "clipSimilarity": 0.9388961791992188,
+        "provenanceLayer": "auction_history"
+      }
+    ],
+    "bestMatchArtist": "Banksy",
+    "bestMatchConceptualWorkTitle": "Silver Flag",
+    "dinov2SimilarityScore": 0.9906966686248779,
+    "clipSimilarityScore": 0.9802398681640625,
+    "matchConfidence": "HIGH",
+    "attributionCaveat": "DINOv2/CLIP similarity reflects visual/stylistic closeness, not verified authorship \u2014 one corroborating evidence point, never a standalone attribution (see ADR-0002, ADR-0013).",
+    "hypothesisWarning": "\u26a0\ufe0f HYPOTHESIS ONLY \u2014 Stage 1d image-embedding match. Shadow-run: not yet used in attribution. DINOv2/CLIP visual similarity, not verified authorship. Do not treat as confirmed attribution."
+  },
+  "generatedAt": "2026-09-10T00:00:00.000Z"
+}
