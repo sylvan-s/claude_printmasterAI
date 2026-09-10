@@ -87,3 +87,57 @@ export function cypherFold(expr: string): string {
 export function cypherFoldTrim(expr: string): string {
   return cypherFold(`trim(${expr})`);
 }
+
+/**
+ * Punctuation stripped before comparing two titles for identity.
+ *
+ * Measured on the live graph 2026-09-10: 27,267 ConceptualWork nodes — 29.9% of all works —
+ * are redundant, in the sense that another work by the SAME artist has a byte-identical
+ * title once case, accents, punctuation and whitespace are folded. Real examples:
+ *
+ *   "'Durham Wharf'"             vs  "Durham Wharf"
+ *   "The Lock-Keeper's Cottage"  vs  "The Lock Keeper’s Cottage"     ASCII vs curly apostrophe
+ *   "Blue Brown Interweave"      vs  "Blue & Brown Interweave"
+ *   "Rythmes Couleurs"           vs  "Rythmes-couleurs"
+ *
+ * That fragmentation is why queryAuctionComparables' tier-1 same_work match — the strongest
+ * comparable a valuation gets — finds only a fraction of a work's own sales: the impressions
+ * are split across variant-titled nodes. Folding at query time recovers them without writing
+ * anything to the graph.
+ *
+ * This is still EXACT matching, not fuzzy: two titles collide only if identical after a
+ * deterministic fold. No threshold, no similarity score, so the project's standing rule
+ * against fuzzy catalogue-identity matching is untouched.
+ *
+ * Enumerated rather than a character class because Cypher has no regex replace and APOC is
+ * not installed — the chain below is generated for both sides of the comparison.
+ */
+export const TITLE_PUNCTUATION: ReadonlyArray<string> = [
+  ".", ",", ";", ":", "!", "?", "'", "\u2019", "\u2018", '"', "\u201c", "\u201d",
+  "(", ")", "[", "]", "{", "}", "-", "\u2013", "\u2014", "_", "/", "\\", "&", "+",
+  "*", "#", "@", "|", "<", ">", "=", "~", "\u00b4", "\u0060",
+];
+
+/** Fold a title to its identity key: lowercase, unaccented, unpunctuated, single-spaced. */
+export function normalizeTitleKey(input: string): string {
+  let s = foldAccents(input);
+  for (const p of TITLE_PUNCTUATION) s = s.split(p).join(" ");
+  return s.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Cypher expression folding a stored title the same way `normalizeTitleKey` folds the
+ * parameter it is compared against. Whitespace is collapsed by a fixed number of passes
+ * rather than a regex — enough for the longest run of punctuation observed in the corpus.
+ */
+export function cypherNormalizeTitle(expr: string): string {
+  // A Cypher single-quoted literal escapes backslash and apostrophe with a backslash.
+  // Getting this wrong does not fail loudly at the character — an unescaped backslash ends
+  // the literal early and corrupts the rest of the query, which surfaces as a syntax error
+  // pointing at an unrelated line.
+  const lit = (c: string) => c.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+  let out = cypherFold(`trim(${expr})`);
+  for (const p of TITLE_PUNCTUATION) out = `replace(${out},'${lit(p)}',' ')`;
+  for (let i = 0; i < 4; i++) out = `replace(${out},'  ',' ')`;
+  return `trim(${out})`;
+}

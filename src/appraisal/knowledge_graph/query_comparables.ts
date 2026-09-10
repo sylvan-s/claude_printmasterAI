@@ -36,7 +36,7 @@
 import neo4j from "neo4j-driver";
 import { getDriver, getDatabase } from "./client.js";
 import { isLowInformationTitle } from "./title_normalize.js";
-import { foldAccents, cypherFold, cypherFoldTrim } from "./unaccent.js";
+import { foldAccents, cypherFold, cypherFoldTrim, normalizeTitleKey, cypherNormalizeTitle } from "./unaccent.js";
 
 export type ComparableTier = "same_work" | "same_artist_technique" | "same_artist";
 
@@ -118,7 +118,7 @@ WITH cw, src, er, techniques,
      CASE
        WHEN $conceptualWorkId IS NOT NULL AND cw.id = $conceptualWorkId THEN 0
        WHEN $workTitle IS NOT NULL
-            AND ${cypherFoldTrim("cw.name")} = $workTitle THEN 0
+            AND ${cypherNormalizeTitle("cw.name")} = $workTitle THEN 0
        WHEN $technique IS NOT NULL
             AND any(x IN techniques WHERE ${cypherFold("x")} CONTAINS $technique) THEN 1
        ELSE 2
@@ -207,7 +207,10 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
       // Modele" never reached tier 0 against the graph's "Peintre et Modèle". See unaccent.ts.
       artistName: foldAccents(params.artistName),
       conceptualWorkId: params.conceptualWorkId ?? null,
-      workTitle: titleForExactMatch ? foldAccents(titleForExactMatch) : null,
+      // Normalised, not merely accent-folded: 29.9% of works are variant-titled duplicates
+      // of another work by the same artist, so an accent-only fold still misses most of a
+      // work's own sales at tier 1. See TITLE_PUNCTUATION.
+      workTitle: titleForExactMatch ? normalizeTitleKey(titleForExactMatch) : null,
       technique: params.technique?.trim() ? foldAccents(params.technique.trim()) : null,
       sinceDate: params.sinceDate ?? null,
       excludeListingUrl: params.excludeListingUrl ?? null,

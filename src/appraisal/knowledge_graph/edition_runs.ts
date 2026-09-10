@@ -37,7 +37,7 @@
 import neo4j from "neo4j-driver";
 import { getDriver, getDatabase } from "./client.js";
 import { isLowInformationTitle } from "./title_normalize.js";
-import { foldAccents, cypherFold, cypherFoldTrim } from "./unaccent.js";
+import { foldAccents, cypherFold, cypherFoldTrim, normalizeTitleKey, cypherNormalizeTitle } from "./unaccent.js";
 
 /** Proof/copy designations as the ingests normalise them. */
 export type CopyType = "numbered" | "AP" | "PP" | "HC" | "BAT" | "TP";
@@ -102,7 +102,7 @@ MATCH (a)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)
 WITH a, cw, er,
      CASE
        WHEN $workTitle IS NULL THEN 'artist_only'
-       WHEN ${cypherFoldTrim("cw.name")} = $workTitle THEN 'exact'
+       WHEN ${cypherNormalizeTitle("cw.name")} = $workTitleKey THEN 'exact'
        // Containment must run BOTH ways. Checking only cw.name CONTAINS $workTitle silently
        // misses every case where the searched title is the longer string — Stage 2b asked
        // for "The Beach Boys" and the graph holds "Beach Boys", so an obviously correct
@@ -155,6 +155,7 @@ export async function queryEditionRuns(params: EditionQueryParams): Promise<Edit
     const res = await session.run(QUERY, {
       artistName: foldAccents(artistName),
       workTitle: workTitle ? foldAccents(workTitle) : null,
+      workTitleKey: workTitle ? normalizeTitleKey(workTitle) : null,
       limit: neo4j.int(params.limit ?? EDITION_DEFAULT_LIMIT),
     });
     if (res.records.length === 0) return null;

@@ -10,7 +10,7 @@ import { titleSimFromCosine, COSINE_FLOOR, COSINE_CEIL } from "../../src/apprais
 import { parseExcludedListing } from "../../src/appraisal/knowledge_graph/query_comparables";
 import { formatCatalogueRaisonneBlock, MIN_WORKS_FOR_DERIVED_CR, type ArtistCatalogueRaisonne } from "../../src/appraisal/knowledge_graph/catalogue_raisonne";
 import { formatEditionRunsForClaude, type EditionQueryResult, type EditionWorkFact } from "../../src/appraisal/knowledge_graph/edition_runs";
-import { foldAccents, cypherFold } from "../../src/appraisal/knowledge_graph/unaccent";
+import { foldAccents, cypherFold, normalizeTitleKey, cypherNormalizeTitle } from "../../src/appraisal/knowledge_graph/unaccent";
 import { catalogueMergeKey } from "../../src/appraisal/knowledge_graph/catalogue_raisonne";
 
 let passed = 0;
@@ -364,6 +364,44 @@ test("catalogueMergeKey strips only ONE trailing year, never an interior number"
 test("catalogueMergeKey is accent- and case-insensitive", () => {
   assert.equal(catalogueMergeKey("Ginestet & Pouillon"), catalogueMergeKey("ginestet & pouillon"));
   assert.equal(catalogueMergeKey("Reuße 2001"), catalogueMergeKey("Reusse"));
+});
+
+
+// ---- title identity normalisation ---------------------------------------------------
+// 29.9% of ConceptualWork nodes are variant-titled duplicates of another work by the same
+// artist. Folding at query time recovers a work's own sales at the same_work comp tier.
+
+test("normalizeTitleKey collapses the observed duplicate variants", () => {
+  const same = (a: string, b: string) => normalizeTitleKey(a) === normalizeTitleKey(b);
+  assert.ok(same("'Durham Wharf'", "Durham Wharf"));
+  assert.ok(same("The Lock-Keeper's Cottage", "The Lock Keeper\u2019s Cottage"), "ASCII vs curly apostrophe");
+  assert.ok(same("Blue Brown Interweave", "Blue & Brown Interweave"));
+  assert.ok(same("Rythmes Couleurs", "Rythmes-couleurs"));
+  assert.ok(same("Peintre et Mod\u00e8le", "peintre et modele"), "accents too");
+  assert.ok(same("Untitled (Composition)", "Untitled Composition"));
+});
+
+test("normalizeTitleKey does NOT collapse genuinely different works", () => {
+  const same = (a: string, b: string) => normalizeTitleKey(a) === normalizeTitleKey(b);
+  // Series plates differ by a real token, not punctuation — merging them would attribute
+  // one plate's sales to another.
+  assert.ok(!same("Spinning Man I", "Spinning Man II"));
+  assert.ok(!same("Plate 4", "Plate 5"));
+  assert.ok(!same("Flag (Silver)", "Flag (Gold)"));
+});
+
+test("normalizeTitleKey collapses whitespace rather than leaving gaps", () => {
+  assert.equal(normalizeTitleKey("  A -- B  "), "a b");
+  assert.equal(normalizeTitleKey("A&B"), "a b");
+});
+
+test("cypherNormalizeTitle escapes quote and backslash for a Cypher literal", () => {
+  // An unescaped backslash ends the string literal early and corrupts the rest of the
+  // query — it surfaces as a syntax error pointing at an unrelated line, so it is worth
+  // pinning rather than discovering again.
+  const c = cypherNormalizeTitle("cw.name");
+  assert.ok(c.includes("\\'"), "apostrophe must be backslash-escaped");
+  assert.ok(c.startsWith("trim(") && c.includes("toLower(trim(cw.name))"));
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
