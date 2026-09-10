@@ -156,7 +156,21 @@ HONORIFICS = {
     "ra", "ara", "pra", "ppra", "re", "are", "rws", "arws", "rba", "rbs", "rdi",
     "rsa", "arsa", "prsa", "rsw", "rgi", "rp", "roi", "rwa", "neac", "frsa", "fba",
     "dlitt", "dphil", "hrsa", "hrsw", "ps", "sma", "rcaanciennes",
+    # Academic title, confirmed on one node: 'Professor Karl-Otto Götz' vs 'Karl Otto Gotz'.
+    # Without it `_noise` ties at 0 and preferred_name()'s token-count rule promotes the
+    # titled form, making the canonical name worse rather than better.
+    "professor", "prof",
 }
+
+# Auction-cataloguing prefixes: NOT titles, so deliberately kept out of HONORIFICS, but
+# stripped by strip_honorifics() for the same reason — they are junk a canonical name must
+# not inherit. Confirmed, not guessed: 'RTO' heads 19 Artist nodes in this graph
+# ('RTO Jonas Wood', 'RTO Reg Butler', 'RTO Sir William Nicholson', and the frankly
+# non-artist 'RTO TO BE AUTHENTICATED'). Before this was added, a dry run planned
+# 'RTO Jonas Wood' -> 'Jonas Wood' followed by a rename of the survivor BACK to
+# 'RTO Jonas Wood'. Extend only from a confirmed case, same discipline as
+# catalogue_matching.py's NON_CATALOGUE_NAMES.
+CATALOGUING_PREFIXES = {"rto"}
 
 # Trailing life-date / birth-year noise: "Andy Warhol 1928-1987", "... b. 1968",
 # "... born 1942". Matched as whole tokens after normalization.
@@ -255,9 +269,10 @@ def tokens(name):
 
 
 def strip_honorifics(toks):
-    """Drop post-nominals/titles and trailing life-date noise, but never reduce a name
-    below two tokens — "Sir Frank Short" -> "frank short", "Christo" stays "christo"."""
-    out = [t for t in toks if t not in HONORIFICS]
+    """Drop post-nominals/titles, auction-cataloguing prefixes and trailing life-date
+    noise, but never reduce a name below two tokens — "Sir Frank Short" -> "frank short",
+    "RTO Jonas Wood" -> "jonas wood", "Christo" stays "christo"."""
+    out = [t for t in toks if t not in HONORIFICS and t not in CATALOGUING_PREFIXES]
     while len(out) > 2 and (out[-1].isdigit() or out[-1] in _YEARISH):
         out = out[:-1]
     if len(out) < 2:
@@ -626,13 +641,31 @@ def run_scan(session, out_json=None, threshold=DEFAULT_THRESHOLD):
     return scored, unscored
 
 
-def run_merge(session, threshold, dry_run=False):
+def run_merge(session, threshold, dry_run=False, only_rules=None, exclude_names=None):
+    """`only_rules` restricts the run to one or more rule families; `exclude_names` drops
+    any pair naming a listed artist. Both exist because the families carry very different
+    risk — a 2026-09-10 dry run of all 133 pairs was accepted for `normalized_equal` only,
+    with `typo` and `token_subset` held back over four pairs that looked like different
+    people on one-image-each evidence ('Pieter Cramer'/'Pierre Cramer',
+    'John Sperling'/'Josh Sperling', 'Robert Parker'/'Robert Andrew Parker',
+    'William Seaby'/'Allen William Seaby')."""
     pairs, info = find_candidate_pairs(session)
     names = sorted({p["nameA"] for p in pairs} | {p["nameB"] for p in pairs})
     embeddings = fetch_embeddings(session, names)
     scored, _ = score_pairs(pairs, embeddings)
 
     to_merge = [r for r in scored if r["maxSim"] >= threshold_for(r["rule"], threshold)]
+    if only_rules:
+        skipped_rule = [r for r in to_merge if r["rule"] not in only_rules]
+        to_merge = [r for r in to_merge if r["rule"] in only_rules]
+        print(f"--rule {','.join(sorted(only_rules))}: {len(skipped_rule)} pair(s) in other "
+              f"families are NOT merged by this run.")
+    if exclude_names:
+        blocked = [r for r in to_merge
+                   if r["nameA"] in exclude_names or r["nameB"] in exclude_names]
+        to_merge = [r for r in to_merge if r not in blocked]
+        for r in blocked:
+            print(f"[EXCLUDED] {r['nameA']!r} <-> {r['nameB']!r} — named in --exclude-name")
     held = [r for r in scored
             if r["maxSim"] >= threshold and r["maxSim"] < threshold_for(r["rule"], threshold)]
     print(f"{len(to_merge)} pair(s) clear their rule's DINOv2 threshold (base {threshold}, "
@@ -712,11 +745,19 @@ if __name__ == "__main__":
     parser.add_argument("--merge", action="store_true", help="Execute merges for pairs scoring >= --threshold")
     parser.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="DINOv2 max-similarity cutoff for --merge")
     parser.add_argument("--dry-run", action="store_true", help="With --merge, print what would happen without writing")
+    parser.add_argument("--rule", action="append", default=[], metavar="RULE",
+                        help=f"With --merge, restrict to one rule family (repeatable). One of {RULE_PRIORITY}.")
+    parser.add_argument("--exclude-name", action="append", default=[], metavar="NAME",
+                        help="With --merge, skip any pair naming this artist (repeatable).")
     parser.add_argument("--json", dest="out_json", help="With --scan, also save full results to this path")
     parser.add_argument("--rule-threshold", action="append", default=[], metavar="RULE=VALUE",
                         help="Override a per-rule DINOv2 floor, e.g. --rule-threshold token_subset=0.95. "
                              "Repeatable. Set to 0 to disable a rule's floor entirely.")
     args = parser.parse_args()
+
+    for rule in args.rule:
+        if rule not in RULE_PRIORITY:
+            parser.error(f"--rule expects one of {RULE_PRIORITY}, got {rule!r}")
 
     for override in args.rule_threshold:
         rule, _, value = override.partition("=")
@@ -733,6 +774,8 @@ if __name__ == "__main__":
             if args.scan:
                 run_scan(session, out_json=args.out_json, threshold=args.threshold)
             if args.merge:
-                run_merge(session, threshold=args.threshold, dry_run=args.dry_run)
+                run_merge(session, threshold=args.threshold, dry_run=args.dry_run,
+                          only_rules=set(args.rule) or None,
+                          exclude_names=set(args.exclude_name) or None)
     finally:
         driver.close()
