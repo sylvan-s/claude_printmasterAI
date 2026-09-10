@@ -13,3 +13,7 @@ neo4j
 # embedding_service.py only (Stage 1d's request-time inference microservice)
 fastapi
 uvicorn[standard]
+
+# build_opportunity_deck.py only (pre-sale PowerPoint report). Pillow above is reused to
+# convert the catalogue WebP images, which python-pptx cannot embed directly.
+python-pptx
