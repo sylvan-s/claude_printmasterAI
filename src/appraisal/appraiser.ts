@@ -427,6 +427,18 @@ export async function postAnthropicMessages(
       throw new AnthropicContentFilterError(`${label}: output blocked by content filtering — ${errorText.slice(0, 300)}`);
     }
 
+    // Anthropic has begun rejecting `temperature` on some models ("`temperature` is
+    // deprecated for this model" — observed on claude-opus-4-8, 2026-09-10, which took down
+    // Stage 1a and with it every full-pipeline run). Detected from the response rather than
+    // gated on a hardcoded model list, so the next model to drop it needs no code change.
+    // Retried once, in place, because the request is otherwise valid.
+    if (response.status === 400 && /temperature.*(deprecated|not supported|unsupported)/i.test(errorText)
+        && "temperature" in body) {
+      console.warn(`[${label}] model rejects \`temperature\` — retrying without it`);
+      const { temperature, ...withoutTemp } = body as Record<string, unknown>;
+      return postAnthropicMessages(apiKey, withoutTemp, { ...opts, maxAttempts: 1 });
+    }
+
     const retryable = response.status === 429 || response.status === 529 || response.status >= 500;
     if (retryable && attempt < maxAttempts) {
       const retryAfter = Number(response.headers.get("retry-after"));
@@ -2088,7 +2100,14 @@ Return a single JSON object:
   // throw" discipline as Stage 1b — a down/slow embedding service or a Neo4j
   // query failure must never fail the appraisal.
 
-  protected async runStage1dEmbeddingMatch(imageBase64: string, mimeType: string = "image/jpeg"): Promise<Stage1dResult> {
+  /**
+   * `excludeSaleId` suppresses matches from one sale. Once a catalogue is ingested AND
+   * embedded, its own lots are in the vector index, so a lot matches ITSELF at dino ~1.0 and
+   * "confirms" its own identity — the image-side twin of the comp circularity
+   * parseExcludedListing guards. Measured on A0793: 334 of 534 lots self-match above 0.999
+   * unguarded. Stage 3's testingExcludeSourceListing only ever covered the price side.
+   */
+  protected async runStage1dEmbeddingMatch(imageBase64: string, mimeType: string = "image/jpeg", excludeSaleId?: string | null): Promise<Stage1dResult> {
     const EMPTY: Stage1dResult = {
       schemaVersion: "IES-1.0",
       embeddingModelsUsed: { dinov2: null, clip: null },
@@ -2107,7 +2126,7 @@ Return a single JSON object:
       const candidates: EmbeddingMatchCandidate[] = await queryImageEmbeddingMatches(
         vectors.dinov2?.vector ?? null,
         vectors.clip?.vector ?? null,
-        { limit: 10 },
+        { limit: 10, excludeSaleId: excludeSaleId ?? null },
       );
       const best = candidates[0];
       // Provisional threshold, NOT calibrated against a backtest set — ADR-0013's "Not
@@ -2988,7 +3007,11 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     // never passed into runStage2bSpecialist — the specialist prompt is unchanged.
     emit({ stage: "stage1d", status: "start", message: "Matching image embeddings against internal art graph…", percent: 5 });
     const embeddingMatchPromise = runEmbeddingMatch
-      ? this.runStage1dEmbeddingMatch(input.imageBase64, input.mimeType)
+      ? this.runStage1dEmbeddingMatch(
+          input.imageBase64,
+          input.mimeType,
+          parseExcludedListing(input.testingExcludeSourceListing).saleLot?.saleId ?? null,
+        )
       : Promise.resolve(undefined);
 
     emit({ stage: "stage1c", status: "start", message: "Extracting structured claims from appraiser notes…", percent: 5 });
