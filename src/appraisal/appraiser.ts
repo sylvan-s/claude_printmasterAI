@@ -187,6 +187,17 @@ function isClaude(model: string): boolean {
   return model.toLowerCase().startsWith("claude");
 }
 
+/**
+ * Groq serves OpenAI-shaped chat/completions for several open-weight families. Matched on
+ * the vendor prefix Groq itself uses in its model IDs, so "qwen/qwen3.6-27b" routes to the
+ * Groq loop while "claude-*" and Gemini names do not.
+ */
+function isGroqModel(model: string): boolean {
+  const m = model.toLowerCase();
+  return m.startsWith("qwen/") || m.startsWith("openai/gpt-oss") || m.startsWith("minimaxai/")
+    || m.startsWith("llama-") || m.startsWith("groq/");
+}
+
 function getCurrencySymbol(code: string): string {
   if (code === "USD") return "$";
   if (code === "GBP") return "£";
@@ -280,7 +291,15 @@ const TOKEN_PRICES: Record<string, { in: number; out: number }> = {
   "claude-opus-4-8": { in: 15, out: 75 },
   "claude-sonnet-4-6": { in: 3, out: 15 },
   "claude-haiku-4-5": { in: 0.8, out: 4 },
+  // UNVERIFIED — Groq does not publish per-model pricing on any page reachable without a
+  // console login, so these are placeholders and every Qwen cost figure derived from them
+  // is an estimate, not a measurement. Set them from console.groq.com/settings/billing
+  // before quoting a Qwen-vs-Haiku cost comparison.
+  "qwen/qwen3.6-27b": { in: 0.3, out: 0.5 },
+  "qwen/qwen3.8-27b": { in: 0.3, out: 0.5 },
 };
+/** Model IDs whose TOKEN_PRICES entry is a guess — cost columns for these are estimates. */
+export const UNVERIFIED_PRICE_MODELS = new Set(["qwen/qwen3.6-27b", "qwen/qwen3.8-27b"]);
 const DEFAULT_PRICE = { in: 3, out: 15 };
 
 export interface CallUsage {
@@ -1328,6 +1347,283 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
   }
 
   /**
+   * Stage 2a tool loop against Groq's OpenAI-shaped chat/completions API.
+   *
+   * A sibling of callClaudeWithAckgTool rather than a branch inside it: the two wire
+   * formats disagree about almost everything structural. Anthropic puts tool calls in
+   * `content` blocks and answers them with `tool_result` blocks carrying `is_error`; OpenAI
+   * puts them in `message.tool_calls` and answers with `{role:"tool", tool_call_id}` where
+   * an error is just prose. Anthropic caches a system prefix with `cache_control`; Groq has
+   * no equivalent, so every round re-sends the prompt at full price — the reason a cheap
+   * per-token model is not automatically a cheap stage.
+   *
+   * What is deliberately IDENTICAL is the control flow, because that is what this session
+   * measured and fixed: the same three exits (early report, graph query, no tool call at
+   * all), the same MIN_ACKG_ROUNDS_BEFORE_REPORT gate, the same MAX_REPORT_REFUSALS budget
+   * shared across the report and no-call paths, and the same executeGraphTool dispatch with
+   * its unconstrained-query gate. A second loop that drifted on any of those would silently
+   * reintroduce the zero-graph-round failure this fixture exists to catch.
+   */
+  protected async callGroqWithAckgTool(
+    modelName: string,
+    systemInstruction: string,
+    userText: string,
+    maxTokens: number = 8192,
+    finalTool: { name: string; description: string; schema: any },
+    opts: { extraTools?: any[]; maxRounds?: number } = {},
+  ): Promise<any> {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "GROQ_API_KEY is not set. Add it to .env (get one at console.groq.com/keys) to run " +
+        `Stage 2a on "${modelName}".`,
+      );
+    }
+
+    const graphTools = [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
+    const graphToolNames = new Set(graphTools.map((t: any) => t.name));
+    const finalToolName = finalTool.name;
+    // OpenAI wraps each tool as {type:"function", function:{...}} and calls the schema
+    // `parameters`, where Anthropic calls it `input_schema`. Same JSON Schema underneath.
+    const tools = [
+      ...graphTools.map((t: any) => ({
+        type: "function",
+        function: { name: t.name, description: t.description, parameters: t.input_schema },
+      })),
+      {
+        type: "function",
+        function: {
+          name: finalToolName,
+          description: finalTool.description,
+          parameters: translateSchemaToStandardJsonSchema(finalTool.schema),
+        },
+      },
+    ];
+
+    const post = async (messages: any[], forceFinalTool: boolean) => {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: modelName,
+          max_tokens: maxTokens,
+          temperature: this.config.temperature ?? DEFAULT_CLAUDE_TEMPERATURE,
+          messages,
+          tools,
+          ...(forceFinalTool
+            ? { tool_choice: { type: "function", function: { name: finalToolName } } }
+            : {}),
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Groq request failed: ${res.status}: ${body.slice(0, 500)}`);
+      }
+      const json: any = await res.json();
+      // OpenAI usage shape -> the Anthropic-named fields recordUsage expects. Groq reports
+      // no cache tokens, so those stay zero and the cost is plain input + output.
+      recordUsage("Groq Stage 2a ACKG tool", modelName, {
+        input_tokens: json?.usage?.prompt_tokens ?? 0,
+        output_tokens: json?.usage?.completion_tokens ?? 0,
+      });
+      return json;
+    };
+
+    const messages: any[] = [
+      { role: "system", content: systemInstruction },
+      { role: "user", content: userText },
+    ];
+    const MAX_ROUNDS = opts.maxRounds ?? 4;
+    let roundsUsed = 0;
+    let constrainedRounds = 0;
+    let reportRefusals = 0;
+    let data: any = null;
+
+    const parseArgs = (raw: any) => {
+      if (raw == null) return {};
+      if (typeof raw === "object") return raw;
+      try { return JSON.parse(raw); } catch { return {}; }
+    };
+
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      data = await post(messages, false);
+      const msg = data?.choices?.[0]?.message;
+      if (!msg) throw new Error("Groq (ACKG tool) returned no message.");
+      const toolCalls: any[] = msg.tool_calls ?? [];
+
+      const reported = toolCalls.find((c) => c.function?.name === finalToolName);
+      if (reported && (constrainedRounds >= MIN_ACKG_ROUNDS_BEFORE_REPORT || reportRefusals >= MAX_REPORT_REFUSALS)) {
+        this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
+        console.log(`[Stage 2a ACKG loop] round ${round + 1}: reported without a forced call — ${roundsUsed} query round(s) used`);
+        return parseArgs(reported.function?.arguments);
+      }
+      if (reported) {
+        reportRefusals++;
+        console.log(
+          `[Stage 2a ACKG loop] round ${round + 1}: report refused (${reportRefusals}/${MAX_REPORT_REFUSALS}) — ${constrainedRounds} constrained ` +
+            `graph round(s), ${MIN_ACKG_ROUNDS_BEFORE_REPORT} required. Asking for a narrowed query.`,
+        );
+        messages.push(msg);
+        // OpenAI requires EVERY tool_call in an assistant turn to be answered, so any graph
+        // calls issued alongside the refused report must still get a tool message back.
+        for (const c of toolCalls) {
+          if (c.id === reported.id) {
+            messages.push({
+              role: "tool", tool_call_id: c.id,
+              content:
+                `Not accepted yet: the ACKG has not been consulted with a query that narrows anything. ` +
+                `Run a query_ackg carrying at least one of technique / region / subject / paper / workTitle ` +
+                `(and query_ackg_work if you have a candidate title), then call ${finalToolName} again ` +
+                `with what the graph returned. A bare period range is not a constrained query.\n\n` +
+                `If you genuinely have nothing to filter on, call ${finalToolName} again as-is and leave ` +
+                `kId "unknown", kOeuvreMatchCount -1 and kSubject UNASSESSABLE. Empty cells are the ` +
+                `honest answer; numbers from a query unrelated to this lot are not.`,
+            });
+          } else if (graphToolNames.has(c.function?.name)) {
+            const r = await this.executeGraphTool(c.function.name, parseArgs(c.function?.arguments), round + 1);
+            messages.push({ role: "tool", tool_call_id: c.id, content: r.content });
+          } else {
+            messages.push({ role: "tool", tool_call_id: c.id, content: "Unknown tool." });
+          }
+        }
+        continue;
+      }
+
+      const graphCalls = toolCalls.filter((c) => graphToolNames.has(c.function?.name));
+      if (graphCalls.length === 0) {
+        // Third exit — see the Anthropic loop. No query and no report; breaking here would
+        // fall through to the forced finalise and bypass the minimum-rounds check entirely.
+        if (constrainedRounds < MIN_ACKG_ROUNDS_BEFORE_REPORT && reportRefusals < MAX_REPORT_REFUSALS) {
+          reportRefusals++;
+          console.log(
+            `[Stage 2a ACKG loop] round ${round + 1}: no tool call and no constrained graph round ` +
+              `(refusal ${reportRefusals}/${MAX_REPORT_REFUSALS}) — asking for a query before the report.`,
+          );
+          messages.push(msg);
+          messages.push({
+            role: "user",
+            content:
+              `You have not consulted the ACKG. Do not report yet.\n\n` +
+              `Being handed a candidate artist or title by Stage 1c is NOT corroboration — it is the ` +
+              `claim under test, and the graph is what tests it. Run query_ackg with at least one of ` +
+              `technique / region / subject / paper / workTitle, and query_ackg_work with the artist ` +
+              `and title if you have them, then report with what the graph returned.\n\n` +
+              `If you truly have nothing to filter on, say so in one line and report with the ACKG ` +
+              `cells honestly empty — kId "unknown", kOeuvreMatchCount -1, kSubject UNASSESSABLE.`,
+          });
+          continue;
+        }
+        this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
+        break;
+      }
+
+      const anyConstrained = graphCalls.some(
+        (c) => c.function.name !== "query_ackg" || isConstrainedAckgQuery(parseArgs(c.function?.arguments)),
+      );
+      if (anyConstrained) constrainedRounds++;
+      roundsUsed = round + 1;
+
+      if (typeof msg.content === "string" && msg.content.trim()) {
+        this.onAckgLoopEvent({ round: round + 1, kind: "reasoning", reasoning: msg.content.trim() });
+      }
+      messages.push(msg);
+      for (const c of toolCalls) {
+        const r = graphToolNames.has(c.function?.name)
+          ? await this.executeGraphTool(c.function.name, parseArgs(c.function?.arguments), round + 1)
+          : { content: "Unknown tool.", isError: false };
+        messages.push({ role: "tool", tool_call_id: c.id, content: r.content });
+      }
+      if (round === MAX_ROUNDS - 1) {
+        this.onAckgLoopEvent({ round: round + 1, kind: "max_rounds", maxRounds: MAX_ROUNDS });
+      }
+    }
+
+    messages.push({ role: "user", content: `Now report your final structured result via the ${finalToolName} tool.` });
+    const finalData = await post(messages, true);
+    const finalCall = finalData?.choices?.[0]?.message?.tool_calls?.find((c: any) => c.function?.name === finalToolName);
+    if (!finalCall) throw new Error(`Groq (ACKG tool) did not return a ${finalToolName} tool call.`);
+    return parseArgs(finalCall.function?.arguments);
+  }
+
+  /**
+   * Execute one ACKG graph tool call and render its result for the model.
+   *
+   * Provider-neutral on purpose: the Anthropic loop wraps this in tool_result content
+   * blocks and an OpenAI-shaped loop wraps it in {role:"tool"} messages, but the graph
+   * behaviour — the constraint gate, the title pre-filter, the embedding rerank, the
+   * absence-of-coverage wording — must be identical whichever model is driving. Two copies
+   * of this would drift, and the drift would be invisible: both would still return rows.
+   */
+  protected async executeGraphTool(
+    toolName: string,
+    input: any,
+    round: number,
+  ): Promise<{ content: string; isError: boolean }> {
+    this.onAckgLoopEvent({ round, kind: "call", toolName, input: input || {} });
+
+    // GATE, not just a counter. An unconstrained query_ackg — no technique, region,
+    // subject, paper or title — returns the graph's most prolific artists regardless of
+    // this lot, and that noise then sits in the agent's context looking like evidence.
+    // Observed: a Peter Blake lot received "Pablo Picasso (support=670), Marc Chagall
+    // (428), Joan Miro (417)" from a bare period sweep. Refusing costs one cheap
+    // round-trip and returns nothing misleading.
+    if (toolName === "query_ackg" && !isConstrainedAckgQuery(input)) {
+      this.onAckgLoopEvent({ round, kind: "result", toolName, count: 0, summary: "refused — unconstrained query" });
+      return {
+        isError: true,
+        content:
+          `Refused: this query carries no technique, region, subject, paper or workTitle, so it ` +
+          `would rank the graph's most prolific artists overall — Picasso, Chagall, Miro and so on ` +
+          `— with no relevance to this lot. A period range alone does not narrow anything. ` +
+          `Re-run with at least one real filter, or use query_ackg_work if you have a candidate ` +
+          `artist or title (query_ackg cannot be scoped to an artist). If you have nothing to ` +
+          `filter on at all, do not query — report with the ACKG cells honestly empty.`,
+      };
+    }
+
+    try {
+      if (toolName === "query_ackg_work") {
+        const inp = input || {};
+        const observed = inp.observedTitle || inp.workTitle || "";
+        // Derive a substring pre-filter from the observed title when the agent didn't
+        // supply one — a raw artist-only query is ORDER BY impressionCount and would drop
+        // a low-impression target work before scoring.
+        const preFilter =
+          inp.workTitle ||
+          (observed
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, " ")
+            .split(/\s+/)
+            .filter((w: string) => w.length >= 4)
+            .sort((a: string, b: string) => b.length - a.length)[0] || undefined);
+        let works = await queryAckgWorks({ ...inp, workTitle: preFilter });
+        if (works.length === 0 && preFilter) {
+          works = await queryAckgWorks({ ...inp, workTitle: undefined }); // last resort: artist only
+        }
+        if (observed && works.length) {
+          const obsFam = inp.observedTechnique ? techniqueFamily(inp.observedTechnique) : null;
+          works = await scoreWorkTitleMatches(observed, works, {
+            techniqueIncompatible: obsFam
+              ? (w) => w.techniques.length > 0 && !w.techniques.some((t) => techniqueFamily(t) === obsFam)
+              : undefined,
+          });
+        }
+        const best = works[0];
+        this.onAckgLoopEvent({ round, kind: "result", toolName, count: works.length,
+          summary: `${works.length} work row(s)${best ? ` — best: "${best.workTitle}" titleSim=${best.titleSim ?? "n/a"}` : ""}` });
+        return { content: this.formatAckgWorksForClaude(works), isError: false };
+      }
+      const result = await queryAckg(input || {});
+      this.onAckgLoopEvent({ round, kind: "result", toolName, count: result.length,
+        summary: `${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}` });
+      return { content: this.formatAckgResultForClaude(result), isError: false };
+    } catch (err: any) {
+      this.onAckgLoopEvent({ round, kind: "result", toolName, error: err.message });
+      return { content: `ACKG query failed: ${err.message}`, isError: false };
+    }
+  }
+
+  /**
    * Bounded tool loop for Stage 2a (Triage), scoped to only the query_ackg tool —
    * no native web_search, since Triage classifies and routes, it doesn't browse
    * the web (that's Stage 2b's job via callClaudeWithWebSearch below). A new,
@@ -1543,74 +1839,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       messages.push({ role: "assistant", content: data.content });
       const toolResults = await Promise.all(
         clientToolUses.map(async (b: any) => {
-          this.onAckgLoopEvent({ round: round + 1, kind: "call", toolName: b.name, input: b.input || {} });
-          // GATE, not just a counter. An unconstrained query_ackg — no technique, region,
-          // subject, paper or title — returns the graph's most prolific artists regardless
-          // of this lot, and that noise then sits in the agent's context looking like
-          // evidence. Observed: a Peter Blake lot received "Pablo Picasso (support=670),
-          // Marc Chagall (428), Joan Miro (417)" from a bare period sweep. Previously this
-          // predicate only decided whether the round counted toward the minimum, so the
-          // query still ran and the rows still reached the model. Refusing costs one cheap
-          // round-trip and returns nothing misleading.
-          if (b.name === "query_ackg" && !isConstrainedAckgQuery(b.input)) {
-            this.onAckgLoopEvent({ round: round + 1, kind: "result", toolName: b.name, count: 0,
-              summary: "refused — unconstrained query" });
-            return {
-              type: "tool_result",
-              tool_use_id: b.id,
-              is_error: true,
-              content:
-                `Refused: this query carries no technique, region, subject, paper or workTitle, so it ` +
-                `would rank the graph's most prolific artists overall — Picasso, Chagall, Miro and so on ` +
-                `— with no relevance to this lot. A period range alone does not narrow anything. ` +
-                `Re-run with at least one real filter, or use query_ackg_work if you have a candidate ` +
-                `artist or title (query_ackg cannot be scoped to an artist). If you have nothing to ` +
-                `filter on at all, do not query — report with the ACKG cells honestly empty.`,
-            };
-          }
-          let content: string;
-          try {
-            if (b.name === "query_ackg_work") {
-              const inp = b.input || {};
-              const observed = inp.observedTitle || inp.workTitle || "";
-              // Derive a substring pre-filter from the observed title when the agent
-              // didn't supply one — a raw artist-only query is ORDER BY impressionCount
-              // and would drop a low-impression target work before scoring.
-              const preFilter =
-                inp.workTitle ||
-                (observed
-                  .toLowerCase()
-                  .replace(/[^a-z0-9\s]/g, " ")
-                  .split(/\s+/)
-                  .filter((w: string) => w.length >= 4)
-                  .sort((a: string, b: string) => b.length - a.length)[0] || undefined);
-              let works = await queryAckgWorks({ ...inp, workTitle: preFilter });
-              if (works.length === 0 && preFilter) {
-                works = await queryAckgWorks({ ...inp, workTitle: undefined }); // last resort: artist only
-              }
-              if (observed && works.length) {
-                const obsFam = inp.observedTechnique ? techniqueFamily(inp.observedTechnique) : null;
-                works = await scoreWorkTitleMatches(observed, works, {
-                  techniqueIncompatible: obsFam
-                    ? (w) => w.techniques.length > 0 && !w.techniques.some((t) => techniqueFamily(t) === obsFam)
-                    : undefined,
-                });
-              }
-              content = this.formatAckgWorksForClaude(works);
-              const best = works[0];
-              this.onAckgLoopEvent({ round: round + 1, kind: "result", toolName: b.name, count: works.length,
-                summary: `${works.length} work row(s)${best ? ` — best: "${best.workTitle}" titleSim=${best.titleSim ?? "n/a"}` : ""}` });
-            } else {
-              const result = await queryAckg(b.input || {});
-              content = this.formatAckgResultForClaude(result);
-              this.onAckgLoopEvent({ round: round + 1, kind: "result", toolName: b.name, count: result.length,
-                summary: `${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}` });
-            }
-          } catch (err: any) {
-            content = `ACKG query failed: ${err.message}`;
-            this.onAckgLoopEvent({ round: round + 1, kind: "result", toolName: b.name, error: err.message });
-          }
-          return { type: "tool_result", tool_use_id: b.id, content };
+          const r = await this.executeGraphTool(b.name, b.input, round + 1);
+          return r.isError
+            ? { type: "tool_result", tool_use_id: b.id, is_error: true, content: r.content }
+            : { type: "tool_result", tool_use_id: b.id, content: r.content };
         }),
       );
       messages.push({ role: "user", content: toolResults });
@@ -2377,12 +2609,16 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     const buildUserText = (slim: unknown) =>
       `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(slim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
     const evidenceOpts = { extraTools: [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL], maxRounds: 5 };
+    // One dispatch point for both wire formats. The two loops keep identical control flow
+    // (see callGroqWithAckgTool) — only the transport differs.
+    const runEvidenceAgent = (prompt: string, text: string) =>
+      isGroqModel(stage2aModel)
+        ? this.callGroqWithAckgTool(stage2aModel, prompt, text, 8192, evidenceTool, evidenceOpts)
+        : this.callClaudeWithAckgTool(stage2aModel, prompt, text, 8192, evidenceTool, evidenceOpts);
 
     let ev: EvidenceAgentOutput;
     try {
-      ev = (await this.callClaudeWithAckgTool(
-        stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(veaSlim), 8192, evidenceTool, evidenceOpts,
-      )) as EvidenceAgentOutput;
+      ev = (await runEvidenceAgent(ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(veaSlim))) as EvidenceAgentOutput;
     } catch (err) {
       if (!(err instanceof AnthropicContentFilterError)) throw err;
       // Content filter tripped — most often on lurid free-text prose the model echoes back
@@ -2391,9 +2627,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       // crash the lot.
       console.warn(`[Stage 2a evidence] content-filtered — retrying with VEA prose trimmed`);
       try {
-        ev = (await this.callClaudeWithAckgTool(
-          stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(trimVeaProse(veaSlim)), 8192, evidenceTool, evidenceOpts,
-        )) as EvidenceAgentOutput;
+        ev = (await runEvidenceAgent(ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(trimVeaProse(veaSlim)))) as EvidenceAgentOutput;
       } catch (err2) {
         if (!(err2 instanceof AnthropicContentFilterError)) throw err2;
         console.warn(`[Stage 2a evidence] still content-filtered — emitting escalate-only result`);
@@ -3154,6 +3388,26 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     provider: "anthropic",
     stage1Model: "claude-opus-4-8",
     stage2aModel: "claude-sonnet-4-6",
+    stage2bModel: "claude-sonnet-4-6",
+    stage3Model: "claude-sonnet-4-6",
+    enableVisualSearch: true,
+  },
+  {
+    id: "claude-4stage-qwen2a",
+    name: "Claude 4-Stage, Qwen Evidence Agent (Groq)",
+    description:
+      "Opus for vision (S1), Qwen 3.6 27B via Groq for the Stage 2a Evidence Agent, Sonnet " +
+      "for specialist search (S2b) and valuation (S3). Only S2a changes, so a run is directly " +
+      "comparable to claude-4stage. Needs GROQ_API_KEY. Both Groq Qwen models are PREVIEW — " +
+      "Groq states they may be discontinued at short notice, so this is for evaluation.",
+    modelName: "claude-opus-4-8",
+    temperature: 0.1,
+    promptKey: "standard",
+    imageQuality: "original",
+    includeAuxiliaryScans: true,
+    provider: "anthropic",
+    stage1Model: "claude-opus-4-8",
+    stage2aModel: "qwen/qwen3.6-27b",
     stage2bModel: "claude-sonnet-4-6",
     stage3Model: "claude-sonnet-4-6",
     enableVisualSearch: true,
