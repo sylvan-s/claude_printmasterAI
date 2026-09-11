@@ -232,6 +232,9 @@ export interface ArtistEvidence {
    *  artist pass (titleSim >= TAU_TITLE), unlike the K_oeuvre population count. null when
    *  there is no such work-level artist+title match. */
   ackgWorkAnchor: { artist: string; identityKey?: string | null; titleSim: number } | null;
+  /** This artist's own DINOv2 work-identity floor (Artist.dinoBackgroundP99). Absent for most
+   *  artists, in which case the global D_T_DINO_FLOOR applies — see dinoFloorFor. */
+  artistDinoFloor?: number | null;
 }
 
 export interface ArtistVerdict {
@@ -469,6 +472,35 @@ export const D_VOTE_FLOOR = 0.7;
  * it as calibrated.
  */
 export const D_T_DINO_FLOOR = 0.88;
+
+/**
+ * The floor actually applied, given the artist's own background distribution when the graph
+ * holds one (Artist.dinoBackgroundP99, written by knowledge_graph/artist_dino_background.py).
+ *
+ * D_T_DINO_FLOOR above is global, and its own comment admits it is unfitted: five lots, 0.010
+ * between the lowest same-work match and the highest different-work one. Measured over 37,905
+ * image pairs from 400 artists (knowledge_graph/analyse_dino_threshold.py), it turns out to be
+ * a reasonable CENTRE — the median artist's 1%-false-positive point is 0.875 — and a poor
+ * CONSTANT, because that point ranges from 0.533 to 1.000 across the 977 artists who have
+ * enough embedded output to measure. 473 need a higher floor, 504 a lower one.
+ *
+ *   Damien Hirst   0.919    0.88 admits DIFFERENT works of his as the same print
+ *   Elisabeth Frink 0.857
+ *   Peter Blake    0.735    0.88 REFUSES matches that are genuinely the same print,
+ *   Banksy         0.710    discarding evidence the graph actually holds
+ *
+ * On duplicate-filtered labels, normalising to the artist's own distribution lifts average
+ * precision from 0.895 to 0.953, and a logistic fit weights the normalised score over the raw
+ * one by roughly 3:1 (+8.06 against +2.59).
+ *
+ * Falls back to the global floor whenever the graph has no background for this artist — 977
+ * of 8,033 artists have one, so the fallback is the common path and must stay silent and safe.
+ */
+export function dinoFloorFor(artistFloor?: number | null): { floor: number; basis: "artist" | "global" } {
+  return artistFloor != null && Number.isFinite(artistFloor) && artistFloor > 0
+    ? { floor: artistFloor, basis: "artist" }
+    : { floor: D_T_DINO_FLOOR, basis: "global" };
+}
 
 /** The measured similarity behind a Stage 1d source, or its band fallback. */
 export function embeddingSourceConfidence(
@@ -932,6 +964,10 @@ export interface WorkEvidence {
     dinoSimilarity?: number;
   }; // D_t
   kWork: KWorkResult | null; // null = not queried / no hit
+  /** This artist's own DINOv2 work-identity floor (Artist.dinoBackgroundP99), carried onto the
+   *  work evidence because that is where the D_t gate reads it. Absent for most artists, in
+   *  which case the global D_T_DINO_FLOOR applies — see dinoFloorFor. */
+  artistDinoFloor?: number | null;
 }
 
 export interface WorkVerdict {
@@ -965,14 +1001,21 @@ function eligibleTitleVotes(ev: WorkEvidence, trace: string[]): TitleVote[] {
     const dino = ev.titleEmbeddingMatch.dinoSimilarity;
     if (dino == null) {
       trace.push(`D_t dropped from vote: no DINOv2 score — work identity is not scored on CLIP`);
-    } else if (dino >= D_T_DINO_FLOOR) {
-      votes.push({ source: "D_t", raw: ev.titleEmbeddingMatch.raw });
-      trace.push(`D_t votes: dino ${dino.toFixed(3)} >= ${D_T_DINO_FLOOR}`);
     } else {
-      trace.push(
-        `D_t dropped from vote: dino ${dino.toFixed(3)} < ${D_T_DINO_FLOOR} — close enough to place the ` +
-          `artist, not close enough to say WHICH print`,
-      );
+      // The floor is the artist's own when the graph holds their background, else global.
+      // Which one was used is traced: a lot refused at 0.919 and a lot refused at 0.880 are
+      // different claims, and the reader must be able to tell them apart.
+      const { floor, basis } = dinoFloorFor(ev.artistDinoFloor);
+      const label = basis === "artist" ? `${floor.toFixed(3)} (this artist's p99)` : `${floor.toFixed(3)} (global)`;
+      if (dino >= floor) {
+        votes.push({ source: "D_t", raw: ev.titleEmbeddingMatch.raw });
+        trace.push(`D_t votes: dino ${dino.toFixed(3)} >= ${label}`);
+      } else {
+        trace.push(
+          `D_t dropped from vote: dino ${dino.toFixed(3)} < ${label} — close enough to place the ` +
+            `artist, not close enough to say WHICH print`,
+        );
+      }
     }
   }
   return votes;

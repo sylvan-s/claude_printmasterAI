@@ -5,6 +5,8 @@ export { queryAuctionComparables, parseExcludedListing } from "./query_comparabl
 export { queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, MIN_WORKS_FOR_DERIVED_CR } from "./catalogue_raisonne.js";
 export { queryEditionRuns, formatEditionRunsForClaude, EDITION_DEFAULT_LIMIT } from "./edition_runs.js";
 export { resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery } from "./artist_identity.js";
+export { queryArtistDinoFloor } from "./artist_dino_floor.js";
+export type { ArtistDinoFloor } from "./artist_dino_floor.js";
 export type { ArtistIdentity } from "./artist_identity.js";
 export type { EditionQueryResult, EditionQueryParams, EditionWorkFact, CopyType } from "./edition_runs.js";
 export type { ArtistCatalogueRaisonne, CatalogueRaisonneRef, CatalogueRaisonneFinding, CatalogueRaisonneWriteOutcome } from "./catalogue_raisonne.js";

@@ -187,6 +187,8 @@ export function evidenceToTwoPassInput(
   stage1d?: Stage1dResult | null,
   appraiserInput?: AppraiserInputResult | null,
   styleConsistency?: StyleConsistencyEvidence | null,
+  /** This artist's own DINOv2 work-identity floor. Omitted -> the global one applies. */
+  artistDinoFloor?: number | null,
 ): TwoPassInput {
   // Defensive: callers should reject a report missing these (runStage2aTriage does), but
   // this function is exported and also drives the fixture adapters and tests. A missing
@@ -432,6 +434,7 @@ export function evidenceToTwoPassInput(
       titleAppraiser,
       titleEmbeddingMatch,
       kWork,
+      artistDinoFloor: artistDinoFloor ?? null,
     },
     impressionEvidence,
     veaInImageTitleLegible: !!w.veaInImageTitleLegible,
@@ -657,11 +660,15 @@ export function runEvidenceTree(
   stage1d?: Stage1dResult | null,
   appraiserInput?: AppraiserInputResult | null,
   styleConsistency?: StyleConsistencyEvidence | null,
+  /** This artist's own DINOv2 work-identity floor. Omitted -> the global one applies. */
+  artistDinoFloor?: number | null,
 ): {
   triage: TriageResult;
   twoPass: TwoPassResult;
 } {
-  const twoPass = classifyTwoPass(evidenceToTwoPassInput(ev, veaHaltRecommended, stage1d, appraiserInput, styleConsistency));
+  const twoPass = classifyTwoPass(
+    evidenceToTwoPassInput(ev, veaHaltRecommended, stage1d, appraiserInput, styleConsistency, artistDinoFloor),
+  );
   return { triage: assembleTriageResult(ev, twoPass), twoPass };
 }
 

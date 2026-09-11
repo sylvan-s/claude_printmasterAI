@@ -36,7 +36,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery, queryArtistDinoFloor } from "./knowledge_graph/index.js";
 import { assessComps, formatCompStorability, type CompStorabilityReport } from "./comp_storability.js";
 import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
@@ -2761,7 +2761,17 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       }
     }
 
-    const { triage, twoPass } = runEvidenceTree(ev, false, stage1d, appraiserInput, styleConsistency);
+    // This artist's own DINOv2 work-identity floor, fetched alongside the style check and for
+    // the same reason: the tree is pure and synchronous, so anything the graph knows has to be
+    // resolved before it runs. Null for most artists, and the global floor then applies.
+    const artistFloor = dominant ? await queryArtistDinoFloor(dominant) : null;
+    if (artistFloor) {
+      console.log(
+        `[Stage 2a] D_t floor for "${artistFloor.canonicalName}": ${artistFloor.floor.toFixed(3)} ` +
+          `(their own p99 over ${artistFloor.pairs} pairs; global is 0.880)`,
+      );
+    }
+    const { triage, twoPass } = runEvidenceTree(ev, false, stage1d, appraiserInput, styleConsistency, artistFloor?.floor ?? null);
 
     // Resolve the artist's ACKG identity ONCE, here, deterministically — after the tree has
     // settled WHO, and before anything downstream asks the graph about them. Previously

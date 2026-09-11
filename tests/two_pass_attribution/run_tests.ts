@@ -694,6 +694,44 @@ test("a catalogued title carrying a series suffix still corroborates (via contai
   assert.equal(v.confidence, "MEDIUM_HIGH");
 });
 
+// ── the per-artist DINOv2 floor (2026-09-11) ───────────────────────────────────
+
+test("the D_t floor is the artist's own when the graph has one, and global otherwise", () => {
+  const votes = (dino: number, artistDinoFloor?: number | null) =>
+    classifyWorkPass({
+      ...f.workEv(),
+      artistDinoFloor,
+      titleEmbeddingMatch: { kind: "names", raw: "Some Work", matchConfidence: "MEDIUM", dinoSimilarity: dino },
+    }).agreementSet.includes("D_t");
+
+  // Damien Hirst: measured p99 0.919. His catalogued works resemble one another more than
+  // most, so 0.90 is ORDINARY for him and must not identify a work — the global 0.88 lets it.
+  assert.equal(votes(0.90), true, "0.90 clears the global floor");
+  assert.equal(votes(0.90, 0.919), false, "but is ordinary similarity for this artist");
+  assert.equal(votes(0.93, 0.919), true, "genuinely exceptional for this artist still votes");
+
+  // Peter Blake: measured p99 0.735, so 0.80 is plainly exceptional for him even though the
+  // global floor would refuse it. His real A0793/122 match sits at 0.886 and the REGRESSION
+  // test above verifies it as the same work against Tate P04038.
+  assert.equal(votes(0.80), false, "0.80 is below the global floor");
+  assert.equal(votes(0.80, 0.735), true, "but is exceptional for this artist");
+  assert.equal(votes(0.886, 0.735), true, "and the verified same-work match still votes");
+});
+
+test("an absent or nonsense artist floor falls back to the global one, never blocks", () => {
+  const votes = (dino: number, artistDinoFloor?: number | null) =>
+    classifyWorkPass({
+      ...f.workEv(),
+      artistDinoFloor,
+      titleEmbeddingMatch: { kind: "names", raw: "Some Work", matchConfidence: "MEDIUM", dinoSimilarity: dino },
+    }).agreementSet.includes("D_t");
+  // 977 of 8,033 artists have a background; the rest must behave exactly as before.
+  for (const bad of [null, undefined, 0, -1, NaN]) {
+    assert.equal(votes(0.95, bad as any), true, `floor ${String(bad)} must fall back to global`);
+    assert.equal(votes(0.80, bad as any), false, `floor ${String(bad)} must fall back to global`);
+  }
+});
+
 // ── D_t — Stage 1d's catalogued title as a title vote (2026-09-08) ──────────────
 
 test("D_t — a lone HIGH Stage 1d title votes, and beats the K_work anchor to a different work", () => {
