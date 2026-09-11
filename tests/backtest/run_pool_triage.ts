@@ -25,7 +25,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { GoogleGenAI } from "@google/genai";
 import { FourStageAppraiser, appraiserConfigs, printUsageSummary, UNVERIFIED_PRICE_MODELS } from "../../src/appraisal/appraiser";
@@ -164,7 +164,17 @@ let ids = readdirSync(DIR)
   .slice(0, LIMIT);
 if (RESUME) {
   const before = ids.length;
-  ids = ids.filter((d) => !existsSync(join(DIR, d, "triage.json")));
+  // A failure record counts as not-done: resuming exists to finish the run, and a lot that
+  // died on a transient provider 400 is exactly what most needs retrying.
+  ids = ids.filter((d) => {
+    const p = join(DIR, d, "triage.json");
+    if (!existsSync(p)) return true;
+    try {
+      return JSON.parse(readFileSync(p, "utf8"))?.failed === true;
+    } catch {
+      return true; // unparseable = not a usable result
+    }
+  });
   console.log(`--resume: ${before - ids.length} already done, ${ids.length} to run`);
 }
 
@@ -179,6 +189,12 @@ const started = Date.now();
 async function runOne(id: string) {
   const f = JSON.parse(readFileSync(join(DIR, id, "stage1.json"), "utf8"));
   const gtArtist: string = f.groundTruth?.poolArtistName ?? "?";
+  // Clear the previous result FIRST. A lot that throws used to leave the prior run's
+  // triage.json untouched, so a results directory silently mixed this run with the last
+  // one — and nothing downstream could tell. That corrupted a real comparison: a provider
+  // 400 on qwen3.7-plus/A0793_113 was counted as that lot's earlier, successful result.
+  const outPath = join(DIR, id, "triage.json");
+  if (existsSync(outPath)) unlinkSync(outPath);
   try {
     const t0 = Date.now();
     // A0793 is now ingested, so without this the fixture lot retrieves its OWN catalogue
@@ -285,6 +301,18 @@ async function runOne(id: string) {
     );
   } catch (err: any) {
     failed++;
+    // Record the failure rather than leaving a hole: absence cannot be told apart from
+    // "never run", and a reader counting files would quietly compute over 4 lots believing
+    // it had 5. `failed: true` is the marker every consumer should check for.
+    writeFileSync(
+      outPath,
+      JSON.stringify(
+        { lot: f.lot, groundTruthArtist: gtArtist, model: MODEL, failed: true,
+          error: String(err?.message ?? err).slice(0, 1000), generatedAt: new Date().toISOString() },
+        null,
+        2,
+      ),
+    );
     console.error(`  FAIL ${id.padEnd(13)} ${String(err?.message ?? err).slice(0, 500)}`);
   }
 }
