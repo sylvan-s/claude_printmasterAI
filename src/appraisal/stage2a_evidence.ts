@@ -82,7 +82,6 @@ export interface EvidenceAgentOutput {
     appraiserArtistName: string;
     appraiserTrust: "documented_fact" | "hypothesis" | "none" | string;
     dominantCandidateName: string;
-    dominantCandidateIdentityKey: string;
     kId: "true" | "false" | "unknown" | string;
     kOeuvreMatchCount: number;
     kOeuvreProvenanceTags: string[];
@@ -154,10 +153,29 @@ const wh = (o: WH | undefined | null): { w: number; h: number } | null =>
 /** Attach the model-resolved ULAN/Wikidata key to a source only when that source
  *  actually names the dominant candidate — otherwise identity-level agreement would
  *  be spuriously asserted between sources naming different people. */
-function identityKeyFor(name: string, dom: string, key: string): string | null {
-  if (!key) return null;
+/**
+ * A shared token for every source that names the SAME artist as the dominant candidate.
+ *
+ * sameIdentity() compares two votes' identityKeys for EQUALITY and nothing else, and every
+ * vote that earns a key here gets the same string — so the token's content has never been
+ * read as a URI, only as "these two agree". Its job is a transitivity bridge: V naming
+ * "P. Picasso" and A naming "Pablo Picasso" may each clear TAU_NAME against the dominant
+ * "Pablo Picasso" without clearing it against each other.
+ *
+ * It used to be the model-supplied dominantCandidateIdentityKey (ADR-0010's ULAN/Wikidata
+ * cell), which made a real mechanism depend on a cosmetic field. Across 13 stored runs the
+ * model wrote a wrong URI twice — Banksy as wikidata Q11701 (nobody: Banksy is Q133600) and
+ * Rachel Whiteread as ULAN 500118577 (she is 500118666, and her node carries no Wikidata at
+ * all, so it was not read off any row). Neither error changed a verdict, precisely because
+ * the value is only compared with itself — which is the argument for not asking for it.
+ *
+ * The dominant name serves identically and costs nothing. NOTE this makes the bridge
+ * unconditional where it was previously contingent on the model having filled the cell: a
+ * run where the model left it "" now gets the bridge it should always have had.
+ */
+function identityKeyFor(name: string, dom: string): string | null {
   if (!name || !dom) return null;
-  return nameSimilarity(name, dom) >= TAU_NAME ? key : null;
+  return nameSimilarity(name, dom) >= TAU_NAME ? `name:${dom.trim().toLowerCase()}` : null;
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -176,7 +194,6 @@ export function evidenceToTwoPassInput(
   const a = ev.artistEvidence ?? ({} as NonNullable<typeof ev.artistEvidence>);
   const w = ev.workEvidence ?? ({} as NonNullable<typeof ev.workEvidence>);
   const dom = a.dominantCandidateName || "";
-  const domKey = a.dominantCandidateIdentityKey || "";
 
   // D / D_t — Stage 1d's DINOv2 + CLIP match against the ACKG's own image index (ADR-0013).
   // Built here in code from Stage 1d's output; no LLM judgement, unlike V/R/A.
@@ -235,7 +252,7 @@ export function evidenceToTwoPassInput(
     : { kind: "silent" };
 
   const veaSource: NamingSource = a.veaNamesArtist && a.veaArtistName
-    ? { kind: "names", raw: a.veaArtistName, identityKey: identityKeyFor(a.veaArtistName, dom, domKey) }
+    ? { kind: "names", raw: a.veaArtistName, identityKey: identityKeyFor(a.veaArtistName, dom) }
     : { kind: "silent" };
 
   const rNamed = a.reverseImageNamesArtist && !!a.reverseImageArtistName;
@@ -243,7 +260,7 @@ export function evidenceToTwoPassInput(
     ? {
         kind: "names",
         raw: a.reverseImageArtistName,
-        identityKey: identityKeyFor(a.reverseImageArtistName, dom, domKey),
+        identityKey: identityKeyFor(a.reverseImageArtistName, dom),
         sim: a.reverseImageSimilarity >= 0 ? a.reverseImageSimilarity : 0,
       }
     : { kind: "no_match" };
@@ -253,7 +270,7 @@ export function evidenceToTwoPassInput(
     ? {
         kind: "names",
         raw: a.appraiserArtistName,
-        identityKey: identityKeyFor(a.appraiserArtistName, dom, domKey),
+        identityKey: identityKeyFor(a.appraiserArtistName, dom),
         trust: appraiserTrust,
       }
     : { kind: "absent" };
@@ -310,7 +327,7 @@ export function evidenceToTwoPassInput(
     anchorArtist && w.kWorkTitleSim >= 0
       ? {
           artist: anchorArtist,
-          identityKey: identityKeyFor(anchorArtist, dom, domKey),
+          identityKey: identityKeyFor(anchorArtist, dom),
           titleSim: w.kWorkTitleSim,
         }
       : null;
@@ -608,7 +625,7 @@ export function emptyEvidenceOutput(
       reverseImageNamesArtist: false, reverseImageArtistName: "", reverseImageSimilarity: -1,
       reverseImageConsistentWithVea: false, reverseImageConsistencyRationale: "",
       appraiserNamesArtist: false, appraiserArtistName: "", appraiserTrust: "none",
-      dominantCandidateName: "", dominantCandidateIdentityKey: "",
+      dominantCandidateName: "",
       kId: "unknown", kOeuvreMatchCount: -1, kOeuvreProvenanceTags: [], kSubject: "UNASSESSABLE", kSubjectNote: "",
     },
     workEvidence: {

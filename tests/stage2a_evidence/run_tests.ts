@@ -46,11 +46,17 @@ async function atest(name: string, fn: () => Promise<void>) {
 
 // ── evidenceToTwoPassInput ───────────────────────────────────────────────────
 
-test("R that names the dominant candidate inherits its ULAN identity key", () => {
+test("sources naming the dominant candidate share one identity key", () => {
+  // The key is a shared TOKEN, not a URI — sameIdentity() only ever compares two keys for
+  // equality. It used to be the model-supplied ULAN cell; that is gone, so this asserts the
+  // property the tree actually depends on (V and R agree) rather than a literal string.
   const inp = evidenceToTwoPassInput(f.confirmedClean, false);
   assert.equal(inp.artistEvidence.vea.kind, "names");
-  assert.equal((inp.artistEvidence.vea as any).identityKey, "http://vocab.getty.edu/ulan/500009666");
-  assert.equal((inp.artistEvidence.reverseImageSearch as any).identityKey, "http://vocab.getty.edu/ulan/500009666");
+  const vKey = (inp.artistEvidence.vea as any).identityKey;
+  const rKey = (inp.artistEvidence.reverseImageSearch as any).identityKey;
+  assert.ok(vKey, "V should carry an identity key when it names the dominant candidate");
+  assert.equal(rKey, vKey);
+  assert.ok(!String(vKey).includes("ulan"), "the key must no longer be a transcribed authority URI");
 });
 
 test("Stage 1b consistency flag passes through; inconsistent hit is not marked consistent", () => {
@@ -267,7 +273,7 @@ test("an ACKG work-level match no longer promotes a lot no source named", () => 
   // read as corroboration now, not as a witness, so with no naming source it names nobody.
   const inp = evidenceToTwoPassInput(f.ackgWorkAnchorPromotes, false);
   assert.equal(inp.artistEvidence.ackgWorkAnchor?.artist, "Rembrandt van Rijn");
-  assert.equal(inp.artistEvidence.ackgWorkAnchor?.identityKey, "http://vocab.getty.edu/ulan/500011051");
+  assert.ok(inp.artistEvidence.ackgWorkAnchor?.identityKey, "anchor still carries a key; it is read as corroboration, not as a witness");
   const { twoPass } = runEvidenceTree(f.ackgWorkAnchorPromotes, false);
   assert.equal(twoPass.artistAttribution.verdict, "not_attributed");
   assert.equal(twoPass.artistAttribution.evidenceBasis, "A11");

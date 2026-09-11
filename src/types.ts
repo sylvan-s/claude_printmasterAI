@@ -583,8 +583,9 @@ export interface TriageResult {
     confidence: "HIGH" | "MEDIUM_HIGH" | "MEDIUM" | "LOW" | null;
     /**
      * The graph's own identity for `artistName`, resolved ONCE in Stage 2a by
-     * resolveArtistIdentity() — a deterministic exact-match lookup, not the model's
-     * `dominantCandidateIdentityKey` cell. Null when the name is not in the ACKG, which is
+     * resolveArtistIdentity() — a deterministic exact-match lookup, replacing the
+     * model-transcribed `dominantCandidateIdentityKey` cell that this retired. Null when
+     * the name is not in the ACKG, which is
      * a coverage statement and never a verdict: ULAN is on 83% of artists with 50+
      * catalogued works but only 8% of single-work artists.
      *

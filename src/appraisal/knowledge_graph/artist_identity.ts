@@ -1,14 +1,13 @@
 /**
  * Resolve an artist NAME to the graph's own identity for that artist — once, in code.
  *
- * Stage 2a already asks the evidence agent for `dominantCandidateIdentityKey` ("ULAN or
- * Wikidata URI ... if query_ackg returned one"), which makes identity resolution a cell the
- * MODEL fills by reading a URL off a returned row. That has the same failure surface as
- * every other model-filled cell — it depends on which query the model chose to run and
- * whether it transcribed the row correctly — and nothing downstream consumed the answer
- * anyway. Every later graph read (catalogue raisonné lookup, Stage 3 comparables, Stage 2b's
- * comparables and edition tools) re-queried the graph using the model's SPELLING of the
- * artist's name instead.
+ * Stage 2a used to ask the evidence agent for `dominantCandidateIdentityKey` ("ULAN or
+ * Wikidata URI ... if query_ackg returned one"), which made identity resolution a cell the
+ * MODEL filled by reading a URL off a returned row — with the same failure surface as every
+ * other model-filled cell, and consumed by nothing. That cell is gone. Every later graph
+ * read (catalogue raisonné lookup, Stage 3 comparables, Stage 2b's comparables and edition
+ * tools) used to re-query the graph using the model's SPELLING of the artist's name; they
+ * now use what this module returns.
  *
  * This does that step deterministically and exactly once. The model still chooses WHICH name
  * to resolve — that judgement is irreducibly its own — but name -> canonical identity is now
