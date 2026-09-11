@@ -384,7 +384,10 @@ print market. ADR-0002's decisions 1–4 are about *images* and *commercial* use
 here changes either.
 
 Reconciling that properly is an ADR amendment, not something a research note should
-decide. **Not written** — flagged for a decision.
+decide. **Written 2026-09-11** as [ADR-0002 Amendment 1](../docs/adr/0002-image-extraction-methodology-and-licensing.md)
+— Decisions 5–9: metadata carve-out on the personal-research footing, image similarity
+permitted but not built and fenced by four conditions, everything lapsing automatically on
+any commercial footing, and no generalisation to other in-copyright museum sources.
 
 **What the adapter does, on the current personal-research footing:**
 - Metadata: ingested, rate-limited, cached locally, attributed to the museum on every
@@ -540,8 +543,8 @@ before anyone builds a query that assumes plate states exist.
 
 ## 11. Not done
 
-- **Load is done** (§10.2). §9's ADR-0002 question is now a documentation debt rather
-  than a blocker — still owed, and it must be settled before any commercial footing.
+- **Load is done** (§10.2), and §9's ADR-0002 question is settled — see that ADR's
+  *Amendment 1* (2026-09-11).
 - **No images fetched or embedded.** 2,111 `DigitalImage` nodes carry a `sourceUrl` and
   the rights reservation; none has an `embedding`. There is deliberately no companion
   embed script — see §9.

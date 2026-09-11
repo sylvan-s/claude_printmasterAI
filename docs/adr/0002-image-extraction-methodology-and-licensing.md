@@ -1,7 +1,9 @@
 # ADR-0002: Image extraction methodology and cross-institution licensing constraints
 
 **Date:** 2026-08-22
-**Status:** Accepted
+**Status:** Accepted. Amended 2026-09-11 (see *Amendment 1*): the Findings' "museum open-access
+data cannot supply reference images for in-copyright artists" holds for images and for commercial
+use, but does not reach institutional **metadata**, which Decisions 1–4 never addressed.
 
 ---
 
@@ -89,3 +91,133 @@ No equivalent open API identified. Aggregators that already do this (Artnet Pric
 2. Do not scrape or bulk-index Tate, British Museum, or MDS imagery for use in a commercial-facing tool without first securing explicit commercial licensing from the relevant rights holder (Tate Images, DACS ArtImage, or the British Museum's commercial licensing team).
 3. Use the existing BM/MDS per-artist lookup scripts as on-demand provenance/due-diligence checks only, gated to internal use, not as index-building infrastructure.
 4. Treat cross-auction-house comps as blocked pending a licensing decision; do not build a scraper against competitor auction sites.
+
+---
+
+## Amendment 1 — in-copyright institutional metadata, and the narrow image-similarity carve-out (2026-09-11)
+
+### What prompted this
+
+The Musée national Picasso-Paris publishes its catalogue through a documented, unauthenticated
+JSON API, and 2,214 print records from it are now in the graph
+(`knowledge_graph/picasso_paris_ingest.py`; survey note
+`knowledge_graph/picasso_museum_source_survey_2026-09-11.md`). That sits awkwardly against this
+ADR's Findings §2, which concluded from a direct test — *sampled Picasso objects were 0%
+public-domain at the Met* — that "museum open-access data cannot supply reference images for the
+~96% of the catalogue that's still in copyright".
+
+That conclusion is not overturned, and this amendment does not weaken it. It is about a
+distinction the original ADR had no occasion to draw, because every source it examined was being
+evaluated as an **image** source.
+
+### What still stands, unchanged
+
+Decisions 1–4 are about images and about commercial use. All four remain in force:
+
+- The DINOv2 reference index is still built primarily from Roseberys' own catalogue.
+- No Tate/BM/MDS **imagery** is bulk-indexed for a commercial-facing tool without licensing.
+- Cross-auction-house comps remain blocked pending a licensing conversation.
+- The Findings' copyright-year analysis — ~96% of the catalogue by lot volume is by artists still
+  in copyright — is unaffected.
+
+### The distinction this amendment adds
+
+**Metadata is not imagery.** What Picasso-Paris supplies, and what this project uses it for, is a
+body of *facts about prints*: that Geiser-Baer 653 is titled *Tête de femme n°5. Portrait de Dora
+Maar*, that it is a IIème état, that the plate is 29.9 × 23.7 cm, that Lacourière pulled it, that
+the paper is a vergé de Montval with a Picasso/Vollard watermark. Titles, dates, dimensions,
+states, printers, accession numbers and catalogue-raisonné citations are facts, not the
+copyrighted expression of the artwork. They are the museum's reconciliation work, not Picasso's
+composition.
+
+**The uses are consistency-checking, not publication.** Specifically:
+
+1. **Work-name consistency.** [ADR-0017](0017-work-title-identity-principal-name-and-aliases.md)
+   records that this graph has no canonical titles to defer to — `CatalogueEntry` carries a
+   `number` and nothing else on all 21,293 nodes. Picasso-Paris supplies an institutional title
+   against an explicit catalogue citation for 1,757 records, which is exactly the authority tier
+   ADR-0017 Decision 2 wanted and could not find.
+2. **Cross-source cataloguing alignment.** 86 `CatalogueEntry` nodes now document both a
+   Picasso-Paris record and an auction-side record, bridging 99 auction works to museum records.
+   That is a correctness check on the auction houses' own citations, in the direction that
+   matters: a museum record contradicting a lot's catalogue number is evidence about the lot.
+3. **Image similarity** — see the conditions below, which are stricter.
+
+**Nothing is reproduced.** No Picasso work or image is displayed, published, redistributed,
+exported, or surfaced in any interface. The graph holds `DigitalImage.sourceUrl` — a pointer to
+the museum's own hosting — not image bytes.
+
+### Where this genuinely goes further than Decisions 1–4, stated plainly
+
+Tate (10,208 embedded images) and the British Museum (2,507) are **already** in this project's
+embedding index, and both are CC-BY-NC. So embedding non-commercially-licensed museum imagery on
+the personal-research footing is not a new category of decision here — it is one already taken
+twice, under this ADR's own Decision 3 reading.
+
+Picasso-Paris is nonetheless a step beyond that, in two specific ways, and pretending otherwise
+would make this amendment useless:
+
+- **There is no licence grant at all.** Tate and BM publish under CC-BY-NC — a licence with a
+  non-commercial condition. Picasso-Paris images carry `© Succession Picasso` and a per-record
+  flag reading *"Reproduction internet autorisée"*, which authorises **the museum's** web
+  reproduction and is not a grant to anyone else.
+- **There is an express TDM reservation.** `museepicassoparis.fr/robots.txt` sets
+  `Content-Signal: ai-train=no, use=reference`, invoking Article 4 of the EU DSM Directive. The
+  platform actually serving the data (`api.navigart.fr`) reserves nothing, but this project
+  treats the museum's own reservation as the operative intent rather than routing around an
+  opt-out on a hostname technicality. That reservation is why the ingest takes metadata only and
+  ships no embed script.
+
+Succession Picasso is also among the most actively enforcing artist estates there is. That is a
+practical risk factor independent of the legal analysis, and it argues for the conservative
+reading at every fork.
+
+### Decision
+
+Extending, not replacing, Decisions 1–4:
+
+**5. In-copyright institutional metadata may be ingested and used for identity and
+consistency work**, on the current personal-research, non-commercial footing. This covers
+titles, dates, dimensions, states, techniques, papers, printers, provenance, accession numbers
+and catalogue-raisonné citations. It does not extend to reproducing the museum's own descriptive
+prose at length, which is authored text rather than fact.
+
+**6. Attribution is mandatory and structural.** Every such record carries
+`SourceRecord.institutionName` and `accessionNumber`, and every `DigitalImage` carries
+`license` and `rightsReservation`, so nothing downstream can consume one without seeing the
+restriction. This is already implemented for all 2,214 records and 2,111 image nodes.
+
+**7. Image similarity over in-copyright museum images is permitted on the personal-research
+footing, but is NOT currently built, and requires all of the following if it is.** No embed
+script ships with the Picasso-Paris adapter, deliberately — unlike every other adapter here,
+which pairs with one. Conditions:
+
+   a. Only the derived embedding is retained. Source images are cached transiently for the
+      embedding pass and deleted, matching `--keep-cache` defaulting to off elsewhere.
+   b. No image bytes enter the graph, any export, or any interface.
+   c. Embeddings are used for retrieval and comparison only — never to reconstruct, generate, or
+      approximate the image.
+   d. The result is never displayed to anyone but the operator.
+
+   **The unsettled question is acknowledged, not resolved.** This ADR's Legal considerations
+   already flagged that whether an ML embedding is a "derivative" is genuinely open and is the
+   same question underlying current AI/copyright litigation. Condition (a)–(d) reduce exposure;
+   they do not answer it. Proceeding is a risk accepted on a non-commercial footing, not a risk
+   shown to be absent.
+
+**8. All of 5–7 lapse automatically the moment this project takes money.** Not "should be
+reviewed" — lapse. A paid appraisal tool using this data requires a licence from Succession
+Picasso / ADAGP, in the same way Decision 2 requires one from Tate Images / DACS / the BM. The
+metadata carve-out in Decision 5 is the more defensible half and might survive a licensing
+conversation; the image carve-out in Decision 7 should be assumed not to.
+
+**9. This carve-out is Picasso-Paris-specific and does not generalise.** It is not a precedent
+for ingesting any in-copyright museum source. The next such source gets its own assessment,
+because the terms differ per institution — as this ADR's Findings §2–§4 already demonstrated for
+four of them.
+
+### What this is not
+
+A legal opinion. It records a decision, the reasoning behind it, and the specific facts checked —
+so that a future reader can see what was known at the time and re-decide on better information,
+rather than inheriting a conclusion with no visible basis.
