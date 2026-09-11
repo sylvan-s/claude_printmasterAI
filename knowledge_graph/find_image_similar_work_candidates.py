@@ -112,6 +112,19 @@ DEFAULT_TOP_K = 10
 # of true pairs that agree most strongly and discards the rest rather than guessing.
 WEAK_CORROBORATOR_SIM_FLOOR = 0.90
 
+# Pairs are proposed independently, but merge_duplicate_work_clusters.py folds OVERLAPPING
+# clusters transitively through its alias map. So a node appearing in two proposed pairs
+# chains them: if X merges with A and X also merges with B, A and B become one work even
+# though nothing ever compared them. On the first run 84 of 171 clusters involved such a
+# node, and three chains were provably wrong — Picasso reused titles decades apart, so
+# "Tete de jeune fille" chained 1925 to 1945 across 7 nodes, "Nature morte au compotier"
+# 1908 to 1945, "Le Taureau" 1936 to 1946 (a Histoire Naturelle etching and a lithograph).
+#
+# Each individual pair looked fine. Only the component is wrong, so the guard has to be at
+# component level. A component whose anchor years span more than this many years is held
+# whole rather than partly merged — picking which pair in a chain to keep would be a guess.
+MAX_COMPONENT_YEAR_SPREAD = 3
+
 WORKS_QUERY = """
 MATCH (img:DigitalImage)-[:SHOWS]->(i:Impression)<-[:INCLUDES]-(:EditionRun)
       <-[:PRINTED_AS]-(cw:ConceptualWork)<-[:CREATED]-(a:Artist)
@@ -254,16 +267,54 @@ def build(session, artist, top_k):
             }
             {"proposed": proposed, "weak": weak, "review": review}[bucket].append(record)
 
-    for b in (proposed, weak, review):
+    proposed, chained = _hold_year_incoherent_components(proposed)
+    for b in (proposed, weak, review, chained):
         b.sort(key=lambda c: -c["similarity"])
-    return proposed, weak, review
+    return proposed, weak, review, chained
+
+
+def _hold_year_incoherent_components(proposed):
+    """Splits `proposed` into (kept, held) by connected component — see
+    MAX_COMPONENT_YEAR_SPREAD."""
+    parent = {}
+
+    def find(x):
+        parent.setdefault(x, x)
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    for c in proposed:
+        union(c["workIds"][0], c["workIds"][1])
+
+    members = defaultdict(list)
+    for c in proposed:
+        members[find(c["workIds"][0])].append(c)
+
+    kept, held = [], []
+    for group in members.values():
+        years = {c["year"] for c in group if c["year"]}
+        if len(years) > 1 and (max(years) - min(years)) > MAX_COMPONENT_YEAR_SPREAD:
+            for c in group:
+                c["heldReason"] = (f"component spans {min(years)}-{max(years)}; "
+                                   f"a shared node would chain them into one work")
+            held.extend(group)
+        else:
+            kept.extend(group)
+    return kept, held
 
 
 def main(artist=None, top_k=DEFAULT_TOP_K, out_json=None, details=12):
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     try:
         with driver.session(database=NEO4J_DATABASE) as session:
-            proposed, weak, review = build(session, artist, top_k)
+            proposed, weak, review, chained = build(session, artist, top_k)
     finally:
         driver.close()
 
@@ -271,6 +322,12 @@ def main(artist=None, top_k=DEFAULT_TOP_K, out_json=None, details=12):
     for c in proposed[:details]:
         print(f"  {c['similarity']:.3f}  [{c['corroborator'][:34]:34s}] "
               f"{str(c['title'])[:36]:36s} | {str(c['otherTitle'])[:36]}")
+
+    print(f"\n=== HELD — transitive chain would merge different works ({len(chained)}) ===")
+    print(f"    A node in two proposed pairs chains them through the merger's alias map.")
+    for c in chained[:details]:
+        print(f"  {c['similarity']:.3f}  {str(c['year']):>6}  {str(c['title'])[:34]:34s} | "
+              f"{str(c['otherTitle'])[:30]}")
 
     print(f"\n=== WEAK — year + technique + sim>={WEAK_CORROBORATOR_SIM_FLOOR} ({len(weak)}) "
           f"=== separate bucket; merge with --bucket weakCorroborator only after reading it")
@@ -287,6 +344,7 @@ def main(artist=None, top_k=DEFAULT_TOP_K, out_json=None, details=12):
     if out_json:
         with open(out_json, "w") as f:
             json.dump({"proposed": proposed, "weakCorroborator": weak,
+                       "heldTransitiveChain": chained,
                        "reviewQueue": review}, f, indent=2, ensure_ascii=False)
         print(f"\nWrote {out_json}")
         print(f"  python3 merge_duplicate_work_clusters.py --json {out_json} "
