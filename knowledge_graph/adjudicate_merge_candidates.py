@@ -65,6 +65,11 @@ MAX_IMAGE_BYTES = 4_000_000
 # characters. At 1200 the JSON truncated mid-object and two pairs came back as
 # UNCERTAIN with an empty reasoning field, which reads like model doubt and was not.
 MAX_TOKENS = 3000
+
+# Published rates for the default model, $ per million tokens. Used only to print a running
+# estimate — the token counts themselves are measured from response.usage, never guessed.
+PRICING = {"claude-opus-5": (5.00, 25.00), "claude-opus-4-8": (5.00, 25.00),
+           "claude-sonnet-5": (2.00, 10.00), "claude-haiku-4-5": (1.00, 5.00)}
 FETCH_TIMEOUT = 30
 
 SYSTEM_PROMPT = """You adjudicate whether two records in a print catalogue describe the SAME
@@ -198,7 +203,8 @@ def _designation_hint(title_a, title_b):
 
 VERDICT_COLUMNS = ["rank", "matchWeight", "verdict", "confidence", "artist",
                    "titleA", "titleB", "flags", "whatMatches", "whatDiffers",
-                   "stateEvidence", "reasoning", "workA", "workB", "adjudicatedAt"]
+                   "stateEvidence", "reasoning", "inputTokens", "outputTokens",
+                   "workA", "workB", "adjudicatedAt"]
 
 
 def adjudicate(client, model, row, cache):
@@ -211,19 +217,22 @@ def adjudicate(client, model, row, cache):
     response = client.messages.create(
         model=model, max_tokens=MAX_TOKENS, system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": build_message(row, image_a, image_b)}])
+    usage = {"inputTokens": response.usage.input_tokens,
+             "outputTokens": response.usage.output_tokens}
     text = "".join(b.text for b in response.content if b.type == "text").strip()
     m = re.search(r"\{.*\}", text, re.S)
     if not m:
         # Say WHY. An empty reasoning field reads like model doubt; a truncation is a bug.
-        return {"verdict": "UNCERTAIN", "confidence": 0.0, "whatMatches": "", "whatDiffers": "",
-                "stateEvidence": "",
+        return {**usage, "verdict": "UNCERTAIN", "confidence": 0.0, "whatMatches": "",
+                "whatDiffers": "", "stateEvidence": "",
                 "reasoning": f"no JSON in response (stop_reason={response.stop_reason}, "
                              f"{len(text)} chars): {text[:160]}"}
     try:
-        return json.loads(m.group(0))
+        return {**usage, **json.loads(m.group(0))}
     except json.JSONDecodeError:
-        return {"verdict": "UNCERTAIN", "confidence": 0.0, "whatMatches": "", "whatDiffers": "",
-                "stateEvidence": "", "reasoning": f"invalid JSON: {m.group(0)[:160]}"}
+        return {**usage, "verdict": "UNCERTAIN", "confidence": 0.0, "whatMatches": "",
+                "whatDiffers": "", "stateEvidence": "",
+                "reasoning": f"invalid JSON: {m.group(0)[:160]}"}
 
 
 def main():
@@ -263,11 +272,24 @@ def main():
             "whatDiffers": result.get("whatDiffers", ""),
             "stateEvidence": result.get("stateEvidence", ""),
             "reasoning": result.get("reasoning", ""),
+            "inputTokens": result.get("inputTokens", ""),
+            "outputTokens": result.get("outputTokens", ""),
             "workA": row["workA"], "workB": row["workB"],
             "adjudicatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         })
         print(f"  [{n}/{len(rows)}] {verdict:14s} {row['titleA'][:34]!r} | "
               f"{row['titleB'][:34]!r}", flush=True)
+
+    # Spend is REPORTED, not estimated after the fact. The first two trial runs of this script
+    # discarded response.usage entirely, so what they cost is unrecoverable.
+    in_tok = sum(r["inputTokens"] for r in out_rows if r["inputTokens"] != "")
+    out_tok = sum(r["outputTokens"] for r in out_rows if r["outputTokens"] != "")
+    rate = PRICING.get(args.model)
+    if rate and (in_tok or out_tok):
+        cost = in_tok / 1e6 * rate[0] + out_tok / 1e6 * rate[1]
+        print(f"\nusage: {in_tok:,} input + {out_tok:,} output tokens over {len(out_rows)} pairs"
+              f"  =  ${cost:.3f} at {args.model} rates "
+              f"(${cost/max(len(out_rows),1):.4f}/pair)")
 
     with open(args.out, "w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=VERDICT_COLUMNS)
