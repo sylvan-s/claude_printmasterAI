@@ -1453,6 +1453,26 @@ export interface DimensionComparison {
   note: string;
 }
 
+/** The tolerance test on its own, so anything that needs to know "would the tree call these
+ *  the same size?" asks the tree rather than reimplementing the arithmetic. Stage 2a's
+ *  query plan uses it to break ties between near-identically-titled works; a second copy
+ *  there would let the tie-break choose a row the tree then rejects. */
+export function dimsWithinTolerance(
+  obs: { w: number; h: number },
+  cat: { w: number; h: number },
+  pct: number,
+  mmFloor: number,
+): { within: boolean; relMax: number } {
+  const dw = obs.w - cat.w;
+  const dh = obs.h - cat.h;
+  const tolW = Math.max(cat.w * pct, mmFloor);
+  const tolH = Math.max(cat.h * pct, mmFloor);
+  return {
+    within: Math.abs(dw) <= tolW && Math.abs(dh) <= tolH,
+    relMax: Math.max(Math.abs(dw) / cat.w, Math.abs(dh) / cat.h),
+  };
+}
+
 function compareDims(
   obs: { w: number; h: number },
   cat: { w: number; h: number },
@@ -1464,10 +1484,7 @@ function compareDims(
   const dw = obs.w - cat.w;
   const dh = obs.h - cat.h;
   const effPct = scaledCaveat ? Math.max(pct, 0.18) : pct; // VEA-scaled: widen to swallow ±15-20% noise
-  const tolW = Math.max(cat.w * effPct, mmFloor);
-  const tolH = Math.max(cat.h * effPct, mmFloor);
-  const within = Math.abs(dw) <= tolW && Math.abs(dh) <= tolH;
-  const relMax = Math.max(Math.abs(dw) / cat.w, Math.abs(dh) / cat.h);
+  const { within, relMax } = dimsWithinTolerance(obs, cat, effPct, mmFloor);
   const direction = dw + dh > 0.5 ? "larger" : dw + dh < -0.5 ? "smaller" : "equal";
   const severity = within ? "within_tolerance" : relMax < DIM_MATERIAL_PCT ? "minor" : "material";
   return {

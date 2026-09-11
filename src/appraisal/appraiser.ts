@@ -14,6 +14,7 @@ import {
   resolveCustomPrompt,
   VISUAL_EXTRACTION_SYSTEM_PROMPT,
   ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT,
+  ATTRIBUTION_EVIDENCE_PRERESOLVED_SUFFIX,
   ATTRIBUTION_RESEARCH_SYSTEM_PROMPT,
   VALUATION_REPORT_SYSTEM_PROMPT,
   APPRAISER_INPUT_SYSTEM_PROMPT,
@@ -22,6 +23,18 @@ import {
 } from "./prompts";
 import { Scenario } from "./routing";
 import { runEvidenceTree, emptyEvidenceOutput, type EvidenceAgentOutput } from "./stage2a_evidence";
+import {
+  buildStage2aQueryPlan,
+  executeStage2aQueryPlan,
+  renderStage2aGraphFacts,
+  applyCandidateFacts,
+  clearGraphCells,
+  applyObservedDims,
+  factsForName,
+  lookupLateCandidate,
+  titlePreFilter,
+  type Stage2aGraphFacts,
+} from "./stage2a_query_plan.js";
 import {
   translateSchemaToStandardJsonSchema,
   VISUAL_EXTRACTION_SCHEMA,
@@ -175,6 +188,10 @@ export interface AppraisalMethodConfig {
    *  Shadow-run only — its result is attached to the report but never read by Stage 2a/2b/3. */
   enableEmbeddingMatch?: boolean;
   stage2aModel?: string;
+  /** Stage 2a resolves its ACKG queries in code (src/appraisal/stage2a_query_plan.ts) and
+   *  hands the model the answers, instead of offering it the query_ackg tool loop. Default
+   *  false while the two modes are being compared — see the ADR. */
+  deterministicStage2aQueries?: boolean;
   stage2bModel?: string;
   stage2Model?: string;
   stage3Model?: string;
@@ -1580,14 +1597,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         // Derive a substring pre-filter from the observed title when the agent didn't
         // supply one — a raw artist-only query is ORDER BY impressionCount and would drop
         // a low-impression target work before scoring.
-        const preFilter =
-          inp.workTitle ||
-          (observed
-            .toLowerCase()
-            .replace(/[^a-z0-9\s]/g, " ")
-            .split(/\s+/)
-            .filter((w: string) => w.length >= 4)
-            .sort((a: string, b: string) => b.length - a.length)[0] || undefined);
+        // Same rule the deterministic plan uses — one copy, so the loop and the plan
+        // cannot retrieve different rows for the same title.
+        const preFilter = inp.workTitle || titlePreFilter(observed);
         let works = await queryAckgWorks({ ...inp, workTitle: preFilter, excludeSaleId });
         if (works.length === 0 && preFilter) {
           works = await queryAckgWorks({ ...inp, workTitle: undefined, excludeSaleId }); // last resort: artist only
@@ -1665,6 +1677,11 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       extraTools?: any[];
       maxRounds?: number;
       excludeSaleId?: string | null;
+      /** Run with NO graph tools at all — the caller has already resolved the graph facts
+       *  deterministically (stage2a_query_plan.ts) and put them in the prompt. The
+       *  query-before-you-report gate goes with them: there is nothing left to query, and
+       *  refusing a report for not querying would loop until the refusal budget ran out. */
+      graphToolsDisabled?: boolean;
       /** Structural check on the final tool call. Return a complaint to push back and ask
        *  for it again, or null to accept. Content is never judged here — only shape. */
       validateFinal?: (input: any) => string | null;
@@ -1683,7 +1700,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       );
     }
 
-    const graphTools = [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
+    const graphTools = opts.graphToolsDisabled
+      ? []
+      : [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
+    const minGraphRounds = opts.graphToolsDisabled ? 0 : MIN_ACKG_ROUNDS_BEFORE_REPORT;
     const graphToolNames = new Set(graphTools.map((t: any) => t.name));
     const finalToolName = finalTool.name;
     // The report tool is offered from the FIRST call, not only on a forced final one.
@@ -1746,7 +1766,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       // until at least one graph round has run. The refusal is pushed back as a normal user
       // turn, so the agent keeps its context and simply queries first.
       const reported = (data.content || []).find((b: any) => b.type === "tool_use" && b.name === finalToolName);
-      if (reported?.input && (constrainedRounds >= MIN_ACKG_ROUNDS_BEFORE_REPORT || reportRefusals >= MAX_REPORT_REFUSALS)) {
+      if (reported?.input && (constrainedRounds >= minGraphRounds || reportRefusals >= MAX_REPORT_REFUSALS)) {
         // A report can satisfy the rounds gate and still be structurally unusable: the
         // schema marks artistEvidence/workEvidence required, and models omit them anyway.
         // Measured at Stage 2a — qwen3.7-plus on 5 of 20 lot-runs, qwen3.8-max on 2 of 5.
@@ -1793,7 +1813,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         reportRefusals++;
         console.log(
           `[Stage 2a ACKG loop] round ${round + 1}: report refused (${reportRefusals}/${MAX_REPORT_REFUSALS}) — ${constrainedRounds} constrained ` +
-            `graph round(s), ${MIN_ACKG_ROUNDS_BEFORE_REPORT} required. Asking for a narrowed query.`,
+            `graph round(s), ${minGraphRounds} required. Asking for a narrowed query.`,
         );
         // The refusal must come back as a tool_result for THIS tool_use id — the API rejects
         // an assistant turn containing a tool_use that the next message does not answer.
@@ -1837,7 +1857,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         //
         // Shares the refusal budget with the early-report path, so an agent that genuinely
         // has nothing to filter on still terminates rather than looping.
-        if (constrainedRounds < MIN_ACKG_ROUNDS_BEFORE_REPORT && reportRefusals < MAX_REPORT_REFUSALS) {
+        if (constrainedRounds < minGraphRounds && reportRefusals < MAX_REPORT_REFUSALS) {
           reportRefusals++;
           console.log(
             `[Stage 2a ACKG loop] round ${round + 1}: no tool call and no constrained graph round ` +
@@ -2680,7 +2700,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       schema: ATTRIBUTION_EVIDENCE_SCHEMA,
     };
     const buildUserText = (slim: unknown) =>
-      `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(slim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
+      `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(slim, null, 2)}${appraiserInputBlock}${visualSearchBlock}${factsBlock}`;
     // Shape only — whether the two required blocks are present at all. Their contents are
     // the tree's business, not the loop's; the loop must never be in the position of judging
     // evidence, only of noticing that none was handed over.
@@ -2688,9 +2708,37 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       const missing = [!input?.artistEvidence && "artistEvidence", !input?.workEvidence && "workEvidence"].filter(Boolean);
       return missing.length ? `the report omitted ${missing.join(" and ")}, which the schema marks required` : null;
     };
+    // ADR-0018: resolve the graph in code, or let the model drive the tool loop.
+    //
+    // In deterministic mode the plan is built from the structured Stage 1 outputs, every
+    // query is run before the model is called, and the answers go into the prompt. The
+    // model then gets no graph tools — not as a restriction on what it may know, but
+    // because there is nothing left for it to ask. Which query to run, with what technique
+    // string, and whether to run one at all stop being per-run choices.
+    let graphFacts: Stage2aGraphFacts | null = null;
+    let factsBlock = "";
+    if (this.config.deterministicStage2aQueries) {
+      const plan = buildStage2aQueryPlan({ vea, visualSearch, appraiserInput, stage1d });
+      try {
+        graphFacts = await executeStage2aQueryPlan(plan, excludeSaleId ?? null);
+        factsBlock = renderStage2aGraphFacts(graphFacts);
+        for (const line of graphFacts.trace) console.log(`[Stage 2a plan] ${line}`);
+        if (graphFacts.errors.length) console.warn(`[Stage 2a plan] ${graphFacts.errors.join("; ")}`);
+      } catch (err: any) {
+        // A graph outage must not take the lot down. The model runs with the tool loop it
+        // has always had, and the cells stay the model's — degraded, and said so.
+        console.warn(`[Stage 2a plan] query plan failed (${err?.message ?? err}) — falling back to the tool loop`);
+        graphFacts = null;
+      }
+    }
+
+    const evidenceSystemPrompt = graphFacts
+      ? ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT + ATTRIBUTION_EVIDENCE_PRERESOLVED_SUFFIX
+      : ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT;
     const evidenceOpts = {
-      extraTools: [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL],
-      maxRounds: 5,
+      extraTools: graphFacts ? [] : [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL],
+      graphToolsDisabled: !!graphFacts,
+      maxRounds: graphFacts ? 2 : 5,
       excludeSaleId: excludeSaleId ?? null,
       validateFinal,
     };
@@ -2701,7 +2749,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
 
     let ev: EvidenceAgentOutput;
     try {
-      ev = (await runEvidenceAgent(ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(veaSlim))) as EvidenceAgentOutput;
+      ev = (await runEvidenceAgent(evidenceSystemPrompt, buildUserText(veaSlim))) as EvidenceAgentOutput;
     } catch (err) {
       if (!(err instanceof AnthropicContentFilterError)) throw err;
       // Content filter tripped — most often on lurid free-text prose the model echoes back
@@ -2710,7 +2758,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       // crash the lot.
       console.warn(`[Stage 2a evidence] content-filtered — retrying with VEA prose trimmed`);
       try {
-        ev = (await runEvidenceAgent(ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(trimVeaProse(veaSlim)))) as EvidenceAgentOutput;
+        ev = (await runEvidenceAgent(evidenceSystemPrompt, buildUserText(trimVeaProse(veaSlim)))) as EvidenceAgentOutput;
       } catch (err2) {
         if (!(err2 instanceof AnthropicContentFilterError)) throw err2;
         console.warn(`[Stage 2a evidence] still content-filtered — emitting escalate-only result`);
@@ -2737,6 +2785,34 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
         narrative: `The evidence agent's structured report omitted ${missing}, so no evidence cells were produced. No automated attribution was made; route to a human.`,
       });
       return runEvidenceTree(degraded, false, stage1d, appraiserInput).triage;
+    }
+
+    // The graph cells belong to the graph. The model read the facts block; here the values
+    // are written from the rows themselves, so a mis-transcribed similarity or a remembered
+    // support count cannot reach the tree wearing the graph's authority. The overrides are
+    // logged rather than silently applied — they are the measurement of how faithfully a
+    // given model transcribes, which was previously unobservable.
+    if (graphFacts) {
+      const named = ev.artistEvidence?.dominantCandidateName?.trim() || "";
+      let cf = factsForName(graphFacts, named);
+      if (!cf && named) {
+        console.log(`[Stage 2a plan] "${named}" was not in the plan — running the same queries for it`);
+        cf = await lookupLateCandidate(named, graphFacts, excludeSaleId ?? null);
+        if (cf) factsBlock = renderStage2aGraphFacts(graphFacts);
+      }
+      // Both sides of the dimension comparison, or neither. classifyDimensionMatch is
+      // axis-strict, so writing the catalogue side from the graph while the observed side
+      // stays the model's turns a consistent pair of transposed values into a false
+      // divergence — measured on A0793/2, 36.2% "material" on an exact match.
+      const overrides = [
+        ...(cf ? applyCandidateFacts(ev, cf) : clearGraphCells(ev)),
+        ...applyObservedDims(ev, graphFacts.plan),
+      ];
+      if (!cf) console.log(`[Stage 2a plan] no dominant candidate named — graph cells cleared to their not-assessed sentinels`);
+      for (const o of overrides) {
+        console.log(`[Stage 2a plan] ${o.cell}: model reported ${JSON.stringify(o.reported)}, graph says ${JSON.stringify(o.authoritative)}`);
+      }
+      if (cf && overrides.length === 0) console.log(`[Stage 2a plan] all graph cells transcribed faithfully`);
     }
 
     // Scoped style check for whichever candidate the agent settled on. Run here rather than

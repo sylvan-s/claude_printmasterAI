@@ -19,6 +19,7 @@
     "query:image-match": "tsx src/appraisal/knowledge_graph/image_similarity_cli.ts",
     "test:two-pass": "tsx tests/two_pass_attribution/run_tests.ts",
     "test:stage2a-evidence": "tsx tests/stage2a_evidence/run_tests.ts",
+    "test:stage2a-query-plan": "tsx tests/stage2a_query_plan/run_tests.ts",
     "test:kg-parse": "tsx tests/knowledge_graph/parse_tests.ts",
     "test:leak-detection": "tsx tests/benchmark_parse/leak_detection_tests.ts",
     "test:comp-storability": "tsx tests/comp_storability/run_tests.ts",

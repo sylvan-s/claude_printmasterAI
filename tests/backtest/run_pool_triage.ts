@@ -13,6 +13,9 @@
  *   npm run test:pool:triage -- --two-pass         # also run classifyTwoPass (coarse fixture adapter), for comparison
  *   npm run test:pool:triage -- --model claude-haiku-4-5
  *   npm run test:pool:triage -- --resume
+ *   npm run test:pool:triage -- --deterministic-queries   # ADR-0018: code resolves the
+ *                                                  # ACKG queries, the model gets the answers
+ *                                                  # and no graph tools
  *   npm run test:pool:triage -- --dir tests/backtest/pool_output_angle   # degraded-pool fixture
  *   npm run test:pool:triage -- --dir tests/backtest/fixtures --model claude-haiku-4-5
  *                                                  # committed reproduction fixtures (A0793_303)
@@ -59,6 +62,11 @@ const CONCURRENCY = intArg("concurrency", 2);
 const MODEL = strArg("model", "claude-sonnet-4-6");
 const TWO_PASS = process.argv.includes("--two-pass");
 const RESUME = process.argv.includes("--resume");
+// --deterministic-queries: Stage 2a resolves the ACKG in code and hands the model the
+// answers, instead of offering it the query_ackg tool loop (ADR-0018). The flag exists so
+// the two modes can be run over the same pool and compared — that comparison is the whole
+// point of putting the queries in code.
+const DETERMINISTIC_QUERIES = process.argv.includes("--deterministic-queries");
 
 // ── expose the protected triage method ───────────────────────────────────────
 class TriageRunner extends FourStageAppraiser {
@@ -154,7 +162,10 @@ function toTwoPassInput(vea: any, vs: any, aia: any, triage: TriageResult): { in
 }
 
 // ── run ──────────────────────────────────────────────────────────────────────
-const config = { ...appraiserConfigs.find((c) => c.id === "claude-4stage")! };
+const config = {
+  ...appraiserConfigs.find((c) => c.id === "claude-4stage")!,
+  deterministicStage2aQueries: DETERMINISTIC_QUERIES,
+};
 const geminiKey = process.env.GEMINI_API_KEY;
 const runner = new TriageRunner(config, geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined);
 

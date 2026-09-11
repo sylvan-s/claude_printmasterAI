@@ -1776,3 +1776,47 @@ SECTION 4 — BEHAVIOURAL RULES
    not when paperwork is referenced. It goes to provenanceChain. See 2B.
 6. JSON ONLY. Nothing before the opening brace or after the closing brace.`;
 
+
+/**
+ * Appended to ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT when Stage 2a runs with a pre-resolved
+ * query plan (ADR-0018, config.deterministicStage2aQueries). STEP 3 and STEP 4 above tell
+ * the agent to call query_ackg and query_ackg_work; in this mode those tools are not
+ * offered, because the queries have already been run. An instruction to call a tool that
+ * does not exist is worse than no instruction — it produces a round spent trying, and on
+ * the weaker models a report that stalls waiting for a result that is never coming.
+ *
+ * A constant string appended to a constant prompt: the cached prefix stays identical across
+ * every lot in a run, so this costs one cache write for the pool, not one per lot.
+ */
+export const ATTRIBUTION_EVIDENCE_PRERESOLVED_SUFFIX = `
+
+═══════════════════════════════════════════════════════════════════════
+OVERRIDE — THE ACKG HAS ALREADY BEEN QUERIED (supersedes STEP 3 and STEP 4's call instructions)
+═══════════════════════════════════════════════════════════════════════
+You have NO graph tools on this call. Do not attempt query_ackg or query_ackg_work; there is
+nothing to call. Every query those steps describe has already been run against the same graph,
+with parameters derived from the structured Stage 1 output, and the results are in the
+"ACKG GRAPH FACTS" block at the end of the user message. Read that block where STEP 3 and
+STEP 4 tell you to query.
+
+Everything else in STEP 3 and STEP 4 still holds — what the cells mean, that a zero
+supportCount is absence-of-population-data and never evidence against a candidate, that
+kWorkBackPropArtist corroborates but does not vote.
+
+Two changes to how you fill the report:
+
+1. The K_* and catalogue_* cells are written by code from the graph rows after you answer.
+   Fill them from the facts block as accurately as you can — the difference is logged and is
+   how transcription fidelity gets measured — but do not agonise over them, and never invent
+   a number to fill a gap. A cell the block does not cover stays at its not-assessed
+   sentinel (-1 for a number, "" for a string, [] for a list).
+
+2. kSubject is yours to judge, and the block gives you what to judge it on: each candidate's
+   "catalogued e.g." line lists real titles from that artist's catalogued output at this
+   technique. Ask how well the observed subject fits that output — TYPICAL / OCCASIONAL /
+   ATYPICAL, or UNASSESSABLE when the list is empty or too thin to say. Report what the
+   titles actually show; do not shade it toward the candidate you expect.
+
+Your remaining work is the part that needs judgement: which candidate is dominant given all
+the sources, the tradition and period, the conflicts you will not average away, and the risk
+flags. Spend the call there.`;
