@@ -598,6 +598,9 @@ export interface TriageResult {
       wikidataUrl: string | null;
       matchedOn: "name" | "alternateName";
       workCount: number;
+      /** Recorded aliases, so a later mention under a different name is recognisable as the
+       *  same artist without re-querying — see canonicalArtistForQuery. */
+      alternateNames?: string[];
       /** >1 means duplicate Artist nodes matched; ULAN is withheld when they disagree. */
       ambiguousMatchCount: number;
     } | null;

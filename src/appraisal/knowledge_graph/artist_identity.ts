@@ -41,6 +41,9 @@ export interface ArtistIdentity {
   queriedAs: string;
   /** Catalogued works, for the caller to judge how well-evidenced the identity is. */
   workCount: number;
+  /** The node's recorded aliases, so a later mention of this artist under a different name
+   *  can be recognised as the SAME artist without another query. */
+  alternateNames: string[];
   /**
    * More than one Artist node matched this name. The graph has a known duplicate-artist
    * history, so this is reported rather than hidden. When duplicates disagree about ULAN,
@@ -59,6 +62,7 @@ OPTIONAL MATCH (a)-[:CREATED]->(cw:ConceptualWork)
 WITH a, count(DISTINCT cw) AS workCount,
      CASE WHEN ${cypherFold("a.name")} = $name THEN 'name' ELSE 'alternateName' END AS matchedOn
 RETURN a.name AS canonicalName, a.ulanUrl AS ulanUrl, a.wikidataUrl AS wikidataUrl,
+       coalesce(a.alternateNames, []) AS alternateNames,
        matchedOn, workCount
 // A primary-name match outranks an alias; within a tier, the best-evidenced node. This only
 // ORDERS the duplicates — it never merges them, and the count is returned either way.
@@ -100,6 +104,9 @@ export async function resolveArtistIdentity(artistName: string | null | undefine
       matchedOn: top.get("matchedOn") as "name" | "alternateName",
       queriedAs,
       workCount: toInt(top.get("workCount")),
+      alternateNames: ((top.get("alternateNames") as unknown[]) ?? []).filter(
+        (x): x is string => typeof x === "string" && x.length > 0,
+      ),
       ambiguousMatchCount: res.records.length,
     };
   } catch (err: any) {
@@ -121,4 +128,41 @@ export function formatArtistIdentity(id: ArtistIdentity | null, queriedAs: strin
     id.ambiguousMatchCount > 1 ? `AMBIGUOUS: ${id.ambiguousMatchCount} Artist nodes match` : null,
   ].filter(Boolean);
   return bits.join(", ");
+}
+
+/**
+ * Which artist name an ACKG query should actually use.
+ *
+ * Stages 2b and 3 query the graph about whoever the model names, and the graph MATCHes on
+ * name — so "Sir Peter Blake" returns 0 comparables where "Peter Blake" returns 40. Stage 2a
+ * has already resolved the appraised work's artist once; this applies that answer, and only
+ * that answer, wherever the request is provably about the same person.
+ *
+ * Three steps, all EXACT — no similarity anywhere, because substituting one artist's name
+ * for another's would silently answer a question nobody asked:
+ *
+ *   1. The requested name folds onto the Stage 2a identity's canonical name or one of its
+ *      aliases -> use the canonical name. No query: the aliases came back with it.
+ *   2. Otherwise resolve the requested name on its own merits. This is the Scenario 5 path,
+ *      where Stage 2b is explicitly told to research every competing candidate — forcing the
+ *      attributed artist's name onto a query about a rival candidate would answer about the
+ *      wrong artist, so the rival gets canonicalised as itself.
+ *   3. Neither resolves -> pass the name through untouched. Not in the graph under any known
+ *      name is a coverage fact, and inventing a substitution would not change it.
+ */
+export async function canonicalArtistForQuery(
+  requestedName: string | null | undefined,
+  stage2aIdentity: { canonicalArtistName: string; alternateNames?: string[] } | null | undefined,
+): Promise<{ name: string; via: "stage2a" | "resolved" | "unchanged" }> {
+  const requested = (requestedName ?? "").trim();
+  if (!requested) return { name: requested, via: "unchanged" };
+
+  if (stage2aIdentity?.canonicalArtistName) {
+    const want = foldAccents(requested);
+    const known = [stage2aIdentity.canonicalArtistName, ...(stage2aIdentity.alternateNames ?? [])].map(foldAccents);
+    if (known.includes(want)) return { name: stage2aIdentity.canonicalArtistName, via: "stage2a" };
+  }
+
+  const own = await resolveArtistIdentity(requested);
+  return own ? { name: own.canonicalName, via: "resolved" } : { name: requested, via: "unchanged" };
 }

@@ -36,7 +36,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery } from "./knowledge_graph/index.js";
 import { assessComps, formatCompStorability, type CompStorabilityReport } from "./comp_storability.js";
 import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
@@ -1176,6 +1176,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
      *  are filtered the same way Stage 3's are — a pool lot must never be handed its own
      *  sale record as a comparable. */
     testingExcludeSourceListing?: string,
+    /** The artist identity Stage 2a resolved for THIS work. Its canonical name is what the
+     *  ACKG is indexed by, so it is used for any graph query about that same artist — see
+     *  canonicalArtistForQuery for why a query about a different candidate is left alone. */
+    stage2aIdentity?: { canonicalArtistName: string; alternateNames?: string[] } | null,
   ): Promise<any> {
     const compatBaseUrl = anthropicCompatBaseUrl(modelName);
     const apiKey = compatBaseUrl
@@ -1295,8 +1299,13 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           if (b.name === "query_ackg_comparables") {
             let content: string;
             try {
+              const asked = String(b.input?.artistName ?? "");
+              const useName = await canonicalArtistForQuery(asked, stage2aIdentity);
+              if (useName.name !== asked) {
+                console.log(`[4-Stage] Stage 2b comparables: querying as "${useName.name}" (asked "${asked}", via ${useName.via})`);
+              }
               const comps = await queryAuctionComparables({
-                artistName: String(b.input?.artistName ?? ""),
+                artistName: useName.name,
                 workTitle: b.input?.workTitle ?? null,
                 technique: b.input?.technique ?? null,
                 sinceDate: b.input?.sinceDate ?? STAGE3_COMPS_SINCE,
@@ -1308,7 +1317,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
                 `${comps.summary.count} comparable(s). Summary: ${JSON.stringify(comps.summary)}\n` +
                 `Coverage: ${comps.coverageNote}\n` +
                 JSON.stringify(comps.comparables.map(compactComparableForValuation));
-              console.log(`[4-Stage] Stage 2b query_ackg_comparables "${b.input?.artistName}": ${comps.summary.count} comp(s), median GBP ${comps.summary.medianGBP ?? "n/a"}`);
+              console.log(`[4-Stage] Stage 2b query_ackg_comparables "${useName.name}": ${comps.summary.count} comp(s), median GBP ${comps.summary.medianGBP ?? "n/a"}`);
             } catch (err: any) {
               content = `ACKG comparables query failed: ${err.message}`;
             }
@@ -1317,15 +1326,20 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           if (b.name === "query_ackg_editions") {
             let content: string;
             try {
+              const askedEd = String(b.input?.artistName ?? "");
+              const useEdName = await canonicalArtistForQuery(askedEd, stage2aIdentity);
+              if (useEdName.name !== askedEd) {
+                console.log(`[4-Stage] Stage 2b editions: querying as "${useEdName.name}" (asked "${askedEd}", via ${useEdName.via})`);
+              }
               const ed = await queryEditionRuns({
-                artistName: String(b.input?.artistName ?? ""),
+                artistName: useEdName.name,
                 workTitle: b.input?.workTitle ?? null,
                 // Same sale the comparables query already excludes, so the edition size is
                 // not read back off the lot's own ingested catalogue entry.
                 excludeSaleId: excludedListing.saleLot?.saleId ?? null,
               });
               content = formatEditionRunsForClaude(ed);
-              console.log(`[4-Stage] Stage 2b query_ackg_editions "${b.input?.artistName}": ${ed ? `${ed.works.length} work(s), sizes ${ed.works.flatMap(w => w.declaredSizes).join("/") || "none"}` : "no match"}`);
+              console.log(`[4-Stage] Stage 2b query_ackg_editions "${useEdName.name}": ${ed ? `${ed.works.length} work(s), sizes ${ed.works.flatMap(w => w.declaredSizes).join("/") || "none"}` : "no match"}`);
             } catch (err: any) {
               content = `ACKG edition query failed: ${err.message}`;
             }
@@ -2765,6 +2779,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
             wikidataUrl: identity.wikidataUrl,
             matchedOn: identity.matchedOn,
             workCount: identity.workCount,
+            alternateNames: identity.alternateNames,
             ambiguousMatchCount: identity.ambiguousMatchCount,
           }
         : null;
@@ -2840,7 +2855,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
     const result: AttributionResearchResult = isClaude(stage2bModel) || anthropicCompatBaseUrl(stage2bModel)
-      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing)
+      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing, triage.artistAttribution?.artistIdentity ?? null)
       : await this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
     await this.persistCatalogueRaisonneFinding(result);
     // Phase 0 of the comps write-back is a measurement, not a feature: nothing is written,
