@@ -545,9 +545,16 @@ before anyone builds a query that assumes plate states exist.
 
 - **Load is done** (§10.2), and §9's ADR-0002 question is settled — see that ADR's
   *Amendment 1* (2026-09-11).
-- **No images fetched or embedded.** 2,111 `DigitalImage` nodes carry a `sourceUrl` and
-  the rights reservation; none has an `embedding`. There is deliberately no companion
-  embed script — see §9.
+- **Image embedding: script built 2026-09-11, full pass not yet run.**
+  `picasso_paris_embed_images.py` exists and is smoke-tested (5/5, 11s); the remaining
+  2,106 of 2,111 images are unembedded. It operates under ADR-0002 Amendment 1
+  Decision 7 and enforces it rather than documenting it: no `--keep-cache` flag at all,
+  scratch purge in a `finally` plus an `atexit` hook, per-image deletion so at most one
+  in-copyright file exists on disk at a time, a rights precondition that aborts if any
+  node lost its `license`/`rightsReservation`, and an `embeddingCommercialUse = false`
+  stamp that makes Decision 8's lapse executable in one query. CLIP *text* embedding is
+  off by default — this source's description text is French and `clipTextEmbedding` is a
+  shared space of which 91,487 of 91,685 vectors are English.
 - **The five composite `Artist` nodes and three surname-first names from §10.2 are not
   merged or reformatted.**
 - **`knowledge_graph/.env.example` is stale** — it describes the Aura shape

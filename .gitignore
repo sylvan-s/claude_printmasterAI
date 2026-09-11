@@ -21,6 +21,8 @@ knowledge_graph/embed_tate_images_failures.json
 knowledge_graph/bonhams_embed_images_failures.json
 knowledge_graph/forum_embed_images_failures.json
 knowledge_graph/tmp_bonhams_images/
+knowledge_graph/tmp_picasso_paris_images/
+knowledge_graph/picasso_paris_embed_images_failures.json
 
 # ULAN backfill reports (regenerate on demand)
 knowledge_graph/artist_ulan_report.csv
