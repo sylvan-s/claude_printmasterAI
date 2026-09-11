@@ -1,0 +1,74 @@
+institution,accessionNumber,title,authorsRaw,bucket,refusalReason
+Musée d'arts de Nantes,à inventorier?,Voeux de bonne année de la part de Suzanne Laboureur,LABOUREUR Jean-Emile,excluded_no_inventory,
+Musée d'arts de Nantes,à inventorier?,Portrait d'Alphonse Lotz-Brissonneau,LABOUREUR Jean-Emile,excluded_no_inventory,
+Musée d'arts de Nantes,à inventorier,Les anciens abattoirs de Nantes en 1933,PINARD René,excluded_no_inventory,
+Musée d'arts de Nantes,Non inv.,,CORABOEUF Jean-Alexandre,excluded_no_inventory,
+Musée d'arts de Nantes,3111,Tour de l'évêque (Carcassone),BAUGÉ E.,excluded_unresolved_artist,single_token_name
+Musée d'arts de Nantes,3112,Chateaubriant : cour intérieure,BAUGÉ E.,excluded_unresolved_artist,single_token_name
+Musée d'arts de Nantes,3101,"Florence, San Miniato",DUJARNIC,excluded_unresolved_artist,single_token_name
+Musée d'arts de Nantes,3138,Barque sous le pont,FERRY A.,excluded_unresolved_artist,single_token_name
+Centre national des arts plastiques,"FNAC 24313, FNAC 2621",Le Lever,"HIRNÉ (LE RICHE Henri, dit)",excluded_unresolved_artist,single_token_name
+Centre national des arts plastiques,FNAC 28629,"Coupe du bâtiment de l'Hôtel de Ville vue en perspective sur la largeur où sont représentées les décorations et illuminations de la cour où s'est donné le bal, la nuit du 30 au 31 août 1739","SALLEY, BLONDEL Jacques-François",excluded_unresolved_artist,single_token_name
+Centre national des arts plastiques,FNAC 28630,"Coupe du bâtiment de l'Hôtel de Ville vue en perspective sur la largeur où sont représentées les décorations et illuminations de la cour où s'est donné le bal, la nuit du 30 au 31 août 1739","SALLEY, BLONDEL Jacques-François",excluded_unresolved_artist,single_token_name
+Centre national des arts plastiques,FNAC 28574 (1 à 6),Siège de La Rochelle,Anonyme (Ecole française),excluded_unresolved_artist,anonymous_primary
+"Centre Pompidou, Musée national d'art moderne",AM 81-65-1048 (2),Les Six Rivières de cristal (Mutamagawa). La Rivière Ide dans la région de Yamashiro (Yamashiro Ide). L'Exil du poète,HIROSHIGE,excluded_unresolved_artist,single_token_name
+"Centre Pompidou, Musée national d'art moderne",AM 81-65-1253,Les 53 étapes du Tokaido (Gyôshô Tôkaido). 16e relais (ou 17e vue) : Yui,HIROSHIGE,excluded_unresolved_artist,single_token_name
+"Centre Pompidou, Musée national d'art moderne",AM 81-65-1252,Les lieux célèbres de notre pays (Honchô Meisho). Shichirigahama dans la province de Sagami (SôshûShichirigahama),HIROSHIGE,excluded_unresolved_artist,single_token_name
+Musée d'Art Moderne de Paris,AME 415,Fleurs,KISLING,excluded_unresolved_artist,single_token_name
+Musée d'Art Moderne de Paris,AME 414,Nu au turban,KISLING,excluded_unresolved_artist,single_token_name
+Musée Bourdelle,MBCO387,Bible des poètes,ANONYME,excluded_unresolved_artist,anonymous_primary
+Musée Bourdelle,MBCO405,"François de Vendôme, duc de Beaufort et pair de France",ANONYME,excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.156,Acrobaties équestres,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.152,Une noce de village,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.159,Les pêcheurs,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.155,Aux bains,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.147,Concert d'amateurs,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.160,Chasseurs couchés,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.198,Portrait de Lamoricière,"Anonyme (XIXe siècle), MENARD Alfred",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.162,Joueurs de billard,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.154,Leçon d'équitation,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.88,Copie de l'autoportrait B4,"Anonyme (XVIIe siècle), REMBRANDT Van Rijn",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.188,Portrait d'un pape (Innocent III ?) d'après un buste du Bernin,"Anonyme (XIXe siècle), LE BERNIN (BERNINI Gian Lorenzo, dit) (attribué à)",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.149,Chasseurs bredouilles,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.110,Le Creusot en 1851,CHALAS,excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.161,Intérieur de taverne,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.157,Pique-nique,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.214,Tête d'enfant tournée à droite,"Anonyme (sans précision), SANZIO Raffaello dit RAPHAËL (d'après)",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.153,Chanteurs d'Opéra,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.202,La belle irlandaise de Dublin,BOSSELMAN ?,excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.85,Société des artistes de Bâle : diplôme du peintre Lardet,"WOLF G., STRUBIN N.",excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.148,Collaboration d'un vaudeville,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.151,Les acteurs comiques de Paris,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.317,"Jules Gérard, le  tueur de lions",CUVILLIER A.,excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.400,Vue d'un moulin,"LORIEUX F.B., GELLÉE Claude dit LE LORRAIN",excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.369,Portrait d'Eustache Le Sueur (1617-1655),"Anonyme (XIXe siècle), BEAUME Joseph",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.316,Cheval couché au bord d'une rivière,"CUVILLIER A., HERRING Benjamin",excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.422,Allégorie de la sixième heure de la nuit,"THOMAS N., (SANZIO Raffaello dit RAPHAËL (d'après))",excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.383,Vue prise à Thiers,"Anonyme (XIXe siècle), LANGLACE Jean-Baptiste",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.364,"Portrait de Mathieu, député de la Drôme",BUFFET,excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.268,Vue du canton d'Uri,"Anonyme (XIXe siècle), SCHEUCHZER Caspar",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.233,Chaloupe sur une mer déchaînée,"GUVIER, GUDIER OU GERDIER",excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.305,Deux bassets,FRANCIS C.,excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.315,Trois chiens observent des rats dans une rivière,"CUVILLIER A., ARMFIELD Georges",excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.294,Etude de sangliers,"Anonyme (XIXe siècle), ROLLAND Auguste",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,48.2.6,Canards mandarins,HIROSHIGE,excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,48.2.5,Paysage de montagne,HIROSHIGE,excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,48.2.4,Courtisane,HOKUSAI,excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.658,Une promenade à Pékin,"CHAM (NOÉE Amédée Charles Henri, dit)",excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.556,Vue d'un superbe palais de Rome,"Anonyme (XVIIIe siècle), PIRANESI Giovanni Battista",excluded_unresolved_artist,anonymous_primary
+MAMC+ Saint-Étienne Métropole,43.1.825,Immaculée Conception,"GEOFFROY ?, MURILLO Bartolomé Esteban",excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.799,Les adieux du matin,FRAGONARD ?,excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.790,Le Bain,"BEAUPOIL (SAINT-AULAIRE Félix Achille, dit), VALLON DE VILLENEUVE",excluded_unresolved_artist,single_token_name
+MAMC+ Saint-Étienne Métropole,43.1.865,La place Saint Médard à Paris,FRAIPONT ?,excluded_unresolved_artist,single_token_name
+Musée d'Art moderne et contemporain de Strasbourg,XVIII 105,Portrait de Thomas Mann,"MOPP (OPPENHEIMER Max, dit)",excluded_unresolved_artist,single_token_name
+Musée d'Art moderne et contemporain de Strasbourg,55.992.13.242,Portrait-charge de Gustave Doré,SPY,excluded_unresolved_artist,single_token_name
+Musée d'Art moderne et contemporain de Strasbourg,55.993.2.24,"Grosse Sterntache
+(Grand sac d'étoiles)","WOLS (SCHULZE Alfred Otto Wolfgang, dit)",excluded_unresolved_artist,single_token_name
+Musée d'Art moderne et contemporain de Strasbourg,55.003.0.261,Allée avec troupeau de moutons,RAUDNEY,excluded_unresolved_artist,single_token_name
+Musée Tomi Ungerer,99.2019.0.241,"Latoria, Latoria !","TANCONVILLE (GANIER Henri, dit)",excluded_unresolved_artist,single_token_name
+Musée d'art moderne de Céret,MAMC 1991-0607,Deux catalanes,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name
+Musée d'art moderne de Céret,MAMC 1991-0605,Femmes attisant le feu,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name
+Musée d'art moderne de Céret,MAMC 1991-0603,Paysage,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name
+Musée d'art moderne de Céret,MAMC 1991-0606,Intérieur,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name
+Musée d'art moderne de Céret,MAMC 1991-0602,Portrait de Jo Davidson,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name
+Musée d'art moderne de Céret,EPMC 2008-0336,Portrait de Max Jacob,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name

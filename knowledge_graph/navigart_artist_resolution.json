@@ -1,0 +1,4312 @@
+{
+ "collisions": {},
+ "refused": {
+  "ANONYME": {
+   "reason": "anonymous_primary",
+   "records": 2
+  },
+  "Anonyme (Ecole française)": {
+   "reason": "anonymous_primary",
+   "records": 1
+  },
+  "Anonyme (XIXe siècle), BEAUME Joseph": {
+   "reason": "anonymous_primary",
+   "records": 1
+  },
+  "Anonyme (XIXe siècle), DORÉ Gustave": {
+   "reason": "anonymous_primary",
+   "records": 14
+  },
+  "Anonyme (XIXe siècle), LANGLACE Jean-Baptiste": {
+   "reason": "anonymous_primary",
+   "records": 1
+  },
+  "Anonyme (XIXe siècle), LE BERNIN (BERNINI Gian Lorenzo, dit) (attribué à)": {
+   "reason": "anonymous_primary",
+   "records": 1
+  },
+  "Anonyme (XIXe siècle), MENARD Alfred": {
+   "reason": "anonymous_primary",
+   "records": 1
+  },
+  "Anonyme (XIXe siècle), ROLLAND Auguste": {
+   "reason": "anonymous_primary",
+   "records": 1
+  },
+  "Anonyme (XIXe siècle), SCHEUCHZER Caspar": {
+   "reason": "anonymous_primary",
+   "records": 1
+  },
+  "Anonyme (XVIIIe siècle), PIRANESI Giovanni Battista": {
+   "reason": "anonymous_primary",
+   "records": 1
+  },
+  "Anonyme (XVIIe siècle), REMBRANDT Van Rijn": {
+   "reason": "anonymous_primary",
+   "records": 1
+  },
+  "Anonyme (sans précision), SANZIO Raffaello dit RAPHAËL (d'après)": {
+   "reason": "anonymous_primary",
+   "records": 1
+  },
+  "BAUGÉ E.": {
+   "display": "E. Baugé",
+   "reason": "single_token_name",
+   "records": 2
+  },
+  "BEAUPOIL (SAINT-AULAIRE Félix Achille, dit), VALLON DE VILLENEUVE": {
+   "display": "Beaupoil",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "BOSSELMAN ?": {
+   "display": "? Bosselman",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "BUFFET": {
+   "display": "Buffet",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "CHALAS": {
+   "display": "Chalas",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "CHAM (NOÉE Amédée Charles Henri, dit)": {
+   "display": "Cham",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "CUVILLIER A.": {
+   "display": "A. Cuvillier",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "CUVILLIER A., ARMFIELD Georges": {
+   "display": "A. Cuvillier",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "CUVILLIER A., HERRING Benjamin": {
+   "display": "A. Cuvillier",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "DUJARNIC": {
+   "display": "Dujarnic",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "FERRY A.": {
+   "display": "A. Ferry",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "FRAGONARD ?": {
+   "display": "? Fragonard",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "FRAIPONT ?": {
+   "display": "? Fraipont",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "FRANCIS C.": {
+   "display": "C. Francis",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "GEOFFROY ?, MURILLO Bartolomé Esteban": {
+   "display": "? Geoffroy",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "GUVIER, GUDIER OU GERDIER": {
+   "display": "Guvier",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "HIRNÉ (LE RICHE Henri, dit)": {
+   "display": "Hirné",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "HIROSHIGE": {
+   "display": "Hiroshige",
+   "reason": "single_token_name",
+   "records": 5
+  },
+  "HOKUSAI": {
+   "display": "Hokusai",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "KISLING": {
+   "display": "Kisling",
+   "reason": "single_token_name",
+   "records": 2
+  },
+  "LORIEUX F.B., GELLÉE Claude dit LE LORRAIN": {
+   "display": "F.B. Lorieux",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "MANOLO (MARTINEZ I HUGUÉ Manuel, dit)": {
+   "display": "Manolo",
+   "reason": "single_token_name",
+   "records": 6
+  },
+  "MOPP (OPPENHEIMER Max, dit)": {
+   "display": "Mopp",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "RAUDNEY": {
+   "display": "Raudney",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "SALLEY, BLONDEL Jacques-François": {
+   "display": "Salley",
+   "reason": "single_token_name",
+   "records": 2
+  },
+  "SPY": {
+   "display": "Spy",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "TANCONVILLE (GANIER Henri, dit)": {
+   "display": "Tanconville",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "THOMAS N., (SANZIO Raffaello dit RAPHAËL (d'après))": {
+   "display": "N. Thomas",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "WOLF G., STRUBIN N.": {
+   "display": "G. Wolf",
+   "reason": "single_token_name",
+   "records": 1
+  },
+  "WOLS (SCHULZE Alfred Otto Wolfgang, dit)": {
+   "display": "Wols",
+   "reason": "single_token_name",
+   "records": 1
+  }
+ },
+ "resolution": {
+  "ABRAHAM Tancrède": {
+   "canonicalName": "Tancrède Abraham",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "ADAM Raoul": {
+   "canonicalName": "Raoul Adam",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ADAM Victor-Jean": {
+   "canonicalName": "Victor-Jean Adam",
+   "matchRule": "new_from_authors_notice",
+   "records": 15,
+   "ulanUrl": null
+  },
+  "ADOLPHE BRAUN": {
+   "canonicalName": "Adolphe Braun",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "AFFLECK Andrew": {
+   "canonicalName": "Andrew Affleck",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ALBERS Anton": {
+   "canonicalName": "Anton Albers",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ALDER Emile Paul": {
+   "canonicalName": "Emile Paul Alder",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ALIAMET Jacques, HACKAERT Jan": {
+   "canonicalName": "Jacques Aliamet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ALLARD-CAMBRAY Célestin": {
+   "canonicalName": "Célestin Allard-Cambray",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ALLONGÉ Auguste": {
+   "canonicalName": "Auguste Allongé",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ANDRIEUX Clément Auguste": {
+   "canonicalName": "Clément Auguste Andrieux",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ANDRÉ Albert": {
+   "canonicalName": "Albert André",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ANTONI Louis Ferdinand": {
+   "canonicalName": "Louis Ferdinand Antoni",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ANTRAL Louis-Robert": {
+   "canonicalName": "Louis-Robert Antral",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "APPIAN Jacques-Barthélémy dit APPIAN Adolphe": {
+   "canonicalName": "Jacques-Barthélémy Appian dit Adolphe Appian",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "ARMINGTON Caroline Helena": {
+   "canonicalName": "Caroline Helena Armington",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "ASSELIN Maurice": {
+   "canonicalName": "Maurice Asselin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "AUDRAN Benoît I, LE BRUN Charles": {
+   "canonicalName": "Benoît I Audran",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "AUDRAN Gérard": {
+   "canonicalName": "Gérard Audran",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "AUFRAY DE ROC'BHIAN Alphonse Edouard": {
+   "canonicalName": "Alphonse Edouard Aufray De Roc'Bhian",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BACHER Henri": {
+   "canonicalName": "Henri Bacher",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BAERTSOEN Albert": {
+   "canonicalName": "Albert Baertsoen",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BAHUET Alfred-Louis": {
+   "canonicalName": "Alfred-Louis Bahuet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BAILLY Alice": {
+   "canonicalName": "Alice Bailly",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BALLEROY Albert de": {
+   "canonicalName": "Albert De Balleroy",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "BALLIN Auguste": {
+   "canonicalName": "Auguste Ballin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BAMBERGER Gustav": {
+   "canonicalName": "Gustav Bamberger",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BARBOTIN William": {
+   "canonicalName": "William Barbotin",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BARBOTIN William, REYNOLDS Joshua": {
+   "canonicalName": "William Barbotin",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BARLACH Ernst": {
+   "canonicalName": "Ernst Barlach",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/page/ulan/500013940"
+  },
+  "BARRIERE Mario": {
+   "canonicalName": "Mario Barriere",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BASCHANT Rudolf": {
+   "canonicalName": "Rudolf Baschant",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BASTIEN-LEPAGE Jules": {
+   "canonicalName": "Jules Bastien-Lepage",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BAUDOUINS Adrien François (BOUDEWYNS Adriaen-Frans I, dit)": {
+   "canonicalName": "Adrien François Baudouins",
+   "matchRule": "new_from_authors_notice",
+   "records": 8,
+   "ulanUrl": null
+  },
+  "BAUDRY Paul": {
+   "canonicalName": "Paul Baudry",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BAUM Paul": {
+   "canonicalName": "Paul Baum",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BEAUVARLET Jacques-Firmin ou VIEN Joseph-Marie": {
+   "canonicalName": "Jacques-Firmin Beauvarlet Ou Joseph-Marie Vien",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BEAUVERIE Charles Joseph": {
+   "canonicalName": "Charles Joseph Beauverie",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BECKMANN Max": {
+   "canonicalName": "Max Beckmann",
+   "matchRule": "exact_normalised_key",
+   "records": 10,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500024106"
+  },
+  "BEEH René": {
+   "canonicalName": "René Beeh",
+   "matchRule": "exact_normalised_key",
+   "records": 53,
+   "ulanUrl": "http://vocab.getty.edu/page/ulan/500466261"
+  },
+  "BELLAY Charles Alphonse Paul": {
+   "canonicalName": "Charles Alphonse Paul Bellay",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "BELLENGER Clément, LHERMITTE Léon": {
+   "canonicalName": "Clément Bellenger",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BELTRAND Tony (BELTRAND Antony, dit)": {
+   "canonicalName": "Tony Beltrand",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BENARD I. de, VILLENEUVE Louis-Jules": {
+   "canonicalName": "I. De Benard",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BENOIST Félix": {
+   "canonicalName": "Félix Benoist",
+   "matchRule": "new_from_authors_notice",
+   "records": 43,
+   "ulanUrl": null
+  },
+  "BENTLEY Alfred": {
+   "canonicalName": "Alfred Bentley",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BERGES Georges Prosper Ernest": {
+   "canonicalName": "Georges Prosper Ernest Berges",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BERTHÉLEMY Pierre Emile": {
+   "canonicalName": "Pierre Emile Berthélemy",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "BESNUS Michel-Amédée": {
+   "canonicalName": "Michel-Amédée Besnus",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BESSON Marguerite": {
+   "canonicalName": "Marguerite Besson",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BEURDELEY Jacques": {
+   "canonicalName": "Jacques Beurdeley",
+   "matchRule": "new_from_authors_notice",
+   "records": 13,
+   "ulanUrl": null
+  },
+  "BIESE Karl": {
+   "canonicalName": "Karl Biese",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "BLANCHE Jacques-Emile": {
+   "canonicalName": "Jacques-Emile Blanche",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BLUMER Charles Lucien": {
+   "canonicalName": "Charles Lucien Blumer",
+   "matchRule": "new_from_authors_notice",
+   "records": 7,
+   "ulanUrl": null
+  },
+  "BOCCIONI Umberto": {
+   "canonicalName": "Umberto Boccioni",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BOILLY Jules, PRUD'HON Pierre Paul": {
+   "canonicalName": "Jules Boilly",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BOILVIN Emile": {
+   "canonicalName": "Emile Boilvin",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "BOISSIEU Jean-Jacques de": {
+   "canonicalName": "Jean-Jacques De Boissieu",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "BOISSIEU Jean-Jacques de, VAN RUISDAEL Jacob Isaacsz": {
+   "canonicalName": "Jean-Jacques De Boissieu",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BOL Ferdinand": {
+   "canonicalName": "Ferdinand Bol",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BOMPARD Maurice": {
+   "canonicalName": "Maurice Bompard",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BONHEUR Rosa (BONHEUR Marie Rosalie, dite)": {
+   "canonicalName": "Rosa Bonheur",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BONNARD Pierre": {
+   "canonicalName": "Pierre Bonnard",
+   "matchRule": "exact_normalised_key",
+   "records": 16,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500270191"
+  },
+  "BONNART Robert": {
+   "canonicalName": "Robert Bonnart",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "BONVIN François": {
+   "canonicalName": "François Bonvin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BOREL André-Marie-Paul": {
+   "canonicalName": "André-Marie-Paul Borel",
+   "matchRule": "new_from_authors_notice",
+   "records": 26,
+   "ulanUrl": null
+  },
+  "BORET Amédée de": {
+   "canonicalName": "Amédée De Boret",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "BORNET Paul": {
+   "canonicalName": "Paul Bornet",
+   "matchRule": "new_from_authors_notice",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "BORROMEO Comte Carlo Emanuele": {
+   "canonicalName": "Comte Carlo Emanuele Borromeo",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BOSSERT Otto Richard": {
+   "canonicalName": "Otto Richard Bossert",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BOURDELLE Emile Antoine": {
+   "canonicalName": "Emile Antoine Bourdelle",
+   "matchRule": "new_from_authors_notice",
+   "records": 51,
+   "ulanUrl": null
+  },
+  "BOURDELLE Emile Antoine, ANONYME": {
+   "canonicalName": "Emile Antoine Bourdelle",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "BOURDELLE Emile Antoine, DECISY Eugène": {
+   "canonicalName": "Emile Antoine Bourdelle",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BOURDELLE Emile Antoine, RUET Louis": {
+   "canonicalName": "Emile Antoine Bourdelle",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "BOURGEAT Charles": {
+   "canonicalName": "Charles Bourgeat",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BOUSSINGAULT Jean-Louis": {
+   "canonicalName": "Jean-Louis Boussingault",
+   "matchRule": "new_from_authors_notice",
+   "records": 8,
+   "ulanUrl": null
+  },
+  "BOUTELIÉ Louis": {
+   "canonicalName": "Louis Boutelié",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BOUTET DE MONVEL Bernard": {
+   "canonicalName": "Bernard Boutet de Monvel",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "BOVINET Edme": {
+   "canonicalName": "Edme Bovinet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BOVINET Edme, MEYNIER Charles": {
+   "canonicalName": "Edme Bovinet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BRACQUEMOND Félix": {
+   "canonicalName": "Félix Bracquemond",
+   "matchRule": "exact_normalised_key",
+   "records": 14,
+   "ulanUrl": null
+  },
+  "BRAQUAVAL Louis": {
+   "canonicalName": "Louis Braquaval",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BRASCASSAT Jacques-Raymond": {
+   "canonicalName": "Jacques-Raymond Brascassat",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BREMOND Jean-Louis": {
+   "canonicalName": "Jean-Louis Bremond",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BRENDEL Albert": {
+   "canonicalName": "Albert Brendel",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BRENDEL Karl Alexander": {
+   "canonicalName": "Karl Alexander Brendel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BRESDIN Rodolphe": {
+   "canonicalName": "Rodolphe Bresdin",
+   "matchRule": "exact_normalised_key",
+   "records": 56,
+   "ulanUrl": null
+  },
+  "BRIDOUX Eugène François Augustin": {
+   "canonicalName": "Eugène François Augustin Bridoux",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BRIENT Antoine": {
+   "canonicalName": "Antoine Brient",
+   "matchRule": "new_from_authors_notice",
+   "records": 13,
+   "ulanUrl": null
+  },
+  "BROQUET Espérance Léon": {
+   "canonicalName": "Espérance Léon Broquet",
+   "matchRule": "new_from_authors_notice",
+   "records": 7,
+   "ulanUrl": null
+  },
+  "BROUET Auguste": {
+   "canonicalName": "Auguste Brouet",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BROUTELLE Honoré": {
+   "canonicalName": "Honoré Broutelle",
+   "matchRule": "new_from_authors_notice",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "BRUNCK DE FREUNDECK Richard": {
+   "canonicalName": "Richard Brunck De Freundeck",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "BRUNET-DEBAINES Alfred-Louis": {
+   "canonicalName": "Alfred-Louis Brunet-Debaines",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "BRÄUER Johannes": {
+   "canonicalName": "Johannes Bräuer",
+   "matchRule": "new_from_authors_notice",
+   "records": 17,
+   "ulanUrl": null
+  },
+  "BUCCI Anselmo": {
+   "canonicalName": "Anselmo Bucci",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BUHOT Félix": {
+   "canonicalName": "Félix Buhot",
+   "matchRule": "exact_normalised_key",
+   "records": 10,
+   "ulanUrl": null
+  },
+  "BUNNY Rupert Charles": {
+   "canonicalName": "Rupert Charles Bunny",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BURGER Fritz": {
+   "canonicalName": "Fritz Burger",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BURNACINI Lodovico Ottavio": {
+   "canonicalName": "Lodovico Ottavio Burnacini",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "BUTAVAND Lucien, DUMAS Michel": {
+   "canonicalName": "Lucien Butavand",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BUTIN Ulysse": {
+   "canonicalName": "Ulysse Butin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BUTTNER Erich": {
+   "canonicalName": "Erich Buttner",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "BÉJOT Eugène Joseph": {
+   "canonicalName": "Eugène Bejot",
+   "matchRule": "hand_verified_alias",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "BÜRKNER Hugo, BENDEMANN Eduard Julius": {
+   "canonicalName": "Hugo Bürkner",
+   "matchRule": "new_from_authors_notice",
+   "records": 16,
+   "ulanUrl": null
+  },
+  "CADART Alfred": {
+   "canonicalName": "Alfred Cadart",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CALAMATTA Luigi, GIGOUX Jean": {
+   "canonicalName": "Luigi Calamatta",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CARABIN François-Rupert": {
+   "canonicalName": "François-Rupert Carabin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CARJAT Etienne": {
+   "canonicalName": "Etienne Carjat",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CARLE-DUPONT (DUPONT Charles, dit)": {
+   "canonicalName": "Carle-Dupont",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "CARO-DELVAILLE Henry": {
+   "canonicalName": "Henry Caro-Delvaille",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CARREE Antoine, POUSSIN Nicolas": {
+   "canonicalName": "Antoine Carree",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CARRIÈRE Alphonse-Fulerand": {
+   "canonicalName": "Alphonse-Fulerand Carrière",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CARRIÈRE Eugène": {
+   "canonicalName": "Eugène Carrière",
+   "matchRule": "exact_normalised_key",
+   "records": 7,
+   "ulanUrl": null
+  },
+  "CASSATT Mary": {
+   "canonicalName": "Mary Cassatt",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500012368"
+  },
+  "CASSIERS Henry": {
+   "canonicalName": "Henry Cassiers",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CAZABAN Louis-Joseph": {
+   "canonicalName": "Louis-Joseph Cazaban",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CAZIN Jean-Charles": {
+   "canonicalName": "Jean-Charles Cazin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CAZIN Michel": {
+   "canonicalName": "Michel Cazin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CELOS Julien": {
+   "canonicalName": "Julien Celos",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CHADEL Jules": {
+   "canonicalName": "Jules Chadel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CHAHINE Edgar": {
+   "canonicalName": "Edgar Chahine",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "CHAIGNEAU Jean-Ferdinand": {
+   "canonicalName": "Jean-Ferdinand Chaigneau",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "CHAMPOLLION Eugène-André": {
+   "canonicalName": "Eugène-André Champollion",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "CHAPLIN Charles Joshua": {
+   "canonicalName": "Charles Joshua Chaplin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CHARLET Frantz": {
+   "canonicalName": "Frantz Charlet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CHARNAY Armand": {
+   "canonicalName": "Armand Charnay",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CHARON Louis François, MARTINET Aaron": {
+   "canonicalName": "Louis François Charon",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CHAUVEAU François, SILVESTRE Israël": {
+   "canonicalName": "François Chauveau",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "CHAUVEL Clémence-Elisa": {
+   "canonicalName": "Clémence-Elisa Chauvel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CHAUVEL Théophile": {
+   "canonicalName": "Théophile Chauvel",
+   "matchRule": "new_from_authors_notice",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "CHEVALIER Hippolyte Guillaume Sulpice dit GAVARNI Paul": {
+   "canonicalName": "Hippolyte Guillaume Sulpice Chevalier dit Paul Gavarni",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "CHIFFLART François-Nicolas": {
+   "canonicalName": "François-Nicolas Chifflart",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CHOPARD Gaston": {
+   "canonicalName": "Gaston Chopard",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CLAUDEL Paul": {
+   "canonicalName": "Paul Claudel",
+   "matchRule": "new_from_authors_notice",
+   "records": 47,
+   "ulanUrl": null
+  },
+  "COCHIN Charles-Nicolas fils": {
+   "canonicalName": "Charles-Nicolas fils Cochin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "COCHIN Charles-Nicolas fils, LE BAS Jacques-Philippe": {
+   "canonicalName": "Charles-Nicolas fils Cochin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "COCHIN Charles-Nicolas père, WATTEAU Antoine": {
+   "canonicalName": "Charles-Nicolas père Cochin",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "COCHIN Noël": {
+   "canonicalName": "Noël Cochin",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "COIGNET Jules Louis Philippe": {
+   "canonicalName": "Jules Louis Philippe Coignet",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "COIGNET Léon": {
+   "canonicalName": "Léon Coignet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "COINDRE Victor": {
+   "canonicalName": "Victor Coindre",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "COLIN Paul-Emile": {
+   "canonicalName": "Paul-Emile Colin",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "CONSTANTIN Auguste Aristide": {
+   "canonicalName": "Auguste Aristide Constantin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CONZ Walter": {
+   "canonicalName": "Walter Conz",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CORABOEUF Jean-Alexandre": {
+   "canonicalName": "Jean-Alexandre Coraboeuf",
+   "matchRule": "new_from_authors_notice",
+   "records": 27,
+   "ulanUrl": null
+  },
+  "CORINTH Lovis": {
+   "canonicalName": "Lovis Corinth",
+   "matchRule": "exact_normalised_key",
+   "records": 31,
+   "ulanUrl": "http://vocab.getty.edu/page/ulan/500115384"
+  },
+  "COTTIN Pierre": {
+   "canonicalName": "Pierre Cottin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "COURNAULT Etienne": {
+   "canonicalName": "Etienne Cournault",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "COUSSENS Armand": {
+   "canonicalName": "Armand Coussens",
+   "matchRule": "new_from_authors_notice",
+   "records": 15,
+   "ulanUrl": null
+  },
+  "COÜE Francisque": {
+   "canonicalName": "Francisque Coüe",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "CROUTELLE Louis, (SANZIO Raffaello dit RAPHAËL (d'après))": {
+   "canonicalName": "Louis Croutelle",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "CUISIN Charles Emile": {
+   "canonicalName": "Charles Emile Cuisin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "CÉZANNE Paul": {
+   "canonicalName": "Paul Cézanne",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500004793"
+  },
+  "DAGNAUX Albert-Marie": {
+   "canonicalName": "Albert-Marie Dagnaux",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DAMMAN Benjamin Louis": {
+   "canonicalName": "Benjamin Louis Damman",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DANANCHE Xavier de": {
+   "canonicalName": "Xavier De Dananche",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "DANDIRAN Frédéric-François": {
+   "canonicalName": "Frédéric-François Dandiran",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DANGUIN Jean Baptiste": {
+   "canonicalName": "Jean Baptiste Danguin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DANGY Pierre Marie Anatole": {
+   "canonicalName": "Pierre Marie Anatole Dangy",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "DANILOWATZ Josef": {
+   "canonicalName": "Josef Danilowatz",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DARJOU Alfred": {
+   "canonicalName": "Alfred Darjou",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DAUCHEZ André": {
+   "canonicalName": "André Dauchez",
+   "matchRule": "exact_normalised_key",
+   "records": 4,
+   "ulanUrl": "http://vocab.getty.edu/page/ulan/500016706"
+  },
+  "DAUMIER Honoré": {
+   "ackgDuplicateCandidates": [
+    "Honore Daumier",
+    "Honoré Daumier"
+   ],
+   "canonicalName": "Honoré Daumier",
+   "matchRule": "ambiguous_broken_by_work_count",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "DAUMONT Emile-Florentin": {
+   "canonicalName": "Emile-Florentin Daumont",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DAUMONT Emile-Florentin, DEFAUX Alexandre": {
+   "canonicalName": "Emile-Florentin Daumont",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DAUPHIN Louis": {
+   "canonicalName": "Louis Dauphin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DE FREY I Johannes Pieter, REMBRANDT Van Rijn": {
+   "canonicalName": "Johannes Pieter De Frey I",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "DE GRAVESANDE Charles": {
+   "canonicalName": "Charles De Gravesande",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DE HAES Carlos": {
+   "canonicalName": "Carlos De Haes",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DE LA BOISSIÈRE Simon": {
+   "canonicalName": "Simon De La Boissière",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DE NEUVILLE Alphonse": {
+   "canonicalName": "Alphonse De Neuville",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DE NIGELEN, DAVID Jacques-Louis": {
+   "canonicalName": "De Nigelen",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DE VLAMYNCK Pierre-Jean, REMBRANDT Van Rijn (d'après)": {
+   "canonicalName": "Pierre-Jean De Vlamynck",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DECISY Eugène": {
+   "canonicalName": "Eugène Decisy",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "DELACROIX Eugène": {
+   "ackgDuplicateCandidates": [
+    "Eugene Delacroix",
+    "Eugène Delacroix"
+   ],
+   "canonicalName": "Eugène Delacroix",
+   "matchRule": "ambiguous_broken_by_work_count",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "DELAPORTE Michel": {
+   "canonicalName": "Michel Delaporte",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DELASALLE Angèle": {
+   "canonicalName": "Angèle Delasalle",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "DELAUNAY Jules Elie": {
+   "canonicalName": "Jules Elie Delaunay",
+   "matchRule": "new_from_authors_notice",
+   "records": 8,
+   "ulanUrl": null
+  },
+  "DELAUNAY Robert": {
+   "canonicalName": "Robert Delaunay",
+   "matchRule": "exact_normalised_key",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "DELAUNEY Alfred-Alexandre": {
+   "canonicalName": "Alfred-Alexandre Delauney",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DELÂTRE Eugène": {
+   "canonicalName": "Eugène Delâtre",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "DEMARTEAU Gilles-Antoine dit DEMARTEAU LE JEUNE, CAFFIERI Jean-Jacques": {
+   "canonicalName": "Gilles-Antoine Demarteau dit Demarteau Le jeune",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DENIS Claudius (DENIS Claude, dit)": {
+   "canonicalName": "Claudius Denis",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "DENIS Maurice": {
+   "canonicalName": "Maurice Denis",
+   "matchRule": "exact_normalised_key",
+   "records": 5,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500032673"
+  },
+  "DEQUEVAUVILLER François Nicolas Barthélemy": {
+   "canonicalName": "François Nicolas Barthélemy Dequevauviller",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DEQUEVAUVILLIER François-Jacques, (SANZIO Raffaello dit RAPHAËL (d'après))": {
+   "canonicalName": "François-Jacques Dequevauvillier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DERAIN André": {
+   "ackgDuplicateCandidates": [
+    "Andre Derain",
+    "André Derain"
+   ],
+   "canonicalName": "André Derain",
+   "matchRule": "ambiguous_broken_by_ulan",
+   "records": 68,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500004535"
+  },
+  "DEROY Auguste-Victor": {
+   "canonicalName": "Auguste-Victor Deroy",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DESMARETZ Sébastien, SANZIO Raffaello dit RAPHAËL (d'après)": {
+   "canonicalName": "Sébastien Desmaretz",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "DESNOYERS Auguste Gaspard Louis, SANZIO Raffaello dit RAPHAËL": {
+   "canonicalName": "Auguste Gaspard Louis Desnoyers",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DETÉ Eugène": {
+   "canonicalName": "Eugène Deté",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DETÉ Eugène, BERNARDEAU Henri-Marie-Georges": {
+   "canonicalName": "Eugène Deté",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DEVILLE Henry Wilfrid": {
+   "canonicalName": "Henry Wilfrid Deville",
+   "matchRule": "new_from_authors_notice",
+   "records": 299,
+   "ulanUrl": null
+  },
+  "DICKSEE Herbert Thomas": {
+   "canonicalName": "Herbert Thomas Dicksee R.E",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DISSARD Michel, PIPPI Giulio dit ROMANO Giulio": {
+   "canonicalName": "Michel Dissard",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DIVEKY Josef von": {
+   "canonicalName": "Josef Von Diveky",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DOCHY Henri-Auguste, REJCHAN Stanislas": {
+   "canonicalName": "Henri-Auguste Dochy",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DORÉ Gustave": {
+   "canonicalName": "Gustave Doré",
+   "matchRule": "new_from_authors_notice",
+   "records": 140,
+   "ulanUrl": null
+  },
+  "DORÉ Gustave (attribué à)": {
+   "canonicalName": "Gustave Doré",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DORÉ Gustave, ROSE Alphonse-Antoine": {
+   "canonicalName": "Gustave Doré",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DORÉ Gustave, SABATIER, ADAM Albert": {
+   "canonicalName": "Gustave Doré",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DOUDIET Alphonse": {
+   "canonicalName": "Alphonse Doudiet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DROUYN Léo": {
+   "canonicalName": "Léo Drouyn",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "DU GARDIER Raoul": {
+   "canonicalName": "Raoul Du Gardier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DUBOUCHET Henri-Joseph": {
+   "canonicalName": "Henri-Joseph Dubouchet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DUCOLLET Joséphine": {
+   "canonicalName": "Joséphine Ducollet",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "DUCOLLET Joséphine, BROCHARD Constant Joseph": {
+   "canonicalName": "Joséphine Ducollet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DUCOLLET Joséphine, RUDDER Louis Henri de": {
+   "canonicalName": "Joséphine Ducollet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DUFRESNE Charles Georges": {
+   "canonicalName": "Charles Georges Dufresne",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DUFY Raoul": {
+   "canonicalName": "Raoul Dufy",
+   "matchRule": "exact_normalised_key",
+   "records": 488,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500024166"
+  },
+  "DUMONT Louis-Paul-Pierre, DORÉ Gustave": {
+   "canonicalName": "Louis-Paul-Pierre Dumont",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "DUPRAY Henry Louis": {
+   "canonicalName": "Henry Louis Dupray",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "DUPRÉ Georges": {
+   "canonicalName": "Georges Dupré",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DURIEZ Elie-Philippe-Joseph, GRÉVEDON Henri": {
+   "canonicalName": "Elie-Philippe-Joseph Duriez",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DUVIVIER Albert Ludovic Paul": {
+   "canonicalName": "Albert Ludovic Paul Duvivier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DÉSIRÉ-LUCAS Louis-Marie": {
+   "canonicalName": "Louis-Marie Désiré-Lucas",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DÜLBERG Ewald": {
+   "canonicalName": "Ewald Dülberg",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "DÜRER Albrecht": {
+   "ackgDuplicateCandidates": [
+    "Albrecht Dürer",
+    "Albrecht Dürer (1471-1528",
+    "Durer Albrecht"
+   ],
+   "canonicalName": "Albrecht Dürer",
+   "matchRule": "ambiguous_broken_by_ulan",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500115493"
+  },
+  "EAST Alfred": {
+   "canonicalName": "Alfred East",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "EBEL Henri": {
+   "canonicalName": "Henri Ebel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "EBERZ Josef": {
+   "canonicalName": "Josef Eberz",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "ECKMANN Otto": {
+   "canonicalName": "Otto Eckmann",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "EDWARDS Edwin": {
+   "canonicalName": "Edwin Edwards",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "EHRMANN François Emile": {
+   "canonicalName": "François Emile Ehrmann",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ELMERICH Charles-Edouard": {
+   "canonicalName": "Charles-Edouard Elmerich",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ENGELMANN Godefroy I, ADAM Victor-Jean": {
+   "canonicalName": "Godefroy I Engelmann",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "ENSOR James": {
+   "canonicalName": "James Ensor",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500032046"
+  },
+  "EREDI Benedetto, CUPPINI Giuseppe": {
+   "canonicalName": "Benedetto Eredi",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FANTIN-LATOUR Henri": {
+   "canonicalName": "Henri Fantin-Latour",
+   "matchRule": "exact_normalised_key",
+   "records": 23,
+   "ulanUrl": null
+  },
+  "FARUFFINI Federico": {
+   "canonicalName": "Federico Faruffini",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "FATTORINI Eugène Justin": {
+   "canonicalName": "Eugène Justin Fattorini",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FEROGIO Fortuné": {
+   "canonicalName": "Fortuné Ferogio",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FEYEN-PERRIN François Nicolas Augustin": {
+   "canonicalName": "François Nicolas Augustin Feyen-Perrin",
+   "matchRule": "new_from_authors_notice",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "FIELDING Newton": {
+   "canonicalName": "Newton Fielding",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FISCHER Otto": {
+   "canonicalName": "Otto Fischer",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FLAMENG François": {
+   "canonicalName": "François Flameng",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FLAMENG Léopold": {
+   "canonicalName": "Léopold Flameng",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FLAMENG Léopold, BAUDRY Paul": {
+   "canonicalName": "Léopold Flameng",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FLAMENG Léopold, METSU Gabriel": {
+   "canonicalName": "Léopold Flameng",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FLANDIN Eugène-Napoléon": {
+   "canonicalName": "Eugène-Napoléon Flandin",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "FONBONNE Anne": {
+   "canonicalName": "Anne Fonbonne",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FONCE Camille": {
+   "canonicalName": "Camille Fonce",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "FONVILLE Nicolas Victor": {
+   "canonicalName": "Nicolas Victor Fonville",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FORAIN Jean-Louis": {
+   "ackgDuplicateCandidates": [
+    "Jean Louis Forain",
+    "Jean-Louis Forain"
+   ],
+   "canonicalName": "Jean-Louis Forain",
+   "matchRule": "ambiguous_broken_by_work_count",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FORBES Edwin": {
+   "canonicalName": "Edwin Forbes",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FOREST Vincent, Jacques, Joseph": {
+   "canonicalName": "Vincent",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FOSSEYEUX Jean-Baptiste, (SANZIO Raffaello dit RAPHAËL (d'après))": {
+   "canonicalName": "Jean-Baptiste Fosseyeux",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FOULQUIER Jean Antoine Valentin": {
+   "canonicalName": "Jean Antoine Valentin Foulquier",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "FOUQUET-DORVAL Georges": {
+   "canonicalName": "Georges Fouquet-Dorval",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FRAIPONT Georges": {
+   "canonicalName": "Georges Fraipont",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FRAIPONT Gustave": {
+   "canonicalName": "Gustave Fraipont",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FRANÇOIS Jules": {
+   "canonicalName": "Jules François",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FREESE Hans": {
+   "canonicalName": "Hans Freese",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FRELAUT Jean": {
+   "canonicalName": "Jean Frelaut",
+   "matchRule": "new_from_authors_notice",
+   "records": 17,
+   "ulanUrl": null
+  },
+  "FREUNDLICH Otto": {
+   "canonicalName": "Otto Freundlich",
+   "matchRule": "new_from_authors_notice",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "FRIANT Emile": {
+   "canonicalName": "Emile Friant",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FRIESZ Emile Othon": {
+   "canonicalName": "Achille-Émile Othon Friesz",
+   "matchRule": "hand_verified_alias",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "FRITEL Pierre": {
+   "canonicalName": "Pierre Fritel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FÉAU Amédée": {
+   "canonicalName": "Amédée Féau",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "FÉLIX Dominique": {
+   "canonicalName": "Dominique Félix",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "FÉLON Joseph": {
+   "canonicalName": "Joseph Félon",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GABRIEL Justin J.": {
+   "canonicalName": "Justin J. Gabriel",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "GACHOT Jacques": {
+   "canonicalName": "Jacques Gachot",
+   "matchRule": "new_from_authors_notice",
+   "records": 12,
+   "ulanUrl": null
+  },
+  "GARNERAY Ambroise-Louis dit GARNERAY Louis": {
+   "canonicalName": "Ambroise-Louis Garneray dit Louis Garneray",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GATIER Pierre": {
+   "canonicalName": "Pierre Gatier",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "GAUCHEREL Léon": {
+   "canonicalName": "Léon Gaucherel",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "GAUDIER-BRZESKA Henri": {
+   "canonicalName": "Henri Gaudier-Brzeska",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GAUGUET Eugène": {
+   "canonicalName": "Eugène Gauguet",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "GAUJEAN Eugène, DEYROLLE Théophile-Louis": {
+   "canonicalName": "Eugène Gaujean",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GAUTIER Armand Désiré": {
+   "canonicalName": "Armand Désiré Gautier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GAUTIER Lucien Marcelin": {
+   "canonicalName": "Lucien Marcelin Gautier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GEILLE Amédée Félix": {
+   "canonicalName": "Amédée Félix Geille",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GELLÉE Claude dit LE LORRAIN": {
+   "canonicalName": "Claude Lorrain",
+   "matchRule": "hand_verified_alias",
+   "records": 7,
+   "ulanUrl": null
+  },
+  "GEORGES-SAUVAGE (SAUVAGE Auguste Albert Georges, dit)": {
+   "canonicalName": "Georges-Sauvage",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "GEYGER Ernst Moritz": {
+   "canonicalName": "Ernst Moritz Geyger",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GIACOMELLI Hector": {
+   "canonicalName": "Hector Giacomelli",
+   "matchRule": "new_from_authors_notice",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "GILBERT Achille Isidore": {
+   "canonicalName": "Achille Isidore Gilbert",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "GILL André": {
+   "canonicalName": "André Gill",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "GIRALDON Adolphe": {
+   "canonicalName": "Adolphe Giraldon",
+   "matchRule": "new_from_authors_notice",
+   "records": 15,
+   "ulanUrl": null
+  },
+  "GIRARD Alexis-François": {
+   "canonicalName": "Alexis-François Girard",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GIRARD Alexis-François, BOULLON": {
+   "canonicalName": "Alexis-François Girard",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GIRARD Hippolyte": {
+   "canonicalName": "Hippolyte Girard",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "GIRARD-MOND (GIRARD Edmond, dit)": {
+   "canonicalName": "Girard-Mond",
+   "matchRule": "new_from_authors_notice",
+   "records": 11,
+   "ulanUrl": null
+  },
+  "GIRARDET Paul, CHARPENTIER Eugène Louis": {
+   "canonicalName": "Paul Girardet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GIRIEUD Pierre": {
+   "canonicalName": "Pierre Girieud",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "GIROUX Charles": {
+   "canonicalName": "Charles Giroux",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "GODEFROY LE JEUNE (GODEFROY Adrien Pierre, dit)": {
+   "canonicalName": "Godefroy Le jeune",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GOENEUTTE Norbert": {
+   "canonicalName": "Norbert Goeneutte",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GONNARD Henri": {
+   "canonicalName": "Henri Gonnard",
+   "matchRule": "new_from_authors_notice",
+   "records": 49,
+   "ulanUrl": null
+  },
+  "GONZÁLEZ Julio": {
+   "canonicalName": "Julio González",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "GORVEL Georges": {
+   "canonicalName": "Georges Gorvel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GRANDEMANGE Yves": {
+   "canonicalName": "Yves Grandemange",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "GREBERT Jules": {
+   "canonicalName": "Jules Grebert",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GRENIER François": {
+   "canonicalName": "François Grenier",
+   "matchRule": "new_from_authors_notice",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "GREUX Gustave Marie": {
+   "canonicalName": "Gustave Marie Greux",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GRIS Juan (GONZALES PEREZ Jose Victoriano, dit)": {
+   "canonicalName": "Juan Gris",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "GROSSMANN Rudolf": {
+   "canonicalName": "Rudolf Grossmann",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "GRÉVEDON Henri": {
+   "canonicalName": "Henri Grévedon",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "GUICHARD Jean": {
+   "canonicalName": "Jean Guichard",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GUILLARD Marcel": {
+   "canonicalName": "Marcel Guillard",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GUILLAUMIN Armand (GUILLAUMIN Jean-Baptiste Armand, dit)": {
+   "canonicalName": "Armand Guillaumin",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GUILLEZ Arthur-Edmond": {
+   "canonicalName": "Arthur-Edmond Guillez",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "GUINDRAND Antoine, PASCAL Antoine": {
+   "canonicalName": "Antoine Guindrand",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "GUSMAN Pierre": {
+   "canonicalName": "Pierre Gusman",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GUÉRARD Amédée": {
+   "canonicalName": "Amédée Guérard",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "GUÉRIN Charles": {
+   "canonicalName": "Charles Guérin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "GÉLIBERT Jules-Bertrand": {
+   "canonicalName": "Jules-Bertrand Gélibert",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HADEN Sir Francis Seymour": {
+   "ackgDuplicateCandidates": [
+    "Francis Seymour Haden",
+    "Sir Francis Seymour Haden"
+   ],
+   "canonicalName": "Francis Seymour Haden",
+   "matchRule": "ambiguous_broken_by_work_count",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HALM Peter von": {
+   "canonicalName": "Peter Von Halm",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HASLER Bernhard": {
+   "canonicalName": "Bernhard Hasler",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HASTREL Adolphe d'": {
+   "canonicalName": "Adolphe D' Hastrel",
+   "matchRule": "new_from_authors_notice",
+   "records": 7,
+   "ulanUrl": null
+  },
+  "HAUN Auguste, TIDEMAND Adolphe": {
+   "canonicalName": "Auguste Haun",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HECHT Joseph": {
+   "canonicalName": "Joseph Hecht",
+   "matchRule": "exact_normalised_key",
+   "records": 24,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500095572"
+  },
+  "HEINE Thomas Theodor": {
+   "canonicalName": "Thomas Theodor Heine",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HELLEU Paul César": {
+   "canonicalName": "Paul César Helleu",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500009361"
+  },
+  "HELM Dörte": {
+   "canonicalName": "Dörte Helm",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HERMANN-PAUL (HERMANN-PAUL René-Georges, dit)": {
+   "canonicalName": "René-Georges Hermann-Paul",
+   "matchRule": "hand_verified_alias",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "HERSART ET BURON": {
+   "canonicalName": "Hersart Et Buron",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HERVIEU Louise": {
+   "canonicalName": "Louise Hervieu",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "HETTNER Otto": {
+   "canonicalName": "Otto Hettner",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "HILLS Robert": {
+   "canonicalName": "Robert Hills",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "HOCH Franz": {
+   "canonicalName": "Franz Hoch",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HODEBERT Léon Auguste": {
+   "canonicalName": "Léon Auguste Hodebert",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HOFER Karl": {
+   "canonicalName": "Karl Hofer",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HOFMANN Ludwig von": {
+   "canonicalName": "Ludwig Von Hofmann",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HOLROYD Charles": {
+   "canonicalName": "Sir Charles Holroyd",
+   "matchRule": "hand_verified_alias",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500023825"
+  },
+  "HOURRIEZ Georges": {
+   "canonicalName": "Georges Hourriez",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HUBERT Jean-Baptiste": {
+   "canonicalName": "Jean-Baptiste Hubert",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "HUET Paul": {
+   "canonicalName": "Paul Huet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HUMBERT Suzanne": {
+   "canonicalName": "Suzanne Humbert",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HUVEY Louis": {
+   "canonicalName": "Louis Huvey",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "HÄNISCH Alois": {
+   "canonicalName": "Alois Hänisch",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "HÉDOUIN Edmond Pierre Alexandre": {
+   "canonicalName": "Edmond Pierre Alexandre Hédouin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "HÉREAU Jules": {
+   "canonicalName": "Jules Héreau",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "IBELS Henri Gabriel": {
+   "canonicalName": "Henri Gabriel Ibels",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "ISRAËLS Joseph": {
+   "canonicalName": "Joseph Israëls",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "JACOBY Hans": {
+   "canonicalName": "Hans Jacoby",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "JACOTTET Jean": {
+   "canonicalName": "Jean Jacottet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "JACQUE Charles Emile": {
+   "canonicalName": "Charles Émile Jacque",
+   "matchRule": "exact_normalised_key",
+   "records": 21,
+   "ulanUrl": null
+  },
+  "JACQUE Léon": {
+   "canonicalName": "Léon Jacque",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "JACQUET Achille": {
+   "canonicalName": "Achille Jacquet",
+   "matchRule": "new_from_authors_notice",
+   "records": 11,
+   "ulanUrl": null
+  },
+  "JAECKEL Willy": {
+   "canonicalName": "Willy Jaeckel",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "JAHN Hede": {
+   "canonicalName": "Hede Jahn",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "JAWLENSKY Alexej von": {
+   "canonicalName": "Alexej von Jawlensky",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500017981"
+  },
+  "JAZET Jean Pierre Marie": {
+   "canonicalName": "Jean Pierre Marie Jazet",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "JENEWEIN Felix": {
+   "canonicalName": "Felix Jenewein",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "JETTMAR Rudolf": {
+   "canonicalName": "Rudolf Jettmar",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "JOURDAIN Henri": {
+   "canonicalName": "Henri Jourdain",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "JOURNOT Louis Isidore": {
+   "canonicalName": "Louis Isidore Journot",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "JOYAU Amédée": {
+   "canonicalName": "Amédée Joyau",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "JULIAN-DAMAZY William": {
+   "canonicalName": "William Julian-Damazy",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "KALLMORGEN Friedrich": {
+   "canonicalName": "Friedrich Kallmorgen",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "KAMPMANN Gustav": {
+   "canonicalName": "Gustav Kampmann",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "KANDINSKY Vassily": {
+   "canonicalName": "Wassily Kandinsky",
+   "matchRule": "hand_verified_alias",
+   "records": 475,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500021093"
+  },
+  "KIRCHNER Ernst Ludwig": {
+   "canonicalName": "Ernst Ludwig Kirchner",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500027704"
+  },
+  "KLEE Paul": {
+   "canonicalName": "Paul Klee",
+   "matchRule": "exact_normalised_key",
+   "records": 7,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500010493"
+  },
+  "KLINGER Max": {
+   "canonicalName": "Max Klinger",
+   "matchRule": "exact_normalised_key",
+   "records": 143,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500023867"
+  },
+  "KLOSSOWSKI DE ROLA Erich": {
+   "canonicalName": "Erich Klossowski De Rola",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "KOLB Alois": {
+   "canonicalName": "Alois Kolb",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "KOLBE Ernst": {
+   "canonicalName": "Ernst Kolbe",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "KOLLWITZ Käthe": {
+   "canonicalName": "Käthe Kollwitz",
+   "matchRule": "exact_normalised_key",
+   "records": 27,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500016751"
+  },
+  "KOSAKA Gaji": {
+   "canonicalName": "Gaji Kosaka",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "KRUIS Ferdinand": {
+   "canonicalName": "Ferdinand Kruis",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "KURZWEIL Maximilian": {
+   "canonicalName": "Maximilian Kurzweil",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "KÖNIG Leo von": {
+   "canonicalName": "Leo Von König",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LA FRESNAYE Roger de": {
+   "canonicalName": "Roger De La Fresnaye",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "LA GANDARA Antonio de": {
+   "canonicalName": "Antonio De La Gandara",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LAAGE Wilhelm": {
+   "canonicalName": "Wilhelm Laage",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "LABOUREUR Jean-Emile": {
+   "ackgDuplicateCandidates": [
+    "Jean Emile Laboureur",
+    "Jean Émile Laboureur",
+    "Jean-Emile Laboureur"
+   ],
+   "canonicalName": "Jean-Emile Laboureur",
+   "matchRule": "ambiguous_broken_by_work_count",
+   "records": 223,
+   "ulanUrl": null
+  },
+  "LAFARGUE Marc": {
+   "canonicalName": "Marc Lafargue",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LAGUILLERMIE Frédéric-Auguste": {
+   "canonicalName": "Frédéric-Auguste Laguillermie",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LAING Frank": {
+   "canonicalName": "Frank Laing",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LALAISSE François-Hippolyte": {
+   "canonicalName": "François-Hippolyte Lalaisse",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "LALANNE Maxime": {
+   "canonicalName": "Maxime Lalanne",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "LAMBRECHT William": {
+   "canonicalName": "William Lambrecht",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LAMINIT Johann-Georg, LAMINIT Paul Jacob, GELLÉE Claude dit LE LORRAIN": {
+   "canonicalName": "Johann-Georg Laminit",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LANGE Otto": {
+   "canonicalName": "Otto Lange",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "LAPLACE Gaston Ernest": {
+   "canonicalName": "Gaston Ernest Laplace",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LARIVIERE Pierre": {
+   "canonicalName": "Pierre Lariviere",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LASKE Oskar": {
+   "canonicalName": "Oskar Laske",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LAUGIER Jean-Nicolas, GIRODET DE ROUSSY TRIOSON Anne-Louis ou GIRODET-TRIOSON": {
+   "canonicalName": "Jean-Nicolas Laugier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LAUKOTA Hermine": {
+   "canonicalName": "Hermine Laukota",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LAURENS Henri": {
+   "canonicalName": "Henri Laurens",
+   "matchRule": "exact_normalised_key",
+   "records": 19,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500010480"
+  },
+  "LAURENS Jules Joseph": {
+   "canonicalName": "Jules Joseph Laurens",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LAVALLÉE Jacques, (SANZIO Raffaello dit RAPHAËL (d'après))": {
+   "canonicalName": "Jacques Lavallée",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LAVERY John": {
+   "canonicalName": "John Lavery",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LE COUTEUX Lionel-Aristide": {
+   "canonicalName": "Lionel-Aristide Le Couteux",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "LE MEILLEUR Georges": {
+   "canonicalName": "Georges Le Meilleur",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "LE PETIT Alfred-Marie": {
+   "canonicalName": "Alfred-Marie Le Petit",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LECREUX Marguerite (DRUEZ Marguerite, dite)": {
+   "canonicalName": "Marguerite Lecreux",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LEGRAND Augustin Claude Simon, GÉRARD Marguerite": {
+   "canonicalName": "Augustin Claude Simon Legrand",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LEGRAND Louis": {
+   "canonicalName": "Louis Legrand",
+   "matchRule": "exact_normalised_key",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "LEGROS Alphonse": {
+   "canonicalName": "Alphonse Legros",
+   "matchRule": "exact_normalised_key",
+   "records": 17,
+   "ulanUrl": null
+  },
+  "LEHEUTRE Gustave": {
+   "canonicalName": "Gustave Leheutre",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "LEHMANN-DUMONT Karl": {
+   "canonicalName": "Karl Lehmann-Dumont",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LEIBL Wilhelm": {
+   "canonicalName": "Wilhelm Leibl",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "LEMERCIER Alfred-Léon": {
+   "canonicalName": "Alfred-Léon Lemercier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LEMERCIER Alfred-Léon, PERROT Ferdinand Victor": {
+   "canonicalName": "Alfred-Léon Lemercier",
+   "matchRule": "new_from_authors_notice",
+   "records": 12,
+   "ulanUrl": null
+  },
+  "LEMMEN Georges": {
+   "canonicalName": "Georges Lemmen",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LEPÈRE Auguste Louis": {
+   "ackgDuplicateCandidates": [
+    "Auguste-Louis Lepere",
+    "Auguste-Louis Lepère"
+   ],
+   "canonicalName": "Auguste-Louis Lepère",
+   "matchRule": "ambiguous_broken_by_ulan",
+   "records": 36,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500018893"
+  },
+  "LEROY Alphonse Alexandre": {
+   "canonicalName": "Alphonse Alexandre Leroy",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LESCHHORN Paul": {
+   "canonicalName": "Paul Leschhorn",
+   "matchRule": "new_from_authors_notice",
+   "records": 32,
+   "ulanUrl": null
+  },
+  "LEVASSEUR Jules-Gabriel": {
+   "canonicalName": "Jules-Gabriel Levasseur",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "LHERMITTE Léon": {
+   "canonicalName": "Léon Lhermitte",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "LHERMITTE Léon, BAUDE Charles": {
+   "canonicalName": "Léon Lhermitte",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LHERMITTE Léon, BELLENGER Clément": {
+   "canonicalName": "Léon Lhermitte",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "LIEBERMANN Max": {
+   "canonicalName": "Max Liebermann",
+   "matchRule": "exact_normalised_key",
+   "records": 10,
+   "ulanUrl": "http://vocab.getty.edu/page/ulan/500115690"
+  },
+  "LIEDTKE Alfred": {
+   "canonicalName": "Alfred Liedtke",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LISSITZKY El (LISSITZKY Eliazar, dit)": {
+   "canonicalName": "El Lissitzky",
+   "matchRule": "exact_normalised_key",
+   "records": 12,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500015156"
+  },
+  "LOPISGICH Georges Antonio": {
+   "canonicalName": "Georges Antonio Lopisgich",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "LORRAIN René": {
+   "canonicalName": "René Lorrain",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "LOS RIOS Ricardo de": {
+   "canonicalName": "Ricardo De Los Rios",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LOUX Henri": {
+   "canonicalName": "Henri Loux",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LUCAS Claude": {
+   "canonicalName": "Claude Lucas",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LUIGINI Ferdinand Jean": {
+   "canonicalName": "Ferdinand Jean Luigini",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "LUNOIS Alexandre": {
+   "canonicalName": "Alexandre Lunois",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "LUNTZ Adolphe": {
+   "canonicalName": "Adolphe Luntz",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "LUX Richard": {
+   "canonicalName": "Richard Lux",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "LÉANDRE Charles-Lucien": {
+   "canonicalName": "Charles-Lucien Léandre",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "LÉGER Fernand": {
+   "canonicalName": "Fernand Léger",
+   "matchRule": "exact_normalised_key",
+   "records": 20,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500027374"
+  },
+  "MAIGNAN Albert": {
+   "canonicalName": "Albert Maignan",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MAILLOL Aristide": {
+   "ackgDuplicateCandidates": [
+    "Aristide Maillol",
+    "Maillol Aristide"
+   ],
+   "canonicalName": "Aristide Maillol",
+   "matchRule": "ambiguous_broken_by_ulan",
+   "records": 3,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500001596"
+  },
+  "MALO-RENAULT Emile": {
+   "canonicalName": "Emile Malo-Renault",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MANET Edouard": {
+   "canonicalName": "Édouard Manet",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "MANGUIN Henri": {
+   "canonicalName": "Henri Manguin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MANKIEWICZ Henriette": {
+   "canonicalName": "Henriette Mankiewicz",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MARC HENRY (MEUNIER Henri, dit)": {
+   "canonicalName": "Marc Henry",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "MARCEL-LENOIR (OURY Jules, dit)": {
+   "canonicalName": "Marcel-Lenoir",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MARCOUSSIS Louis (MARKUS Ludwik Kazimierz, dit)": {
+   "ackgDuplicateCandidates": [
+    "Louis Marcoussis",
+    "MARCOUSSIS Louis (MARKUS Ludwik Kazimierz, dit)"
+   ],
+   "canonicalName": "Louis Marcoussis",
+   "matchRule": "ambiguous_broken_by_work_count",
+   "records": 12,
+   "ulanUrl": null
+  },
+  "MARCOUSSIS Louis (MARKUS Ludwik Kazimierz, dit), MIRÓ Joan": {
+   "ackgDuplicateCandidates": [
+    "Louis Marcoussis",
+    "MARCOUSSIS Louis (MARKUS Ludwik Kazimierz, dit)"
+   ],
+   "canonicalName": "Louis Marcoussis",
+   "matchRule": "ambiguous_broken_by_work_count",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MARIAGE Louis-François, (SANZIO Raffaello dit RAPHAËL (d'après))": {
+   "canonicalName": "Louis-François Mariage",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "MARQUET Albert": {
+   "canonicalName": "Albert Marquet",
+   "matchRule": "exact_normalised_key",
+   "records": 7,
+   "ulanUrl": null
+  },
+  "MARTIN Charles": {
+   "canonicalName": "Charles Martin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MARTINET Achille Louis": {
+   "canonicalName": "Achille Louis Martinet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MARTINET Marguerite": {
+   "canonicalName": "Marguerite Martinet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MASQUELIER Claude Louis": {
+   "canonicalName": "Claude Louis Masquelier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MATISSE Henri": {
+   "canonicalName": "Henri Matisse",
+   "matchRule": "exact_normalised_key",
+   "records": 10,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500017300"
+  },
+  "MAUFRA Maxime": {
+   "canonicalName": "Maxime Maufra",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "MAURIN Charles": {
+   "canonicalName": "Charles Maurin",
+   "matchRule": "exact_normalised_key",
+   "records": 8,
+   "ulanUrl": null
+  },
+  "MAURISSET Théodore": {
+   "canonicalName": "Théodore Maurisset",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MAURONER Fabio": {
+   "canonicalName": "Fabio Mauroner",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MAUROU Paul": {
+   "canonicalName": "Paul Maurou",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "MAYEUR Arthur Constant Jules": {
+   "canonicalName": "Arthur Constant Jules Mayeur",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "MELEY André": {
+   "canonicalName": "André Meley",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "MELLAN Claude": {
+   "canonicalName": "Claude Mellan",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MENIOV Nicolas, ROBBIEV U.": {
+   "canonicalName": "Nicolas Meniov",
+   "matchRule": "new_from_authors_notice",
+   "records": 21,
+   "ulanUrl": null
+  },
+  "MERSON Luc-Olivier": {
+   "canonicalName": "Luc-Olivier Merson",
+   "matchRule": "new_from_authors_notice",
+   "records": 84,
+   "ulanUrl": null
+  },
+  "MERSON Luc-Olivier, RITA (DREYFUS Marguerite, dite)": {
+   "canonicalName": "Luc-Olivier Merson",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MERYON Charles": {
+   "canonicalName": "Charles Meryon",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "MEUNIER Georges Joseph": {
+   "canonicalName": "Georges Joseph Meunier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MEYER-BASEL Carl Theodor": {
+   "canonicalName": "Carl Theodor Meyer-Basel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MICHALEK Ludwig": {
+   "canonicalName": "Ludwig Michalek",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MICHELLERIE Eugène de la": {
+   "canonicalName": "Eugène De La Michellerie",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "MIGNON Abel Justin": {
+   "canonicalName": "Abel Justin Mignon",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MIGNOT Victor": {
+   "canonicalName": "Victor Mignot",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "MINNE Georges": {
+   "canonicalName": "Georges Minne",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MODIGLIANI Amedeo": {
+   "canonicalName": "Amedeo Modigliani",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500026509"
+  },
+  "MOHOLY-NAGY László": {
+   "canonicalName": "László Moholy-Nagy",
+   "matchRule": "exact_normalised_key",
+   "records": 7,
+   "ulanUrl": null
+  },
+  "MOLL Carl": {
+   "canonicalName": "Carl Moll",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MOLNAR Wolfgang (MOLNAR Farkas, dit)": {
+   "canonicalName": "Wolfgang Molnar",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MONDRIAN Piet (MONDRIAAN Pieter-Cornelis, dit)": {
+   "canonicalName": "Piet Mondrian",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500004972"
+  },
+  "MONDRIAN Piet (MONDRIAAN Pieter-Cornelis, dit), SEUPHOR Michel (BERCKELAERS Fernand-Louis, dit)": {
+   "canonicalName": "Piet Mondrian",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500004972"
+  },
+  "MONTBARD Georges": {
+   "canonicalName": "Georges Montbard",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MONTHELIER Alexandres-Jules": {
+   "canonicalName": "Alexandres-Jules Monthelier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MONTHELIER Alexandres-Jules, TIRPENNE": {
+   "canonicalName": "Alexandres-Jules Monthelier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MORDANT Daniel": {
+   "canonicalName": "Daniel Mordant",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "MOREAU Luc Albert": {
+   "canonicalName": "Luc Albert Moreau",
+   "matchRule": "new_from_authors_notice",
+   "records": 8,
+   "ulanUrl": null
+  },
+  "MORIN Edmond, LINTON Henri": {
+   "canonicalName": "Edmond Morin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MORIN-JEAN (MORIN Jean Alexis, dit)": {
+   "canonicalName": "Morin-Jean",
+   "matchRule": "new_from_authors_notice",
+   "records": 78,
+   "ulanUrl": null
+  },
+  "MORISOT Berthe": {
+   "canonicalName": "Berthe Morisot",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MORSE Auguste Achille": {
+   "canonicalName": "Auguste Achille Morse",
+   "matchRule": "new_from_authors_notice",
+   "records": 11,
+   "ulanUrl": null
+  },
+  "MOSER Koloman": {
+   "canonicalName": "Koloman Moser",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500030689"
+  },
+  "MOYREAU Jean": {
+   "canonicalName": "Jean Moyreau",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MOYREAU Jean, WATTEAU Antoine": {
+   "canonicalName": "Jean Moyreau",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MUNCH Edvard": {
+   "canonicalName": "Edvard Munch",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": "http://vocab.getty.edu/page/ulan/500032949"
+  },
+  "MUSELIER Amédée": {
+   "canonicalName": "Amédée Muselier",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "MYRBACH-RHEINFELD Felician de": {
+   "canonicalName": "Felician De Myrbach-Rheinfeld",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "MÜLLER Richard": {
+   "canonicalName": "Richard Müller",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "NAUDIN Bernard": {
+   "canonicalName": "Bernard Naudin",
+   "matchRule": "new_from_authors_notice",
+   "records": 14,
+   "ulanUrl": null
+  },
+  "NEUENBORN Paul": {
+   "canonicalName": "Paul Neuenborn",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "NEUMONT Maurice": {
+   "canonicalName": "Maurice Neumont",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "NICHOLSON William": {
+   "ackgDuplicateCandidates": [
+    "Sir William Nicholson",
+    "William Nicholson"
+   ],
+   "canonicalName": "Sir William Nicholson",
+   "matchRule": "ambiguous_broken_by_ulan",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500004272"
+  },
+  "NIEL Marie Gabrielle": {
+   "canonicalName": "Marie Gabrielle Niel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "NIEUWENKAMP Wynand Otto Jan": {
+   "canonicalName": "Wynand Otto Jan Nieuwenkamp",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "NORBLIN DE LA GOURDAINE Jean-Pierre, REMBRANDT Van Rijn (genre de)": {
+   "canonicalName": "Jean-Pierre Norblin De La Gourdaine",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "NOËL Alphonse Léon, SIGNOL Emile": {
+   "canonicalName": "Alphonse Léon Noël",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ORLIK Emil": {
+   "canonicalName": "Emil Orlik",
+   "matchRule": "exact_normalised_key",
+   "records": 7,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500005216"
+  },
+  "OROZCO José Clemente": {
+   "ackgDuplicateCandidates": [
+    "Jose Clemente Orozco",
+    "José Clemente Orozco"
+   ],
+   "canonicalName": "José Clemente Orozco",
+   "matchRule": "ambiguous_broken_by_ulan",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/page/ulan/500012316"
+  },
+  "OSTERLIND Allan": {
+   "canonicalName": "Allan Osterlind",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "OTTMANN Henry": {
+   "canonicalName": "Henry Ottmann",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "OTTO Heinrich": {
+   "canonicalName": "Heinrich Otto",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "OUDART Félix": {
+   "canonicalName": "Félix Oudart",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "OUTHWAITE Jean-Jacques": {
+   "canonicalName": "Jean-Jacques Outhwaite",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "OUVRÉ Achille-Eugène": {
+   "canonicalName": "Achille-Eugène Ouvré",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "PACZKA WAGNER Cornelia": {
+   "canonicalName": "Cornelia Paczka Wagner",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "PAESCHKE Paul": {
+   "canonicalName": "Paul Paeschke",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "PASCIN Jules (PINCAS Julius Mordecai, dit)": {
+   "canonicalName": "Jules Pascin",
+   "matchRule": "exact_normalised_key",
+   "records": 7,
+   "ulanUrl": null
+  },
+  "PECHSTEIN Max (PECHSTEIN Hermann Max, dit)": {
+   "canonicalName": "Max Pechstein",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "PELLETIER Joseph-Laurent": {
+   "canonicalName": "Joseph-Laurent Pelletier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PELLON Alfred": {
+   "canonicalName": "Alfred Pellon",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PENNELL Joseph": {
+   "canonicalName": "Joseph Pennell",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "PETIT Louis": {
+   "canonicalName": "Louis Petit",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "PETIT Louis, (SANZIO Raffaello dit RAPHAËL (d'après))": {
+   "canonicalName": "Louis Petit",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PETIT Pierre": {
+   "canonicalName": "Pierre Petit",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PEYRON Jean-François-Pierre": {
+   "canonicalName": "Jean-François-Pierre Peyron",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PHELIPPES-BEAULIEUX Emmanuel": {
+   "canonicalName": "Emmanuel Phelippes-Beaulieux",
+   "matchRule": "new_from_authors_notice",
+   "records": 114,
+   "ulanUrl": null
+  },
+  "PICABIA Francis (MARTINEZ DE PICABIA Francis, dit)": {
+   "canonicalName": "Francis Picabia",
+   "matchRule": "exact_normalised_key",
+   "records": 6,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500006325"
+  },
+  "PICART Etienne, LE BRUN Charles": {
+   "canonicalName": "Etienne Picart",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PINARD René": {
+   "canonicalName": "René Pinard",
+   "matchRule": "new_from_authors_notice",
+   "records": 7,
+   "ulanUrl": null
+  },
+  "PINET Charles": {
+   "canonicalName": "Charles Pinet",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "PIRANESI Francesco": {
+   "canonicalName": "Francesco Piranesi",
+   "matchRule": "exact_normalised_key",
+   "records": 38,
+   "ulanUrl": null
+  },
+  "PIRANESI Francesco, CADES Guiseppe": {
+   "canonicalName": "Francesco Piranesi",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PIRANESI Giovanni Battista": {
+   "canonicalName": "Giovanni Battista Piranesi",
+   "matchRule": "exact_normalised_key",
+   "records": 815,
+   "ulanUrl": null
+  },
+  "PIRANESI Giovanni Battista, BARBAULT Jean": {
+   "canonicalName": "Giovanni Battista Piranesi",
+   "matchRule": "exact_normalised_key",
+   "records": 14,
+   "ulanUrl": null
+  },
+  "PIRANESI Giovanni Battista, NEWDIGATE Roger": {
+   "canonicalName": "Giovanni Battista Piranesi",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PISSARRO Camille (PISSARRO Camille Jacob, dit)": {
+   "canonicalName": "Camille Pissarro",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500001924"
+  },
+  "PONCET Jean-Baptiste, SOUMY Joseph Paul Marius": {
+   "canonicalName": "Jean-Baptiste Poncet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "POTÉMONT Adolphe Martial": {
+   "canonicalName": "Adolphe Martial Potémont",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PRINET René Xavier": {
+   "canonicalName": "René Xavier Prinet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PROUVÉ Victor": {
+   "canonicalName": "Victor Prouvé",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "PRUD'HON Pierre Paul, BOILLY Jules": {
+   "canonicalName": "Pierre Paul Prud'Hon",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "PRUNAIRE Alfred Léon Désiré": {
+   "canonicalName": "Alfred Léon Désiré Prunaire",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "PRUNAIRE Fanny": {
+   "canonicalName": "Fanny Prunaire",
+   "matchRule": "new_from_authors_notice",
+   "records": 9,
+   "ulanUrl": null
+  },
+  "PRUNIER Gaston": {
+   "canonicalName": "Gaston Prunier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "QUEYROY Louis Armand": {
+   "canonicalName": "Louis Armand Queyroy",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "RAFFAËLLI Jean-François": {
+   "ackgDuplicateCandidates": [
+    "Jean François Raffaëlli",
+    "Jean-François Raffaëlli"
+   ],
+   "canonicalName": "Jean François Raffaëlli",
+   "matchRule": "ambiguous_broken_by_work_count",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "RAFFET Auguste": {
+   "canonicalName": "Auguste Raffet",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RAGOT Abel": {
+   "canonicalName": "Abel Ragot",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RAINERI Carlo Antonio": {
+   "canonicalName": "Carlo Antonio Raineri",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RANFT Richard": {
+   "canonicalName": "Richard Ranft",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RANSON Paul Elie": {
+   "canonicalName": "Paul Elie Ranson",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RASSENFOSSE André Louis Armand": {
+   "canonicalName": "Armand Rassenfosse",
+   "matchRule": "hand_verified_alias",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RATH Heine": {
+   "canonicalName": "Heine Rath",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "REDON Odilon": {
+   "canonicalName": "Odilon Redon",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500007292"
+  },
+  "REICHEL Carl Anton": {
+   "canonicalName": "Carl Anton Reichel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "REMBRANDT Van Rijn (genre de), BOL Ferdinand": {
+   "canonicalName": "Rembrandt van Rijn",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500011051"
+  },
+  "RENOIR Auguste (RENOIR Pierre-Auguste, dit)": {
+   "canonicalName": "Auguste Renoir",
+   "matchRule": "exact_normalised_key",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "RENOUARD Charles Paul": {
+   "canonicalName": "Charles Paul Renouard",
+   "matchRule": "new_from_authors_notice",
+   "records": 119,
+   "ulanUrl": null
+  },
+  "RIBOT Théodule": {
+   "canonicalName": "Théodule Ribot",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RIEDEL Jean-Antoine, REMBRANDT Van Rijn": {
+   "canonicalName": "Jean-Antoine Riedel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RIGAL Louis Pierre": {
+   "canonicalName": "Louis Pierre Rigal",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RIGAUD Jacques": {
+   "canonicalName": "Jacques Rigaud",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RIGAULT Alexandre": {
+   "canonicalName": "Alexandre Rigault",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RINGEL D'ILLZACH Jean-Désiré": {
+   "canonicalName": "Jean-Désiré Ringel D'Illzach",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "RIVIÈRE Benjamin Jean-Pierre Henri dit RIVIÈRE Henri": {
+   "canonicalName": "Henri Rivière",
+   "matchRule": "hand_verified_alias",
+   "records": 21,
+   "ulanUrl": null
+  },
+  "RIVIÈRE Charles": {
+   "canonicalName": "Charles Rivière",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "ROBBE Manuel (ROBBE Emmanuel, dit)": {
+   "canonicalName": "Manuel Robbe",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ROBIDA Albert": {
+   "canonicalName": "Albert Robida",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "RODIN Auguste": {
+   "canonicalName": "Auguste Rodin",
+   "matchRule": "exact_normalised_key",
+   "records": 5,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500016619"
+  },
+  "ROPS Félicien": {
+   "canonicalName": "Félicien Rops",
+   "matchRule": "exact_normalised_key",
+   "records": 26,
+   "ulanUrl": null
+  },
+  "ROSE Alphonse-Antoine, DORÉ Gustave": {
+   "canonicalName": "Alphonse-Antoine Rose",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ROSELLO Y PRADOS José Maria": {
+   "canonicalName": "José Maria Rosello Y Prados",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ROUX-CHAMPION Joseph-Victor": {
+   "canonicalName": "Joseph-Victor Roux-Champion",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "ROY Pierre": {
+   "canonicalName": "Pierre Roy",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ROYBET Ferdinand Victor Léon": {
+   "canonicalName": "Ferdinand Victor Léon Roybet",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "RUBCZAK Jan": {
+   "canonicalName": "Jan Rubczak",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "RÉALIER-DUMAS Maurice": {
+   "canonicalName": "Maurice Réalier-Dumas",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SADAHIDE UTAGAWA": {
+   "canonicalName": "Sadahide Utagawa",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "SAINT-ETIENNE Francisque de": {
+   "canonicalName": "Francisque De Saint-Etienne",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SALLES Léon": {
+   "canonicalName": "Léon Salles",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SALMON Emile Frédéric": {
+   "canonicalName": "Emile Frédéric Salmon",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "SALMON Emile Frédéric, ADAN Louis Emile (ADAN Louis, dit)": {
+   "canonicalName": "Emile Frédéric Salmon",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SANZIO Raffaello dit RAPHAËL, BOURGEOIS Charles": {
+   "canonicalName": "Raffaello Sanzio dit Raphaël",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SANZIO Raffaello dit RAPHAËL, HUBERT François": {
+   "canonicalName": "Raffaello Sanzio dit Raphaël",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SANZIO Raffaello dit RAPHAËL, RIBAULT Jean-François": {
+   "canonicalName": "Raffaello Sanzio dit Raphaël",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SARASIN Régnault": {
+   "canonicalName": "Régnault Sarasin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SARDOU Victorien": {
+   "canonicalName": "Victorien Sardou",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "SATTLER Joseph": {
+   "canonicalName": "Joseph Sattler",
+   "matchRule": "new_from_authors_notice",
+   "records": 71,
+   "ulanUrl": null
+  },
+  "SCHAEFLER Fritz": {
+   "canonicalName": "Fritz Schaefler",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SCHIESTL Matthaüs": {
+   "canonicalName": "Matthaüs Schiestl",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SCHINNERER Adolf Ferdinand": {
+   "canonicalName": "Adolf Ferdinand Schinnerer",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SCHLEMMER Oskar": {
+   "canonicalName": "Oskar Schlemmer",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "SCHMIED François-Louis": {
+   "canonicalName": "François-Louis Schmied",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SCHMUTZER Ferdinand": {
+   "canonicalName": "Ferdinand Schmutzer",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SCHWABE Carlos": {
+   "canonicalName": "Carlos Schwabe",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SCHWARTZ Raphaël": {
+   "canonicalName": "Raphaël Schwartz",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SCHWEITZER Emile": {
+   "canonicalName": "Emile Schweitzer",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "SCHWITTERS Kurt": {
+   "canonicalName": "Kurt Schwitters",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SEEBACH Lothar von": {
+   "canonicalName": "Lothar Von Seebach",
+   "matchRule": "new_from_authors_notice",
+   "records": 11,
+   "ulanUrl": null
+  },
+  "SEGANTINI Giovanni": {
+   "canonicalName": "Giovanni Segantini",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SERRIER Georges": {
+   "canonicalName": "Georges Serrier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SERUSIER Paul": {
+   "canonicalName": "Paul Serusier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SILSBY Wilson": {
+   "canonicalName": "Wilson Silsby",
+   "matchRule": "new_from_authors_notice",
+   "records": 11,
+   "ulanUrl": null
+  },
+  "SILVESTRE Israël": {
+   "canonicalName": "Israël Silvestre",
+   "matchRule": "new_from_authors_notice",
+   "records": 8,
+   "ulanUrl": null
+  },
+  "SIMON Franz": {
+   "canonicalName": "Franz Simon",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "SIMON Lucien": {
+   "canonicalName": "Lucien Simon",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SINAN Alcime": {
+   "canonicalName": "Alcime Sinan",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SISLEY Alfred": {
+   "canonicalName": "Alfred Sisley",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "SLEVOGT Max": {
+   "canonicalName": "Max Slevogt",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500016330"
+  },
+  "SOULAS Louis-Joseph": {
+   "canonicalName": "Louis-Joseph Soulas",
+   "matchRule": "new_from_authors_notice",
+   "records": 23,
+   "ulanUrl": null
+  },
+  "STAUFFER-BERN Karl": {
+   "canonicalName": "Karl Stauffer-Bern",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "STEINLEN Théophile Alexandre": {
+   "canonicalName": "Théophile Alexandre Steinlen",
+   "matchRule": "exact_normalised_key",
+   "records": 4,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500017451"
+  },
+  "STOITZNER Josef": {
+   "canonicalName": "Josef Stoitzner",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "STORM VAN S'GRAVENSANDE Carel Nicolaas": {
+   "canonicalName": "Carel Nicolaas Storm Van S'Gravensande",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "STREMEL Max Arthur": {
+   "canonicalName": "Max Arthur Stremel",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "STRZEMINSKI Wladyslaw": {
+   "canonicalName": "Wladyslaw Strzeminski",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "SUPPANTSCHITSCH Max": {
+   "canonicalName": "Max Suppantschitsch",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "SURÉDA André": {
+   "canonicalName": "André Suréda",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SÉGUIN Armand": {
+   "canonicalName": "Armand Séguin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "SÉGÉ Alexandre": {
+   "canonicalName": "Alexandre Ségé",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "TAEUBER-ARP Sophie (TAEUBER Sophie-Henriette, dite)": {
+   "canonicalName": "Sophie Taeuber-Arp",
+   "matchRule": "exact_normalised_key",
+   "records": 14,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500020080"
+  },
+  "TAEUBER-ARP Sophie (TAEUBER Sophie-Henriette, dite), ARP Jean (ARP Hans, dit), MAGNELLI Alberto": {
+   "canonicalName": "Sophie Taeuber-Arp",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500020080"
+  },
+  "TANGUY Yves": {
+   "canonicalName": "Yves Tanguy",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": "http://vocab.getty.edu/page/ulan/500025688"
+  },
+  "TAUZIN Louis": {
+   "canonicalName": "Louis Tauzin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "TAVERNE Pierre Gustave": {
+   "canonicalName": "Pierre Gustave Taverne",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "TEISSIER Solange": {
+   "canonicalName": "Solange Teissier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "TEYSSONNIÈRES Pierre Salvy Frédéric": {
+   "canonicalName": "Pierre Salvy Frédéric Teyssonnières",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "THIBAULT Louis Gustave, ADAM Victor-Jean": {
+   "canonicalName": "Louis Gustave Thibault",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "THIOLLIER Félix": {
+   "canonicalName": "Félix Thiollier",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "THIÉBAULT Antoine": {
+   "canonicalName": "Antoine Thiébault",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "THOMA Hans": {
+   "canonicalName": "Hans Thoma",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500003772"
+  },
+  "THYLMANN Karl": {
+   "canonicalName": "Karl Thylmann",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "TILLIARD Jean Baptiste, LE PRINCE Jean-Baptiste": {
+   "canonicalName": "Jean Baptiste Tilliard",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "TISSOT James": {
+   "ackgDuplicateCandidates": [
+    "James Jacques Joseph Tissot",
+    "James Tissot"
+   ],
+   "canonicalName": "James Tissot",
+   "matchRule": "ambiguous_broken_by_ulan",
+   "records": 77,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500010633"
+  },
+  "TOMITA Keisen": {
+   "canonicalName": "Keisen Tomita",
+   "matchRule": "new_from_authors_notice",
+   "records": 47,
+   "ulanUrl": null
+  },
+  "TOMITA Keisen, CLAUDEL Paul": {
+   "canonicalName": "Keisen Tomita",
+   "matchRule": "new_from_authors_notice",
+   "records": 14,
+   "ulanUrl": null
+  },
+  "TOOROP Jan": {
+   "canonicalName": "Jan Toorop",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "TOULOUSE-LAUTREC (TOULOUSE-LAUTREC Henri de, dit)": {
+   "canonicalName": "Toulouse Lautrec",
+   "matchRule": "exact_normalised_key",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "TOUSSAINT Henri": {
+   "canonicalName": "Henri Toussaint",
+   "matchRule": "new_from_authors_notice",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "TROUVAIN Antoine": {
+   "canonicalName": "Antoine Trouvain",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "UBBELOHDE Otto": {
+   "canonicalName": "Otto Ubbelohde",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "UHL Joseph": {
+   "canonicalName": "Joseph Uhl",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ULM Emile": {
+   "canonicalName": "Emile Ulm",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "UNGER William": {
+   "canonicalName": "William Unger",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "UNGERER Théodore": {
+   "canonicalName": "Théodore Ungerer",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "URBAIN Alexandre": {
+   "canonicalName": "Alexandre Urbain",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "VALADON Suzanne (VALADON Marie-Clémentine, dite)": {
+   "canonicalName": "Suzanne Valadon",
+   "matchRule": "exact_normalised_key",
+   "records": 23,
+   "ulanUrl": null
+  },
+  "VALERIO Théodore": {
+   "canonicalName": "Théodore Valerio",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "VALLOTTON Félix": {
+   "canonicalName": "Felix Vallotton",
+   "matchRule": "exact_normalised_key",
+   "records": 18,
+   "ulanUrl": null
+  },
+  "VALTAT Louis (VALTAT Louis André, dit)": {
+   "canonicalName": "Louis Valtat",
+   "matchRule": "new_from_authors_notice",
+   "records": 7,
+   "ulanUrl": null
+  },
+  "VAN DE PUT Léon Jean Alfred Achille": {
+   "canonicalName": "Léon Jean Alfred Achille Van De Put",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "VAN DEN BOS Georges": {
+   "canonicalName": "Georges Van Den Bos",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "VAN DER LOO Marten": {
+   "canonicalName": "Marten Van Der Loo",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "VAN DOESBURG Theo (KUEPPER Christian Emil, dit)": {
+   "canonicalName": "Theo Van Doesburg",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "VAN MUYDEN Ewert Louis": {
+   "canonicalName": "Ewert Louis Van Muyden",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "VAN OSTADE Adriaen": {
+   "canonicalName": "Adriaen van Ostade",
+   "matchRule": "exact_normalised_key",
+   "records": 11,
+   "ulanUrl": null
+  },
+  "VAN OSTADE Adriaen (attribué à)": {
+   "canonicalName": "Adriaen van Ostade",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "VAN OSTADE Adriaen (genre de)": {
+   "canonicalName": "Adriaen van Ostade",
+   "matchRule": "exact_normalised_key",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "VAN RIJN Rembrandt Harmensz. dit REMBRANDT": {
+   "canonicalName": "Rembrandt van Rijn",
+   "matchRule": "hand_verified_alias",
+   "records": 29,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500011051"
+  },
+  "VANDERBERGUE Gustave": {
+   "canonicalName": "Gustave Vanderbergue",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "VENTRE André": {
+   "canonicalName": "André Ventre",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "VERNAUT Marguerite Simone Amélie": {
+   "canonicalName": "Marguerite Simone Amélie Vernaut",
+   "matchRule": "new_from_authors_notice",
+   "records": 6,
+   "ulanUrl": null
+  },
+  "VIBERT Pierre Eugène": {
+   "canonicalName": "Pierre Eugène Vibert",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "VICQ Léon": {
+   "canonicalName": "Léon Vicq",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "VIDAL Pierre Marie Louis": {
+   "canonicalName": "Pierre Marie Louis Vidal",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "VOGELER Heinrich Johann": {
+   "canonicalName": "Heinrich Vogeler",
+   "matchRule": "hand_verified_alias",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "VOISIN Henri-Léon": {
+   "canonicalName": "Henri-Léon Voisin",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "VOLKMANN Hans Richard von": {
+   "canonicalName": "Hans Richard Von Volkmann",
+   "matchRule": "new_from_authors_notice",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "VORUZ Elise": {
+   "canonicalName": "Elise Voruz",
+   "matchRule": "new_from_authors_notice",
+   "records": 17,
+   "ulanUrl": null
+  },
+  "VUILLARD Edouard": {
+   "canonicalName": "Edouard Vuillard",
+   "matchRule": "exact_normalised_key",
+   "records": 11,
+   "ulanUrl": null
+  },
+  "VUILLEFROY-CASSINI Félix de": {
+   "canonicalName": "Félix De Vuillefroy-Cassini",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "WALCH Charles": {
+   "canonicalName": "Charles Walch",
+   "matchRule": "new_from_authors_notice",
+   "records": 8,
+   "ulanUrl": null
+  },
+  "WALTNER Charles-Albert": {
+   "canonicalName": "Charles-Albert Waltner",
+   "matchRule": "exact_normalised_key",
+   "records": 3,
+   "ulanUrl": null
+  },
+  "WEBER Otto": {
+   "canonicalName": "Otto Weber",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "WEISS Emil Rudolf": {
+   "canonicalName": "EMIL RUDOLF WEISS",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "WELSCH Paul": {
+   "canonicalName": "Paul Welsch",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "WELTI Albert": {
+   "canonicalName": "Albert Welti",
+   "matchRule": "new_from_authors_notice",
+   "records": 22,
+   "ulanUrl": null
+  },
+  "WHISTLER James Abbott McNeill": {
+   "ackgDuplicateCandidates": [
+    "James Abbott McNeill Whistler",
+    "James McNeill Whistler PRBA HRSA RSW"
+   ],
+   "canonicalName": "James McNeill Whistler PRBA HRSA RSW",
+   "matchRule": "ambiguous_broken_by_ulan",
+   "records": 3,
+   "ulanUrl": "http://vocab.getty.edu/ulan/500012432"
+  },
+  "WIERIX Jean, DÜRER Albrecht (d'après)": {
+   "canonicalName": "Jean Wierix",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "WIIRALT Eduard": {
+   "canonicalName": "Eduard Wiiralt",
+   "matchRule": "exact_normalised_key",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "WILLAUME Louis Charles": {
+   "canonicalName": "Louis Charles Willaume",
+   "matchRule": "new_from_authors_notice",
+   "records": 2,
+   "ulanUrl": null
+  },
+  "WILLE Johan Georg, PESNE Antoine": {
+   "canonicalName": "Johan Georg Wille",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "WILLMANN Edouard": {
+   "canonicalName": "Edouard Willmann",
+   "matchRule": "new_from_authors_notice",
+   "records": 4,
+   "ulanUrl": null
+  },
+  "WISMES Jean-Baptiste Olivier de": {
+   "canonicalName": "Jean-Baptiste Olivier De Wismes",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "WOERNLE Willy": {
+   "canonicalName": "Willy Woernle",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "WOLFF Heinrich": {
+   "canonicalName": "Heinrich Wolff",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "YOSHITORA UTAGAWA": {
+   "canonicalName": "Yoshitora Utagawa",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "YVES Philippe": {
+   "canonicalName": "Philippe Yves",
+   "matchRule": "new_from_authors_notice",
+   "records": 5,
+   "ulanUrl": null
+  },
+  "ZDRASILA Adolf": {
+   "canonicalName": "Adolf Zdrasila",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ZEISING Walter": {
+   "canonicalName": "Walter Zeising",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  },
+  "ZULOAGA Y ZABALETA Ignacio": {
+   "canonicalName": "Ignacio Zuloaga Y Zabaleta",
+   "matchRule": "new_from_authors_notice",
+   "records": 1,
+   "ulanUrl": null
+  }
+ },
+ "stats": {
+  "ambiguous_broken_by_ulan": 190,
+  "ambiguous_broken_by_work_count": 248,
+  "anonymous_primary": 26,
+  "hand_verified_alias": 546,
+  "matched_existing": 2163,
+  "new_artist": 2455,
+  "single_token_name": 42
+ }
+}
