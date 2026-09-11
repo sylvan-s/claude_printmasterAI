@@ -5,8 +5,9 @@
 (`knowledge_graph/find_duplicate_work_clusters.py`, commit c71de50) and decisions 2-4 are applied
 by `knowledge_graph/merge_duplicate_work_clusters.py` (commit 0f818b2), which has written
 `alternateTitles` and `Impression.sourceTitle` for the first time. Decision 1 (decomposition) is
-not implemented. Amended 2026-09-11 (see *Amendment 1*): Decision 2's institutional tier must
-exclude ingest fallback titles, not only placeholders.
+not implemented. Amended 2026-09-11 twice: *Amendment 1* — Decision 2's institutional tier must
+exclude ingest fallback titles, not only placeholders. *Amendment 2* — Decision 1's flat `state`
+property is replaced by the `State` node type, which is populated.
 
 There is no canonical listing of artwork titles. The closest thing is the catalogue raisonné, and
 this graph does not hold catalogue titles at all — only entry numbers. Meanwhile the same print
@@ -92,7 +93,8 @@ A work's `name` is the residue after the discriminators and citations are lifted
 `ConceptualWork`:
 
 - `plateDesignation` — `3e planche`, `pl. 12`
-- `state` — `2nd state`, `state III`
+- ~~`state` — `2nd state`, `state III`~~ — **superseded by *Amendment 2*.** State is a node type,
+  not a property, and it is already populated.
 
 and route embedded citations to the existing `CatalogueEntry` nodes rather than leaving them in
 the title. `seriesTitle` already exists and should be populated by every adapter, not just BM.
@@ -265,3 +267,79 @@ works do not justify one on their own.
 and `A nude woman bathing with her feet in a brook; ...` (BM fallback) are the same print in two
 clusters, because their normalized titles differ and the exact key never proposes them. Only
 Decision 1's decomposition, or an ingested catalogue title, closes that.
+
+---
+
+## Amendment 2 — Decision 1's `state` property is superseded by the `State` node type (2026-09-11)
+
+Decision 1 proposed two new flat properties on `ConceptualWork`, `plateDesignation` and `state`.
+The second is withdrawn. Not on design grounds — **it is already decided in code and in data, and
+this ADR was written without checking.**
+
+### What is actually there
+
+`picasso_paris_ingest.py`'s `extract_state()` (SEMANTIC_SPLIT rule on `tirage`/`mst`, handling
+Roman `IIème état`, French ordinal `Second état` and digit `7ème état` forms) has been writing
+`State` nodes since the Musée Picasso-Paris load:
+
+| | |
+|---|---:|
+| `State` nodes | **905** |
+| works reaching one, `ConceptualWork`→`EditionRun`←`State` | 431 |
+| impressions carrying `stateLabel` | 1,131 |
+
+Doc 08 §2 always defined `State` as a node type. When this ADR was drafted it had zero instances,
+which is why a flat property looked like the cheaper option. It no longer does, and a second
+representation of the same fact would be the divergent-lists problem `crosswalk_matching.py`
+warns about.
+
+### The measurement that makes this more than bookkeeping
+
+Plate and state are **orthogonal axes**, and a flat string would have collapsed them. Of the 31
+works carrying both a trailing Roman numeral in the title and a `State` node, **14 carry two to
+five distinct states behind that single numeral**:
+
+```
+La Femme qui pleure. I                    states [1]
+La Femme qui pleure. II                   states [2]
+Nu debout. I                              states [3, 4, 1, 2]
+Femmes d'Alger, d'après Delacroix. VIII   states [3, 2, 1, 5, 4]
+Corrida. Femme torero blessée. III        states [3, 2, 1, 4]
+```
+
+A decomposer reading `. III` as a state would be wrong wherever it is checkable, and would
+manufacture a false discriminator everywhere else. The numeral is a **plate designation**. So
+`plateDesignation` stays a `ConceptualWork` property — the plate is a property of the work as
+this graph identifies it — and state moves to the node, where one work can carry several.
+
+**Scale of the ambiguity:** 248 works across 34 artists carry a trailing Roman numeral (167 of
+them Picasso), and **49 title families / 166 nodes are currently held apart by nothing but that
+numeral** — Twombly's *No. I* … *No. X*, Picasso's *L'Étreinte. I/II/III*.
+
+### Consequences
+
+1. **Decision 1's decomposition targets change.** `plateDesignation` and `seriesTitle` on
+   `ConceptualWork`; state to a `State` node via the existing `stateNumber` / `displayLabel`
+   shape, with the source's own wording kept verbatim, matching what `extract_state` already does.
+2. **Doc 08 §2's `State` row is incomplete** — it lists only `traditionType`. The live nodes
+   carry `stateNumber` and `displayLabel`. Recorded as doc 08 §10.
+3. **`Matrix -[:HAS_STATE]-> State` has zero instances.** All 905 attach through
+   `State -[:PRINTED_AS]-> EditionRun`, doc 08 §2's "or directly — principle 3" branch. Correct
+   for a source that records the state but not which physical plate; noted so the absence is not
+   later read as a load defect.
+4. **Decomposition writes claims, never overwrites.** The sources contradict each other on these
+   exact fields — Forum attaches "Delteil 8" to both *2e planche* and *3e planche*; Chagall's
+   *Moïse sauvé des eaux* appears as `pl. 25` and `pl. 26`. An ingest parser may assume its own
+   source is internally consistent; a decomposer reading a flattened `name` may not.
+5. **No merge has acted on any of this.** `catalogue_matching.normalize_title` keeps
+   alphanumerics, so `no i` ≠ `no ii` and the 166 nodes are safe on the identity path.
+
+### Flagged, not fixed here
+
+`normalizeTitleForEmbedding`'s `TRAILING_PORTFOLIO` matches on the word *Series* and eats the
+ordinal after it: *Wind Dance Series No. I* through *No. IV* all normalize to `wind dance` — four
+different Barns-Graham prints, one key. Decision 6 contains the blast radius (`titleEmbedding` is
+never an identity trigger), but `scoreWorkTitleMatches` feeds Stage 2a, where **T8K** fires at
+`TAU_TITLE_ANCHOR = 0.85`. The exposure is a wrong *work* identified in an appraisal, not a
+corrupted graph. Separate fix.
+

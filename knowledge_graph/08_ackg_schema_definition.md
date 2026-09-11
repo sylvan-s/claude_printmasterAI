@@ -110,7 +110,7 @@ rather than re-derived at every node:
 | `Publisher` | Identity | name — covers original publishers, print workshops, *and* historical restrike/estate publishers (Basan, Mariette) under one type |
 | `ConceptualWork` | Work | `dateCreated` (fuzzy date shape) |
 | `Matrix` | Work | material (copper/zinc/stone/block) |
-| `State` | Work | `traditionType` — tradition-agnostic: covers both Western plate-states and ukiyo-e printing generations |
+| `State` | Work | `traditionType` — tradition-agnostic: covers both Western plate-states and ukiyo-e printing generations; `stateNumber`, `displayLabel` (§ 10) |
 | `EditionRun` | Work | `declaredSize`, `dateRange` (fuzzy date shape) |
 | `Impression` | Instance | `editionNumber`, `copyType` (numbered / AP / HC / PP / BAT / TP — local enum, no AAT equivalent per doc 06 §2.6), sheet/image dimensions, `signed` (bool), `provenanceNote` (free text, deferred — § 5) |
 | `Technique` | Controlled vocab | AAT URI |
@@ -464,6 +464,39 @@ the source's ensemble ids collide across institutions, and titles are not unique
 vault 15 holds two different sets both called *Poèmes du Pont des Faisans*.
 
 ---
+
+## 10. Schema addition: `State.stateNumber` and `State.displayLabel`
+
+**Added 2026-09-11**, recording what the Musée Picasso-Paris load already wrote. `State` was
+defined as a node type in § 2 from the start but sat at **zero instances** until that load, so
+its property list was never filled in. It now holds **905 nodes**, reachable from **431**
+`ConceptualWork`s, with **1,131** impressions carrying a `stateLabel`.
+
+```
+State {
+  id,                 # "<conceptualWorkId>-state-<n>"
+  traditionType,      # § 2, unchanged
+  stateNumber,        # int — 'IIème état' -> 2
+  displayLabel        # the source's own wording, verbatim
+}
+```
+
+`displayLabel` follows the same observe-don't-fabricate discipline as `dateCreated_displayLabel`:
+`picasso_paris_ingest.extract_state()` normalises Roman (`IIème état`), French ordinal (`Second
+état`) and digit (`7ème état`) forms to an integer while keeping the string the museum actually
+wrote. Written with `coalesce`, so a second source never overwrites the first source's wording.
+
+**`Matrix -[:HAS_STATE]-> State` is unpopulated.** All 905 attach through
+`State -[:PRINTED_AS]-> EditionRun`, the "or Matrix/ConceptualWork directly — principle 3" branch
+of § 2's edge list. That is the correct shape for a source recording *which state* without
+recording *which physical plate*; the absence is not a load defect.
+
+This addition is what
+[ADR-0017 *Amendment 2*](../docs/adr/0017-work-title-identity-principal-name-and-aliases.md)
+defers to when it withdraws that ADR's proposed flat `ConceptualWork.state` property. Plate and
+state are orthogonal: of the 31 works carrying both a trailing Roman numeral in the title and a
+`State` node, 14 carry two to five distinct states behind that one numeral, so the numeral is a
+plate designation and belongs on `ConceptualWork`, while state belongs here.
 
 ## Next steps
 
