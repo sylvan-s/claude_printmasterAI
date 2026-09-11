@@ -1657,14 +1657,49 @@ export function mapTwoPassToScenario(input: {
   riskFlags?: RiskFlagsLite;
 }): { scenario: Scenario; scenarioName: string; rationale: string } {
   const { artist, work, impression, traditionConfidence } = input;
-  const pick = (s: Scenario, rationale: string) => ({ scenario: s, scenarioName: SCENARIO_NAMES[s], rationale });
+  let trace_misattributionIgnored = false;
+  const pick = (s: Scenario, rationale: string) => ({
+    scenario: s,
+    scenarioName: SCENARIO_NAMES[s],
+    rationale: trace_misattributionIgnored
+      ? `${rationale} [misattributionRisk set but not routed: nothing is attributed, so there is no attribution to doubt]`
+      : rationale,
+  });
 
   // Order matters — risk/divergence/conflict before a confident-looking match (ADR-0006).
-  if (input.riskFlags?.forgeryRisk || input.riskFlags?.misattributionRisk)
+  //
+  // misattributionRisk only routes when there IS an attribution to misattribute. The flag's
+  // own definition presupposes one — "VEA's physical evidence conflicts with the leading
+  // candidate", or "two or more candidates ... pointing to DIFFERENT identities" — and so
+  // does the Scenario 2 task profile it triggers, which orders Stage 2b to "actively try to
+  // falsify the leading attribution hypothesis". On a not_attributed lot there is no leading
+  // candidate and no hypothesis to falsify: the adversarial pass has no target and is bought
+  // anyway. (The second clause, if it were genuinely true, produces verdict "conflict" and
+  // Scenario 5 — not not_attributed.)
+  //
+  // Measured over 60 stability runs, 2026-09-11: misattributionRisk fired on 20, and 14 of
+  // those 20 were not_attributed lots — 13 of them with no forgeryRisk, so Scenario 2 rested
+  // on this flag alone. That is 56% of all not_attributed runs routed to a skeptic pass with
+  // nothing to be skeptical about, and it was the single largest source of Stage 2a run-to-run
+  // instability: four of the five unstable lots on the unseen pool slice had a byte-identical
+  // tree verdict in every repetition and flipped Scenario 4 <-> 2 on this boolean alone.
+  //
+  // This is the same narrowing ADR-0006 already applied once, when authenticationBodyExists
+  // was dropped from the trigger for being a fact about the artist rather than a risk about
+  // this transaction. forgeryRisk is deliberately NOT gated: an object can be a forgery
+  // whether or not anyone has worked out who it purports to be by.
+  //
+  // The flag itself is untouched and still reaches Stage 2b and the report. Only its power to
+  // route changes.
+  const hasAttributionToDoubt = artist.verdict !== "not_attributed";
+  const misattributionRoutes = !!input.riskFlags?.misattributionRisk && hasAttributionToDoubt;
+  if (input.riskFlags?.forgeryRisk || misattributionRoutes)
     return pick(
       Scenario.ElevatedAuthenticationRisk,
       `riskFlags: forgeryRisk=${!!input.riskFlags?.forgeryRisk} misattributionRisk=${!!input.riskFlags?.misattributionRisk}`,
     );
+  if (input.riskFlags?.misattributionRisk && !hasAttributionToDoubt)
+    trace_misattributionIgnored = true;
 
   if (impression && (impression.divergence === "later_edition" || impression.divergence === "medium_divergence" || impression.divergence === "reproduction"))
     return pick(Scenario.ElevatedAuthenticationRisk, `impressionAssessment.divergence=${impression.divergence}`);

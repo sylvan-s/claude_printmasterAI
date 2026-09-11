@@ -975,6 +975,48 @@ test("classifyDimensionMatch: parses via the real ACKG-style values (appraiser c
 // ── SCENARIO MAPPING ────────────────────────────────────────────────────────
 console.log("\nScenario mapping (Decision 8)\n");
 
+test("misattributionRisk does NOT route when nothing is attributed — no hypothesis to falsify", () => {
+  // Measured on 60 stability runs: misattributionRisk fired on 20, 14 of them on
+  // not_attributed lots, and that was the single biggest source of run-to-run scenario
+  // churn. Scenario 2 orders Stage 2b to falsify "the leading attribution hypothesis";
+  // A11 has none.
+  const artist = classifyArtistPass(f.a11_nothing);
+  assert.equal(artist.verdict, "not_attributed");
+  const s = mapTwoPassToScenario({
+    artist,
+    work: null,
+    impression: null,
+    traditionConfidence: 0.8, // clears MOVEMENT_THRESHOLD -> Scenario 4
+    riskFlags: { forgeryRisk: false, misattributionRisk: true },
+  });
+  assert.equal(s.scenario, Scenario.MovementOnly);
+  assert.match(s.rationale, /misattributionRisk set but not routed/);
+});
+
+test("forgeryRisk still routes with nothing attributed — an object can be a forgery unattributed", () => {
+  const s = mapTwoPassToScenario({
+    artist: classifyArtistPass(f.a11_nothing),
+    work: null,
+    impression: null,
+    traditionConfidence: 0.8,
+    riskFlags: { forgeryRisk: true, misattributionRisk: false },
+  });
+  assert.equal(s.scenario, Scenario.ElevatedAuthenticationRisk);
+});
+
+test("misattributionRisk still routes once there IS a candidate to doubt", () => {
+  const artist = classifyArtistPass(f.a5_singleVeaSignature);
+  assert.notEqual(artist.verdict, "not_attributed");
+  const s = mapTwoPassToScenario({
+    artist,
+    work: null,
+    impression: null,
+    traditionConfidence: 0.8,
+    riskFlags: { forgeryRisk: false, misattributionRisk: true },
+  });
+  assert.equal(s.scenario, Scenario.ElevatedAuthenticationRisk);
+});
+
 test("artist HIGH (A2) + work HIGH + no divergence -> Scenario 1", () => {
   const s = mapTwoPassToScenario({
     artist: classifyArtistPass(f.a2_twoAgreeAckgSupport),
