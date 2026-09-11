@@ -545,9 +545,12 @@ before anyone builds a query that assumes plate states exist.
 
 - **Load is done** (§10.2), and §9's ADR-0002 question is settled — see that ADR's
   *Amendment 1* (2026-09-11).
-- **Image embedding: script built 2026-09-11, full pass not yet run.**
-  `picasso_paris_embed_images.py` exists and is smoke-tested (5/5, 11s); the remaining
-  2,106 of 2,111 images are unembedded. It operates under ADR-0002 Amendment 1
+- **Image embedding: complete 2026-09-11.** `picasso_paris_embed_images.py` embedded
+  2,106 images in 3,476s with **zero failures**; all **2,111/2,111** now carry a DINOv2
+  (1024-dim) and CLIP image (512-dim) vector and the `embeddingCommercialUse = false`
+  stamp. Scratch dir confirmed purged, no failure log written. The shared
+  `clipTextEmbedding` space is unchanged at 91,685 vectors — no French text entered it,
+  as intended. Graph-wide embedded images: 77,821. It operates under ADR-0002 Amendment 1
   Decision 7 and enforces it rather than documenting it: no `--keep-cache` flag at all,
   scratch purge in a `finally` plus an `atexit` hook, per-image deletion so at most one
   in-copyright file exists on disk at a time, a rights precondition that aborts if any
