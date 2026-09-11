@@ -311,8 +311,12 @@ const TOKEN_PRICES: Record<string, { in: number; out: number }> = {
   // before quoting a Qwen-vs-Haiku cost comparison.
   // DashScope (Alibaba Model Studio), pay-as-you-go. Also unverified: Alibaba publishes
   // rates in the Model Studio console per region and per model snapshot, not on a page
-  // reachable without a login. qwen-plus is an ALIAS onto the current -plus snapshot
-  // (qwen3.7-plus as at 2026-09), so its rate can move under you without the ID changing.
+  // reachable without a login. qwen-plus is an alias, so its rate can move under you without
+  // the ID changing — but NOT, as previously recorded here, an alias onto the current -plus
+  // model. DashScope's /models listing (2026-09-11) shows the qwen-plus alias with its own
+  // dated snapshots ending at qwen-plus-2025-12-01, while qwen3.5/3.6/3.7-plus are
+  // separately named. A "qwen-plus" result is therefore a reading of a ~9-month-old
+  // snapshot, not of the current generation; use an explicit qwen3.N-plus ID to test that.
   "qwen-plus": { in: 0.4, out: 1.2 },
   // qwen3.8-max — the current head of the -max line (snapshot qwen3.8-max-0902, listed by
   // DashScope's /models on 2026-09-10). The rate below is the widely-quoted qwen3-max
@@ -320,6 +324,13 @@ const TOKEN_PRICES: Record<string, { in: number; out: number }> = {
   // it is here so a max-line run is not silently priced at Sonnet's DEFAULT_PRICE, which
   // would overstate it several-fold. Treat every USD figure for this model as indicative.
   "qwen3.8-max": { in: 1.2, out: 6 },
+  // qwen3-14b — open-weight dense 14B, the smallest class DashScope still serves through
+  // this endpoint (2.5-generation IDs return AccessDenied). Rate is indicative, same
+  // caveat as every other entry below the Anthropic ones.
+  "qwen3-14b": { in: 0.35, out: 1.4 },
+  // qwen3.7-plus — the current mid-tier, and the one the bare "qwen-plus" alias does NOT
+  // reach (see above). Indicative rate, same caveat.
+  "qwen3.7-plus": { in: 0.4, out: 1.2 },
 };
 /** Model IDs whose TOKEN_PRICES entry is a guess — cost columns for these are estimates,
  *  not measurements, and must not be quoted in a cost comparison until set from the
@@ -327,6 +338,8 @@ const TOKEN_PRICES: Record<string, { in: number; out: number }> = {
 export const UNVERIFIED_PRICE_MODELS = new Set([
   "qwen-plus",
   "qwen3.8-max",
+  "qwen3-14b",
+  "qwen3.7-plus",
 ]);
 const DEFAULT_PRICE = { in: 3, out: 15 };
 
@@ -445,6 +458,19 @@ export async function postAnthropicMessages(
       console.warn(`[${label}] model rejects \`temperature\` — retrying without it`);
       const { temperature, ...withoutTemp } = body as Record<string, unknown>;
       return postAnthropicMessages(apiKey, withoutTemp, { ...opts, maxAttempts: 1 });
+    }
+
+    // DashScope's smaller hybrid-reasoning models (qwen3-14b, -8b, -32b, the 30b-a3b MoEs)
+    // reject every non-streaming call unless thinking is explicitly switched off. Their own
+    // parameter name is `enable_thinking`, but the Anthropic-compatible endpoint does not
+    // read it at the top level — it wants Anthropic's native `thinking` block, so the error
+    // text names a parameter that does not work and the fix is a differently-spelled one.
+    // Detected from the response rather than gated on a model list, same as the temperature
+    // case above.
+    if (response.status === 400 && /enable_thinking must be set to false/i.test(errorText)
+        && !("thinking" in body)) {
+      console.warn(`[${label}] model requires thinking disabled for non-streaming — retrying with thinking.type=disabled`);
+      return postAnthropicMessages(apiKey, { ...body, thinking: { type: "disabled" } }, { ...opts, maxAttempts: 1 });
     }
 
     const retryable = response.status === 429 || response.status === 529 || response.status >= 500;
