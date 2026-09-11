@@ -36,7 +36,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity } from "./knowledge_graph/index.js";
 import { assessComps, formatCompStorability, type CompStorabilityReport } from "./comp_storability.js";
 import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
@@ -2748,6 +2748,29 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     }
 
     const { triage, twoPass } = runEvidenceTree(ev, false, stage1d, appraiserInput, styleConsistency);
+
+    // Resolve the artist's ACKG identity ONCE, here, deterministically — after the tree has
+    // settled WHO, and before anything downstream asks the graph about them. Previously
+    // every later ACKG read (catalogue raisonné, Stage 3 comparables, Stage 2b's comparables
+    // and edition tools) re-queried using the model's SPELLING of the name, so the same
+    // artist was looked up several times from a string that varied by run. The lookup is
+    // exact-match and never throws; a miss leaves artistIdentity null and changes nothing.
+    const settledArtist = triage.artistAttribution?.artistName ?? null;
+    if (settledArtist && triage.artistAttribution) {
+      const identity = await resolveArtistIdentity(settledArtist);
+      triage.artistAttribution.artistIdentity = identity
+        ? {
+            canonicalArtistName: identity.canonicalName,
+            ulanUrl: identity.ulanUrl,
+            wikidataUrl: identity.wikidataUrl,
+            matchedOn: identity.matchedOn,
+            workCount: identity.workCount,
+            ambiguousMatchCount: identity.ambiguousMatchCount,
+          }
+        : null;
+      console.log(`[Stage 2a identity] ${formatArtistIdentity(identity, settledArtist)}`);
+    }
+
     const rd = triage.routingDecision;
     console.log(
       `[Stage 2a evidence] artist=${twoPass.artistAttribution.evidenceBasis} ${twoPass.artistAttribution.verdict}/${twoPass.artistAttribution.confidence ?? "-"} "${twoPass.artistAttribution.artistName ?? "-"}"` +
@@ -2853,8 +2876,10 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
    * lot these differ, and the specialist is explicitly told to research every named candidate.
    */
   private async lookupCatalogueRaisonne(triage: TriageResult) {
+    // The canonical name first when Stage 2a resolved one — queryCatalogueRaisonneForArtist
+    // MATCHes on name, so the graph's spelling is the one that finds the index.
     const names = [
-      triage.artistAttribution?.artistName,
+      triage.artistAttribution?.artistIdentity?.canonicalArtistName ?? triage.artistAttribution?.artistName,
       triage.candidateArtists?.[0]?.artistName,
     ].filter((n): n is string => !!n?.trim());
     const unique = [...new Map(names.map((n) => [n.trim().toLowerCase(), n.trim()])).values()];
@@ -2927,7 +2952,10 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     currency: string,
     userNotes?: string,
     testingExcludeSourceListing?: string,
-    appraiserInput?: AppraiserInputResult
+    appraiserInput?: AppraiserInputResult,
+    /** The graph's own name for the artist, resolved once in Stage 2a. Used ONLY to query
+     *  the ACKG — the valuation still reports whatever Stage 2b attributed. */
+    canonicalArtistName?: string | null
   ): Promise<Partial<PrintAnalysisReport>> {
     const systemInstruction = resolveCustomPrompt(VALUATION_REPORT_SYSTEM_PROMPT, currency, userNotes);
 
@@ -2939,8 +2967,15 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     // price not publicly disclosed)"). Failure here must never take a valuation down —
     // the graph is an enrichment, so a Neo4j outage degrades to the old web-only path.
     const conclusion = (attr as any)?.attributionConclusion ?? {};
-    const ackgArtist: string | null =
+    // Query the graph under the graph's own spelling when Stage 2a resolved one. Stage 2b's
+    // free text is what the model wrote; the canonical name is what the ACKG is indexed by,
+    // and queryAuctionComparables matches on name.
+    const reportedArtist: string | null =
       conclusion.attributedArtist ?? (attr as any)?.artistAttribution?.artistName ?? null;
+    const ackgArtist: string | null = canonicalArtistName?.trim() || reportedArtist;
+    if (canonicalArtistName && reportedArtist && canonicalArtistName !== reportedArtist) {
+      console.log(`[Stage 3 comps] querying ACKG as "${canonicalArtistName}" (Stage 2b reported "${reportedArtist}")`);
+    }
     const excludedListing = parseExcludedListing(testingExcludeSourceListing);
     let ackgComps: Awaited<ReturnType<typeof queryAuctionComparables>> | null = null;
     if (ackgArtist) {
@@ -3298,7 +3333,10 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const t3 = Date.now();
     emit({ stage: "stage3", status: "start", message: "Synthesising auction estimate and appraisal statement…", percent: 82 });
     console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
-    const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput);
+    const valuation = await this.runStage3Valuation(
+      vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput,
+      triageResult?.artistAttribution?.artistIdentity?.canonicalArtistName ?? null,
+    );
     console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });

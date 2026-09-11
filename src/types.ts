@@ -581,6 +581,26 @@ export interface TriageResult {
     verdict: "attributed" | "candidate" | "not_attributed" | "conflict";
     artistName: string | null;
     confidence: "HIGH" | "MEDIUM_HIGH" | "MEDIUM" | "LOW" | null;
+    /**
+     * The graph's own identity for `artistName`, resolved ONCE in Stage 2a by
+     * resolveArtistIdentity() — a deterministic exact-match lookup, not the model's
+     * `dominantCandidateIdentityKey` cell. Null when the name is not in the ACKG, which is
+     * a coverage statement and never a verdict: ULAN is on 83% of artists with 50+
+     * catalogued works but only 8% of single-work artists.
+     *
+     * `canonicalArtistName` is the graph's spelling and is what every downstream ACKG query
+     * should use; `artistName` above stays the attributed name for reporting, so a
+     * resolution can never silently change who the report says made the print.
+     */
+    artistIdentity?: {
+      canonicalArtistName: string;
+      ulanUrl: string | null;
+      wikidataUrl: string | null;
+      matchedOn: "name" | "alternateName";
+      workCount: number;
+      /** >1 means duplicate Artist nodes matched; ULAN is withheld when they disagree. */
+      ambiguousMatchCount: number;
+    } | null;
     /** Which A1..A11 row of ADR-0010 Decision 3 fired (or "A-backprop" / "VEA-halt"). */
     evidenceBasis: string;
     agreementSet: string[];
