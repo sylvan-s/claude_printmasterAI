@@ -415,6 +415,56 @@ still becomes its own `Region` node — this is a documented judgment call, not 
 crosswalk in the § 1 principle-6 sense, since nationality has no equivalent live-checkable
 authority list the way AAT does for technique/paper terms.
 
+## 9. Schema addition: `Portfolio`
+
+**Added 2026-09-11**, from the Navigart network load. The one structure doc 08 never had:
+the published set a print belongs to.
+
+Prints are very often issued as a set — a suite, an opus, an illustrated book's plates —
+and until now nothing in this graph could say so. `EditionRun` covers "how many
+impressions of THIS work were pulled"; it has nothing to say about "this work is plate 24
+of 46". Auction data rarely carries the set as a field, which is why this never came up:
+Navigart carries it structurally, on 1,355 records across 150 sets in the public-domain
+tier alone.
+
+```
+(:Portfolio {id, name, nature, sourceNumber, institutionName,
+             memberCount, sourceMemberCount, complete})
+(:Portfolio)-[:COMPRISES {plateNumber}]->(:ConceptualWork)
+```
+
+`Portfolio` is a Work-layer node alongside `EditionRun`, so it carries **no AAT id** — the
+controlled-vocabulary labels (`Technique`, `Paper`, `Subject`) are the ones that do, per
+§1's layering.
+
+**`COMPRISES`, not `INCLUDES`.** `EditionRun -[:INCLUDES]-> Impression` already means "this
+edition run contains this physical sheet". A portfolio containing a *work* is a different
+relation between different layers, and reusing the verb would make
+`MATCH ()-[:INCLUDES]->()` mean two things.
+
+**`nature` is carried verbatim, not normalised.** Observed values: `Ensemble` (124),
+`Portfolio` (19), `Série` (3), `Album factice` (1), `Recueil` (1), `Album collectif` (1),
+`Diptyque` (1). An *album factice* is a collector's made-up album — sheets bound together
+after the fact by an owner — and flattening it into "Portfolio" would assert a publication
+event that never happened. The Piranesi set in this load (124 sheets from the Cacault
+collection) is exactly that case.
+
+**`memberCount` vs `sourceMemberCount` is load-bearing.** `memberCount` is what this graph
+holds; `sourceMemberCount` is the set's real size, taken from the source's own sibling
+list. **78 of the 150 portfolios in the first load are partial**, because the tier loaded
+was public-domain-with-an-image and the rest of those sets did not qualify. `complete`
+records whether they match. Reading `memberCount` as the size of a suite is wrong for half
+of them, and the schema is shaped so that mistake is not available.
+
+`plateNumber` on the edge is the sheet's position in the set where the source states it
+(`"Bedingung (planche 38)"`) — 147 of 1,354 edges. Absent rather than inferred elsewhere.
+
+Written by `knowledge_graph/navigart_ingest_ensembles.py`. Keyed on (vault, ensemble_id):
+the source's ensemble ids collide across institutions, and titles are not unique either —
+vault 15 holds two different sets both called *Poèmes du Pont des Faisans*.
+
+---
+
 ## Next steps
 
 Per doc 07 §5's roadmap, this doc completes step 2 ("define the ACKG schema and a minimal seed

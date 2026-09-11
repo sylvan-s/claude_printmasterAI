@@ -382,6 +382,39 @@ against ACKG death years found **0 of 5,598 records** by an artist who died afte
 i.e. nothing contradicts the museums' own public-domain assertion on the evidence
 available (the ACKG knows a death year for 106 of the 636 artists).
 
+### 9.2 Two follow-ons taken from the same caches (2026-09-11)
+
+Neither needed a new fetch — both read the caches `navigart_fetch.py` already wrote.
+
+**Artist life dates** (`navigart_backfill_artist_dates.py`). `authors_birth_death` is
+populated on 93% of records and 94% of the 603 distinct artists parse to two clean years.
+Backfilled onto existing `Artist` nodes: **462 birth years, 456 death years, 176
+nationalities, 546 birth/death places**, graph-wide birth years 5,688 → 6,150. This is the
+evidence `navigart_resolve_artists.py` did not have when it had to break 19 ambiguous name
+groups on a work-count ladder.
+
+**12 conflicts were recorded, none overwritten**, and they run both ways — the museum is
+right about Toulouse-Lautrec (b.1864, not the graph's 1894), Guillaumin (1841–1927, not
+1891–1955) and Laboureur (1877–1943, not 1887–1947); the graph is right about Pennell and
+Moyreau; Claude Lorrain is genuinely disputed. A blank is filled, a disagreement sets
+`dateBorn_disputed`/`dateDied_disputed` with a note naming both values, and nothing is
+replaced. Several of the wrong graph values are auction-catalogue-derived, so this doubles
+as a small audit of that data. Full list in `navigart_artist_date_conflicts.csv`.
+
+**Portfolios** (`navigart_ingest_ensembles.py`). `ensemble_id` + `related` + `recap_*` give
+print suites as structured data: **150 `Portfolio` nodes, 1,354 `COMPRISES` edges, 147 with
+a plate number** — Klinger's *Zelt, Opus XIV* in plate order 1–46, Piranesi's Cacault album
+at 124 sheets, Merson's *Notre-Dame de Paris* at 61. New node type, recorded in
+[doc 08 §9](08_ackg_schema_definition.md).
+
+One check was wrong first time and is worth recording. The loader tested `related` against
+the ensemble's members for **equality**, and refused to build 77 of 150 sets. That was the
+check being wrong, not the data: `related` lists the whole published set, while these
+caches hold only the public-domain-with-an-image part of it. The invariant is containment.
+Corrected, all 150 build — and the near-miss is why `sourceMemberCount` and `complete` now
+exist: **78 of the 150 are partial**, and `memberCount` alone would have read as the size
+of the suite.
+
 ### Embedding pass — executed and verified (2026-09-11)
 
 `navigart_embed_images.py --all`: **5,595 images embedded, 0 failures**, 8,530s (2h22m) at
