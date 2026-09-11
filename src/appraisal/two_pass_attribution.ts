@@ -496,6 +496,35 @@ export const D_T_DINO_FLOOR = 0.88;
  * Falls back to the global floor whenever the graph has no background for this artist — 977
  * of 8,033 artists have one, so the fallback is the common path and must stay silent and safe.
  */
+/**
+ * How close the runner-up may come before D_t's match is treated as ambiguous.
+ *
+ * A height alone says little about whether the TOP match is the right work; the gap to the
+ * next-best DIFFERENT work says a great deal. Measured over 2,501 query images against the
+ * full 66k-image index, predicting whether Stage 1d's top hit is the correct work:
+ *
+ *   absolute score alone   AUC 0.874     the runner-up gap   AUC 0.783   (full index)
+ *   absolute score alone   AUC 0.758     the runner-up gap   AUC 0.846   (answerable only)
+ *
+ * They answer different questions and neither replaces the other. The absolute floor asks
+ * "is anything here plausibly this image?" — which dominates, because for ~72% of queries the
+ * print has no other embedded impression in the graph and the right answer is simply absent.
+ * The ratio asks "is the top one unambiguous?", which is what decides the rest. Together,
+ * where D_t fires:
+ *
+ *   s1 >= floor                      72.3% of queries kept, 55.9% precision, 94.0% recall
+ *   s1 >= floor AND ratio <= 0.95    36.1%                   73.8%            62.0%
+ *   s1 >= floor AND ratio <= 0.90    25.0%                   77.2%            44.8%
+ *
+ * 0.95 is the knee: 0.93 buys 2 points of precision for 7 of recall, 0.97 gives back 3 for 8.
+ * D_t is one vote among title sources rather than a verdict, so recall is worth keeping —
+ * but a wrong work propagates into Stage 2b's research and Stage 3's comparables, so the
+ * near-half of firings that were wrong were not affordable.
+ *
+ * UNFITTED in the same sense as every threshold here: chosen off one sweep, not tuned.
+ */
+export const D_T_RUNNER_UP_MAX_RATIO = 0.95;
+
 export function dinoFloorFor(artistFloor?: number | null): { floor: number; basis: "artist" | "global" } {
   return artistFloor != null && Number.isFinite(artistFloor) && artistFloor > 0
     ? { floor: artistFloor, basis: "artist" }
@@ -962,6 +991,9 @@ export interface WorkEvidence {
     embeddingConfidence?: number;
     /** DINOv2 similarity alone — the instance-level signal the work vote is gated on. */
     dinoSimilarity?: number;
+    /** Best DINOv2 score among Stage 1d's candidates for a DIFFERENT work — the runner-up.
+     *  Undefined when 1d returned no rival, in which case the ratio gate cannot apply. */
+    runnerUpDinoSimilarity?: number;
   }; // D_t
   kWork: KWorkResult | null; // null = not queried / no hit
   /** This artist's own DINOv2 work-identity floor (Artist.dinoBackgroundP99), carried onto the
@@ -1007,9 +1039,23 @@ function eligibleTitleVotes(ev: WorkEvidence, trace: string[]): TitleVote[] {
       // different claims, and the reader must be able to tell them apart.
       const { floor, basis } = dinoFloorFor(ev.artistDinoFloor);
       const label = basis === "artist" ? `${floor.toFixed(3)} (this artist's p99)` : `${floor.toFixed(3)} (global)`;
-      if (dino >= floor) {
+      const runnerUp = ev.titleEmbeddingMatch.runnerUpDinoSimilarity;
+      const ratio = runnerUp != null && dino > 0 ? runnerUp / dino : null;
+      if (dino >= floor && ratio != null && ratio > D_T_RUNNER_UP_MAX_RATIO) {
+        // Cleared the floor but did not clear its rival. Two different prints scoring alike
+        // is the ordinary case for a repetitive series, and picking the higher one would be
+        // choosing between them on noise.
+        trace.push(
+          `D_t dropped from vote: dino ${dino.toFixed(3)} >= ${label} but the runner-up work ` +
+            `scores ${runnerUp!.toFixed(3)} (ratio ${ratio.toFixed(3)} > ${D_T_RUNNER_UP_MAX_RATIO}) — ` +
+            `no clear winner among the candidates, so this names a work no more than the next one does`,
+        );
+      } else if (dino >= floor) {
         votes.push({ source: "D_t", raw: ev.titleEmbeddingMatch.raw });
-        trace.push(`D_t votes: dino ${dino.toFixed(3)} >= ${label}`);
+        trace.push(
+          `D_t votes: dino ${dino.toFixed(3)} >= ${label}` +
+            (ratio != null ? `, runner-up ${runnerUp!.toFixed(3)} (ratio ${ratio.toFixed(3)})` : `, no rival candidate returned`),
+        );
       } else {
         trace.push(
           `D_t dropped from vote: dino ${dino.toFixed(3)} < ${label} — close enough to place the ` +

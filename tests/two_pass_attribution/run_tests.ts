@@ -694,6 +694,37 @@ test("a catalogued title carrying a series suffix still corroborates (via contai
   assert.equal(v.confidence, "MEDIUM_HIGH");
 });
 
+// ── the runner-up ratio gate (2026-09-11) ──────────────────────────────────────
+
+test("D_t needs to beat its nearest RIVAL work, not just the floor", () => {
+  const votes = (dino: number, runnerUpDinoSimilarity?: number) =>
+    classifyWorkPass({
+      ...f.workEv(),
+      titleEmbeddingMatch: { kind: "names", raw: "Some Work", matchConfidence: "HIGH", dinoSimilarity: dino, runnerUpDinoSimilarity },
+    }).agreementSet.includes("D_t");
+
+  // A repetitive series: the best and second-best DIFFERENT works score alike, so the top one
+  // names a work no more than the runner-up does. Height alone would have accepted it.
+  assert.equal(votes(0.96, 0.94), false, "0.94/0.96 = 0.979 — no clear winner");
+  assert.equal(votes(0.96, 0.91), true, "0.91/0.96 = 0.948 — the top match is clear");
+  // A decisive match stays decisive however high the absolute score is.
+  assert.equal(votes(0.99, 0.62), true);
+  // Below the floor, the ratio cannot rescue it: nothing here is plausibly this image.
+  assert.equal(votes(0.70, 0.20), false, "a huge gap below the floor is still a weak match");
+});
+
+test("no rival candidate means the ratio gate cannot apply, and must not block", () => {
+  const votes = (dino: number, runnerUpDinoSimilarity?: number) =>
+    classifyWorkPass({
+      ...f.workEv(),
+      titleEmbeddingMatch: { kind: "names", raw: "Some Work", matchConfidence: "HIGH", dinoSimilarity: dino, runnerUpDinoSimilarity },
+    }).agreementSet.includes("D_t");
+  // Stage 1d returns a rival only when the index holds one. Absence is a coverage fact and
+  // must leave the pre-existing behaviour untouched.
+  assert.equal(votes(0.95, undefined), true, "no runner-up returned -> floor alone decides");
+  assert.equal(votes(0.95), true);
+});
+
 // ── the per-artist DINOv2 floor (2026-09-11) ───────────────────────────────────
 
 test("the D_t floor is the artist's own when the graph has one, and global otherwise", () => {

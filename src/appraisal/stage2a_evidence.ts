@@ -34,6 +34,7 @@ import {
   type WorkEvidence,
   type Confidence,
 } from "./two_pass_attribution";
+import { normalizeTitleForEmbedding } from "./knowledge_graph/title_normalize.js";
 import {
   Scenario,
   SCENARIO_NAMES,
@@ -242,6 +243,27 @@ export function evidenceToTwoPassInput(
       }
     : { kind: "no_match" };
 
+  // The best DINOv2 score belonging to a work OTHER than the one D_t names — the runner-up
+  // in Stage 1d's own ranked list, which it already returns. How far clear the best match is
+  // of its nearest rival turns out to matter more than its absolute height: measured over
+  // 2,501 queries against the full index, gating on the absolute score alone is right 56% of
+  // the time it fires, and adding "and the runner-up is well behind" lifts that to 74%.
+  //
+  // Titles are compared folded, so a duplicate NODE of the same work does not masquerade as
+  // a rival and suppress a correct match — ~30% of ConceptualWork nodes are variant-titled
+  // duplicates, and without this the guard would fire hardest on the best-documented prints.
+  const dtWorkKey = normalizeTitleForEmbedding(stage1d?.bestMatchConceptualWorkTitle ?? "");
+  const runnerUpDino: number | undefined = (() => {
+    if (!dtWorkKey) return undefined;
+    let best: number | undefined;
+    for (const c of stage1d?.candidateMatches ?? []) {
+      if (typeof c.dinov2Similarity !== "number") continue;
+      if (normalizeTitleForEmbedding(c.conceptualWorkTitle ?? "") === dtWorkKey) continue;
+      if (best == null || c.dinov2Similarity > best) best = c.dinov2Similarity;
+    }
+    return best;
+  })();
+
   const titleEmbeddingMatch: WorkEvidence["titleEmbeddingMatch"] = stage1d?.bestMatchConceptualWorkTitle
     ? {
         kind: "names",
@@ -250,6 +272,7 @@ export function evidenceToTwoPassInput(
         // Work identity is DINOv2 only: on A0793 CLIP scored 0.937 and 0.946 against the
         // WRONG works by the right artists — it recognises style and medium, not the image.
         dinoSimilarity: workScores.dino ?? dinoScore ?? undefined,
+        runnerUpDinoSimilarity: runnerUpDino,
       }
     : { kind: "silent" };
 
