@@ -830,6 +830,15 @@ const MIN_ACKG_ROUNDS_BEFORE_REPORT = 1;
  */
 const MAX_REPORT_REFUSALS = 2;
 
+/**
+ * How many times a structurally incomplete final report is handed back before the stage
+ * degrades. Two, for the same reason MAX_REPORT_REFUSALS is two: one retry covers the
+ * ordinary lapse, a second covers a model that needed the instruction repeated, and beyond
+ * that it is not a lapse — it is a model that cannot fill this schema, and looping only
+ * spends tokens confirming it.
+ */
+const MAX_INCOMPLETE_REPORT_RETRIES = 2;
+
 /** Hard cap on Stage 2b's web searches, matching the number its prompt asks for. */
 const STAGE2B_MAX_WEB_SEARCHES = 5;
 
@@ -1635,7 +1644,14 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     userText: string,
     maxTokens: number = 8192,
     finalTool: { name: string; description: string; schema: any },
-    opts: { extraTools?: any[]; maxRounds?: number; excludeSaleId?: string | null } = {}
+    opts: {
+      extraTools?: any[];
+      maxRounds?: number;
+      excludeSaleId?: string | null;
+      /** Structural check on the final tool call. Return a complaint to push back and ask
+       *  for it again, or null to accept. Content is never judged here — only shape. */
+      validateFinal?: (input: any) => string | null;
+    } = {}
   ): Promise<any> {
     // Same wire format, different origin and key when the model is a DashScope Qwen.
     const compatBaseUrl = anthropicCompatBaseUrl(modelName);
@@ -1692,6 +1708,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     let roundsUsed = 0;
     let constrainedRounds = 0;
     let reportRefusals = 0;
+    let incompleteReports = 0;
     const trace_unconstrained = (r: number) =>
       console.log(`[Stage 2a ACKG loop] round ${r}: query carried no technique/region/subject/paper/title — not counted toward the minimum`);
     for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -1713,6 +1730,42 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       // turn, so the agent keeps its context and simply queries first.
       const reported = (data.content || []).find((b: any) => b.type === "tool_use" && b.name === finalToolName);
       if (reported?.input && (constrainedRounds >= MIN_ACKG_ROUNDS_BEFORE_REPORT || reportRefusals >= MAX_REPORT_REFUSALS)) {
+        // A report can satisfy the rounds gate and still be structurally unusable: the
+        // schema marks artistEvidence/workEvidence required, and models omit them anyway.
+        // Measured at Stage 2a — qwen3.7-plus on 5 of 20 lot-runs, qwen3.8-max on 2 of 5.
+        // Degrading on the first such report throws away a fully-researched context over a
+        // shape error, so ask once more before giving up. Budgeted separately from
+        // reportRefusals: that budget is for "query before you report", which is a different
+        // failure and should not be consumed by this one.
+        const complaint = opts.validateFinal?.(reported.input) ?? null;
+        if (complaint && incompleteReports < MAX_INCOMPLETE_REPORT_RETRIES) {
+          incompleteReports++;
+          console.log(
+            `[Stage 2a ACKG loop] round ${round + 1}: report incomplete (${incompleteReports}/${MAX_INCOMPLETE_REPORT_RETRIES}) — ${complaint}`,
+          );
+          messages.push({ role: "assistant", content: data.content });
+          messages.push({
+            role: "user",
+            content: [
+              {
+                type: "tool_result",
+                tool_use_id: reported.id,
+                is_error: true,
+                content:
+                  `Not accepted: ${complaint}\n\n` +
+                  `Do NOT query again — the research is done and nothing about it is in question. ` +
+                  `Call ${finalToolName} once more with the SAME findings, this time including every ` +
+                  `required block. If you could not determine something, fill the cell with its ` +
+                  `honest empty value rather than omitting the block: an absent block is not the ` +
+                  `same as an unknown value, and it discards the work you have already done.`,
+              },
+            ],
+          });
+          continue;
+        }
+        if (complaint) {
+          console.warn(`[Stage 2a ACKG loop] report still incomplete after ${incompleteReports} retry(ies) — ${complaint}`);
+        }
         this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
         console.log(`[Stage 2a ACKG loop] round ${round + 1}: reported without a forced call — ${roundsUsed} query round(s) used`);
         return reported.input;
@@ -2611,7 +2664,19 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     };
     const buildUserText = (slim: unknown) =>
       `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(slim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
-    const evidenceOpts = { extraTools: [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL], maxRounds: 5, excludeSaleId: excludeSaleId ?? null };
+    // Shape only — whether the two required blocks are present at all. Their contents are
+    // the tree's business, not the loop's; the loop must never be in the position of judging
+    // evidence, only of noticing that none was handed over.
+    const validateFinal = (input: any): string | null => {
+      const missing = [!input?.artistEvidence && "artistEvidence", !input?.workEvidence && "workEvidence"].filter(Boolean);
+      return missing.length ? `the report omitted ${missing.join(" and ")}, which the schema marks required` : null;
+    };
+    const evidenceOpts = {
+      extraTools: [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL],
+      maxRounds: 5,
+      excludeSaleId: excludeSaleId ?? null,
+      validateFinal,
+    };
     // One dispatch point for both wire formats. The two loops keep identical control flow
     // (see callGroqWithAckgTool) — only the transport differs.
     const runEvidenceAgent = (prompt: string, text: string) =>
