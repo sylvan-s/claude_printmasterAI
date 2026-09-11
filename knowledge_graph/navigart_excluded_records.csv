@@ -1,23 +1,4 @@
 institution,accessionNumber,title,authorsRaw,bucket,refusalReason
-Musée d'arts de Nantes,à inventorier?,Voeux de bonne année de la part de Suzanne Laboureur,LABOUREUR Jean-Emile,excluded_no_inventory,
-Musée d'arts de Nantes,à inventorier?,Portrait d'Alphonse Lotz-Brissonneau,LABOUREUR Jean-Emile,excluded_no_inventory,
-Musée d'arts de Nantes,à inventorier,Les anciens abattoirs de Nantes en 1933,PINARD René,excluded_no_inventory,
-Musée d'arts de Nantes,Non inv.,,CORABOEUF Jean-Alexandre,excluded_no_inventory,
-Musée d'arts de Nantes,3111,Tour de l'évêque (Carcassone),BAUGÉ E.,excluded_unresolved_artist,single_token_name
-Musée d'arts de Nantes,3112,Chateaubriant : cour intérieure,BAUGÉ E.,excluded_unresolved_artist,single_token_name
-Musée d'arts de Nantes,3101,"Florence, San Miniato",DUJARNIC,excluded_unresolved_artist,single_token_name
-Musée d'arts de Nantes,3138,Barque sous le pont,FERRY A.,excluded_unresolved_artist,single_token_name
-Centre national des arts plastiques,"FNAC 24313, FNAC 2621",Le Lever,"HIRNÉ (LE RICHE Henri, dit)",excluded_unresolved_artist,single_token_name
-Centre national des arts plastiques,FNAC 28629,"Coupe du bâtiment de l'Hôtel de Ville vue en perspective sur la largeur où sont représentées les décorations et illuminations de la cour où s'est donné le bal, la nuit du 30 au 31 août 1739","SALLEY, BLONDEL Jacques-François",excluded_unresolved_artist,single_token_name
-Centre national des arts plastiques,FNAC 28630,"Coupe du bâtiment de l'Hôtel de Ville vue en perspective sur la largeur où sont représentées les décorations et illuminations de la cour où s'est donné le bal, la nuit du 30 au 31 août 1739","SALLEY, BLONDEL Jacques-François",excluded_unresolved_artist,single_token_name
-Centre national des arts plastiques,FNAC 28574 (1 à 6),Siège de La Rochelle,Anonyme (Ecole française),excluded_unresolved_artist,anonymous_primary
-"Centre Pompidou, Musée national d'art moderne",AM 81-65-1048 (2),Les Six Rivières de cristal (Mutamagawa). La Rivière Ide dans la région de Yamashiro (Yamashiro Ide). L'Exil du poète,HIROSHIGE,excluded_unresolved_artist,single_token_name
-"Centre Pompidou, Musée national d'art moderne",AM 81-65-1253,Les 53 étapes du Tokaido (Gyôshô Tôkaido). 16e relais (ou 17e vue) : Yui,HIROSHIGE,excluded_unresolved_artist,single_token_name
-"Centre Pompidou, Musée national d'art moderne",AM 81-65-1252,Les lieux célèbres de notre pays (Honchô Meisho). Shichirigahama dans la province de Sagami (SôshûShichirigahama),HIROSHIGE,excluded_unresolved_artist,single_token_name
-Musée d'Art Moderne de Paris,AME 415,Fleurs,KISLING,excluded_unresolved_artist,single_token_name
-Musée d'Art Moderne de Paris,AME 414,Nu au turban,KISLING,excluded_unresolved_artist,single_token_name
-Musée Bourdelle,MBCO387,Bible des poètes,ANONYME,excluded_unresolved_artist,anonymous_primary
-Musée Bourdelle,MBCO405,"François de Vendôme, duc de Beaufort et pair de France",ANONYME,excluded_unresolved_artist,anonymous_primary
 MAMC+ Saint-Étienne Métropole,43.1.156,Acrobaties équestres,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
 MAMC+ Saint-Étienne Métropole,43.1.152,Une noce de village,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
 MAMC+ Saint-Étienne Métropole,43.1.159,Les pêcheurs,"Anonyme (XIXe siècle), DORÉ Gustave",excluded_unresolved_artist,anonymous_primary
@@ -60,15 +41,3 @@ MAMC+ Saint-Étienne Métropole,43.1.825,Immaculée Conception,"GEOFFROY ?, MURI
 MAMC+ Saint-Étienne Métropole,43.1.799,Les adieux du matin,FRAGONARD ?,excluded_unresolved_artist,single_token_name
 MAMC+ Saint-Étienne Métropole,43.1.790,Le Bain,"BEAUPOIL (SAINT-AULAIRE Félix Achille, dit), VALLON DE VILLENEUVE",excluded_unresolved_artist,single_token_name
 MAMC+ Saint-Étienne Métropole,43.1.865,La place Saint Médard à Paris,FRAIPONT ?,excluded_unresolved_artist,single_token_name
-Musée d'Art moderne et contemporain de Strasbourg,XVIII 105,Portrait de Thomas Mann,"MOPP (OPPENHEIMER Max, dit)",excluded_unresolved_artist,single_token_name
-Musée d'Art moderne et contemporain de Strasbourg,55.992.13.242,Portrait-charge de Gustave Doré,SPY,excluded_unresolved_artist,single_token_name
-Musée d'Art moderne et contemporain de Strasbourg,55.993.2.24,"Grosse Sterntache
-(Grand sac d'étoiles)","WOLS (SCHULZE Alfred Otto Wolfgang, dit)",excluded_unresolved_artist,single_token_name
-Musée d'Art moderne et contemporain de Strasbourg,55.003.0.261,Allée avec troupeau de moutons,RAUDNEY,excluded_unresolved_artist,single_token_name
-Musée Tomi Ungerer,99.2019.0.241,"Latoria, Latoria !","TANCONVILLE (GANIER Henri, dit)",excluded_unresolved_artist,single_token_name
-Musée d'art moderne de Céret,MAMC 1991-0607,Deux catalanes,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name
-Musée d'art moderne de Céret,MAMC 1991-0605,Femmes attisant le feu,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name
-Musée d'art moderne de Céret,MAMC 1991-0603,Paysage,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name
-Musée d'art moderne de Céret,MAMC 1991-0606,Intérieur,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name
-Musée d'art moderne de Céret,MAMC 1991-0602,Portrait de Jo Davidson,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name
-Musée d'art moderne de Céret,EPMC 2008-0336,Portrait de Max Jacob,"MANOLO (MARTINEZ I HUGUÉ Manuel, dit)",excluded_unresolved_artist,single_token_name

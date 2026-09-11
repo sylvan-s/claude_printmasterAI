@@ -143,6 +143,14 @@ _FR_EXTRA = {
     "taille douce": "intaglio",             # umbrella term; the shared crosswalk suppresses
     "taille-douce": "intaglio",             # it when a named intaglio method is also present
     "gravure sur cuivre": "engraving",
+    # "Manière de crayon (sanguine) sur papier vergé" is crayon-manner ENGRAVING — a roulette
+    # intaglio process whose entire purpose is imitating a chalk drawing, which is exactly why
+    # it read as a drawing to the non-print audit and why it resolved to nothing. Must precede
+    # nothing in particular, but note `_LITHO_MARKS` contains "crayon": the litho rule needs a
+    # lithographic MATRIX ("sur pierre"/"sur zinc") alongside it, and these say "sur papier
+    # vergé", so there is no false lithograph here.
+    "manière de crayon": "crayon manner",
+    "maniere de crayon": "crayon manner",
     "algraphie": "lithograph",              # aluminium-plate lithography
     "report sur pierre": "lithograph",
     "reproduction photomécanique": "photomechanical print",

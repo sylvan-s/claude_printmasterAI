@@ -382,6 +382,58 @@ against ACKG death years found **0 of 5,598 records** by an artist who died afte
 i.e. nothing contradicts the museums' own public-domain assertion on the evidence
 available (the ACKG knows a death year for 106 of the 636 artists).
 
+### Embedding pass — executed and verified (2026-09-11)
+
+`navigart_embed_images.py --all`: **5,595 images embedded, 0 failures**, 8,530s (2h22m) at
+0.66 img/s on native-arm64 CPU. DINOv2-Large (1024-dim) and CLIP-image (512-dim) on every
+node; CLIP *text* left off, since `Impression.rawMedium` here is French and
+`clipTextEmbedding` is one shared, overwhelmingly English space. All 5,598 `DigitalImage`
+nodes (the extra 3 are the smoke test) now carry both vectors and
+`embeddingCommercialUse = true`.
+
+Zero download failures across 5,595 requests is itself worth recording: `images.navigart.fr`
+is a genuinely bulk-capable host, which is the opposite of the British Museum's situation
+(doc 09 §7), where a Cloudflare wall forced a hand-driven browser capture.
+
+**This is the first licence-clean image tier in the index.** Tate's 10,208 and the BM's
+2,507 embedded images are CC-BY-NC; these 5,598 carry no NC condition, which is why the
+embed script stamps them `embeddingCommercialUse = true` while
+`picasso_paris_embed_images.py` stamps its own `false`. The script re-derives the
+public-domain gate from the graph rather than trusting the ingest, so pointing it at a
+future Tier 2 load skips those records instead of embedding them.
+
+### A vocabulary gap found by auditing the load, not by the load failing
+
+Asked whether every loaded record is actually a print, a scan for medium strings naming only
+non-print media returned ten. Six were the audit's own false positives and four are genuine
+museum misfiles — drawings in a print cabinet (a Forain ink drawing, a Coraboeuf graphite
+portrait, an Ebel gouache, a Guillard watercolour), 0.07% of the load.
+
+Two of the six false positives mattered. Two Saint-Étienne records read *"Manière de crayon
+(sanguine) sur papier vergé"* — **crayon-manner engraving**, a roulette intaglio process
+whose entire purpose is imitating a chalk drawing, which is exactly why it reads as a drawing
+to a medium-string audit. One is by Demarteau le Jeune, who commercialised the process; the
+other is inscribed *"gravé . par. Carrée"*. Both are prints, and both had resolved to no
+technique at all.
+
+`crayon manner` was absent from the shared `TECHNIQUE_KEYWORDS` entirely — the same
+silent-gap failure mode as Collotype, Monotype and Stencil printing before it. Added with
+AAT `300178621` **verified live** against vocab.getty.edu before the edit (process-level
+concept, broader term "intaglio printing processes" — not the object-type concept
+`crayon manner prints` 300041519), listed in `TECHNIQUE_SUPPRESSES["Intaglio"]` since it is a
+named intaglio method, and mapped from the French in `navigart_ingest._FR_EXTRA`. **No
+existing record in the graph matches the new keywords**, checked before the edit, so this
+changes no other adapter's output. Both records now resolve; unresolved fell 271 → 269.
+
+Two things that are not errors but bear on how this tier should be used:
+
+- **The 89 matrices are not prints and are not meant to be** — plates and woodblocks,
+  deliberately typed `Matrix` rather than `Impression`.
+- **167 records are reproductive or interpretive prints** (`Estampe de reproduction` 93,
+  `Illustration` 63, `d'interprétation` 11). Real prints, but the named artist is often the
+  engraver reproducing someone else's composition — and sometimes, per §9.1's author-order
+  finding, the designer rather than the engraver.
+
 ### Three defects the first load exposed, and what they cost
 
 The first run was **rolled back in full and re-run**, rather than patched in place, because
@@ -446,11 +498,12 @@ count.
 
 - **Tier 2 (the ~24,000 in-copyright `Estampe` records) is not loaded.** `navigart_fetch.py
   --tier all` will fetch it; the ingest needs no change, but the decision does.
-- **No embed pass.** The 5,598 images are pointed at, not downloaded — `DigitalImage.sourceUrl`
-  only. A `navigart_embed_images.py` alongside the other adapters' embed scripts is the
-  obvious next step and is the entire point of choosing the PD tier first; it was not
-  written here.
-- Image bytes: none downloaded beyond the ceiling probe and a 40-URL liveness sample.
+- **No retrieval evaluation.** The 5,598 vectors are in the index; nothing has measured
+  whether they actually help. The obvious test is the two-stage image-similarity backtest
+  already built for copyright-expired works.
+- **The four misfiled drawings are still loaded** as `Impression` nodes with
+  `techniqueResolved = false`. Four records; recorded in
+  `navigart_unresolved_techniques.csv`, not repaired.
 - The three unfaceted vaults (Grenoble, La Piscine, Frac Franche-Comté) were estimated from
   3×100-record samples, not enumerated.
 - Vaults 1, 2, 7, 9, 10, 13, 17 and 33 return HTTP 404 — private or retired publications; not chased.

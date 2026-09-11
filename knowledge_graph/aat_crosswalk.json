@@ -27,6 +27,11 @@
     "Drypoint": { "aatId": "300053228", "aatLabel": "drypoint (printing process)" },
     "Aquatint": { "aatId": "300053242", "aatLabel": "aquatint (printing process)" },
     "Mezzotint": { "aatId": "300053233", "aatLabel": "mezzotint (process)" },
+    "Crayon manner": {
+      "aatId": "300178621",
+      "aatLabel": "crayon manner",
+      "note": "Found missing 2026-09-11 auditing the Navigart public-domain load — two 18th-c Saint-Étienne intaglios read 'Manière de crayon (sanguine) sur papier vergé', one by Demarteau le Jeune who commercialised the process and one inscribed 'gravé . par. Carrée', and both resolved to no technique at all. A roulette-based intaglio process whose entire purpose is imitating a chalk drawing, which is why it reads as a drawing to any medium-string audit. Id verified live against vocab.getty.edu before adding, not guessed; the process-level concept was used (broader term 'intaglio printing processes') rather than the object-type concept 'crayon manner prints' (300041519), matching this crosswalk's own preference for a confirmed process match — see Collotype and Photorelief below. Listed in TECHNIQUE_SUPPRESSES['Intaglio'] because it IS a named intaglio method, so a record naming it should not also collect the umbrella term."
+    },
     "Engraving": { "aatId": "300053225", "aatLabel": "engraving (printing process)" },
     "Photogravure": { "aatId": "300053207", "aatLabel": "photogravure (process)" },
     "Woodcut": { "aatId": "300053296", "aatLabel": "woodcut (process)" },
