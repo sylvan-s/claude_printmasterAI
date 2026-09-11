@@ -82,10 +82,19 @@ numbers decide whether a classifier is worth building at all:
     H_human_triage          21         2     0.416     0.748        0.198              0%
 
   1. TITLE IS THE STRONGEST FEATURE AND IT IS MOSTLY THE LABEL RESTATED. Single-feature AUC for
-     titleJaccard is 0.971 against catalogue conflicts, beating dinoMax's 0.919 — but 1,188 of
-     the 1,309 positives are identical once normalized, because exact normalized title is what
-     merged them. Only **121** positives survive `circularOnTitle = 0`. Filter to those before
-     believing any title result.
+     titleJaccard is 0.971 against catalogue conflicts, beating dinoMax's 0.919 — and 1,188 of
+     the 1,309 positives are identical once normalized. Only **121** survive
+     `circularOnTitle = 0`. An earlier draft of this note claimed exact title "is what merged
+     them"; that was inference, not measurement — the anchored and image-similarity generators
+     corroborate on catalogue base numbers and DINOv2 as well as title. What IS measured is that
+     on those 121, a title-only model scores AUC **0.123**: not uninformative, actively
+     anti-predictive. Filter to `circularOnTitle = 0` before believing any title result.
+
+     A SECOND LEAK LIVES IN THIS FILE'S OWN DESIGN, found by that ablation.
+     `catalogueVerdict` is the SAMPLER for `N_catalogue_conflict`, which is 2,776 of 3,633
+     negatives — the stratum is selected on `conflict`, so the feature is the label for three
+     quarters of the negative class. Any consumer must drop `catAgree`/`catConflict` or report
+     the sampler back to itself. See `train_work_identity_model.py`.
 
   2. THE HARD CLASS HAS 12 EXAMPLES IN THE WHOLE GRAPH, and this is not a builder limitation.
      `State` nodes cannot supply more: the museum models states WITHIN one work (905 states
