@@ -515,9 +515,30 @@ def _write_chunk_with_retry(query, rows, institution, retries=4, backoff_seconds
     raise RuntimeError(f"Chunk write failed after {retries} attempts: {last_error}")
 
 
+def _report_paths(vaults, limit):
+    """The two CSVs are review artifacts covering the WHOLE network, and `run()` rewrites
+    them from whatever it just processed. A scoped run (`--vault 24`, `--limit 50`) would
+    therefore silently replace 269 unresolved-technique rows across 13 institutions with
+    the 7 from one vault — a partial file that looks complete, which is the same failure
+    shape as the silent-zero domain filter this adapter already guards against. It
+    happened: a one-vault re-run on 2026-09-11 truncated both files and the truncation was
+    committed before anyone read the line counts.
+
+    So a scoped run writes scope-suffixed files and leaves the canonical ones alone."""
+    if not vaults and not limit:
+        return UNRESOLVED_TECHNIQUES_PATH, EXCLUDED_PATH, None
+    scope = ("v" + "-".join(str(v) for v in sorted(vaults))) if vaults else "scoped"
+    if limit:
+        scope += f"-limit{limit}"
+    suffix = f".{scope}.csv"
+    return (UNRESOLVED_TECHNIQUES_PATH.replace(".csv", suffix),
+            EXCLUDED_PATH.replace(".csv", suffix), scope)
+
+
 def run(vaults=None, limit=None, dry_run=False, chunk_size=200):
     resolution, refused = load_resolution()
     caches = load_caches(vaults)
+    unresolved_path, excluded_path, scope = _report_paths(vaults, limit)
 
     all_mapped, excluded_rows, unresolved_rows = [], [], []
     totals = {"impression": 0, "matrix": 0, "excluded_no_inventory": 0,
@@ -566,17 +587,22 @@ def run(vaults=None, limit=None, dry_run=False, chunk_size=200):
     print(f"[EXCLUDED] {totals['excluded_no_inventory']} no inventory, "
           f"{totals['excluded_unresolved_artist']} unresolved artist", flush=True)
 
-    with open(EXCLUDED_PATH, "w", newline="", encoding="utf-8") as f:
+    with open(excluded_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["institution", "accessionNumber", "title", "authorsRaw",
                          "bucket", "refusalReason"])
         writer.writerows(excluded_rows)
-    with open(UNRESOLVED_TECHNIQUES_PATH, "w", newline="", encoding="utf-8") as f:
+    with open(unresolved_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["institution", "accessionNumber", "title", "rawMedium"])
         writer.writerows(unresolved_rows)
-    print(f"[FILES] {len(excluded_rows)} -> {EXCLUDED_PATH}\n"
-          f"        {len(unresolved_rows)} -> {UNRESOLVED_TECHNIQUES_PATH}", flush=True)
+    print(f"[FILES] {len(excluded_rows)} -> {excluded_path}\n"
+          f"        {len(unresolved_rows)} -> {unresolved_path}", flush=True)
+    if scope:
+        print(f"[FILES] scoped run ({scope}) — the network-wide "
+              f"{os.path.basename(UNRESOLVED_TECHNIQUES_PATH)} and "
+              f"{os.path.basename(EXCLUDED_PATH)} were left untouched. Regenerate them with "
+              f"`--dry-run` over all vaults.", flush=True)
 
     if dry_run:
         print("[DRY RUN] nothing written", flush=True)
