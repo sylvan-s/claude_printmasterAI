@@ -25,6 +25,7 @@ knowledge_graph/tmp_picasso_paris_images/
 knowledge_graph/picasso_paris_embed_images_failures.json
 knowledge_graph/picasso_merge_backup_*.json
 knowledge_graph/picasso_merge_presnapshot_*.json
+knowledge_graph/catalogue_comma_repair_*.json
 
 # ULAN backfill reports (regenerate on demand)
 knowledge_graph/artist_ulan_report.csv
