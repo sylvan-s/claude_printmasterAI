@@ -47,6 +47,10 @@ pick_canonical() and preferred_name(), for the same reason:
   so tier 2 was inert and every one fell through to frequency plus tie-breaks. Expect that for
   any copyright-era artist, where Tate/BM/Met coverage is thin by licensing (ADR-0002).
 
+  Tier 2 also refuses ingest FALLBACK titles, not just placeholders — ADR-0017 Amendment 1,
+  written after Rembrandt's 25 institutional-tier clusters all produced 123-character truncated
+  BM descriptions. See is_ingest_fallback().
+
 NOT DONE HERE. ADR-0017 Decision 1 (decompose `plateDesignation` and `state` out of the title
 before naming) is not implemented. The fold does not require it — the exact key demands
 identical normalized titles, so '..., 3e planche' and '..., 2e planche' cannot land in one
@@ -95,9 +99,14 @@ NEVER_MERGE_BUCKETS = {"catalogueConflict", "institutionalPortfolioSuspect"}
 # An embedded catalogue citation in the title — '(Delteil 8)', '[Vallier 181]', '(Cramer 30)'.
 # ADR-0017: these belong in CatalogueEntry, so a title carrying one loses the tie-break.
 _CITATION_RE = re.compile(
-    r"[\(\[]\s*(?:cramer|delteil|vallier|bloch|schiefler|kemp|levinson|daunt|mourlot|field|"
-    r"czwiklitzer|czw|baer|geiser|m&l|michler|stella|lugt|coppel|cristea|sanesi|krakow|"
-    r"hollstein|f\.?\s*&\s*s|not in)\b[^\)\]]*[\)\]]",
+    r"[\(\[]\s*(?:not\s+in\s+\w+|"
+    r"(?:cramer|delteil|vallier|bloch|schiefler|kemp|levinson|daunt|mourlot|field|"
+    r"czwiklitzer|czw|baer|geiser|michler|stella|lugt|coppel|cristea|sanesi|krakow|"
+    r"new\s+hollstein|hollstein|bartsch|hind|feldman|corlett|duthuit|dupin|herdman|"
+    r"heenk|tommasini|breeskin|m\s*(?:&|and)\s*l|f\.?\s*(?:&|and)\s*s|b|d|ma|cz)\b\.?)"
+    # A bracket may name two catalogues before the number — "(Bartsch, Hollstein 277,
+    # Hind 227, New Hollstein 236)" — so allow intervening text, but require a number.
+    r"[^)\]]{0,60}?[0-9IVXLivxl]",
     re.I,
 )
 
@@ -181,6 +190,40 @@ def _diacritics(s):
     return sum(1 for ch in unicodedata.normalize("NFKD", s or "") if unicodedata.combining(ch))
 
 
+# ADR-0017 Amendment 1. An ingest fallback is not an institutional title and must not win
+# tier 2. Identified by the exact signature of the code that produced it, never by shape:
+# `bm_ingest.py` line 612 substitutes `description[:120] + "..."` (so exactly 123 chars) when a
+# BM record carries neither an "Object:" title nor a "Series:" entry — 78 works graph-wide — and
+# falls finally to `Untitled (<object_id>)` — a branch that never actually fires, since the
+# description fallback catches those records first. The equivalent that DOES fire is
+# roseberys_ingest.py:219 / forum_ingest.py:247's `Untitled (<sale_code> lot <n>)`, 1,493 works.
+#
+# Shape alone would be wrong, and measurably so: 137 titles end in "..." but only those 78 are
+# fallbacks. The other 59 are real works whose titles end in an ellipsis — Tate holds
+# 'Sounds Barely Heard ...', 'Someone, Somewhere ...', 'Both the Garden Style ...'.
+#
+# Brittle on purpose: 123 is bm_ingest.py's 120 plus three dots. If that constant moves this
+# silently stops matching. The real fix is for the ingest to mark the substitution — see the
+# amendment's "Accepted brittleness".
+_BM_TRUNCATED_DESCRIPTION_LEN = 123
+# Only the ID-shaped parentheticals. 2,818 works are named 'Untitled (...)' and the overwhelming
+# majority are REAL descriptive titles — 'Untitled (Nepal Relief)', 'Untitled (Self Portrait)',
+# 'Untitled (Natura Morta)' — which must survive untouched.
+_UNTITLED_FALLBACK_RES = (
+    re.compile(r"^untitled\s*\([A-Z]+[0-9]+\s+lot\s+[0-9A-Za-z]+\)$", re.I),
+    re.compile(r"^untitled\s*\((?:bm|bonhams|forum|roseberys|met|tate)[-_][A-Za-z0-9_.\-]+\)$", re.I),
+)
+
+
+def is_ingest_fallback(title):
+    if not title:
+        return False
+    t = title.strip()
+    if len(t) == _BM_TRUNCATED_DESCRIPTION_LEN and t.endswith("..."):
+        return True
+    return any(rx.match(t) for rx in _UNTITLED_FALLBACK_RES)
+
+
 def is_placeholder(title):
     t = re.sub(r"[^a-z0-9]+", " ", (title or "").lower()).strip()
     return t in PLACEHOLDER_TITLES
@@ -198,10 +241,14 @@ def pick_principal_name(details):
     """Which NAME the survivor carries — ADR-0017 Decision 2. Returns (name, tier)."""
     institutional = [d for d in details
                      if "institutional" in (d["sourceTypes"] or [])
-                     and d["name"] and not is_placeholder(d["name"])]
+                     and d["name"] and not is_placeholder(d["name"])
+                     and not is_ingest_fallback(d["name"])]
     pool, tier = (institutional, "institutional") if institutional else (details, "frequency")
 
-    names = [d["name"] for d in pool if d["name"] and not is_placeholder(d["name"])]
+    names = [d["name"] for d in pool
+             if d["name"] and not is_placeholder(d["name"]) and not is_ingest_fallback(d["name"])]
+    if not names:
+        names = [d["name"] for d in pool if d["name"] and not is_placeholder(d["name"])]
     if not names:
         names = [d["name"] for d in details if d["name"]]
     if not names:
