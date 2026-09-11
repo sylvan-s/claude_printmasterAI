@@ -1320,6 +1320,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
               const ed = await queryEditionRuns({
                 artistName: String(b.input?.artistName ?? ""),
                 workTitle: b.input?.workTitle ?? null,
+                // Same sale the comparables query already excludes, so the edition size is
+                // not read back off the lot's own ingested catalogue entry.
+                excludeSaleId: excludedListing.saleLot?.saleId ?? null,
               });
               content = formatEditionRunsForClaude(ed);
               console.log(`[4-Stage] Stage 2b query_ackg_editions "${b.input?.artistName}": ${ed ? `${ed.works.length} work(s), sizes ${ed.works.flatMap(w => w.declaredSizes).join("/") || "none"}` : "no match"}`);

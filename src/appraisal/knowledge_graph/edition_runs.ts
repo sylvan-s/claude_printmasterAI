@@ -86,6 +86,18 @@ export interface EditionQueryParams {
   artistName: string;
   workTitle?: string | null;
   limit?: number;
+  /**
+   * Suppress the sale under appraisal. The circularity here is sharper than elsewhere,
+   * because the headline output is `declaredSize` and that lives on the EDITION RUN, not on
+   * the impression: ingesting an upcoming catalogue creates a run carrying the size the
+   * catalogue declared, so the lot is handed back its own claim as if the graph had
+   * corroborated it. Filtering impressions alone would not fix that — the run, and its
+   * size, would survive with zero impressions attached. So a run is dropped when every
+   * impression it holds comes from this sale, and kept when any impression does not.
+   * Runs with no impressions at all are kept either way; they are not attributable to the
+   * sale, and dropping them would make the guard change results it has no evidence about.
+   */
+  excludeSaleId?: string | null;
 }
 
 export const EDITION_DEFAULT_LIMIT = 12;
@@ -113,9 +125,17 @@ WITH a, cw, er,
      END AS matchType
 WHERE matchType IS NOT NULL
 OPTIONAL MATCH (er)-[:INCLUDES]->(i:Impression)
+WITH a, cw, er, matchType, collect(i) AS allImpressions
+// Keep only impressions this sale did not document, then drop any run left with nothing —
+// a run whose every impression is the lot itself is the lot's own claim, not a record of it.
+WITH a, cw, er, matchType, size(allImpressions) AS totalImpressions,
+     [x IN allImpressions WHERE $excludeSaleId IS NULL
+        OR NOT EXISTS { MATCH (s:SourceRecord)-[:DOCUMENTS]->(x) WHERE s.saleId = $excludeSaleId }
+     ] AS keptImpressions
+WHERE totalImpressions = 0 OR size(keptImpressions) > 0
 WITH a, cw, er, matchType,
-     count(i) AS impressions,
-     collect(i.copyType) AS copyTypes
+     size(keptImpressions) AS impressions,
+     [x IN keptImpressions | x.copyType] AS copyTypes
 // Exact title matches first, then the wider passes; within a tier, the best-evidenced runs.
 RETURN a.name AS artistName,
        cw.name AS workTitle,
@@ -156,6 +176,7 @@ export async function queryEditionRuns(params: EditionQueryParams): Promise<Edit
       artistName: foldAccents(artistName),
       workTitle: workTitle ? foldAccents(workTitle) : null,
       workTitleKey: workTitle ? normalizeTitleKey(workTitle) : null,
+      excludeSaleId: params.excludeSaleId ?? null,
       limit: neo4j.int(params.limit ?? EDITION_DEFAULT_LIMIT),
     });
     if (res.records.length === 0) return null;
