@@ -30,6 +30,8 @@ knowledge_graph/picasso_image_merge_backup_*.json
 knowledge_graph/picasso_image_merge_presnapshot_*.json
 knowledge_graph/picasso_bc_merge_backup_*.json
 knowledge_graph/picasso_bc_merge_presnapshot_*.json
+knowledge_graph/picasso_plate_join_backup_*.json
+knowledge_graph/picasso_plate_join_presnapshot_*.json
 
 # ULAN backfill reports (regenerate on demand)
 knowledge_graph/artist_ulan_report.csv

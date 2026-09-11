@@ -169,6 +169,14 @@ WITH DISTINCT surv, dup
 OPTIONAL MATCH (art:Artist)-[:CREATED]->(dup)
 FOREACH (x IN CASE WHEN art IS NULL THEN [] ELSE [art] END | MERGE (x)-[:CREATED]->(surv))
 WITH DISTINCT surv, dup
+// REALIZED_AS was missing until 2026-09-11 and DETACH DELETE would have silently
+// destroyed it: a ConceptualWork folded into another lost its link to the physical
+// Matrix. 276 such edges exist. Found while joining Picasso-Paris plate records to the
+// impressions pulled from them — those works reach a Matrix through REALIZED_AS and
+// nothing else, so merging one would have deleted the only path to the plate.
+OPTIONAL MATCH (dup)-[:REALIZED_AS]->(mx:Matrix)
+FOREACH (x IN CASE WHEN mx IS NULL THEN [] ELSE [mx] END | MERGE (surv)-[:REALIZED_AS]->(x))
+WITH DISTINCT surv, dup
 OPTIONAL MATCH (dup)-[:DATED_TO]->(per:Period)
 FOREACH (x IN CASE WHEN per IS NULL THEN [] ELSE [per] END | MERGE (surv)-[:DATED_TO]->(x))
 WITH DISTINCT surv, dup
