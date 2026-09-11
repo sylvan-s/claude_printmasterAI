@@ -14,6 +14,7 @@ import {
   sourceConfidence,
   D_VOTE_FLOOR,
   D_T_DINO_FLOOR,
+  KOEUVRE_DISCRIMINATING_MIN,
   classifyImpression,
   classifyDimensionMatch,
   classifyTechniqueMatch,
@@ -217,7 +218,7 @@ test("two agreeing but weak sources are demoted below a confident pair", () => {
       veaSignatureConfidence: sig,
       reverseImageSearch: { kind: "names", raw: "Marc Chagall", sim },
       stage1bConsistentWithVea: true,
-      kOeuvreMatchCount: 6,
+      kOeuvreMatchCount: KOEUVRE_DISCRIMINATING_MIN,
       kSubject: "TYPICAL",
     });
   const confident = classifyArtistPass(mk(0.85, 0.9));
@@ -325,7 +326,7 @@ const corroboratedPair = (extra: Partial<Parameters<typeof f.artistEv>[0]> = {})
     veaSignatureConfidence: 0.85,
     reverseImageSearch: { kind: "names", raw: "Marc Chagall", sim: 0.9 },
     stage1bConsistentWithVea: true,
-    kOeuvreMatchCount: 6,
+    kOeuvreMatchCount: KOEUVRE_DISCRIMINATING_MIN,
     kSubject: "TYPICAL",
     ...extra,
   });

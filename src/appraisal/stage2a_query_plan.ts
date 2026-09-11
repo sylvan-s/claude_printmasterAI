@@ -282,7 +282,7 @@ const SIGNATURE_MIN_CONFIDENCE = 0.5;
  * No period bounds — deliberately, and measured (2026-09-11, A0793/122, Peter Blake,
  * Screenprint + wove, A0793 excluded):
  *
- *     strict 1962-1966   66 artists   Blake=  1   142 artists clear KOEUVRE_DISCRIMINATING_MIN
+ *     strict 1962-1966   66 artists   Blake=  1
  *     null-tolerant     383 artists   Blake=127
  *     no period         400 artists   Blake=229
  *
@@ -291,7 +291,7 @@ const SIGNATURE_MIN_CONFIDENCE = 0.5;
  * comparison drops a null. So a period range silently discards every undated work and the
  * count that comes back measures date COVERAGE, not œuvre. Blake falls from 229 to 1, which
  * reads downstream as "this artist is not catalogued working like this" and fails
- * corroboration at KOEUVRE_DISCRIMINATING_MIN = 3.
+ * corroboration at KOEUVRE_DISCRIMINATING_MIN.
  *
  * Making the predicate null-tolerant fixes the silent discard but barely narrows anything
  * (Blake 127), so period is not doing discriminating work either way. Between a filter that
@@ -299,11 +299,10 @@ const SIGNATURE_MIN_CONFIDENCE = 0.5;
  * absence of population data is never evidence against a candidate, so the filter that
  * fabricates absence is the one that goes.
  *
- * The consequence is that kOeuvreMatchCount is now high for almost any real artist — 319 of
- * 400 returned artists clear 3 on this query. KOEUVRE_DISCRIMINATING_MIN was already an
- * unfitted placeholder (ADR-0010 Decision 4) and needs refitting against this distribution.
- * It is left alone here so that refit is its own measurable change rather than a side
- * effect of this one.
+ * The consequence was that kOeuvreMatchCount became high for almost any real artist — 319 of
+ * 400 returned artists cleared the then-threshold of 3. That refit has since happened
+ * separately, against a labelled sample: KOEUVRE_DISCRIMINATING_MIN is now 10, the largest
+ * value that costs no sensitivity. See its doc comment for the measurement.
  */
 export interface ObservedDims {
   kind: "plate" | "image" | "sheet";

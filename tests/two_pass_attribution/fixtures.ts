@@ -8,6 +8,14 @@ import type {
   ImpressionEvidence,
   TwoPassInput,
 } from "../../src/appraisal/two_pass_attribution";
+import { KOEUVRE_DISCRIMINATING_MIN } from "../../src/appraisal/two_pass_attribution";
+
+// These fixtures care whether the œuvre count CLEARS the corroboration threshold, not what
+// the threshold happens to be. Writing them against the constant keeps them meaningful when
+// it is refitted — it moved 3 -> 10 on 2026-09-11 and every literal chosen for "clears"
+// silently became a "does not".
+const KOEUVRE_CLEARS = KOEUVRE_DISCRIMINATING_MIN;
+const KOEUVRE_BELOW = KOEUVRE_DISCRIMINATING_MIN - 1;
 
 // ── builders ──────────────────────────────────────────────────────────────────
 export function artistEv(o: Partial<ArtistEvidence> = {}): ArtistEvidence {
@@ -91,7 +99,7 @@ export const a2_twoAgreeAckgSupport = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.8,
   kId: "true",
-  kOeuvreMatchCount: 6,
+  kOeuvreMatchCount: KOEUVRE_CLEARS,
   kSubject: "TYPICAL", // 2026-09-09: A2 now means the ACKG corroborates on technique AND subject
 });
 
@@ -103,7 +111,7 @@ export const a3_recognisedNoOeuvre = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.85, // comfortably above CONFIDENCE_MEAN_FLOOR — this fixture is about corroboration
   kId: "true",
-  kOeuvreMatchCount: 6, // catalogued in this technique/period...
+  kOeuvreMatchCount: KOEUVRE_CLEARS, // catalogued in this technique/period...
   kSubject: "OCCASIONAL", // ...but the subject does not corroborate -> weak -> A3
 });
 
@@ -180,7 +188,7 @@ export const a10_conflict = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.7,
   kId: "true",
-  kOeuvreMatchCount: 5,
+  kOeuvreMatchCount: KOEUVRE_CLEARS,
   kSubject: "OCCASIONAL",
 });
 
@@ -191,7 +199,7 @@ export const a10_documentedFactVsSignature = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.85,
   kId: "true",
-  kOeuvreMatchCount: 3,
+  kOeuvreMatchCount: KOEUVRE_CLEARS,
   kSubject: "OCCASIONAL",
 });
 
@@ -205,7 +213,7 @@ export const hypothesisVsVeaNotConflict = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.8,
   kId: "true",
-  kOeuvreMatchCount: 4,
+  kOeuvreMatchCount: KOEUVRE_CLEARS,
   kSubject: "OCCASIONAL",
 });
 
@@ -241,8 +249,8 @@ export const subjectAtypicalFlag = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.8,
   kId: "true",
-  kOeuvreMatchCount: 3,
-  kSubject: "ATYPICAL",
+  kOeuvreMatchCount: KOEUVRE_CLEARS, // technique corroborates...
+  kSubject: "ATYPICAL",              // ...the subject does not, so only one dimension holds
   kSubjectNote: "figurative subject; Riley's catalogued output is entirely abstract",
 });
 

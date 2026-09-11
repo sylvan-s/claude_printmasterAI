@@ -273,6 +273,64 @@ lots this pipeline has been tuned against. A fresh slice of the pool the plan ha
 is the honest next test, and these figures should not be read as a pool-wide estimate until
 that runs.
 
+### The fresh slice: 95% was flattered by the fixtures
+
+The figures above come from the five committed reproduction fixtures — lots this pipeline has
+been tuned against. Re-run on the 10 pool lots the plan had never seen, same protocol, same
+model:
+
+| | 5 fixtures (tuned) | 10 pool lots (unseen) |
+|---|---:|---:|
+| agreement with own majority | 95% | **85%** |
+| fully stable lots | 4/5 | **5/10** |
+| degraded runs | 0/20 | **0/40** |
+| artist matches ground truth | 20/20 | **8/40** |
+
+85%, not 95%. It still beats Sonnet's 80% on the loop, and 0 degraded runs out of 40 holds,
+but the headline number does not survive contact with lots the plan has not seen and should
+not be quoted as though it does.
+
+The accuracy collapse is a different thing and is NOT Stage 2a regressing. The two lot sets
+are structurally different populations:
+
+| | A0793 fixtures | pool slice |
+|---|---|---|
+| Stage 1c claimed artist | yes, `documented_fact` from catalogue notes | **none** |
+| Stage 1d embedding match | yes | **none** |
+
+The fixtures hand Stage 2a the artist in a trust-tagged cell; the pool lots do not, and have no
+`D` voter either. Six of the ten name no artist in any repetition. 20/20 was measuring Stage 1c
+recall as much as Stage 2a judgement. Any future comparison has to hold the input regime fixed.
+
+One of the 32 non-matches is a bad label rather than a bad answer: `A0731_171` names "Andy
+Warhol" in all four repetitions and is scored a miss because its ground truth is recorded as
+"Sunday B Morning" — a publisher, not an artist.
+
+### riskFlags is the remaining variance surface, now properly evidenced
+
+The Frink result above was one lot. On the fresh slice every single unstable lot has an
+**identical tree artist verdict across all four repetitions**:
+
+| lot | verdict, all four reps | what actually flips |
+|---|---|---|
+| 1012_147 | `A11 not_attributed` | `misattributionRisk` |
+| 1105_109 | `A11 not_attributed` | `misattributionRisk` |
+| 1147_303 | `A11 not_attributed` | `misattributionRisk` |
+| A0724_373 | `A11 not_attributed` | `misattributionRisk` |
+| A0673_182 | `A7 candidate/MEDIUM "Yaacov Agam"` | a work title |
+
+Four of the five turn on a single boolean the model sets, with the evidence and the verdict
+byte-identical either side of it — `misattributionRisk` routes to Scenario 2 instead of
+Scenario 4. The fifth is the same story in a different cell: one repetition produced a work
+candidate ("Black/White Stripes") the other three did not, and that candidate's dimension
+mismatch drove Scenario 2. `plan.observedTitle` is code-derived and stable, so that title came
+from a model-filled cell as well.
+
+That is the claim the single Frink lot could only gesture at, now reproduced across 10 lots in
+a different input regime: **what code writes holds still; what the model writes moves.** And it
+localises the problem — `misattributionRisk` alone accounts for four of the five failures, which
+makes it the obvious next target rather than "the observation cells" in general.
+
 ## Consequences
 
 **Stage 2a's model requirement changes shape, and the change is large.** The stage now asks
@@ -298,7 +356,27 @@ is recorded as -1 (not assessed), never 0.
 - `TITLE_TIE_BAND = 0.03` — measured against the blindness cases, not fitted.
 - `MAX_PLANNED_CANDIDATES = 4`, `OEUVRE_LIMIT = 500`, `WORK_ROW_LIMIT = 60`,
   `TITLE_PROBE_LIMIT = 12` — cost bounds, not findings.
-- `KOEUVRE_DISCRIMINATING_MIN = 3` — inherited, and now known to be mis-scaled. See above.
+- `KOEUVRE_DISCRIMINATING_MIN` — was 3 and inherited; refitted to 10 on 2026-09-11 against
+  24 candidate rows over 14 lots, each scored against the lot's ground-truth artist:
+
+  | threshold | ground truth clears | rivals clear |
+  |---|---:|---:|
+  | >= 3 | 79% | 70% |
+  | **>= 10** | **79%** | **50%** |
+  | >= 25 | 57% | 30% |
+
+  10 is the largest value costing no sensitivity — every true positive 3 kept, half the
+  rivals. Past it the first casualties are niche artists whose technique is thinly catalogued
+  (Sam Francis 1 of 538 works, Pat Steir 1 of 32, Jim Dine 0 of 618), which is absence of
+  population data rather than evidence against.
+
+  Two results worth keeping. A share-of-œuvre normalisation is WORSE, not better — AUC 0.646
+  against the absolute count's 0.746 — because it rewards thin coverage: rival Shmuel Shapiro
+  scores 11 of 12 works (91.7%) and Willem de Kooning 42 of 46 (91.3%), against a correct
+  Picasso at 15.6%. And no threshold makes this a strong signal: AUC 0.746 is weak whatever is
+  chosen, tolerable only because this is step 2 of the cascade, reached when no catalogued work
+  matched the title. The value is fitted in direction, not in precision — 14 positives and 10
+  negatives is a small sample, and the gap between 3 and 10 rests on two rival rows.
 - The candidate-name recovery from a VEA signature is deliberately conservative: a monogram or
   anything that does not reduce to a short run of alphabetic tokens returns null and is left to
   the model. Being wrong there is worse than being absent — a wrong name is queried, comes back
@@ -311,8 +389,10 @@ is recorded as -1 (not assessed), never 0.
 - `npm run test:pool:triage -- --dir tests/backtest/fixtures` — the live path, against the
   committed reproduction fixtures. Add `--tool-loop` to run the pre-plan behaviour for
   comparison.
+- `npm run test:pool:triage -- --dir tests/backtest/pool_output` — the unseen pool slice. Ten
+  lots with no Stage 1c artist claim and no Stage 1d; the harder and more realistic regime.
 - The stability protocol has been run on Haiku 4.5 (above) and settled the default. It has
   **not** been run on Sonnet against the plan — the three Sonnet passes recorded above are
   single passes — so no plan-mode agreement figure exists for Sonnet.
-- Every figure here comes from the five committed reproduction fixtures. Nothing has been
-  measured against a lot the plan has not seen.
+- The fixture figures and the pool-slice figures are not interchangeable: different input
+  regimes (see the fresh slice above). Quote them separately.

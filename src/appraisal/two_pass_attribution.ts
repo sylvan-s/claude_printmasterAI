@@ -44,7 +44,37 @@ export const TAU_DIM_IMAGE_MM = 3; // ...with an absolute floor
 export const TAU_DIM_SHEET_PCT = 0.08;
 export const TAU_DIM_SHEET_MM = 10;
 export const DIM_MATERIAL_PCT = 0.1; // beyond tolerance but below this = "minor"; at/above = "material"
-export const KOEUVRE_DISCRIMINATING_MIN = 3; // K_oeuvre matchCount that counts as "uniquely discriminating" for a one-band lift on an n=1 candidate
+/**
+ * K_oeuvre matchCount that counts as corroborating for a one-band lift on an n=1 candidate.
+ *
+ * Was 3, unfitted. Raised to 10 on 2026-09-11 against the first labelled measurement: 24
+ * candidate rows over 14 lots (the 5 A0793 fixtures plus the 9 usable pool lots), each
+ * candidate scored against the lot's ground-truth artist, using the ADR-0018 œuvre query.
+ *
+ *   threshold   ground truth clears   rivals clear
+ *      >= 3            79%                70%
+ *      >= 10           79%                50%
+ *      >= 25           57%                30%
+ *
+ * 10 is the largest value that costs nothing in sensitivity: it keeps every true positive
+ * that 3 kept and halves the rivals. Past 10 it starts discarding real artists, and the ones
+ * it discards first are the niche ones whose technique is thinly catalogued — Sam Francis at
+ * 1 of 538 works, Pat Steir at 1 of 32, Jim Dine at 0 of 618 — which is absence of population
+ * data, never evidence against.
+ *
+ * Two things this measurement does NOT support. A share-of-œuvre normalisation (count divided
+ * by the artist's total catalogued works) was tested and is WORSE — AUC 0.646 against the
+ * absolute count's 0.746 — because it rewards thin coverage: rival Shmuel Shapiro scores 11
+ * of 12 works (91.7%) and Willem de Kooning 42 of 46 (91.3%), against a correct Picasso at
+ * 15.6%. And no threshold makes this a strong signal; AUC 0.746 on n=24 is weak, which is
+ * tolerable only because this is step 2 of the cascade — the fallback reached when no
+ * catalogued work matches the title.
+ *
+ * Still unfitted in the sense that matters: 14 positives and 10 negatives is a small sample,
+ * and the gap between 3 and 10 rests on two rival rows (Jasper Johns and John Wells, both at
+ * 8). The direction is clear; the exact value is not.
+ */
+export const KOEUVRE_DISCRIMINATING_MIN = 10;
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Confidence bands
