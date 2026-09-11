@@ -260,6 +260,29 @@ def _purge_scratch():
 atexit.register(_purge_scratch)
 
 
+def purge_stale_scratch():
+    """Decision 7(a) on STARTUP, not only on exit.
+
+    `atexit` and the per-iteration `finally` cover an exception and a Ctrl-C. Neither
+    survives SIGKILL, an OOM kill or the machine going down — and on 2026-09-11 a host
+    crash during the in-copyright run left one downloaded museum image sitting in the
+    scratch dir, which is precisely what 7(a) forbids. Nothing inside a process can
+    guarantee cleanup after that process is gone, so the guarantee has to move to the
+    next run's startup, where it can be enforced.
+
+    Runs unconditionally before any download, and reports rather than deleting silently —
+    a stale file is evidence the previous run died badly and the operator should know."""
+    if not os.path.isdir(SCRATCH_DIR):
+        return 0
+    stale = [f for f in os.listdir(SCRATCH_DIR) if not f.startswith(".")]
+    if stale and not KEEP_CACHE:
+        print(f"[RIGHTS] {len(stale)} image(s) left in {SCRATCH_DIR} by a previous run that "
+              f"did not exit cleanly — purging before starting (ADR-0002 Amendment 1 "
+              f"Decision 7(a)).", flush=True)
+        shutil.rmtree(SCRATCH_DIR, ignore_errors=True)
+    return len(stale)
+
+
 def _driver():
     return GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
 
@@ -492,6 +515,7 @@ if __name__ == "__main__":
         parser.error("Provide --all (optionally with --limit/--force/--institution/...)")
 
     KEEP_CACHE = args.keep_cache
+    purge_stale_scratch()
     if args.tier == "in-copyright" and KEEP_CACHE:
         raise SystemExit(
             "REFUSED: --keep-cache with --tier in-copyright. ADR-0002 Amendment 1 "

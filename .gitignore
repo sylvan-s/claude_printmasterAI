@@ -23,6 +23,15 @@ knowledge_graph/forum_embed_images_failures.json
 knowledge_graph/tmp_bonhams_images/
 knowledge_graph/tmp_picasso_paris_images/
 knowledge_graph/picasso_paris_embed_images_failures.json
+# Embed-pass scratch dirs hold DOWNLOADED MUSEUM IMAGES while a run is in flight. Tate,
+# Bonhams and Picasso-Paris were listed; navigart and the BM were not, so a `git add -A`
+# during a run would have committed in-copyright museum imagery into the repository —
+# which is what ADR-0002 Amendment 1 Decision 7(b) ("no image bytes enter the graph, any
+# export, or any interface") exists to prevent. Found 2026-09-11 when the navigart scratch
+# dir showed up as untracked mid-run.
+knowledge_graph/tmp_navigart_images/
+knowledge_graph/tmp_bm_images/
+knowledge_graph/navigart_embed_images_failures.json
 knowledge_graph/picasso_merge_backup_*.json
 knowledge_graph/picasso_merge_presnapshot_*.json
 knowledge_graph/catalogue_comma_repair_*.json
