@@ -90,8 +90,11 @@ from collections import defaultdict
 from neo4j import GraphDatabase
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CACHE_GLOB = os.path.join(os.path.dirname(HERE), "benchmark", "data", "navigart",
-                          "*_pd-image.json")
+# Every tier's caches, not just the public-domain one — an artist named only on
+# in-copyright records still needs resolving, and the resolution file is shared by both
+# loads. Restricting this to *_pd-image.json would silently refuse every tier-2-only
+# artist as "not in the caches".
+CACHE_GLOB = os.path.join(os.path.dirname(HERE), "benchmark", "data", "navigart", "*.json")
 OUT_PATH = os.path.join(HERE, "navigart_artist_resolution.json")
 
 _PAREN_RE = re.compile(r"\([^)]*\)")
@@ -321,13 +324,58 @@ def resolve():
                                "records": n}
             stats["new_artist"] += n
 
-    # A second collision check, this time inside the resolution itself: two different
-    # Navigart spellings can legitimately land on one new canonical name, which is fine
-    # and intended, but two different NEW canonical names must not collide on one key.
+    # A second collision check, this time inside the resolution itself. Two different
+    # Navigart spellings landing on one new canonical name is fine and intended. Two
+    # different NEW canonical names colliding on one key is not — it is one artist about
+    # to become two nodes, which is the duplicate-`Artist` bug arriving by a new route.
+    #
+    # It happens on MULTI-AUTHOR records: `authors_notice` is natural order
+    # ("Nasser BOUZID") on a single-author record but sometimes keeps list order
+    # ("BOUZID Nasser") when several authors are named, so the same artist title-cases two
+    # ways. Identical token sets, so collapsing them is exact-key work, not similarity.
+    #
+    # The survivor is the spelling on the most records; ties break toward the variant that
+    # does NOT lead with the surname, read off `authors_list`'s own uppercase-first
+    # convention. Alphabetical tie-breaking would have picked "Bouzid Nasser" over
+    # "Nasser Bouzid" — deterministic and backwards.
+    def _leads_with_surname(display, raws):
+        first = display.split(" ")[0].upper()
+        return any(re.split(r"[\s,]+", raw.strip())[0].upper() == first for raw in raws)
+
     by_key = defaultdict(set)
+    raws_for = defaultdict(list)
     for raw, entry in resolution.items():
+        key = normalize_key(entry["canonicalName"])
+        by_key[key].add(entry["canonicalName"])
+        raws_for[entry["canonicalName"]].append(raw)
+
+    collapsed = {}
+    for key, variants in by_key.items():
+        if len(variants) < 2:
+            continue
+        counts = {v: sum(resolution[r]["records"] for r in raws_for[v]) for v in variants}
+        best = sorted(variants, key=lambda v: (-counts[v],
+                                               _leads_with_surname(v, raws_for[v]), v))[0]
+        collapsed[key] = {"chose": best, "over": sorted(variants - {best}),
+                          "records": counts}
+        for v in variants:
+            if v == best:
+                continue
+            for raw in raws_for[v]:
+                resolution[raw]["canonicalName"] = best
+                resolution[raw]["collapsedFrom"] = v
+
+    # Re-derived after collapsing: anything still here is a real, unhandled collision.
+    by_key = defaultdict(set)
+    for entry in resolution.values():
         by_key[normalize_key(entry["canonicalName"])].add(entry["canonicalName"])
     collisions = {k: sorted(v) for k, v in by_key.items() if len(v) > 1}
+    if collapsed:
+        print(f"[COLLAPSE] {len(collapsed)} name(s) reached by two word orders, merged:",
+              flush=True)
+        for key, info in collapsed.items():
+            print(f"    kept {info['chose']!r} over {info['over']} {info['records']}",
+                  flush=True)
 
     # An alias whose key never matches any raw value does nothing and says nothing —
     # which is how three of the ten entries in the first version of this table silently

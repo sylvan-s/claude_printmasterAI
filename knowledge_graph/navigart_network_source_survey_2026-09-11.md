@@ -415,6 +415,35 @@ Corrected, all 150 build — and the near-miss is why `sourceMemberCount` and `c
 exist: **78 of the 150 are partial**, and `memberCount` alone would have read as the size
 of the suite.
 
+### 9.3 Tier 2 loaded (2026-09-11)
+
+`navigart_fetch.py --all --tier all` pulled the whole `Estampe` population of the 33
+vaults — **31,131 records**, 20,506 of them with an image. 28,779 mapped; **28,714
+loaded** (762 no usable accession, 1,590 an unresolvable artist).
+
+| | before | after |
+|---|---:|---:|
+| Navigart `SourceRecord` | 5,598 | **28,714** |
+| `Impression` | 104,959 | **127,303** |
+| `Matrix` | 278 | **1,050** |
+| `Artist` | 8,553 | **11,584** |
+| `ConceptualWork` | 86,899 | **109,701** |
+
+9,242 public domain, 19,465 in copyright. Technique resolution held at 87% across the
+wider and much more modern population. Images: **13,471 in-copyright** embedded under
+ADR-0002 Amendment 1 Decision 7 (see [Amendment 2](../docs/adr/0002-image-extraction-methodology-and-licensing.md)),
+stamped `embeddingCommercialUse = false` and kept in a separate run from the
+public-domain tier's 5,598.
+
+**One name-collision class only visible at this scale.** The resolver's own collision
+check fired on 4 keys, and all four were ONE artist about to become two nodes:
+`authors_notice` is natural order ("Nasser BOUZID") on a single-author record but keeps
+list order ("BOUZID Nasser") on some multi-author ones, so the same person title-cases two
+ways. Identical token sets, so collapsing is exact-key work. The survivor is the spelling
+on the most records, with ties broken toward the variant that does NOT lead with the
+surname — read off `authors_list`'s own uppercase-first convention, because alphabetical
+tie-breaking picked "Bouzid Nasser" over "Nasser Bouzid", deterministically and backwards.
+
 ### Embedding pass — executed and verified (2026-09-11)
 
 `navigart_embed_images.py --all`: **5,595 images embedded, 0 failures**, 8,530s (2h22m) at

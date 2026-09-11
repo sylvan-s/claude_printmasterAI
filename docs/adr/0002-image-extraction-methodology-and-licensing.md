@@ -221,3 +221,61 @@ four of them.
 A legal opinion. It records a decision, the reasoning behind it, and the specific facts checked —
 so that a future reader can see what was known at the time and re-decide on better information,
 rather than inheriting a conclusion with no visible basis.
+
+---
+
+## Amendment 2 — Decision 7 exercised for the Navigart network (2026-09-11)
+
+Decision 7 said the in-copyright image-similarity path was "NOT currently built". For the
+Navigart network it now is, in `knowledge_graph/navigart_embed_images.py --tier
+in-copyright`. **Picasso-Paris is unchanged and remains metadata-only** — no embed script
+ships with that adapter and none is added here.
+
+### Why this network and not that one
+
+The distinction is the TDM reservation, not the copyright status, which is the same for
+both. `museepicassoparis.fr/robots.txt` sets `Content-Signal: ai-train=no, use=reference`,
+an express Article 4 EU DSM reservation, and Amendment 1 recorded that this project treats
+the museum's own reservation as the operative intent. Checked 2026-09-11 across the
+contributing institutions — cnap.fr, centrepompidou.fr, musees.strasbourg.eu,
+mam.paris.fr, mamc.saint-etienne.fr, museedartsdenantes.fr — **none publishes an equivalent
+reservation.** So nothing here routes around an opt-out; there is no opt-out to route
+around. Succession Picasso's enforcement posture, cited in Amendment 1 as an independent
+practical risk factor, also has no counterpart across a network of 33 public collections.
+
+### The four conditions, as mechanisms
+
+- **7(a) transient cache.** `--keep-cache` is REFUSED in combination with this tier — the
+  script exits citing 7(a) — rather than merely defaulting off. Each file is deleted in
+  the `finally` of its own iteration, with an `atexit` purge so a crash or Ctrl-C cannot
+  leave a downloaded set behind.
+- **7(b) no bytes in the graph.** `_assert_no_bytes` runs on every row before every write.
+- **7(c)/(d) retrieval only, operator only.** Unenforceable from inside a script, so every
+  node is stamped `embeddingCommercialUse = false` plus a Decision 7 basis string. The
+  whole tier is then purgeable in one query if the footing changes:
+      MATCH (i:DigitalImage) WHERE i.embeddingCommercialUse = false
+      REMOVE i.embedding, i.clipImageEmbedding, i.embeddingBasis, i.embeddingCommercialUse
+
+### The tiers are mutually exclusive by construction
+
+There is no `--tier both`. A run embeds the public-domain population (stamped
+`embeddingCommercialUse = true`, surviving that purge) or the in-copyright one (stamped
+`false`), never a silent union — so the flag is unambiguous for every vector the script
+writes. The candidate query re-derives the tier from `SourceRecord.sourceCopyright` rather
+than trusting the ingest, so pointing the script at the wrong population skips rather than
+embeds.
+
+Scope as run: **13,471 in-copyright images** across the 33 vaults, against 5,598 in the
+public-domain tier.
+
+### A near-miss worth recording
+
+The first edit adding the tier switch did not apply — an indentation mismatch in the
+search string — so the query silently stayed public-domain-only while the CLI reported
+`tier=in-copyright`. The smoke run therefore embedded the one remaining PUBLIC-DOMAIN
+image and stamped it `embeddingCommercialUse = false` with the Decision 7 basis. It was
+caught because "Found 1 image" was implausible against 13,472 candidates, and the node was
+repaired. Recorded because the failure mode is the dangerous direction for a rights gate:
+a patch that does not apply leaves the code doing something defensible while the operator
+believes it is doing something else. The tier is now asserted in the query and verified by
+counting candidates per tier before any run.

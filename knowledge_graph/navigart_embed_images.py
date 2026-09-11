@@ -44,6 +44,42 @@ So:
         MATCH (i:DigitalImage) WHERE i.embeddingBasis STARTS WITH "Navigart"
         SET i.embeddingCommercialUse = false
 
+## The in-copyright tier (`--tier in-copyright`), added 2026-09-11
+
+ADR-0002 Amendment 1 **Decision 7** permits image similarity over in-copyright museum
+images on the current personal-research footing, and says in terms that it is "NOT
+currently built". This is it, built — for the Navigart network only, and behind an
+explicit flag that must be typed.
+
+The material difference from Picasso-Paris, which remains metadata-only with no embed
+script at all: `museepicassoparis.fr/robots.txt` sets `Content-Signal: ai-train=no`, an
+express Article 4 EU DSM reservation. None of the 33 museums in `navigart_fetch.VAULTS`
+publishes one — checked across cnap.fr, centrepompidou.fr, musees.strasbourg.eu,
+mam.paris.fr, mamc.saint-etienne.fr and museedartsdenantes.fr (survey §8). So nothing here
+is routing around an opt-out; there is no opt-out.
+
+Decision 7's four conditions, each a mechanism rather than a promise:
+
+  (a) *Only the derived embedding is retained; sources cached transiently and deleted.*
+      -> `--keep-cache` is REFUSED in combination with this tier, not merely defaulted
+      off, and each file is deleted in the `finally` of its own iteration. The scratch dir
+      never holds more than one in-copyright image at a time, and `atexit` purges it on a
+      crash or Ctrl-C.
+  (b) *No image bytes enter the graph, any export, or any interface.* -> `_assert_no_bytes`
+      runs on every row before every write.
+  (c) *Retrieval and comparison only.*  (d) *Never displayed to anyone but the operator.*
+      -> unenforceable from inside a script, so instead every node is stamped
+      `embeddingCommercialUse = false` and a Decision 7 basis string. That makes the whole
+      tier purgeable in one query the moment this project takes money:
+        MATCH (i:DigitalImage) WHERE i.embeddingCommercialUse = false
+        REMOVE i.embedding, i.clipImageEmbedding, i.embeddingBasis, i.embeddingCommercialUse
+      The public-domain tier is stamped `true` and survives that query, which is the whole
+      reason the two tiers are embedded by separate runs and never mixed.
+
+**The tiers are mutually exclusive by construction.** There is no `--tier both`. A run
+embeds the public-domain population or the in-copyright one, never a silent union, so
+`embeddingCommercialUse` is always unambiguous for every vector this script writes.
+
 ## The gate that matters: this script re-derives the tier, it does not trust the ingest
 
 `navigart_fetch.py --tier all` will happily fetch the ~24,000 IN-COPYRIGHT `Estampe`
@@ -140,8 +176,11 @@ FAILURE_LOG_PATH = "navigart_embed_images_failures.json"
 USER_AGENT = ("PrintMasterAI-Research/1.0 (+mailto:sylvansitkey07@gmail.com; "
               "non-commercial academic research)")
 
-EMBEDDING_BASIS = ("Navigart public-domain tier — museum-asserted 'Domaine public' + "
-                   "EU DSM Art.14; no TDM reservation published by source")
+EMBEDDING_BASIS_PD = ("Navigart public-domain tier — museum-asserted 'Domaine public' + "
+                      "EU DSM Art.14; no TDM reservation published by source")
+EMBEDDING_BASIS_INC = ("ADR-0002 Amendment 1 Decision 7 — in-copyright museum imagery, "
+                       "non-commercial research only; lapses on any commercial footing. "
+                       "No TDM reservation published by source.")
 
 KEEP_CACHE = False  # set from --keep-cache before the run starts
 
@@ -159,7 +198,10 @@ WHERE src.id STARTS WITH $sourcePrefix
   AND ($force OR img.embedding IS NULL)
   AND img.license IS NOT NULL
   AND img.rightsReservation IS NOT NULL
-  AND src.sourceCopyright STARTS WITH $publicDomainPrefix
+  AND (($tier = "public-domain"
+         AND src.sourceCopyright STARTS WITH $publicDomainPrefix)
+    OR ($tier = "in-copyright"
+         AND NOT src.sourceCopyright STARTS WITH $publicDomainPrefix))
   AND NONE(flag IN $blockedFlags WHERE toLower(img.rightsReservation) CONTAINS flag)
   AND ($institution IS NULL OR src.institutionName = $institution)
 OPTIONAL MATCH (er:EditionRun)-[:INCLUDES]->(target)
@@ -198,7 +240,7 @@ SET img.embedding = row.dinoEmbedding,
     img.clipImageEmbeddingDim = row.clipDim,
     img.clipEmbeddedAt = row.embeddedAt,
     img.embeddingBasis = row.embeddingBasis,
-    img.embeddingCommercialUse = true
+    img.embeddingCommercialUse = row.commercialUse
 WITH row
 MATCH (target {id: row.targetId})
 FOREACH (_ IN CASE WHEN row.clipTextEmbedding IS NOT NULL THEN [1] ELSE [] END |
@@ -234,13 +276,13 @@ def audit_rights():
         driver.close()
 
 
-def fetch_candidates(force=False, limit=None, institution=None):
+def fetch_candidates(force=False, limit=None, institution=None, tier="public-domain"):
     driver = _driver()
     try:
         with driver.session(database=NEO4J_DATABASE) as session:
             rows = [dict(r) for r in session.run(
                 FETCH_CANDIDATES_QUERY, force=force, sourcePrefix=SOURCE_ID_PREFIX,
-                publicDomainPrefix=PUBLIC_DOMAIN_PREFIX,
+                publicDomainPrefix=PUBLIC_DOMAIN_PREFIX, tier=tier,
                 blockedFlags=list(BLOCKED_REPRODUCTION_FLAGS),
                 institution=institution)]
     finally:
@@ -339,7 +381,8 @@ def _write_chunk_with_retry(rows, retries=4, backoff_seconds=5.0):
     raise RuntimeError(f"Chunk write failed after {retries} attempts: {last_error}")
 
 
-def run_embeddings(candidates, chunk_size=10, with_text_embedding=False):
+def run_embeddings(candidates, chunk_size=10, with_text_embedding=False,
+                   basis=EMBEDDING_BASIS_PD, commercial_use=True):
     from PIL import Image
 
     os.makedirs(SCRATCH_DIR, exist_ok=True)
@@ -389,7 +432,8 @@ def run_embeddings(candidates, chunk_size=10, with_text_embedding=False):
                 "clipModel": CLIP_MODEL_NAME,
                 "clipDim": CLIP_DIM,
                 "textSource": text_source,
-                "embeddingBasis": EMBEDDING_BASIS,
+                "embeddingBasis": basis,
+                "commercialUse": commercial_use,
                 "embeddedAt": datetime.now(timezone.utc).isoformat(),
             })
             if len(write_buffer) >= chunk_size:
@@ -412,8 +456,8 @@ def run_embeddings(candidates, chunk_size=10, with_text_embedding=False):
           flush=True)
     for inst, n in per_institution.most_common():
         print(f"    {n:>6}  {inst}", flush=True)
-    print(f"[RIGHTS] {embedded} node(s) stamped embeddingCommercialUse=true, "
-          f"basis={EMBEDDING_BASIS!r}", flush=True)
+    print(f"[RIGHTS] {embedded} node(s) stamped embeddingCommercialUse={commercial_use}, "
+          f"basis={basis!r}", flush=True)
 
     if failures:
         with open(FAILURE_LOG_PATH, "w") as f:
@@ -429,6 +473,11 @@ if __name__ == "__main__":
     parser.add_argument("--force", action="store_true", help="Re-embed even if already set")
     parser.add_argument("--institution", help="Restrict to one SourceRecord.institutionName")
     parser.add_argument("--chunk-size", type=int, default=10, help="Neo4j write batch size")
+    parser.add_argument("--tier", default="public-domain",
+                        choices=("public-domain", "in-copyright"),
+                        help="Which population to embed. They are mutually exclusive and "
+                             "stamped differently — see module docstring. in-copyright "
+                             "runs under ADR-0002 Amendment 1 Decision 7.")
     parser.add_argument("--keep-cache", action="store_true",
                         help="Keep the downloaded images in the scratch dir. Permitted here "
                              "because this tier is public domain; the Picasso-Paris embed "
@@ -443,6 +492,14 @@ if __name__ == "__main__":
         parser.error("Provide --all (optionally with --limit/--force/--institution/...)")
 
     KEEP_CACHE = args.keep_cache
+    if args.tier == "in-copyright" and KEEP_CACHE:
+        raise SystemExit(
+            "REFUSED: --keep-cache with --tier in-copyright. ADR-0002 Amendment 1 "
+            "Decision 7(a) requires source images to be cached transiently and deleted; "
+            "keeping copies of in-copyright museum imagery on disk is the thing it "
+            "forbids. Drop --keep-cache.")
+    basis = EMBEDDING_BASIS_PD if args.tier == "public-domain" else EMBEDDING_BASIS_INC
+    commercial_use = args.tier == "public-domain"
 
     audit = audit_rights()
     if audit["total"] != audit["labelled"]:
@@ -453,16 +510,23 @@ if __name__ == "__main__":
             f"embedded. Re-run navigart_ingest.py to restore them.")
     print(f"[RIGHTS] {audit['labelled']}/{audit['total']} Navigart images carry "
           f"license + rightsReservation", flush=True)
-    skipped = audit["total"] - audit["publicDomain"]
+    # Tier-aware, because the same sentence is false read the other way round: on an
+    # in-copyright run the skipped images are the PUBLIC-DOMAIN ones. A hardcoded message
+    # that describes the other tier is the same class of mistake as a counter whose name
+    # does not match what it counts.
+    in_copyright = audit["total"] - audit["publicDomain"]
+    skipped = in_copyright if args.tier == "public-domain" else audit["publicDomain"]
+    other = "in-copyright" if args.tier == "public-domain" else "public-domain"
     if skipped:
-        print(f"[RIGHTS] {skipped} image(s) are NOT in the public-domain tier and will be "
-              f"skipped — this is expected if Tier 2 has been loaded, and is the gate "
-              f"working, not a failure", flush=True)
+        print(f"[RIGHTS] {skipped} image(s) are in the {other} tier and will be skipped — "
+              f"the two tiers are embedded by separate runs and stamped differently, so "
+              f"this is the gate working, not a failure", flush=True)
 
     candidates = fetch_candidates(force=args.force, limit=args.limit,
-                                  institution=args.institution)
-    print(f"Found {len(candidates)} image(s) to embed (force={args.force}, "
-          f"keep_cache={KEEP_CACHE}, with_text_embedding={args.with_text_embedding})",
-          flush=True)
+                                  institution=args.institution, tier=args.tier)
+    print(f"Found {len(candidates)} image(s) to embed (tier={args.tier}, "
+          f"force={args.force}, keep_cache={KEEP_CACHE}, "
+          f"with_text_embedding={args.with_text_embedding})", flush=True)
     run_embeddings(candidates, chunk_size=args.chunk_size,
-                   with_text_embedding=args.with_text_embedding)
+                   with_text_embedding=args.with_text_embedding,
+                   basis=basis, commercial_use=commercial_use)

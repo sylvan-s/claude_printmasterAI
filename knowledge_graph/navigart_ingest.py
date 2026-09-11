@@ -535,10 +535,16 @@ def _report_paths(vaults, limit):
             EXCLUDED_PATH.replace(".csv", suffix), scope)
 
 
-def run(vaults=None, limit=None, dry_run=False, chunk_size=200):
+def run(vaults=None, limit=None, dry_run=False, chunk_size=200, tier="pd-image"):
     resolution, refused = load_resolution()
-    caches = load_caches(vaults)
+    caches = load_caches(vaults, tier=tier)
     unresolved_path, excluded_path, scope = _report_paths(vaults, limit)
+    if tier != "pd-image":
+        # The review CSVs are per-tier for the same reason they are per-scope: a tier-2
+        # run must not overwrite the public-domain tier's record with its own.
+        suffix = f".{tier}.csv"
+        unresolved_path = unresolved_path.replace(".csv", suffix)
+        excluded_path = excluded_path.replace(".csv", suffix)
 
     all_mapped, excluded_rows, unresolved_rows = [], [], []
     totals = {"impression": 0, "matrix": 0, "excluded_no_inventory": 0,
@@ -627,9 +633,13 @@ if __name__ == "__main__":
     parser.add_argument("--all", action="store_true", help="Every cached vault")
     parser.add_argument("--limit", type=int, help="Cap records per vault")
     parser.add_argument("--dry-run", action="store_true", help="Map and report, no writes")
+    parser.add_argument("--tier", default="pd-image", choices=("pd-image", "all"),
+                        help="Which navigart_fetch.py caches to load. 'all' is the "
+                             "in-copyright tier — metadata only under ADR-0002 "
+                             "Amendment 1 Decision 5.")
     args = parser.parse_args()
 
     if not args.all and not args.vault and not args.dry_run:
         parser.error("Provide --all, --vault N, or --dry-run")
 
-    run(vaults=args.vault, limit=args.limit, dry_run=args.dry_run)
+    run(vaults=args.vault, limit=args.limit, dry_run=args.dry_run, tier=args.tier)
