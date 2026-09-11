@@ -314,9 +314,33 @@ def run(session, clusters, apply_changes, backup_path=None):
     print(f"{len(plans)} cluster(s), {sum(len(p['dups']) for p in plans)} node(s) to remove. "
           f"Principal name by tier: {dict(tiers)}\n")
 
-    renamed = stamped_total = merged = 0
+    # A work with TWO Artist nodes lands in two clusters at once — confirmed on the first
+    # graph-wide sweep, where 123 work ids appeared in more than one cluster because pairs like
+    # 'Connor Brothers'/'The Connor Brothers' are still unmerged at artist level. Once the first
+    # cluster folds that node away, a later cluster naming it MATCHes nothing and its whole merge
+    # silently no-ops, stranding dups. find_artist_merge_candidates.py solves this with the same
+    # alias map; this is that mechanism, ported (it was missing on the first sweep, which left 3
+    # of 10,811 nodes unfolded — no data lost, just under-merged).
+    alias = {}
+
+    def resolve(wid):
+        seen = set()
+        while wid in alias and wid not in seen:
+            seen.add(wid)
+            wid = alias[wid]
+        return wid
+
+    renamed = stamped_total = merged = skipped = 0
     for p in plans:
-        survivor_name = details[p["survivor"]]["name"]
+        survivor = resolve(p["survivor"])
+        dups = sorted({resolve(d) for d in p["dups"]} - {survivor})
+        if not dups:
+            skipped += 1
+            continue
+        if survivor != p["survivor"]:
+            print(f"  [REROUTED] {p['survivor']} already folded into {survivor}")
+        p = {**p, "survivor": survivor, "dups": dups}
+        survivor_name = details.get(p["survivor"], {}).get("name")
         tag = "" if p["principalName"] == survivor_name else f"  RENAME -> {p['principalName']!r}"
         print(f"  [{len(p['dups']) + 1}] {p['clusterTitle'][:52]!r} ({p['year']}) "
               f"keep {p['survivor']}{tag}")
@@ -332,14 +356,20 @@ def run(session, clusters, apply_changes, backup_path=None):
         rows = [{"workId": d["workId"], "name": d["name"]} for d in p["members"]]
         stamped_total += session.run(STAMP_SOURCE_TITLE_QUERY, rows=rows).single()["stamped"]
         for dup in p["dups"]:
-            session.run(MERGE_QUERY, survivorId=p["survivor"], dupId=dup).consume()
+            counters = session.run(MERGE_QUERY, survivorId=p["survivor"], dupId=dup).consume().counters
+            if not counters.nodes_deleted:
+                print(f"        [SKIP] {dup} — no longer present")
+                skipped += 1
+                continue
+            alias[dup] = p["survivor"]
             merged += 1
         if p["principalName"] and p["principalName"] != survivor_name:
             session.run(SET_NAME_QUERY, workId=p["survivor"], name=p["principalName"]).consume()
 
     verb = "were" if apply_changes else "would be"
     print(f"\n{merged if apply_changes else sum(len(p['dups']) for p in plans)} node(s) {verb} "
-          f"folded into {len(plans)} survivor(s); {renamed} survivor(s) {verb} renamed.")
+          f"folded into {len(plans)} survivor(s); {renamed} survivor(s) {verb} renamed; "
+          f"{skipped} skipped (already folded by an overlapping cluster).")
     if apply_changes:
         print(f"{stamped_total} Impression(s) stamped with sourceTitle.")
     return plans
