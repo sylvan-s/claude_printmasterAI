@@ -13,9 +13,9 @@
  *   npm run test:pool:triage -- --two-pass         # also run classifyTwoPass (coarse fixture adapter), for comparison
  *   npm run test:pool:triage -- --model claude-haiku-4-5
  *   npm run test:pool:triage -- --resume
- *   npm run test:pool:triage -- --deterministic-queries   # ADR-0018: code resolves the
- *                                                  # ACKG queries, the model gets the answers
- *                                                  # and no graph tools
+ *   npm run test:pool:triage -- --tool-loop        # ADR-0018: restore the pre-plan
+ *                                                  # behaviour, where the model drives the
+ *                                                  # query_ackg loop itself
  *   npm run test:pool:triage -- --dir tests/backtest/pool_output_angle   # degraded-pool fixture
  *   npm run test:pool:triage -- --dir tests/backtest/fixtures --model claude-haiku-4-5
  *                                                  # committed reproduction fixtures (A0793_303)
@@ -62,11 +62,11 @@ const CONCURRENCY = intArg("concurrency", 2);
 const MODEL = strArg("model", "claude-sonnet-4-6");
 const TWO_PASS = process.argv.includes("--two-pass");
 const RESUME = process.argv.includes("--resume");
-// --deterministic-queries: Stage 2a resolves the ACKG in code and hands the model the
-// answers, instead of offering it the query_ackg tool loop (ADR-0018). The flag exists so
-// the two modes can be run over the same pool and compared — that comparison is the whole
-// point of putting the queries in code.
-const DETERMINISTIC_QUERIES = process.argv.includes("--deterministic-queries");
+// Stage 2a resolves the ACKG in code and hands the model the answers (ADR-0018) — the
+// default, matching production since 2026-09-11. --tool-loop restores the old behaviour so
+// the two modes can still be compared over the same pool; --deterministic-queries is kept
+// as an explicit no-op so invocations written while it was opt-in keep working.
+const TOOL_LOOP = process.argv.includes("--tool-loop");
 
 // ── expose the protected triage method ───────────────────────────────────────
 class TriageRunner extends FourStageAppraiser {
@@ -164,7 +164,7 @@ function toTwoPassInput(vea: any, vs: any, aia: any, triage: TriageResult): { in
 // ── run ──────────────────────────────────────────────────────────────────────
 const config = {
   ...appraiserConfigs.find((c) => c.id === "claude-4stage")!,
-  deterministicStage2aQueries: DETERMINISTIC_QUERIES,
+  deterministicStage2aQueries: !TOOL_LOOP,
 };
 const geminiKey = process.env.GEMINI_API_KEY;
 const runner = new TriageRunner(config, geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined);

@@ -10,6 +10,7 @@ import {
   assembleTriageResult,
   runEvidenceTree,
   emptyEvidenceOutput,
+  normalizeEvidenceBlocks,
 } from "../../src/appraisal/stage2a_evidence";
 import { Scenario } from "../../src/appraisal/routing";
 import {
@@ -531,6 +532,41 @@ test("evidenceToTwoPassInput survives a report with no workEvidence", () => {
 test("evidenceToTwoPassInput survives an entirely empty report", () => {
   const out = evidenceToTwoPassInput({} as any, false);
   assert.ok(out);
+});
+
+// ── stringified evidence blocks ──────────────────────────────────────────────
+console.log("\nEvidence blocks returned as JSON strings");
+
+test("a block returned as a JSON string is parsed back, and the recovery is reported", () => {
+  // Haiku 4.5 did exactly this to impressionEvidence on A0793/122.
+  const ev: any = {
+    artistEvidence: { kId: "true" },
+    impressionEvidence: JSON.stringify({ assessable: true, catalogueTechniques: ["Etching"] }),
+  };
+  const recovered = normalizeEvidenceBlocks(ev);
+  assert.deepEqual(recovered, ["impressionEvidence"]);
+  assert.equal(typeof ev.impressionEvidence, "object");
+  assert.deepEqual(ev.impressionEvidence.catalogueTechniques, ["Etching"]);
+  // Untouched blocks stay untouched and are not reported as recovered.
+  assert.deepEqual(ev.artistEvidence, { kId: "true" });
+});
+
+test("a string that is not JSON is left alone for the caller's structural check to degrade on", () => {
+  const ev: any = { artistEvidence: "not evidence at all" };
+  assert.deepEqual(normalizeEvidenceBlocks(ev), []);
+  assert.equal(ev.artistEvidence, "not evidence at all");
+});
+
+test("a JSON string holding an array or a scalar is not accepted as a block", () => {
+  const ev: any = { workEvidence: "[1,2,3]", riskFlags: "42" };
+  assert.deepEqual(normalizeEvidenceBlocks(ev), []);
+  assert.equal(ev.workEvidence, "[1,2,3]");
+});
+
+test("a null or non-object report never throws", () => {
+  assert.deepEqual(normalizeEvidenceBlocks(null), []);
+  assert.deepEqual(normalizeEvidenceBlocks("a string"), []);
+  assert.deepEqual(normalizeEvidenceBlocks(undefined), []);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

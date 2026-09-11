@@ -22,7 +22,7 @@ import {
   injectTaskProfile,
 } from "./prompts";
 import { Scenario } from "./routing";
-import { runEvidenceTree, emptyEvidenceOutput, type EvidenceAgentOutput } from "./stage2a_evidence";
+import { runEvidenceTree, emptyEvidenceOutput, normalizeEvidenceBlocks, type EvidenceAgentOutput } from "./stage2a_evidence";
 import {
   buildStage2aQueryPlan,
   executeStage2aQueryPlan,
@@ -189,8 +189,13 @@ export interface AppraisalMethodConfig {
   enableEmbeddingMatch?: boolean;
   stage2aModel?: string;
   /** Stage 2a resolves its ACKG queries in code (src/appraisal/stage2a_query_plan.ts) and
-   *  hands the model the answers, instead of offering it the query_ackg tool loop. Default
-   *  false while the two modes are being compared — see the ADR. */
+   *  hands the model the answers, instead of offering it the query_ackg tool loop.
+   *
+   *  DEFAULT ON as of 2026-09-11 (ADR-0018). Set explicitly false to fall back to the tool
+   *  loop. The stability protocol decided it: Haiku 4.5 on the plan agrees with its own
+   *  majority 95% of the time over 5 lots x 4 reps with 0 degraded runs, against Sonnet 4.6
+   *  on the loop at 80% — and does it for $0.0122 a lot against $0.0728. Leaving the loop as
+   *  the default would mean shipping the less stable and more expensive of the two. */
   deterministicStage2aQueries?: boolean;
   stage2bModel?: string;
   stage2Model?: string;
@@ -2717,7 +2722,8 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     // string, and whether to run one at all stop being per-run choices.
     let graphFacts: Stage2aGraphFacts | null = null;
     let factsBlock = "";
-    if (this.config.deterministicStage2aQueries) {
+    // Opt-OUT, not opt-in: an absent flag gets the plan. See the field's doc comment.
+    if (this.config.deterministicStage2aQueries !== false) {
       const plan = buildStage2aQueryPlan({ vea, visualSearch, appraiserInput, stage1d });
       try {
         graphFacts = await executeStage2aQueryPlan(plan, excludeSaleId ?? null);
@@ -2768,6 +2774,13 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
         });
         return runEvidenceTree(degraded, false, stage1d, appraiserInput).triage;
       }
+    }
+
+    // Envelope before contents: a block returned as a JSON string is present evidence in the
+    // wrong wrapper, and unwrapping it has to happen before anything reads or writes a cell.
+    const recovered = normalizeEvidenceBlocks(ev);
+    if (recovered.length) {
+      console.warn(`[Stage 2a evidence] ${recovered.join(", ")} arrived as JSON string(s) — parsed back to objects`);
     }
 
     // A structurally incomplete report is not a verdict. The tool schema marks

@@ -1072,7 +1072,10 @@ export interface CellOverride {
 export function applyCandidateFacts(ev: any, cf: CandidateFacts): CellOverride[] {
   const out: CellOverride[] = [];
   const set = (obj: any, cell: string, value: unknown) => {
-    if (!obj) return;
+    // Never assign into a non-object. A model can return a whole evidence block as a JSON
+    // string (Haiku did, to impressionEvidence); normalizeEvidenceBlocks parses those back,
+    // but writing a cell must not be the thing that discovers it failed to.
+    if (!obj || typeof obj !== "object") return;
     const prev = obj[cell];
     const same = JSON.stringify(prev) === JSON.stringify(value);
     if (!same) out.push({ cell, reported: prev, authoritative: value });

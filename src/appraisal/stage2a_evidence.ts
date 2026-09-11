@@ -46,6 +46,42 @@ import {
 // Numbers use -1 as a "not assessed / not applicable" sentinel (tool schemas can't
 // express nullable cleanly).
 // ───────────────────────────────────────────────────────────────────────────────
+/**
+ * Recover an evidence block a model returned as a JSON *string* rather than an object.
+ *
+ * Haiku 4.5 did this to `impressionEvidence` on A0793/122 — the whole block arrived as
+ * `"{\"assessable\": true, ...}"`. Two things then go wrong, and the quieter one is worse.
+ * Loudly, `applyCandidateFacts` tries to assign a property to a string primitive and throws,
+ * taking the lot down with a TypeError. Silently, `evidenceToTwoPassInput` reads `a.kId`,
+ * `a.kOeuvreMatchCount` and the rest off the string, gets `undefined` for every one, and the
+ * tree evaluates a block that looked present and was empty — which predates the query plan
+ * and would have shown up as an inexplicably uncorroborated lot.
+ *
+ * The evidence is all there; only its envelope is wrong. Parsing it back is recovery, not
+ * repair, and a block that will not parse is returned untouched for the caller's existing
+ * "report omitted X" path to degrade on honestly.
+ */
+export function normalizeEvidenceBlocks(ev: any): string[] {
+  const recovered: string[] = [];
+  if (!ev || typeof ev !== "object") return recovered;
+  for (const key of ["inputValidation", "traditionIdentification", "periodEstimation",
+                     "artistEvidence", "workEvidence", "impressionEvidence", "riskFlags"]) {
+    const v = ev[key];
+    if (typeof v !== "string") continue;
+    try {
+      const parsed = JSON.parse(v);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        ev[key] = parsed;
+        recovered.push(key);
+      }
+    } catch {
+      // Leave it. A block that is a string and not JSON is not evidence, and the caller's
+      // structural check is the right place to notice that.
+    }
+  }
+  return recovered;
+}
+
 export interface WH {
   width: number;
   height: number;

@@ -1,7 +1,7 @@
 # ADR-0018: Stage 2a resolves the ACKG in code, and hands the model the answers
 
 **Date:** 2026-09-11
-**Status:** Accepted, implemented behind `config.deterministicStage2aQueries` (default off, pending the stability protocol). Thresholds unfitted.
+**Status:** Accepted, implemented, **default on** as of 2026-09-11 — the stability protocol decided it (below). `config.deterministicStage2aQueries: false` falls back to the tool loop. Thresholds unfitted.
 
 The Attribution Evidence Agent stops choosing which graph queries to run. A deterministic
 planner derives the candidate set and the query parameters from the structured Stage 1a/1b/1c/1d
@@ -206,12 +206,80 @@ variance is now isolated to the observation cells and visible**. Before, a Scena
 could have come from either half of the stage and there was no way to tell which. The
 stability protocol should now be read as measuring the observation half specifically.
 
+### Writing cells surfaced a block that was never an object
+
+Flipping the default turned up a crash the 20 protocol runs had not: Haiku 4.5 returned
+`impressionEvidence` as a JSON *string* rather than an object, and `applyCandidateFacts` threw
+`Cannot create property 'catalogueTechniques' on string` — taking the lot down with a
+TypeError, the failure mode `runStage2aTriage`'s own comment exists to prevent.
+
+The loud half was mine and is fixed: the cell setter now refuses any non-object target. The
+quiet half predates this decision and is the more serious of the two. `evidenceToTwoPassInput`
+reads `kId`, `kOeuvreMatchCount` and the rest off whatever it is handed; off a string it gets
+`undefined` for every one, and the tree evaluates a block that looked present and was empty.
+On the tool-loop path that produced an inexplicably uncorroborated lot with no error anywhere.
+
+`normalizeEvidenceBlocks` parses such a block back before anything reads or writes a cell. The
+evidence was all there; only its envelope was wrong. A string that will not parse is left
+alone for the existing "report omitted X" check to degrade on honestly.
+
+Worth stating plainly, because it is an argument for the decision rather than against it:
+this defect was found only because code now writes into those blocks. Reading from them had
+been failing silently for as long as the block could arrive stringified.
+
+### The stability protocol
+
+5 committed fixtures x 4 repetitions, majority reference, no `--resume` so every repetition
+re-runs every lot. Haiku 4.5 on the plan, against the historic tool-loop figures:
+
+| model | Stage 2a mode | agrees with own majority | stable lots | degraded | s/lot | $/lot |
+|---|---|---:|---:|---:|---:|---:|
+| Sonnet 4.6 | tool loop | 80% (n=2) | 3/5 | 0/20 | 61 | $0.0728 |
+| qwen3.7-plus | tool loop | 50% | 0/5 | 5/20 | 108 | $0.0145 |
+| qwen-plus | tool loop | 35% | 1/5 | 1/20 | 54 | $0.0093 |
+| qwen3-14b | tool loop | 35% | 3/5 | 2/20 | 36 | $0.0156 |
+| **Haiku 4.5** | **plan** | **95%** | **4/5** | **0/20** | **31** | **$0.0122** |
+
+20/20 against ground truth. Total cost of the protocol: $0.244.
+
+**Haiku on the plan beats Sonnet on the loop on every axis, cost included — six times cheaper
+and more stable.** That inverts the conclusion the Qwen work reached. Five models were ruled
+out of Stage 2a on the reading that the stage needs a strong model; what they were failing at
+was the loop, not the judgement. The stage as it now stands asks for judgement over facts
+already on the table, and a small model does that well.
+
+At 443 lots this is $5.41 for Stage 2a, against $32.25 for Sonnet on the loop — which alone
+exceeded the £20 budget for the whole pass before any other stage ran.
+
+### The one unstable lot names the remaining variance surface
+
+A0793/113 across the four repetitions produces an identical tree result every time —
+`A2 attributed/HIGH "Elisabeth Frink"`, `T5 candidate/MEDIUM_HIGH`, `impression=none`, the
+same dimension note, the tie-break firing in all four. The divergence is entirely in
+`riskFlags`:
+
+| | |
+|---|---|
+| reps 1-3 | `editionComplexityRisk`, `authenticationBodyExists`, `physicalExaminationRequired` |
+| rep 4 | `misattributionRisk`, `physicalExaminationRequired` |
+
+`misattributionRisk` routes to Scenario 2 rather than Scenario 3. Identical evidence,
+identical verdict, a different risk judgement — and `riskFlags` is now the entire remaining
+variance surface at Stage 2a. It is the same shape as the Sonnet lot-122 result above: what
+code writes holds still, and what the model writes moves.
+
+Caveat worth keeping in view: five lots, and they are the committed reproduction fixtures —
+lots this pipeline has been tuned against. A fresh slice of the pool the plan has never seen
+is the honest next test, and these figures should not be read as a pool-wide estimate until
+that runs.
+
 ## Consequences
 
-**Stage 2a's model requirement changes shape.** The stage now asks for judgement over facts
-already on the table rather than tool-loop discipline. Whether that brings the cheap models
-back into range is an open question this ADR does not answer — the Qwen results above were
-measured against the loop, and re-running them against the plan is the obvious next experiment.
+**Stage 2a's model requirement changes shape, and the change is large.** The stage now asks
+for judgement over facts already on the table rather than tool-loop discipline, and Haiku 4.5
+does that at 95% self-agreement where Sonnet 4.6 on the loop managed 80%. Stage 2a's default
+model should follow; the Qwen models deserve a re-test against the plan on the same grounds,
+since they too were ruled out against the loop.
 
 **A graph outage degrades rather than fails.** `executeStage2aQueryPlan` throwing falls back to
 the tool loop, and says so.
@@ -239,9 +307,12 @@ is recorded as -1 (not assessed), never 0.
 ## Verification
 
 - `npm run test:stage2a-query-plan` — 38 unit tests over the pure half.
-- `npm run test:pool:triage -- --dir tests/backtest/fixtures --deterministic-queries` — the
-  live path, against the committed reproduction fixtures.
-- Three single passes have been run against the committed fixtures (5/5 ground truth each,
-  0 degraded, ~$0.27 per pass). The stability protocol (5 lots × 4 repetitions, majority
-  reference) has **not** been run against the plan. Until it has, the agreement figures in the
-  table above are the loop's, and the default stays off.
+- `npm run test:stage2a-evidence` — 49 tests, including the stringified-block recovery.
+- `npm run test:pool:triage -- --dir tests/backtest/fixtures` — the live path, against the
+  committed reproduction fixtures. Add `--tool-loop` to run the pre-plan behaviour for
+  comparison.
+- The stability protocol has been run on Haiku 4.5 (above) and settled the default. It has
+  **not** been run on Sonnet against the plan — the three Sonnet passes recorded above are
+  single passes — so no plan-mode agreement figure exists for Sonnet.
+- Every figure here comes from the five committed reproduction fixtures. Nothing has been
+  measured against a lot the plan has not seen.
