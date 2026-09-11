@@ -132,6 +132,7 @@ from catalogue_matching import parse_catalogue_refs, genuine_refs, build_concept
 from bonhams_parsing import (
     strip_tags, extract_lot_heading, extract_lot_name_html, extract_lot_desc_html,
     strip_qualifier_prefix, clean_artist_name, normalize_all_caps_name, parse_lot_name,
+    strip_leading_parenthetical,
     parse_lot_desc, detect_signed, extract_edition_size, extract_printer_publisher,
     extract_dimensions, detect_multi_work,
 )
@@ -179,6 +180,25 @@ DEFAULT_ELIGIBLE_BRANDS = {"bonhams", "skinner"}
 # represent at all.
 PLACEHOLDER_ARTIST_NAMES = {"various artists", "artist unknown", "anonymous", "unknown artist", "unknown"}
 
+
+def resolve_artist_fields(raw_artist):
+    """The ONE artist-name assembly chain for this adapter — `map_record()` maps with it
+    and `load_records()` filters with it, so the "two divergent lists problem" that
+    crosswalk_matching.py/catalogue_matching.py both warn about cannot open up between
+    the filter and the mapper. Returns (qualifier, name); `name` is "" when the source
+    value cleans away to nothing, which the caller MUST treat as unusable rather than
+    pass to the `MERGE (artist:Artist {name: ...})` key.
+
+    strip_leading_parenthetical() runs FIRST, before strip_qualifier_prefix(): on
+    "(n/a) After John James Audubon" the qualifier is hidden behind the parenthetical,
+    so the old order matched no prefix and recorded a print Audubon did not make as a
+    `direct` attribution (confirmed live, repaired 2026-09-11)."""
+    fixed = strip_leading_parenthetical(raw_artist)
+    qualifier, remainder = strip_qualifier_prefix(fixed)
+    name = strip_honorifics(normalize_all_caps_name(clean_artist_name(remainder)))
+    return qualifier, (name or "").strip()
+
+
 _PLAUSIBLE_YEAR_RANGE = (1200, 2030)
 
 
@@ -216,9 +236,7 @@ def map_record(record):
     institution = BRAND_INSTITUTION_MAP.get(brand, brand)
 
     raw_artist = record["artist"]
-    qualifier, remainder = strip_qualifier_prefix(raw_artist)
-    name_no_prefix = normalize_all_caps_name(clean_artist_name(remainder))
-    stripped_name = strip_honorifics(name_no_prefix)
+    qualifier, stripped_name = resolve_artist_fields(raw_artist)
 
     catalog_html = record.get("catalog_description") or ""
     lot_name_html = extract_lot_name_html(catalog_html)
@@ -459,6 +477,9 @@ def load_records(brands=None, limit=None, exclude_multi_work=True,
         if r["artist"].strip().lower() in PLACEHOLDER_ARTIST_NAMES:
             excluded.append((r, "placeholder_artist_name"))
             continue
+        if not resolve_artist_fields(r["artist"])[1]:
+            excluded.append((r, "artist_name_empty_after_cleaning"))
+            continue
         if r.get("status") == "WD":
             excluded.append((r, "withdrawn"))
             continue
@@ -471,6 +492,9 @@ def load_records(brands=None, limit=None, exclude_multi_work=True,
           flush=True)
     print(f"[FILTER] excluded {sum(1 for _, reason in excluded if reason == 'placeholder_artist_name')} rows with a "
           f"placeholder artist value (various artists/anonymous/unknown — see PLACEHOLDER_ARTIST_NAMES)", flush=True)
+    print(f"[FILTER] excluded {sum(1 for _, reason in excluded if reason == 'artist_name_empty_after_cleaning')} "
+          f"rows whose artist value cleans away to an empty string — these must never reach the "
+          f"MERGE (artist:Artist {{name: ...}}) key, see resolve_artist_fields()", flush=True)
     print(f"[FILTER] excluded {sum(1 for _, reason in excluded if reason == 'withdrawn')} withdrawn (status=WD) lots",
           flush=True)
 

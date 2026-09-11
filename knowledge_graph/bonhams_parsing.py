@@ -1,7 +1,7 @@
 """
 PrintMasterAI — free-text/HTML parsing helpers for the Bonhams Group 'Prints &
 Multiples' export (bonhams_ingest.py)
-Version: BONHAMS-PARSING-1.0
+Version: BONHAMS-PARSING-1.1
 
 Unlike Roseberys/Forum (already parsed into columns by an external tool before this
 project ever saw them), this source is raw per-lot catalog HTML — much closer to the
@@ -85,6 +85,51 @@ def strip_qualifier_prefix(raw_artist):
     return "direct", s
 
 
+# ---- Leading parenthetical (BONHAMS-PARSING-1.1) ----
+# Bonhams has a SECOND, rarer house convention for artist names: a LEADING parenthetical
+# holding the artist's real/birth name, or the literal placeholder "(n/a)" where no such
+# name is recorded — "(n/a) Andy Warhol", "(Jules Isnard) Dransy", "(Lucien) Alton
+# Pickens", "(MIODRAG DURIC) DADO". Everything else in this module was written for the
+# usual TRAILING "(nationality, dates)" parenthetical, and both parsers got this wrong
+# in a way confirmed live on 2026-09-11, not hypothetically:
+#
+#   * clean_artist_name() truncates at the FIRST "(", which for these is index 0 — it
+#     returned "". Because bonhams_ingest.py keys on `MERGE (artist:Artist {name: ...})`,
+#     all 18 loaded lots of this shape collapsed onto ONE nameless Artist node carrying
+#     17 alternateNames ("(n/a) Banksy", "(n/a) Georges Braque", ...) and 18 CREATED
+#     edges. Repaired in-graph 2026-09-11; this is the source-level fix.
+#   * parse_lot_name() reads the FIRST parenthetical for nationality/life-dates, so it
+#     returned nationality="n/a" / "Jules Isnard" and silently lost the real values
+#     ("American", 1952-2001). In the LotName text the same slot is also used for lot
+#     COUNTS on grouped lots — "(Two) David Klein, ...", "(6) FROM THE SOCIETY OF
+#     AMERICAN ETCHERS" — which previously yielded nationality="Two"/"6". 61 LotName
+#     texts in the export begin with a parenthetical; none of them is the nationality.
+#
+# The one shape deliberately NOT stripped is a leading parenthetical that itself holds
+# life dates ("(1933-2010)"), since there the parenthetical IS the dates slot and
+# removing it would destroy the very data this function exists to extract.
+_LEADING_PAREN_RE = re.compile(r"^\s*\([^)]*\)\s*")
+
+
+def strip_leading_parenthetical(s):
+    """Removes a LEADING "(...)" group — a real/birth name, an "(n/a)" placeholder, or a
+    grouped-lot count — so the trailing "(nationality, dates)" parenthetical is the one
+    the rest of this module sees. Leaves the string alone when the leading parenthetical
+    carries life dates (it is then the dates slot itself, not a prefix), when there is no
+    leading parenthetical, or when stripping would empty the string outright — that last
+    guard exists because an empty artist name is exactly the failure this fix removes, so
+    this function must never be the thing that produces one."""
+    s = (s or "").strip()
+    m = _LEADING_PAREN_RE.match(s)
+    if not m:
+        return s
+    inner = m.group(0)
+    if _YEAR_RANGE_RE.search(inner) or _BORN_RE.search(inner):
+        return s
+    remainder = s[m.end():].strip()
+    return remainder or s
+
+
 _LOWERCASE_CONNECTORS = {"de", "van", "der", "den", "la", "le", "di", "du", "von", "y", "of"}
 
 
@@ -132,14 +177,21 @@ _LOTNAME_PAREN_RE = re.compile(r"\(([^)]*)\)")
 _YEAR_RANGE_RE = re.compile(r"\b(\d{4})\s*-\s*(\d{4})\b")
 _BORN_RE = re.compile(r"\bborn\s+(\d{4})\b", re.IGNORECASE)
 _BARE_YEAR_RANGE_RE = re.compile(r"^(\d{4})-(\d{4})$")
+_NON_NATIONALITY_VALUES = {"n/a", "na", "n.a.", "unknown", "-"}
 
 
 def parse_lot_name(lot_name_html):
     """Returns (nationality, begin_year, end_year). Name itself is NOT re-derived here
     -- the source's own `artist` JSON field is already the clean DIRECT value (confirmed
     by sampling: identical to the text preceding this parenthetical), so re-parsing it
-    from HTML would just risk introducing a second, possibly-diverging copy."""
-    text = strip_tags(lot_name_html or "")
+    from HTML would just risk introducing a second, possibly-diverging copy.
+
+    A LEADING parenthetical is dropped first (see strip_leading_parenthetical): on this
+    source that slot holds a real/birth name, an "(n/a)" placeholder or a grouped-lot
+    count, never the nationality, and reading it as the nationality produced confirmed
+    garbage values ("n/a", "Jules Isnard", "Two", "6") while silently losing the real
+    nationality and life dates sitting in the trailing parenthetical."""
+    text = strip_leading_parenthetical(strip_tags(lot_name_html or ""))
     m = _LOTNAME_PAREN_RE.search(text)
     if not m:
         return None, None, None
@@ -155,9 +207,14 @@ def parse_lot_name(lot_name_html):
     elif born_m:
         begin_year = int(born_m.group(1))
 
-    # nationality = the first comma-part that isn't itself a dates/born fragment
+    # nationality = the first comma-part that isn't itself a dates/born fragment, a bare
+    # number (grouped-lot counts like "(2)"/"(6)" reach here when the count is the ONLY
+    # parenthetical, so stripping it would have emptied the text) or the source's own
+    # "n/a" placeholder — all three were confirmed live as nationality values.
     for p in parts:
-        if _YEAR_RANGE_RE.search(p) or _BORN_RE.search(p) or re.match(r"^\d{4}$", p):
+        if _YEAR_RANGE_RE.search(p) or _BORN_RE.search(p) or p.strip().isdigit():
+            continue
+        if p.strip().lower() in _NON_NATIONALITY_VALUES:
             continue
         nationality = p or None
         break
