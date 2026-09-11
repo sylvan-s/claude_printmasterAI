@@ -912,6 +912,11 @@ test("techniqueFamily buckets the common processes", () => {
   assert.equal(techniqueFamily("Lithograph"), "planographic");
   assert.equal(techniqueFamily("Offset lithograph"), "photomechanical");
   assert.equal(techniqueFamily("Woodcut"), "relief");
+  // Order regression: intaglio's `engrav` also matches "wood engraving", so relief must be
+  // tested first. 1,027 ACKG impressions are wood engravings and every one read as intaglio.
+  assert.equal(techniqueFamily("Wood engraving"), "relief");
+  assert.equal(techniqueFamily("wood-engraving on japan"), "relief");
+  assert.equal(techniqueFamily("Engraving"), "intaglio");
   assert.equal(techniqueFamily("Screenprint / Serigraphy"), "screen");
   assert.equal(techniqueFamily("Giclée"), "photomechanical");
   assert.equal(techniqueFamily("laminated giclée print"), "photomechanical");

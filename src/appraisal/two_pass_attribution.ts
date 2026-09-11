@@ -1384,11 +1384,19 @@ export function classifyWorkPass(ev: WorkEvidence, opts: WorkPassOptions = {}): 
  *  match iff they share a family. */
 export type TechFamily = "intaglio" | "planographic" | "relief" | "screen" | "photomechanical" | "other";
 
+// ORDER IS LOAD-BEARING: the first pattern to match wins. `relief` MUST precede `intaglio`,
+// because intaglio's `engrav` also matches "wood engraving" — a relief process cut on end-grain
+// block, and 1,027 impressions of it in the ACKG. With intaglio first, every one of them was
+// bucketed as intaglio, so Stage 2a read a wood engraving against a catalogued relief work as a
+// family MISMATCH. `relief` before `intaglio` also puts "relief etching" in relief, which is
+// correct — Blake's process is printed from the raised surface. The separators are optional
+// (`wood[\s-]?engrav`) because sources write "wood engraving", "wood-engraving" and
+// "woodengraving"; with a literal space only, the hyphenated form still fell to intaglio.
 const TECH_FAMILY_KEYWORDS: Array<[TechFamily, RegExp]> = [
   ["photomechanical", /giclee|giclée|inkjet|digital pigment|digital print|iris print|halftone|photogravure|photolith|collotype|offset|photo-?mechanical|c-?print|chromogenic|laser|dye sublimation|pigment print/i],
+  ["relief", /woodcut|wood[\s-]?engrav|linocut|lino[\s-]?cut|linoleum|relief|xylograph|chiaroscuro woodcut|metalcut/i],
   ["intaglio", /etch|engrav|drypoint|dry-point|aquatint|mezzotint|burin|intaglio|soft-?ground|roulette|stipple|sugar-?lift/i],
   ["planographic", /lithograph|litho|planograph|zincograph|transfer litho|chromolith/i],
-  ["relief", /woodcut|wood engrav|linocut|lino cut|linoleum|relief|xylograph|chiaroscuro woodcut|metalcut/i],
   ["screen", /screenprint|screen print|serigraph|silkscreen|silk-?screen|pochoir|stencil/i],
 ];
 

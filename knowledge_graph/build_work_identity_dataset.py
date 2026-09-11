@@ -131,6 +131,25 @@ MAX_IMAGES_PER_SIDE = 4       # centroid of more adds nothing and costs a lot
 DIM_TOLERANCE = 0.02          # classifyDimensionMatch's own tolerance
 DEFAULT_NEG_PER_ARTIST = 12
 
+# Ported from two_pass_attribution.ts TECH_FAMILY_KEYWORDS, INCLUDING its order, which is
+# load-bearing: the first pattern to match wins and intaglio's `engrav` also matches "wood
+# engraving". Fixed in both places 2026-09-11 — 1,027 ACKG impressions are wood engravings and
+# every one of them bucketed as intaglio. Keep the two copies in step; a divergence here is the
+# divergent-lists problem crosswalk_matching.py warns about.
+TECHNIQUE_FAMILIES = [
+    ("photomechanical", r"giclee|giclée|inkjet|digital pigment|digital print|iris print|halftone|"
+                        r"photogravure|photolith|collotype|offset|photo-?mechanical|c-?print|"
+                        r"chromogenic|laser|dye sublimation|pigment print"),
+    ("relief",          r"woodcut|wood[\s-]?engrav|linocut|lino[\s-]?cut|linoleum|relief|"
+                        r"xylograph|chiaroscuro woodcut|metalcut"),
+    ("intaglio",        r"etch|engrav|drypoint|dry-?point|aquatint|mezzotint|burin|intaglio|"
+                        r"soft-?ground|roulette|stipple|sugar-?lift|crayon manner"),
+    ("planographic",    r"lithograph|litho|planograph|zincograph|transfer litho|chromolith"),
+    ("screen",          r"screenprint|screen print|serigraph|silkscreen|silk-?screen|pochoir|"
+                        r"stencil"),
+]
+TECHNIQUE_FAMILY_RES = [(f, re.compile(p, re.I)) for f, p in TECHNIQUE_FAMILIES]
+
 DIM_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(?:x|×|by)\s*(\d+(?:\.\d+)?)")
 STATE_RE = re.compile(
     r"[\s,\-–(\[]+(?:state|etat|état)\s*(?:i{1,3}v?|iv|vi{0,3}|ix|x|[1-9])\b[\s)\]]*", re.I)
@@ -190,6 +209,21 @@ RETURN artist ORDER BY multiInstitutionWorks DESC, imagedWorks DESC
 
 def norm_text(s):
     return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
+
+
+def technique_families(names, media):
+    """The families a side's own records land in. `rawMedium` is consulted alongside the
+    Technique node exactly as two_pass_attribution.familiesOf does — the node is often absent
+    or coarse where the source's own wording carries the process."""
+    found = set()
+    for text in list(names or []) + list(media or []):
+        if not text:
+            continue
+        for family, rx in TECHNIQUE_FAMILY_RES:
+            if rx.search(str(text)):
+                found.add(family)
+                break
+    return found
 
 
 def parse_dims(*groups):
@@ -297,6 +331,27 @@ def features(a, b, fallback_names=None):
             len(a.techniques & b.techniques) / len(a.techniques | b.techniques), 4)
     else:
         f["techJaccard"] = ""
+
+    # Coarsening to families was measured 2026-09-11 and does NOT improve ranking: it lifts the
+    # positives (no shared term 6.8% -> no shared family 3.6%, so cross-attribution is real) but
+    # lifts the negatives just as fast, because plates of one suite are printed by one process —
+    # plate families go 0.907 -> 0.980 and states 0.778 -> 1.000. AUC stays flat and stays BELOW
+    # chance against plate families.
+    #
+    # Its value is in the tail, not the ranking, which is why AUC cannot see it. No shared family
+    # holds for 3.6% of positives against 15.1% of catalogue-conflict negatives — a likelihood
+    # ratio near 3.4, better than dimensions ever measured (~1.5). So it is emitted as a VETO
+    # beside catalogueVerdict, not as another similarity score.
+    fa = technique_families(a.techniques, a.media)
+    fb = technique_families(b.techniques, b.media)
+    f["techFamiliesA"] = "; ".join(sorted(fa))
+    f["techFamiliesB"] = "; ".join(sorted(fb))
+    if fa and fb:
+        f["techFamilyJaccard"] = round(len(fa & fb) / len(fa | fb), 4)
+        f["techFamilyVeto"] = int(not (fa & fb))
+    else:
+        f["techFamilyJaccard"] = ""
+        f["techFamilyVeto"] = ""      # unknown is not a veto
 
     ma = {norm_text(m) for m in a.media}
     mb = {norm_text(m) for m in b.media}
@@ -474,7 +529,8 @@ def load_triage(path, sides_by_work, names):
 COLUMNS = ["cls", "label", "labelSource", "evalEligible", "artist", "workA", "workB",
            "institutionA", "institutionB", "titleA", "titleB", "titleBasis",
            "dinoMax", "dinoMean", "clipMax", "clipMean", "titleRatio", "titleJaccard",
-           "techJaccard", "mediumJaccard", "dimMatch", "dimA", "dimB",
+           "techJaccard", "techFamilyJaccard", "techFamilyVeto",
+           "techFamiliesA", "techFamiliesB", "mediumJaccard", "dimMatch", "dimA", "dimB",
            "stateA", "stateB", "stateConflict", "catalogueVerdict", "circularOnTitle",
            "note"]
 
