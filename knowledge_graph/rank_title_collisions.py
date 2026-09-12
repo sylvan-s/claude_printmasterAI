@@ -78,7 +78,7 @@ from generate_splink_merge_candidates import designation_only_difference
 
 from fit_splink_work_identity import (
     U_SAMPLE_PAIRS, _fold_title, _require_env, entry_base, parse_dims, settings,
-    technique_family,
+    technique_family, training_rules,
 )
 
 # A group this large is a portfolio or a placeholder that survived the filter, not a duplicate
@@ -104,7 +104,8 @@ RETURN w.id AS workId, w.name AS name, w.dateCreated_year AS year,
        collect(DISTINCT t.name)             AS techs,
        collect(DISTINCT i.plateDimensions) + collect(DISTINCT i.imageDimensions) AS dims,
        collect(DISTINCT ce.number)          AS entries,
-       collect(DISTINCT img.embedding)[0..3] AS embeddings
+       collect(DISTINCT img.embedding)[0..3] AS embeddings,
+       collect(DISTINCT img.clipImageEmbedding)[0..3] AS clipEmbeddings
 """
 
 
@@ -144,13 +145,17 @@ def build_frame(session, groups):
             m = meta.get(work_id)
             if not m:
                 continue
-            vectors = [v for v in m["embeddings"] if v]
-            embedding = None
-            if vectors:
-                M = np.array(vectors, dtype=np.float32)
+            def centroid(vs):
+                vs = [v for v in vs if v]
+                if not vs:
+                    return None
+                M = np.array(vs, dtype=np.float32)
                 M /= np.linalg.norm(M, axis=1, keepdims=True)
                 c = M.mean(axis=0)
-                embedding = (c / np.linalg.norm(c)).tolist()
+                return (c / np.linalg.norm(c)).tolist()
+
+            embedding = centroid(m["embeddings"])
+            clip_embedding = centroid(m["clipEmbeddings"])
             width, height = parse_dims(m["dims"])
             rows.append({
                 "unique_id": len(rows), "work_id": work_id,
@@ -161,6 +166,7 @@ def build_frame(session, groups):
                 "tech_family": technique_family(list(m["techs"]) + list(m["media"])),
                 "dim_w": width, "dim_h": height,
                 "entry": entry_base(m["entries"]), "emb": embedding,
+                "clip": clip_embedding,
                 "year": m["year"],
                 "institutions": "; ".join(sorted(x for x in m["institutions"] if x)),
                 "impressions": m["impressions"],
@@ -213,11 +219,19 @@ def main():
 
     db_api = DuckDBAPI()
     linker = Linker(df, st, db_api=db_api)
-    linker.training.estimate_probability_two_random_records_match(
-        ["l.title = r.title and l.entry = r.entry"], recall=0.7)
+    deterministic, em_rules, coverage = training_rules(df)
+    print("  field coverage: "
+          + ", ".join(f"{c} {v:.0%}" for c, v in sorted(coverage.items())), flush=True)
+    print(f"  deterministic rule: {deterministic[0]}", flush=True)
+    linker.training.estimate_probability_two_random_records_match(deterministic, recall=0.7)
+    prior = linker._settings_obj._probability_two_random_records_match
+    if not prior:
+        raise SystemExit(
+            "the deterministic rule matched NOTHING, so the prior is zero and every weight "
+            "that follows is meaningless. Refusing to emit a ranking.")
     print("u sampling...", flush=True)
     linker.training.estimate_u_using_random_sampling(max_pairs=U_SAMPLE_PAIRS)
-    for rule in (block_on("entry"), block_on("dim_w")):
+    for rule in em_rules:
         print(f"EM on {rule}...", flush=True)
         try:
             linker.training.estimate_parameters_using_expectation_maximisation(rule)

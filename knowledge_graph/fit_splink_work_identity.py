@@ -128,6 +128,56 @@ def _require_env(name):
     return value
 
 
+def training_rules(df, min_pairs=200):
+    """Deterministic rule for the prior, and EM blocking rules — chosen from the fields this
+    FRAME actually populates, not hard-coded.
+
+    Both were hard-coded to `entry` until 2026-09-12, and on the no-catalogue collision set —
+    6,067 collisions where by definition nothing cites a catalogue — that produced a silently
+    broken model rather than an error. The prior estimated to ZERO ("Deterministic matching rules
+    led to no observed matches"), the EM session on `entry` raised and was skipped, and the one
+    remaining session fitted weights that are visibly nonsense: image cosine >= 0.97 at log2 BF
+    -161, exact title at -3.49. A ranking came out and was worthless.
+
+    So coverage is measured first and a frame that cannot train is refused, loudly."""
+    coverage = {c: float(df[c].notna().mean()) for c in
+                ("entry", "dim_w", "tech_family", "title_folded", "year", "clip")
+                if c in df.columns}
+    usable = [c for c, frac in coverage.items() if frac >= 0.10]
+
+    # Deterministic rule: a conjunction precise enough that its matches are almost all true.
+    # `entry` first where it exists, dimensions next — both are exact and independent of title.
+    if coverage.get("entry", 0) >= 0.10:
+        deterministic = ["l.title_folded = r.title_folded and l.entry = r.entry"]
+    elif coverage.get("dim_w", 0) >= 0.10:
+        deterministic = ["l.title_folded = r.title_folded and l.dim_w = r.dim_w "
+                         "and l.dim_h = r.dim_h"]
+    elif coverage.get("year", 0) >= 0.10:
+        deterministic = ["l.title_folded = r.title_folded and l.year = r.year"]
+    else:
+        raise RuntimeError(
+            "no field is populated enough for a deterministic rule — coverage "
+            + ", ".join(f"{c} {f:.0%}" for c, f in sorted(coverage.items()))
+            + ". A prior cannot be estimated and any ranking would be meaningless.")
+
+    # EM blocking: PREFER A FIELD NO COMPARISON USES. Splink cannot estimate parameters for a
+    # comparison whose field it blocked on, so blocking on `dim_w` silently leaves the `dims`
+    # comparison at defaults — and on the no-catalogue frame that showed up as an INVERTED image
+    # scale, cosine >= 0.97 scoring +5.04 against +8.10 for 0.70-0.85. `year` is compared by
+    # nothing here, so it blocks for free. `title_folded` is excluded: within a collision frame
+    # it is close to the collision key itself.
+    COMPARISON_FIELDS = {"entry", "dim_w", "tech_family", "clip"}
+    em = [block_on(c) for c in ("year",) if coverage.get(c, 0) >= 0.10]
+    for c in ("entry", "dim_w", "tech_family"):
+        if len(em) >= 2:
+            break
+        if coverage.get(c, 0) >= 0.10:
+            em.append(block_on(c))
+    if not em:
+        raise RuntimeError("no field is populated enough to block an EM session on")
+    return deterministic, em, coverage
+
+
 def _fold_title(title):
     """Lowercase and strip diacritics. Matches find_title_collisions.fold, so what the
     collision scan groups on is what Splink compares."""
@@ -221,6 +271,24 @@ def settings():
             # 20 lowest-scoring pairs in the graph were confirmed the same work, one of them
             # Lichtenstein's WHAAM!. `title_folded` is NFD-stripped and lowercased by the
             # caller; `title` stays on the record for display.
+            # CLIP ALONGSIDE DINOv2, not instead of it. Measured on 14 Picasso/Baer pairs:
+            # DINOv2 scores AUC 0.977 against different works and 0.575 against states of one
+            # plate; CLIP scores 0.930 and 0.677 — worse at the easy task, better at the hard
+            # one. Different failure modes, and CLIP is backfilled at parity (84,751 images
+            # each), so it costs nothing to carry.
+            #
+            # CAVEAT, stated because Fellegi-Sunter assumes it away: the two are NOT
+            # conditionally independent. They are both global image descriptors over the same
+            # pixels, so when they agree the model double-counts. Read a high combined weight as
+            # "the pictures agree", not as two independent votes.
+            CustomComparison(output_column_name="clip", comparison_levels=[
+                cll.CustomLevel("clip_l IS NULL OR clip_r IS NULL", "no clip vector")
+                   .configure(is_null_level=True),
+                cll.CustomLevel("list_dot_product(clip_l, clip_r) >= 0.97", "cosine >= 0.97"),
+                cll.CustomLevel("list_dot_product(clip_l, clip_r) >= 0.92", "0.92 - 0.97"),
+                cll.CustomLevel("list_dot_product(clip_l, clip_r) >= 0.85", "0.85 - 0.92"),
+                cll.ElseLevel(),
+            ]),
             CustomComparison(output_column_name="title", comparison_levels=[
                 cll.NullLevel("title_folded"), cll.ExactMatchLevel("title_folded"),
                 cll.JaroWinklerLevel("title_folded", 0.92),
