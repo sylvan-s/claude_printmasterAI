@@ -52,7 +52,8 @@ from splink import DuckDBAPI, Linker, block_on
 from generate_splink_merge_candidates import designation_only_difference
 
 from fit_splink_work_identity import (
-    U_SAMPLE_PAIRS, _require_env, entry_base, parse_dims, settings, technique_family,
+    U_SAMPLE_PAIRS, _fold_title, _require_env, entry_base, parse_dims, settings,
+    technique_family,
 )
 
 # A group this large is a portfolio or a placeholder that survived the filter, not a duplicate
@@ -120,6 +121,7 @@ def build_frame(session, groups):
                 "collision_key": f"{n}",          # blocking key: one group, one value
                 "artist": g["artist"],
                 "title": m["name"],
+                "title_folded": _fold_title(m["name"]),
                 "tech_family": technique_family(list(m["techs"]) + list(m["media"])),
                 "dim_w": width, "dim_h": height,
                 "entry": entry_base(m["entries"]), "emb": embedding,

@@ -128,6 +128,15 @@ def _require_env(name):
     return value
 
 
+def _fold_title(title):
+    """Lowercase and strip diacritics. Matches find_title_collisions.fold, so what the
+    collision scan groups on is what Splink compares."""
+    import unicodedata
+    s = unicodedata.normalize("NFD", title or "")
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip() or None
+
+
 def technique_family(texts):
     for text in texts:
         if not text:
@@ -179,6 +188,7 @@ def build_records(session, artist, catalogue):
         rows.append({
             "unique_id": n, "work_id": r["workId"], "institution": r["institution"],
             "title": titles[0] if titles else None,
+            "title_folded": _fold_title(titles[0] if titles else None),
             "tech_family": technique_family(list(r["techs"]) + list(r["media"])),
             "dim_w": width, "dim_h": height,
             "entry": entry_base(r["entries"]), "emb": embedding,
@@ -202,9 +212,19 @@ def settings():
                 cll.CustomLevel("list_dot_product(emb_l, emb_r) >= 0.70", "0.70 - 0.85"),
                 cll.ElseLevel(),
             ]),
+            # COMPARED FOLDED, NOT RAW. ExactMatchLevel and JaroWinklerLevel are both
+            # case-sensitive, and records reach a collision frame because their FOLDED titles
+            # match — so the pairs that collide only after folding got the worst possible title
+            # evidence. Measured: "Bally"/"BALLY" scored 0.200 raw and 1.000 folded,
+            # "WHAAM!"/"Whaam" 0.182 and 0.909. With the title level at -1.41 log2 and a prior
+            # near -17.4, that put true duplicates at the very BOTTOM of the ranking: 12 of the
+            # 20 lowest-scoring pairs in the graph were confirmed the same work, one of them
+            # Lichtenstein's WHAAM!. `title_folded` is NFD-stripped and lowercased by the
+            # caller; `title` stays on the record for display.
             CustomComparison(output_column_name="title", comparison_levels=[
-                cll.NullLevel("title"), cll.ExactMatchLevel("title"),
-                cll.JaroWinklerLevel("title", 0.92), cll.JaroWinklerLevel("title", 0.80),
+                cll.NullLevel("title_folded"), cll.ExactMatchLevel("title_folded"),
+                cll.JaroWinklerLevel("title_folded", 0.92),
+                cll.JaroWinklerLevel("title_folded", 0.80),
                 cll.ElseLevel(),
             ]),
             CustomComparison(output_column_name="tech_family", comparison_levels=[
