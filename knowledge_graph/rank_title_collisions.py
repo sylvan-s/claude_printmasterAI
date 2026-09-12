@@ -349,6 +349,16 @@ def main():
             if not (a["imageUrls"] and b["imageUrls"]):
                 continue        # nothing for a vision pass to look at
             designation = int(designation_only_difference(a["title"], b["title"]))
+            # PAIR-LEVEL catalogue state. `catalogueVerdict` below is the GROUP's stratum, which
+            # is what --pairs-catalogue selects on, but it says nothing about THIS pair: inside a
+            # `partial` collision one pair may have both sides cited, another neither, another
+            # exactly one. The one-sided case is its own question — the cited node is an anchor
+            # and the uncited one is either the same work or a sibling the citation would have
+            # separated — and nothing downstream could ask it while only the group label existed.
+            ea, eb = set(a["entries"] or []), set(b["entries"] or [])
+            pair_cat = ("none" if not ea and not eb else
+                        "oneSided" if not ea or not eb else
+                        "agree" if ea & eb else "conflict")
             pair_rows.append({
                 # Was hardcoded 'silent' when this only served the no-catalogue band; the
                 # refined rule selects ON this field, so it has to carry the real state.
@@ -361,6 +371,7 @@ def main():
                 "impressionsA": a["impressions"], "impressionsB": b["impressions"],
                 "catalogueA": a["catalogueRefs"], "catalogueB": b["catalogueRefs"],
                 "catalogueVerdict": groups[int(a["collision_key"])]["catalogue"] or "none",
+                "pairCatalogue": pair_cat,
                 "techFamilyA": a["tech_family"] or "", "techFamilyB": b["tech_family"] or "",
                 "techFamilyVeto": int(bool(a["tech_family"] and b["tech_family"]
                                            and a["tech_family"] != b["tech_family"])),
@@ -370,7 +381,14 @@ def main():
                 "editionA": a["edition"], "editionB": b["edition"],
                 "imagesA": a["imageUrls"], "imagesB": b["imageUrls"],
                 "flags": "designationDiffers" if designation else "",
-                "note": "title collision, no catalogue citation",
+                # Was the literal "title collision, no catalogue citation", written when this
+                # only served the no-catalogue band and false for every pair that has one. It
+                # reaches MergeEvent.evidence through cluster_evidence(), which is where the
+                # same class of mistake put a ">= 15" claim on 4,099 merges made below it.
+                "note": {"none": "title collision, no catalogue citation on either side",
+                         "oneSided": "title collision, catalogue citation on one side only",
+                         "agree": "title collision, catalogue bases agree",
+                         "conflict": "title collision, catalogue bases CONFLICT"}[pair_cat],
             })
         pair_rows.sort(key=lambda r: -r["matchWeight"])
         for n, r in enumerate(pair_rows, 1):
@@ -378,7 +396,7 @@ def main():
         pair_cols = ["route", "rank", "matchWeight", "matchProbability", "artist",
                      "workA", "workB", "titleA", "titleB", "yearA", "yearB",
                      "institutionsA", "institutionsB", "impressionsA", "impressionsB",
-                     "catalogueA", "catalogueB", "catalogueVerdict",
+                     "catalogueA", "catalogueB", "catalogueVerdict", "pairCatalogue",
                      "techFamilyA", "techFamilyB", "techFamilyVeto", "yearConflict",
                      "designationDiffers", "editionA", "editionB",
                      "imagesA", "imagesB", "flags", "note"]
