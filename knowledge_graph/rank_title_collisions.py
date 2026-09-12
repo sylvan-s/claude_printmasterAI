@@ -194,7 +194,12 @@ def main():
                     help="comma-separated catalogue strata to emit: agree, none, partial, "
                          "conflict, or 'any'. The default drops the two strata that carried "
                          "4 of 5 measured failures")
+    ap.add_argument("--u-pairs", type=int, default=U_SAMPLE_PAIRS,
+                    help="random pairs drawn to estimate u. A level that is RARE in the "
+                         "population (image cosine >= 0.97) needs a large sample or it goes "
+                         "untrained, and the run then refuses to emit a ranking")
     args = ap.parse_args()
+    u_pairs = args.u_pairs
 
     groups = load_collisions(args.collisions, args.min_nodes, args.max_nodes)
     print(f"{len(groups)} collisions in range, {sum(len(g['ids']) for g in groups)} work nodes",
@@ -229,8 +234,8 @@ def main():
         raise SystemExit(
             "the deterministic rule matched NOTHING, so the prior is zero and every weight "
             "that follows is meaningless. Refusing to emit a ranking.")
-    print("u sampling...", flush=True)
-    linker.training.estimate_u_using_random_sampling(max_pairs=U_SAMPLE_PAIRS)
+    print(f"u sampling ({u_pairs:,} pairs)...", flush=True)
+    linker.training.estimate_u_using_random_sampling(max_pairs=u_pairs)
     for rule in em_rules:
         print(f"EM on {rule}...", flush=True)
         try:
@@ -239,13 +244,59 @@ def main():
             print(f"  skipped: {type(exc).__name__}: {exc}", flush=True)
 
     model = linker.misc.save_model_to_json()
+
+    # A LEVEL with no trained u is not a rounding error. Splink substitutes a default, the level
+    # stops discriminating, and — because this printer used to skip any level missing m or u —
+    # it did so invisibly. Measured on the post-merge no-catalogue frame 2026-09-12: u sampling
+    # at 200k pairs never drew a pair at `image cosine >= 0.97`, so the STRONGEST image level
+    # went untrained and 433 pairs whose DINOv2 centroids agree at 0.998-1.000 scored -3.51 —
+    # the bottom of the range — while pairs at 0.85 scored +8.55. The ranking inverted exactly
+    # where it should be most certain, and nothing in the output said so.
+    #
+    # u is an agreement RATE estimated by random sampling, so a level that is genuinely rare in
+    # the population needs a bigger sample, not a smaller model. Raise --u-pairs.
+    FIELD_OF = {"image": "emb", "clip": "clip", "title": "title_folded",
+                "tech_family": "tech_family", "dims": "dim_w", "entry": "entries"}
+
+    def _populated(col):
+        if col not in df.columns:
+            return 0.0
+        def ok(v):
+            if v is None:
+                return False
+            if isinstance(v, (list, tuple, np.ndarray)):
+                return len(v) > 0
+            return pd.notna(v)
+        return sum(ok(v) for v in df[col]) / max(len(df), 1)
+
     print("\nEM-learned weights (log2 Bayes factor)")
+    untrained, inert = [], []
     for comparison in model["comparisons"]:
-        print(f"  {comparison['output_column_name']}")
+        name = comparison["output_column_name"]
+        print(f"  {name}")
+        covered = _populated(FIELD_OF.get(name, "")) >= 0.10
         for level in comparison["comparison_levels"]:
+            label = level.get("label_for_charts", "")
+            if level.get("is_null_level"):
+                continue
             if "m_probability" in level and "u_probability" in level:
                 bf = level["m_probability"] / max(level["u_probability"], 1e-12)
-                print(f"    {level.get('label_for_charts',''):42s} log2 BF {np.log2(bf):+6.2f}")
+                print(f"    {label:42s} log2 BF {np.log2(bf):+6.2f}")
+            else:
+                missing = ", ".join(k for k in ("m", "u")
+                                    if f"{k}_probability" not in level)
+                print(f"    {label:42s} UNTRAINED ({missing})")
+                (untrained if covered else inert).append(f"{name}: {label} (no {missing})")
+    if inert:
+        print("\n  untrained levels on fields this frame does not populate (inert, not fatal):")
+        for x in inert:
+            print(f"    {x}")
+    if untrained:
+        raise SystemExit(
+            "\nREFUSING TO EMIT A RANKING. These levels were never observed while training, on "
+            "fields this frame DOES populate, so they fall back to defaults and score wrongly:\n  "
+            + "\n  ".join(untrained)
+            + f"\n\nu was sampled on {u_pairs:,} random pairs. Re-run with a larger --u-pairs.")
 
     result = linker.inference.predict()
     pred = db_api._con.execute(
