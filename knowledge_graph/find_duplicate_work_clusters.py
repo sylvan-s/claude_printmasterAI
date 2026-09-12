@@ -146,14 +146,32 @@ NEO4J_DATABASE = _require_env("NEO4J_DATABASE")
 #   "untitled"          auction-house convention — 68 Sam Francis, 45 Jim Dine (2012).
 # Compared after normalize_title(), which strips the brackets, so the stored forms are
 # their normalized ones.
+# The non-English forms were missing until 2026-09-12 and "sans titre" is the COMMONEST
+# placeholder in the graph — 4,236 works against "untitled"'s 2,084. It arrived with the
+# French-language loads (Navigart, Musee Picasso-Paris) after this set was written, and
+# unfiltered it produced the largest false clusters in the graph: 365 Robert Beltz, 307 Picasso,
+# 142 Derain. 26 clusters / 70 nodes of it had reached `proposed`, the bucket eligible to fold,
+# where merging four different Marcel Arthaud "sans titre" of 1943 would have been the same
+# class of corruption catalogue_matching.py's docstring records.
+#
+# "sin t tulo" is not a typo. These are compared AFTER normalize_title, which maps anything
+# outside [a-z0-9] to a space — so an accented character is DELETED rather than folded, and
+# "Sin titulo" arrives here with its i missing. Add the normalized form, not the real word.
 PLACEHOLDER_TITLES = {
     "no title",
     "title not known",
+    "titre inconnu",
     "untitled",
     "untitled composition",
     "composition",
     "unknown",
     "n a",
+    "sans titre",       # French — the largest group
+    "ohne titel",       # German
+    "senza titolo",     # Italian
+    "sin titulo",       # Spanish, unaccented spelling
+    "sin t tulo",       # Spanish, as normalize_title leaves "Sin titulo"
+    "zonder titel",     # Dutch
 }
 
 # Titles shorter than this after normalization carry too little signal to key on even when
