@@ -110,6 +110,7 @@ MERGE_RULES = {
     "plateImpressionJoin": "PLATE-JOIN-1.0",          # a Matrix record joined to its impressions
     "exactCatalogueTitle": "EXACT-CAT-MERGE-1.0",    # same artist node, folded title and cat base
     "editionSiblings":     "EDITION-SIBLINGS-1.0",   # one numbered edition held as many nodes
+    "titleCollisionBand":  "COLLISION-RANK-1.0",     # splink weight >= 15 and catalogue agree/none
     "humanTriage":         "human",                   # a person read the evidence and decided
 }
 
