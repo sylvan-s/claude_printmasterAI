@@ -198,10 +198,18 @@ WHERE src.id STARTS WITH $sourcePrefix
   AND ($force OR img.embedding IS NULL)
   AND img.license IS NOT NULL
   AND img.rightsReservation IS NOT NULL
+  // coalesce, because `NULL STARTS WITH 'x'` is NULL and `NOT NULL` is NULL — so a
+  // record with no copyright statement at all failed BOTH tier predicates and was
+  // invisible to either run. Seven records did exactly that (Frac Sud 4, Saint-Étienne 3)
+  // and sat unembedded with no error, which is the silent-exclusion failure mode this
+  // adapter already guards against in its domain filter. A record that does not assert
+  // public domain is not public domain, so the empty string routes it to the
+  // in-copyright tier — the conservative direction, and the only one that is safe to
+  // pick automatically.
   AND (($tier = "public-domain"
-         AND src.sourceCopyright STARTS WITH $publicDomainPrefix)
+         AND coalesce(src.sourceCopyright, "") STARTS WITH $publicDomainPrefix)
     OR ($tier = "in-copyright"
-         AND NOT src.sourceCopyright STARTS WITH $publicDomainPrefix))
+         AND NOT coalesce(src.sourceCopyright, "") STARTS WITH $publicDomainPrefix))
   AND NONE(flag IN $blockedFlags WHERE toLower(img.rightsReservation) CONTAINS flag)
   AND ($institution IS NULL OR src.institutionName = $institution)
 OPTIONAL MATCH (er:EditionRun)-[:INCLUDES]->(target)
@@ -222,7 +230,7 @@ WHERE src.id STARTS WITH $sourcePrefix
 RETURN count(img) AS total,
        count(CASE WHEN img.license IS NOT NULL AND img.rightsReservation IS NOT NULL
              THEN 1 END) AS labelled,
-       count(CASE WHEN src.sourceCopyright STARTS WITH $publicDomainPrefix
+       count(CASE WHEN coalesce(src.sourceCopyright, "") STARTS WITH $publicDomainPrefix
                    AND NONE(flag IN $blockedFlags
                             WHERE toLower(coalesce(img.rightsReservation, "")) CONTAINS flag)
              THEN 1 END) AS publicDomain

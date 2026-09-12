@@ -430,10 +430,33 @@ loaded** (762 no usable accession, 1,590 an unresolvable artist).
 | `ConceptualWork` | 86,899 | **109,701** |
 
 9,242 public domain, 19,465 in copyright. Technique resolution held at 87% across the
-wider and much more modern population. Images: **13,471 in-copyright** embedded under
-ADR-0002 Amendment 1 Decision 7 (see [Amendment 2](../docs/adr/0002-image-extraction-methodology-and-licensing.md)),
-stamped `embeddingCommercialUse = false` and kept in a separate run from the
-public-domain tier's 5,598.
+wider and much more modern population.
+
+**Images: 19,078 of 19,078 embedded, zero failures** — 5,599 public-domain
+(`embeddingCommercialUse = true`) and 13,479 in-copyright under ADR-0002 Amendment 1
+Decision 7 (`false`; see [Amendment 2](../docs/adr/0002-image-extraction-methodology-and-licensing.md)),
+in separate runs that are never mixed. ~19,000 requests to `images.navigart.fr` across
+three runs without a single download failure. Index-wide that leaves 97,049 embedded
+images, 15,590 of them purgeable if the footing changes.
+
+**A host crash killed the in-copyright run at 4,661/13,471.** It cost nothing in the
+graph — the write is one transaction per 10 images, so at most nine needed redoing, and
+10,260 existing rows had zero missing basis, flag, CLIP vector or wrong dimension. It did
+strand one downloaded museum image in the scratch dir, because `atexit` does not survive
+SIGKILL. Purging now also happens at STARTUP, where it can actually be enforced, and the
+crash incidentally exposed that `tmp_navigart_images/` and `tmp_bm_images/` were missing
+from `.gitignore` while their three siblings were there — a `git add -A` mid-run would
+have committed in-copyright museum imagery to the repository.
+
+**Seven images were invisible to both tiers.** They carry `sourceCopyright = null`, and in
+Cypher `NOT NULL STARTS WITH '…'` is `NULL`, so they failed the public-domain predicate
+AND the in-copyright one and sat unembedded with no error while the run reported
+`embedded=8811 failed=0`. Same silent-exclusion shape as §4's zero-count domain filter,
+through a different door, and visible only by comparing the run's own count against the
+graph. `coalesce(src.sourceCopyright, "")` fixes it, and settles what the null meant: a
+record that does not assert public domain is not public domain, so it routes to the
+in-copyright tier — the conservative direction, and the only one safe to pick
+automatically.
 
 **One name-collision class only visible at this scale.** The resolver's own collision
 check fired on 4 keys, and all four were ONE artist about to become two nodes:
