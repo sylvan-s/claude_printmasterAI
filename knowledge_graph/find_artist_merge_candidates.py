@@ -152,7 +152,10 @@ MAX_VECS_PER_ARTIST = 15
 # normalization), and only when >= 2 tokens survive.
 HONORIFICS = {
     "sir", "dame", "lady", "lord", "the", "hon",
-    "om", "cbe", "obe", "mbe", "kbe", "cvo", "kcvo", "gbe",
+    "om", "ch", "cbe", "obe", "mbe", "kbe", "cvo", "kcvo", "gbe",
+    # "ch" (Companion of Honour) was missing and bit during the band-B pass: it made
+    # preferred_name() rank "Richard Hamilton CH and Dieter Roth" ABOVE the clean form,
+    # because with no honorific recognised the tie fell through to "more tokens wins".
     "ra", "ara", "pra", "ppra", "re", "are", "rws", "arws", "rba", "rbs", "rdi",
     "rsa", "arsa", "prsa", "rsw", "rgi", "rp", "roi", "rwa", "neac", "frsa", "fba",
     "dlitt", "dphil", "hrsa", "hrsw", "ps", "sma", "rcaanciennes",

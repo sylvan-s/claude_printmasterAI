@@ -12,7 +12,7 @@ It hid TWELVE duplicate Artist pairs — Pierre-Auguste Renoir against Auguste R
 Ruscha against Edward Ruscha, Lucian against Lucien Freud — and it defeated an attempted
 "different ULAN means different people" veto, which fired on Renoir against Renoir. Nothing
 about the failure was loud: every ingest exited cleanly and the counts looked right. Repaired
-in the graph 2026-09-12 by `canonicalise_ulan_and_merge.py`.
+in the graph 2026-09-12 by `merge_artists.py ulan-canon`.
 
 NEO4J CANNOT ENFORCE THIS. Property-format constraints are an Enterprise feature and this
 graph is self-hosted CE, without APOC. The invariant therefore lives in Python, and this is
@@ -61,9 +61,11 @@ MUST_RAISE = ["http://example.com/nope", "http://vocab.getty.edu/aat/300041273",
 # Layer 2. Any literal or f-string that assembles the URL itself, outside the one module
 # allowed to know its shape.
 HAND_BUILT = re.compile(r"vocab\.getty\.edu/(?:page/)?ulan/")
+# `merge_artists.py` is deliberately NOT here: it imports CANON_PREFIX from ulan_url and
+# describes the two addresses as "/ulan/<id>" and "/page/ulan/<id>", without the host, so it
+# has no URL for this scan to find. Every exemption weakens the check — keep the list short.
 EXEMPT = {"ulan_url.py",                    # defines the shape
           "check_ulan_url_canonical.py",    # this file
-          "canonicalise_ulan_and_merge.py", # the one-off migration that fixed it
           "extract_artist_records.py",      # documents the bug in a docstring
           "build_ulan_index.py"}            # reads Getty's RDF dump, different vocabulary
 

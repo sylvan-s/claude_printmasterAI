@@ -20,7 +20,7 @@ hid **twelve duplicate Artist pairs** — Pierre-Auguste Renoir against Auguste 
 Ruscha against Edward Ruscha, Lucian against Lucien Freud — from every prior
 exact-normalisation dedup pass, and it defeated an attempted "different ULAN means different
 people" veto, which fired on Renoir against Renoir. Repaired in the graph on 2026-09-12 by
-`canonicalise_ulan_and_merge.py`; this module is the half that stops it returning.
+`merge_artists.py ulan-canon`; this module is the half that stops it returning.
 
 THE DATABASE CANNOT ENFORCE THIS. Neo4j CE has no property-format constraint (that is an
 Enterprise feature), and this graph is self-hosted CE with no APOC, so the invariant lives in
