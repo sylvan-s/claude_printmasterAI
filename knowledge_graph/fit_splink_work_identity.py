@@ -141,14 +141,17 @@ def training_rules(df, min_pairs=200):
 
     So coverage is measured first and a frame that cannot train is refused, loudly."""
     coverage = {c: float(df[c].notna().mean()) for c in
-                ("entry", "dim_w", "tech_family", "title_folded", "year", "clip")
+                ("dim_w", "tech_family", "title_folded", "year", "clip")
                 if c in df.columns}
+    if "entries" in df.columns:
+        coverage["entries"] = float(df["entries"].map(lambda v: bool(v)).mean())
     usable = [c for c, frac in coverage.items() if frac >= 0.10]
 
     # Deterministic rule: a conjunction precise enough that its matches are almost all true.
     # `entry` first where it exists, dimensions next — both are exact and independent of title.
-    if coverage.get("entry", 0) >= 0.10:
-        deterministic = ["l.title_folded = r.title_folded and l.entry = r.entry"]
+    if coverage.get("entries", 0) >= 0.10:
+        deterministic = ["l.title_folded = r.title_folded "
+                         "and len(list_intersect(l.entries, r.entries)) > 0"]
     elif coverage.get("dim_w", 0) >= 0.10:
         deterministic = ["l.title_folded = r.title_folded and l.dim_w = r.dim_w "
                          "and l.dim_h = r.dim_h"]
@@ -166,9 +169,9 @@ def training_rules(df, min_pairs=200):
     # scale, cosine >= 0.97 scoring +5.04 against +8.10 for 0.70-0.85. `year` is compared by
     # nothing here, so it blocks for free. `title_folded` is excluded: within a collision frame
     # it is close to the collision key itself.
-    COMPARISON_FIELDS = {"entry", "dim_w", "tech_family", "clip"}
+    # `entries` is an ARRAY and cannot be blocked on; it is also a comparison field.
     em = [block_on(c) for c in ("year",) if coverage.get(c, 0) >= 0.10]
-    for c in ("entry", "dim_w", "tech_family"):
+    for c in ("dim_w", "tech_family"):
         if len(em) >= 2:
             break
         if coverage.get(c, 0) >= 0.10:
@@ -209,17 +212,40 @@ def parse_dims(values):
     return None, None
 
 
-def entry_base(numbers):
-    for number in numbers or []:
-        digits = ""
-        for ch in str(number):
-            if ch.isdigit():
-                digits += ch
-            else:
-                break
-        if digits:
-            return digits
-    return None
+def entry_base(number):
+    """Leading digits of ONE entry number. `1173.B.b.1` -> `1173`, so a state or edition
+    designation does not split a work from itself — the Baer 618 / 618Bd lesson."""
+    digits = ""
+    for ch in str(number or ""):
+        if ch.isdigit():
+            digits += ch
+        else:
+            break
+    return digits or None
+
+
+def entry_keys(citations):
+    """EVERY citation a work carries, as "prefix base" — e.g. ["baer 623", "bloch 999"].
+
+    Two bugs this replaces, both in a field named `entry` that held a bare number:
+
+      THE PREFIX WAS DROPPED. Only `CatalogueEntry.number` was read, never
+      `CatalogueRaisonne.numberingPrefix`, so "Baer 623" and "Bloch 623" both became "623" and
+      matched EXACTLY — worth +5.33 log2 on a coincidence of numbering between two different
+      catalogues. Picasso works routinely cite both. Every other module in this directory
+      compares (prefix, base) PAIRS; this field was the one that did not.
+
+      ONLY THE FIRST WAS KEPT. A work citing Baer 623 and Bloch 999 contributed one of them,
+      chosen by Neo4j's collection order, so the field was not stable across runs.
+
+    Returning the whole set lets the comparison ask whether the two works share ANY citation,
+    which is what "the catalogue agrees" actually means. A scalar cannot express that."""
+    keys = set()
+    for prefix, number in citations or []:
+        base = entry_base(number)
+        if prefix and base:
+            keys.add(f"{str(prefix).strip().lower()} {base}")
+    return sorted(keys)
 
 
 def build_records(session, artist, catalogue):
@@ -241,7 +267,7 @@ def build_records(session, artist, catalogue):
             "title_folded": _fold_title(titles[0] if titles else None),
             "tech_family": technique_family(list(r["techs"]) + list(r["media"])),
             "dim_w": width, "dim_h": height,
-            "entry": entry_base(r["entries"]), "emb": embedding,
+            "entries": entry_keys(r["citations"]), "emb": embedding,
         })
     return pd.DataFrame(rows)
 
@@ -307,8 +333,14 @@ def settings():
                                 "within 2%"),
                 cll.ElseLevel(),
             ]),
+            # SHARES ANY CITATION, not "the first ones happen to be equal" — see entry_keys.
             CustomComparison(output_column_name="entry", comparison_levels=[
-                cll.NullLevel("entry"), cll.ExactMatchLevel("entry"), cll.ElseLevel(),
+                cll.CustomLevel("entries_l IS NULL OR entries_r IS NULL "
+                                "OR len(entries_l) = 0 OR len(entries_r) = 0",
+                                "no citation on one side").configure(is_null_level=True),
+                cll.CustomLevel("len(list_intersect(entries_l, entries_r)) > 0",
+                                "shares a catalogue citation"),
+                cll.ElseLevel(),
             ]),
         ],
         # THE OOM WAS retain_matching_columns, WHICH DEFAULTS TO TRUE: it keeps every input

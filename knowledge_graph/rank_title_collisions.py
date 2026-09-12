@@ -77,7 +77,7 @@ from splink import DuckDBAPI, Linker, block_on
 from generate_splink_merge_candidates import designation_only_difference
 
 from fit_splink_work_identity import (
-    U_SAMPLE_PAIRS, _fold_title, _require_env, entry_base, parse_dims, settings,
+    U_SAMPLE_PAIRS, _fold_title, _require_env, entry_keys, parse_dims, settings,
     technique_family, training_rules,
 )
 
@@ -103,7 +103,7 @@ RETURN w.id AS workId, w.name AS name, w.dateCreated_year AS year,
        collect(DISTINCT cr.numberingPrefix + ' ' + ce.number) AS catalogueRefs,
        collect(DISTINCT t.name)             AS techs,
        collect(DISTINCT i.plateDimensions) + collect(DISTINCT i.imageDimensions) AS dims,
-       collect(DISTINCT ce.number)          AS entries,
+       collect(DISTINCT [cr.numberingPrefix, ce.number]) AS citations,
        collect(DISTINCT img.embedding)[0..3] AS embeddings,
        collect(DISTINCT img.clipImageEmbedding)[0..3] AS clipEmbeddings
 """
@@ -165,7 +165,7 @@ def build_frame(session, groups):
                 "title_folded": _fold_title(m["name"]),
                 "tech_family": technique_family(list(m["techs"]) + list(m["media"])),
                 "dim_w": width, "dim_h": height,
-                "entry": entry_base(m["entries"]), "emb": embedding,
+                "entries": entry_keys(m["citations"]), "emb": embedding,
                 "clip": clip_embedding,
                 "year": m["year"],
                 "institutions": "; ".join(sorted(x for x in m["institutions"] if x)),
