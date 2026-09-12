@@ -51,6 +51,8 @@ knowledge_graph/artist_splink_candidates*.csv
 knowledge_graph/artist_records.parquet
 knowledge_graph/ulan_canon_presnapshot_*.json
 knowledge_graph/band_b_presnapshot_*.json
+knowledge_graph/edition_siblings_backup_*.json
+knowledge_graph/exact_catalogue_backup_*.json
 knowledge_graph/artist_band_b_held.csv
 knowledge_graph/artist_ulan_report_session1.csv
 knowledge_graph/artist_verification_report.csv

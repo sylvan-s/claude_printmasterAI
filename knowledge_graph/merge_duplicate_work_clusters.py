@@ -108,6 +108,7 @@ MERGE_RULES = {
     "splinkStateFamily":   "SPLINK-CANDIDATES-1.0",   # same catalogue base, differing state designation
     "visualAdjudication":  "VISUAL-ADJUDICATOR-1.0",  # a vision model's cited verdict
     "plateImpressionJoin": "PLATE-JOIN-1.0",          # a Matrix record joined to its impressions
+    "exactCatalogueTitle": "EXACT-CAT-MERGE-1.0",    # same artist node, folded title and cat base
     "editionSiblings":     "EDITION-SIBLINGS-1.0",   # one numbered edition held as many nodes
     "humanTriage":         "human",                   # a person read the evidence and decided
 }
@@ -433,6 +434,9 @@ if __name__ == "__main__":
     parser.add_argument("--min-size", type=int, default=2)
     parser.add_argument("--apply", action="store_true", help="Write. Without it, this is a dry run.")
     parser.add_argument("--backup", help="Save the plan and pre-merge member state to this path")
+    parser.add_argument("--rule", default="exactTitleYear", choices=sorted(MERGE_RULES),
+                        help="which decision rule produced these clusters. Recorded on the "
+                             "MergeEvent so a bad rule can be found and reversed later.")
     args = parser.parse_args()
 
     clusters = load_clusters(args.json, args.artist, args.bucket, args.min_size)
