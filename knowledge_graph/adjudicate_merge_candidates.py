@@ -65,6 +65,8 @@ MAX_IMAGE_BYTES = 4_000_000
 # characters. At 1200 the JSON truncated mid-object and two pairs came back as
 # UNCERTAIN with an empty reasoning field, which reads like model doubt and was not.
 MAX_TOKENS = 3000
+# A parse failure is retried rather than reported as doubt; see adjudicate().
+MAX_ATTEMPTS = 3
 
 # Published rates for the default model, $ per million tokens. Used only to print a running
 # estimate — the token counts themselves are measured from response.usage, never guessed.
@@ -226,36 +228,76 @@ def _designation_hint(title_a, title_b):
 
 VERDICT_COLUMNS = ["rank", "matchWeight", "verdict", "confidence", "artist",
                    "titleA", "titleB", "flags", "whatMatches", "whatDiffers",
-                   "stateEvidence", "reasoning", "inputTokens", "outputTokens",
+                   "stateEvidence", "reasoning", "attempts", "inputTokens", "outputTokens",
                    "workA", "workB", "adjudicatedAt"]
 
 
+def extract_json(text):
+    """First complete JSON object in the text, or None.
+
+    `re.search(r"\{.*\}")` was not good enough twice. It is greedy, so on a response carrying a
+    nested object it swallows to the LAST brace and produces something unparseable; and on a
+    truncated response it can still match a fragment that ends at an inner brace. raw_decode
+    parses forward from the first "{" and stops at the end of the first valid object, so both
+    shapes decode instead of failing."""
+    decoder = json.JSONDecoder()
+    for start in (i for i, ch in enumerate(text) if ch == "{"):
+        try:
+            obj, _ = decoder.raw_decode(text[start:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and "verdict" in obj:
+            return obj
+    return None
+
+
 def adjudicate(client, model, row, cache):
+    """Up to MAX_ATTEMPTS calls. A parse failure is a TRANSPORT problem, not a verdict — the
+    first version returned UNCERTAIN for it, which is indistinguishable in the CSV from a model
+    that looked and could not tell. Two of nineteen rows in one sample were lost that way, one of
+    them carrying a verdict that was probably correct.
+
+    The two failure modes need different retries: a truncation needs more room, and a malformed
+    body needs the model told to emit only the object."""
     image_a = fetch_image((row["imagesA"] or "").split(" | ")[0], cache)
     image_b = fetch_image((row["imagesB"] or "").split(" | ")[0], cache)
     if not image_a[1] or not image_b[1]:
         return {"verdict": "UNCERTAIN", "confidence": 0.0, "whatMatches": "",
-                "whatDiffers": "", "stateEvidence": "",
+                "whatDiffers": "", "stateEvidence": "", "attempts": 0,
                 "reasoning": "image could not be fetched on one or both sides"}
-    response = client.messages.create(
-        model=model, max_tokens=MAX_TOKENS, system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": build_message(row, image_a, image_b)}])
-    usage = {"inputTokens": response.usage.input_tokens,
-             "outputTokens": response.usage.output_tokens}
-    text = "".join(b.text for b in response.content if b.type == "text").strip()
-    m = re.search(r"\{.*\}", text, re.S)
-    if not m:
-        # Say WHY. An empty reasoning field reads like model doubt; a truncation is a bug.
-        return {**usage, "verdict": "UNCERTAIN", "confidence": 0.0, "whatMatches": "",
-                "whatDiffers": "", "stateEvidence": "",
-                "reasoning": f"no JSON in response (stop_reason={response.stop_reason}, "
-                             f"{len(text)} chars): {text[:160]}"}
-    try:
-        return {**usage, **json.loads(m.group(0))}
-    except json.JSONDecodeError:
-        return {**usage, "verdict": "UNCERTAIN", "confidence": 0.0, "whatMatches": "",
-                "whatDiffers": "", "stateEvidence": "",
-                "reasoning": f"invalid JSON: {m.group(0)[:160]}"}
+
+    content = build_message(row, image_a, image_b)
+    messages = [{"role": "user", "content": content}]
+    max_tokens, in_tok, out_tok, last = MAX_TOKENS, 0, 0, ""
+    for attempt in range(1, MAX_ATTEMPTS + 1):
+        response = client.messages.create(model=model, max_tokens=max_tokens,
+                                          system=SYSTEM_PROMPT, messages=messages)
+        in_tok += response.usage.input_tokens
+        out_tok += response.usage.output_tokens
+        text = "".join(b.text for b in response.content if b.type == "text").strip()
+        parsed = extract_json(text)
+        if parsed:
+            return {**parsed, "inputTokens": in_tok, "outputTokens": out_tok,
+                    "attempts": attempt}
+        last = f"stop_reason={response.stop_reason}, {len(text)} chars"
+        if attempt == MAX_ATTEMPTS:
+            break
+        if response.stop_reason == "max_tokens":
+            # Ran out of room. Give more, and ask for the evidence fields to be shorter rather
+            # than dropping them — they are the reason a verdict is checkable.
+            max_tokens = min(max_tokens * 2, 8000)
+            nudge = ("Your previous reply was cut off. Answer again, keeping whatDiffers and "
+                     "stateEvidence under 300 characters each, and return ONLY the JSON object.")
+        else:
+            nudge = ("That was not valid JSON. Return ONLY the JSON object described in the "
+                     "instructions — no prose before or after it, no markdown fence.")
+        messages = messages[:1] + [{"role": "assistant", "content": text or "(empty)"},
+                                   {"role": "user", "content": nudge}]
+
+    return {"verdict": "UNCERTAIN", "confidence": 0.0, "whatMatches": "", "whatDiffers": "",
+            "stateEvidence": "", "inputTokens": in_tok, "outputTokens": out_tok,
+            "attempts": MAX_ATTEMPTS,
+            "reasoning": f"unparseable after {MAX_ATTEMPTS} attempts ({last}): {text[:160]}"}
 
 
 def main():
@@ -304,6 +346,7 @@ def main():
             "whatDiffers": result.get("whatDiffers", ""),
             "stateEvidence": result.get("stateEvidence", ""),
             "reasoning": result.get("reasoning", ""),
+            "attempts": result.get("attempts", ""),
             "inputTokens": result.get("inputTokens", ""),
             "outputTokens": result.get("outputTokens", ""),
             "workA": row["workA"], "workB": row["workB"],
@@ -330,6 +373,10 @@ def main():
     print(f"\nwrote {len(out_rows)} verdicts -> {args.out}")
     for verdict, n in sorted(tally.items(), key=lambda kv: -kv[1]):
         print(f"  {verdict:14s} {n:4d}")
+    retried = [r for r in out_rows if r["attempts"] not in ("", 0, 1)]
+    if retried:
+        print(f"  {len(retried)} needed a retry to parse; "
+              f"{sum(1 for r in retried if r['verdict'] != 'UNCERTAIN')} recovered a verdict")
     flagged = [r for r in out_rows if "designationDiffers" in r["flags"]]
     if flagged:
         same = sum(1 for r in flagged if r["verdict"] == "SAME_WORK")
