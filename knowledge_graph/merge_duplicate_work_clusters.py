@@ -112,6 +112,11 @@ MERGE_RULES = {
     "editionSiblings":     "EDITION-SIBLINGS-1.0",   # one numbered edition held as many nodes
     "titleCollisionBand":  "COLLISION-RANK-1.0",     # splink weight >= 15 and catalogue agree/none
     "noCatalogueBand":     "COLLISION-RANK-1.0",     # no catalogue at all: splink weight 10-15
+    # Weight does NOT order risk on the no-catalogue frame — measured 2026-09-12 over 69
+    # adjudications, [6,7) ran 17/17 while [14,15) ran 0/3. SOURCE does: auction records
+    # repeating a title are the same lot catalogued twice, museum records repeating one are
+    # usually a series whose plates share it. 32/32 on this cell, 15/26 on museum-only.
+    "auctionPlainTitle":   "COLLISION-RANK-1.1",     # auction sources only, no series marker
     "humanTriage":         "human",                   # a person read the evidence and decided
 }
 
