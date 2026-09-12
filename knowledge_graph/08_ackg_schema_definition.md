@@ -110,6 +110,7 @@ rather than re-derived at every node:
 | `Publisher` | Identity | name — covers original publishers, print workshops, *and* historical restrike/estate publishers (Basan, Mariette) under one type |
 | `ConceptualWork` | Work | `dateCreated` (fuzzy date shape) |
 | `Matrix` | Work | material (copper/zinc/stone/block) |
+| `MergeEvent` | Provenance | `mergedFromId`, `rule`, `ruleVersion`, `decidedBy`, `evidence`, `confidence`, `at` (§ 11) |
 | `State` | Work | `traditionType` — tradition-agnostic: covers both Western plate-states and ukiyo-e printing generations; `stateNumber`, `displayLabel` (§ 10) |
 | `EditionRun` | Work | `declaredSize`, `dateRange` (fuzzy date shape) |
 | `Impression` | Instance | `editionNumber`, `copyType` (numbered / AP / HC / PP / BAT / TP — local enum, no AAT equivalent per doc 06 §2.6), sheet/image dimensions, `signed` (bool), `provenanceNote` (free text, deferred — § 5) |
@@ -497,6 +498,67 @@ defers to when it withdraws that ADR's proposed flat `ConceptualWork.state` prop
 state are orthogonal: of the 31 works carrying both a trailing Roman numeral in the title and a
 `State` node, 14 carry two to five distinct states behind that one numeral, so the numeral is a
 plate designation and belongs on `ConceptualWork`, while state belongs here.
+
+## 11. Schema addition: `MergeEvent`
+
+**Added 2026-09-12.** Until now a merge left no trace of itself. `MERGE_QUERY` re-points the
+duplicate's relationships onto the survivor and then `DETACH DELETE`s it, so the duplicate's id
+goes with it. The graph could not answer *what was folded into this work*, *by what reasoning*,
+or *when* — only a gitignored backup JSON could, and only when `--backup` was passed.
+
+That made a bad RULE unreversible at scale. There was no way to ask "show me everything merged by
+the year+technique corroborator" after that corroborator turned out to carry 1,055 of 1,221
+promotions at a median similarity of 0.796.
+
+```
+MergeEvent {
+  id,               # "<survivorId> <- <deletedId>"
+  mergedFromId,     # the deleted node's id
+  mergedFromName,   # its title at the moment of folding
+  rule,             # controlled vocabulary, below
+  ruleVersion,      # the generator's own Version: string
+  decidedBy,        # rule | model | human
+  evidence,         # the corroborator string, or a vision model's cited passage
+  confidence,       # present when a model decided it
+  at                # datetime()
+}
+
+MergeEvent -[:MERGED_INTO]-> ConceptualWork
+```
+
+**The rule vocabulary is the set of paths that actually exist**, each tied to its generator in
+`knowledge_graph/`, not an invented taxonomy:
+
+| `rule` | `ruleVersion` | what decided it |
+|---|---|---|
+| `exactTitleYear` | `DUPWORK-SCAN-1.0` | artist + normalized title + year |
+| `catalogueAnchor` | `MUSEUM-ANCHOR-1.0` | shared `CatalogueEntry`, institutional arbiter |
+| `imageCorroborated` | `IMAGE-CANDIDATES-1.0` | DINOv2 retrieval plus an **exact** corroborator |
+| `splinkStateFamily` | `SPLINK-CANDIDATES-1.0` | same catalogue base, differing state designation |
+| `visualAdjudication` | `VISUAL-ADJUDICATOR-1.0` | a vision model's cited verdict |
+| `plateImpressionJoin` | `PLATE-JOIN-1.0` | a `Matrix` record joined to its impressions |
+| `humanTriage` | `human` | a person read the evidence and decided |
+
+**Written before the delete and in the same transaction**, so a fold either leaves a record of
+itself or does not happen.
+
+**`mergedFromId` is what makes a stale external reference resolvable.** A saved comparable in
+Stage 3, another session's CSV, or the `workIds` column of a collision report can be looked up
+after the node it names has gone:
+
+```cypher
+MATCH (e:MergeEvent {mergedFromId: $goneId})-[:MERGED_INTO]->(w:ConceptualWork) RETURN w
+```
+
+**What this does NOT provide.** It is a record, not an undo — the duplicate's own relationships
+are gone and only the `--backup` JSON can rebuild them. And it does not chain: if a survivor is
+later folded into a third work, the first event still points at the now-deleted middle node.
+Resolving that needs following `mergedFromId` transitively, the same alias-map problem
+`merge_duplicate_work_clusters.py` already solves in memory for overlapping clusters.
+
+This complements [ADR-0017](../docs/adr/0017-work-title-identity-principal-name-and-aliases.md)
+Decision 4 rather than duplicating it. That decision puts provenance of the **wording** on the
+assertion (`Impression.sourceTitle`); this records provenance of the **identity decision**.
 
 ## Next steps
 

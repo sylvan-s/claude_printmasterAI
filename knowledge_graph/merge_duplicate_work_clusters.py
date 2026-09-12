@@ -93,6 +93,24 @@ NEO4J_USER = _require_env("NEO4J_USER")
 NEO4J_PASSWORD = _require_env("NEO4J_PASSWORD")
 NEO4J_DATABASE = _require_env("NEO4J_DATABASE")
 
+# THE DECISION RULE IS RECORDED, because a merge is otherwise unanswerable. DETACH DELETE takes
+# the duplicate's id with it, so today the graph cannot say what was folded into a work, by what
+# reasoning, or when — only a gitignored backup JSON can, and only if --backup was passed. That
+# makes a bad RULE unreversible at scale: there is no way to ask "show me everything merged by
+# the year+technique corroborator" once it turns out to have been too weak.
+#
+# The vocabulary is the set of paths that actually exist, not an invented taxonomy. Each maps to
+# a generator in this directory and carries that generator's own version string.
+MERGE_RULES = {
+    "exactTitleYear":      "DUPWORK-SCAN-1.0",        # artist + normalized title + year
+    "catalogueAnchor":     "MUSEUM-ANCHOR-1.0",       # shared CatalogueEntry, institutional arbiter
+    "imageCorroborated":   "IMAGE-CANDIDATES-1.0",    # DINOv2 retrieval + an EXACT corroborator
+    "splinkStateFamily":   "SPLINK-CANDIDATES-1.0",   # same catalogue base, differing state designation
+    "visualAdjudication":  "VISUAL-ADJUDICATOR-1.0",  # a vision model's cited verdict
+    "plateImpressionJoin": "PLATE-JOIN-1.0",          # a Matrix record joined to its impressions
+    "humanTriage":         "human",                   # a person read the evidence and decided
+}
+
 MERGEABLE_BUCKETS = {"proposed"}
 NEVER_MERGE_BUCKETS = {"catalogueConflict", "institutionalPortfolioSuspect"}
 
@@ -185,6 +203,21 @@ FOREACH (x IN CASE WHEN ce IS NULL THEN [] ELSE [ce] END | MERGE (x)-[:DOCUMENTS
 WITH DISTINCT surv, dup
 OPTIONAL MATCH (di:DigitalImage)-[:SHOWS]->(dup)
 FOREACH (x IN CASE WHEN di IS NULL THEN [] ELSE [di] END | MERGE (x)-[:SHOWS]->(surv))
+WITH DISTINCT surv, dup
+// Written BEFORE the delete and in the same transaction, so a fold either leaves a record of
+// itself or does not happen. mergedFromId is what makes a stale external reference resolvable:
+// a saved comparable, another session's CSV or a workIds column can be looked up after the node
+// it names has gone.
+MERGE (ev:MergeEvent {id: surv.id + ' <- ' + dup.id})
+SET ev.mergedFromId   = dup.id,
+    ev.mergedFromName = dup.name,
+    ev.rule           = $rule,
+    ev.ruleVersion    = $ruleVersion,
+    ev.decidedBy      = $decidedBy,
+    ev.evidence       = $evidence,
+    ev.confidence     = $confidence,
+    ev.at             = datetime()
+MERGE (ev)-[:MERGED_INTO]->(surv)
 WITH DISTINCT dup
 DETACH DELETE dup
 """
@@ -289,7 +322,7 @@ def load_clusters(path, artist, bucket, min_size):
     return out
 
 
-def run(session, clusters, apply_changes, backup_path=None):
+def run(session, clusters, apply_changes, backup_path=None, rule="exactTitleYear"):
     work_ids = sorted({w for c in clusters for w in c["workIds"]})
     details = {}
     for chunk in range(0, len(work_ids), 1000):
@@ -364,7 +397,13 @@ def run(session, clusters, apply_changes, backup_path=None):
         rows = [{"workId": d["workId"], "name": d["name"]} for d in p["members"]]
         stamped_total += session.run(STAMP_SOURCE_TITLE_QUERY, rows=rows).single()["stamped"]
         for dup in p["dups"]:
-            counters = session.run(MERGE_QUERY, survivorId=p["survivor"], dupId=dup).consume().counters
+            counters = session.run(
+                MERGE_QUERY, survivorId=p["survivor"], dupId=dup,
+                rule=rule, ruleVersion=MERGE_RULES[rule],
+                decidedBy=("human" if rule == "humanTriage"
+                           else "model" if rule == "visualAdjudication" else "rule"),
+                evidence=(p.get("corroborator") or p.get("note") or ""),
+                confidence=p.get("confidence")).consume().counters
             if not counters.nodes_deleted:
                 print(f"        [SKIP] {dup} — no longer present")
                 skipped += 1
@@ -402,6 +441,7 @@ if __name__ == "__main__":
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     try:
         with driver.session(database=NEO4J_DATABASE) as session:
-            run(session, clusters, apply_changes=args.apply, backup_path=args.backup)
+            run(session, clusters, apply_changes=args.apply, backup_path=args.backup,
+                rule=args.rule)
     finally:
         driver.close()
