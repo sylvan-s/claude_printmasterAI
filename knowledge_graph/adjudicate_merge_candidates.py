@@ -75,22 +75,39 @@ FETCH_TIMEOUT = 30
 SYSTEM_PROMPT = """You adjudicate whether two records in a print catalogue describe the SAME
 CONCEPTUAL WORK. You are shown one image from each side plus the metadata each source recorded.
 
-A CONCEPTUAL WORK is the artist's design as realised through one matrix in one state. It is NOT
-"an image that looks the same".
+A CONCEPTUAL WORK is the artist's design as realised through ONE MATRIX. A state is a stage in
+the working of that matrix, not a separate work — successive states belong to one conceptual
+work and are recorded beneath it. It is NOT "an image that looks the same".
 
 These are DIFFERENT works even when the pictures look nearly identical:
-  - different STATES of one plate (successive reworkings: added shading, strengthened or burnished
-    lines, added or removed elements, altered lettering)
-  - different PLATE designations of one subject (a second, separately cut plate of the same scene)
+  - different PLATES of one subject — a second, separately cut matrix of the same scene. The
+    catalogue gives each plate its own number
   - different COLOURWAYS printed from one matrix
   - a different EDITION only if the catalogue treats it as a separate work; a later printing of
-    the same plate in the same state is the SAME work
+    the same plate is the SAME work
 
 These are the SAME work even when the pictures look different:
+  - different STATES of one plate — successive reworkings, with added shading, strengthened or
+    burnished lines, added or removed elements. One plate worked through several states is ONE
+    conceptual work. When you see a state difference, return SAME_WORK and describe the change
+    in stateEvidence so the state can be recorded against the work
   - a MATRIX (copper, zinc, linoleum block) and an impression pulled from it — the plate is the
     MIRROR IMAGE of the print and tonally inverted
   - different photography: colour cast, crop, framing, margins, sheet trimmed differently
   - one side showing the full sheet and the other only the platemark
+  - different INKING: a weakly inked or heavily wiped impression against a richly inked one,
+    more or less plate tone, more or less drypoint burr showing. Impression strength is a
+    printing variable, not a change to the plate
+
+THE HARDEST DISTINCTION, and the one to get right: a lightly inked impression and an earlier
+state look alike in a photograph. They are told apart by WHAT IS ON THE PLATE, not by how dark
+the print is. A state change ADDS OR REMOVES MARKS — a passage of hatching absent in one and
+present in the other, a line burnished away, a contour redrawn, an added remarque. An inking
+difference shows THE SAME MARKS at a different strength.
+
+So before calling a state change, name a mark that is present in one image and absent from the
+other, and put it in stateEvidence. If all you can say is that one is darker, denser, more
+heavily worked or more finished LOOKING, that is inking, and the answer is SAME_WORK.
 
 Compare the printed image itself, never the paper, mount, frame or margins.
 
@@ -109,14 +126,20 @@ composition, or when the only differences you can see could be photographic."""
 
 ESCALATION = """
 THIS PAIR IS FLAGGED: the two titles are identical except for a trailing designation
-({designation}). In this catalogue that is a PLATE or STATE designation, and the two are
-therefore PRESUMED DIFFERENT WORKS. Do not return SAME_WORK on general visual resemblance — they
-are expected to resemble each other closely.
+({designation}), and the catalogue citations could not settle what that designation means. It is
+either a STATE (one matrix worked in stages -> SAME work) or a separate PLATE (a second matrix of
+the same subject -> DIFFERENT works). Deciding which is the question.
 
-Return SAME_WORK only if you can state positively that the printed images are identical in every
-passage AND you judge the differing designation to be a cataloguing error. Otherwise return
-DIFFERENT_WORK and put the differing passage in stateEvidence, or UNCERTAIN if you cannot see
-well enough to tell."""
+A STATE difference shows the same composition with marks added to or removed from it: a passage
+newly hatched, a line burnished away, a contour strengthened, a remarque added. The drawing sits
+in the same place on the sheet.
+
+A separate PLATE is redrawn. The figures shift, proportions change, the composition is laid out
+again — recognisably the same subject, not the same drawing.
+
+Return SAME_WORK for a state difference and put the changed passage in stateEvidence. Return
+DIFFERENT_WORK for a separate plate and say what is redrawn. Return UNCERTAIN if the images are
+too small or too alike to tell which of the two you are looking at."""
 
 
 def _require_env(name):
