@@ -518,7 +518,7 @@ MergeEvent {
   rule,             # controlled vocabulary, below
   ruleVersion,      # the generator's own Version: string
   decidedBy,        # rule | model | human
-  evidence,         # the corroborator string, or a vision model's cited passage
+  evidence,         # WHY, assembled by cluster_evidence() from whatever the generator wrote
   confidence,       # present when a model decided it
   at                # datetime()
 }
@@ -541,6 +541,22 @@ MergeEvent -[:MERGED_INTO]-> ConceptualWork
 
 **Written before the delete and in the same transaction**, so a fold either leaves a record of
 itself or does not happen.
+
+**`evidence` is assembled, not demanded.** Each generator names its evidence differently — the
+anchored and exact-catalogue rules write `corroborator`, the image generator adds `similarity`,
+the edition rule adds `editionNumbers` and `declaredSize`, a human triage row writes `note` — so
+`merge_duplicate_work_clusters.cluster_evidence()` reads whatever is present and composes one
+line. A new generator needs no change to the merger.
+
+```
+exactCatalogueTitle   same artist node, folded title and catalogue base Levinson 391;
+                      best image cosine 0.9597; year gap 0
+editionSiblings       one numbered edition at Musée Zadkine: 8 distinct impressions 1-8 of 25
+```
+
+The first 773 events were written with this field empty — `run()` read `corroborator` off the
+PLAN and the plan never carried it — and were backfilled on 2026-09-12 by matching the
+regenerated cluster JSON against the `"<survivor> <- <dup>"` id.
 
 **`mergedFromId` is what makes a stale external reference resolvable.** A saved comparable in
 Stage 3, another session's CSV, or the `workIds` column of a collision report can be looked up

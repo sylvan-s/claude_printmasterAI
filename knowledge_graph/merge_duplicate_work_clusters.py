@@ -272,6 +272,38 @@ def is_placeholder(title):
     return t in PLACEHOLDER_TITLES
 
 
+# WHAT EACH GENERATOR CALLS ITS EVIDENCE. They agree on nothing, because each was written for
+# its own signal: the anchored and exact-catalogue rules write `corroborator`, the image
+# generator writes `corroborator` plus `similarity`, the edition rule writes `corroborator` plus
+# `editionNumbers`, and a human triage row writes `note`. Assembled here rather than demanded of
+# them, so adding a generator does not mean touching the merger.
+_EVIDENCE_FIELDS = ("corroborator", "note", "heldReason")
+_EVIDENCE_NUMERIC = (("similarity", "image similarity"), ("bestImageCosine", "best image cosine"),
+                     ("yearGap", "year gap"), ("matchWeight", "splink weight"))
+
+
+def cluster_evidence(cluster):
+    """One readable line recording WHY this cluster was proposed, for MergeEvent.evidence.
+
+    Empty on all 773 events written before 2026-09-12: run() read `corroborator` off the PLAN,
+    and the plan never carried it. The field existed and nothing reached it."""
+    parts = [str(cluster[f]) for f in _EVIDENCE_FIELDS if cluster.get(f)]
+    for key, label in _EVIDENCE_NUMERIC:
+        if cluster.get(key) is not None:
+            parts.append(f"{label} {cluster[key]}")
+    # Fallbacks only. The edition rule already spells both of these into its corroborator, and
+    # repeating them made the line say the same thing three times.
+    if not parts:
+        if cluster.get("editionNumbers"):
+            numbers = cluster["editionNumbers"]
+            parts.append(f"edition numbers {min(numbers)}-{max(numbers)}"
+                         + (f" of {cluster['declaredSize']}"
+                            if cluster.get("declaredSize") else ""))
+        if cluster.get("institution"):
+            parts.append(f"at {cluster['institution']}")
+    return "; ".join(parts)
+
+
 def pick_survivor(details):
     """Which NODE lives. An external anchor outranks volume — a CatalogueEntry pointing at this
     work cannot be re-derived from the others, an impression count can."""
@@ -344,6 +376,8 @@ def run(session, clusters, apply_changes, backup_path=None, rule="exactTitleYear
             "survivor": survivor, "dups": [d["workId"] for d in ds if d["workId"] != survivor],
             "principalName": name, "nameTier": tier,
             "alternateTitles": sorted({d["name"] for d in ds if d["name"]}),
+            "evidence": cluster_evidence(c),
+            "confidence": c.get("confidence"),
             "members": ds,
         })
 
@@ -404,7 +438,7 @@ def run(session, clusters, apply_changes, backup_path=None, rule="exactTitleYear
                 rule=rule, ruleVersion=MERGE_RULES[rule],
                 decidedBy=("human" if rule == "humanTriage"
                            else "model" if rule == "visualAdjudication" else "rule"),
-                evidence=(p.get("corroborator") or p.get("note") or ""),
+                evidence=p.get("evidence") or "",
                 confidence=p.get("confidence")).consume().counters
             if not counters.nodes_deleted:
                 print(f"        [SKIP] {dup} — no longer present")
