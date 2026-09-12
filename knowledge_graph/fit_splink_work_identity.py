@@ -321,9 +321,24 @@ def settings():
                 cll.JaroWinklerLevel("title_folded", 0.80),
                 cll.ElseLevel(),
             ]),
+            # SCORED, NOT A VETO — and calibrated, which is the point. Technique is asymmetric:
+            # agreement is worth almost nothing because ~78% of non-matching portfolio mates
+            # agree too, while disagreement is real evidence. EM finds that asymmetry unprompted
+            # on every frame (+0.33/-3.90 Picasso within Baer, +1.90/-2.85 all collisions,
+            # +1.72/-1.64 no-catalogue only).
+            #
+            # Measured independently over 300 adjudicated pairs, technique disagreement carries
+            # a likelihood ratio of 6.67x for different-work — log2(1/6.67) = -2.74, against the
+            # -2.85 EM learned on the same population. The model is already right to within 0.11,
+            # so a hard veto here would replace a fitted weight with -inf on the strength of the
+            # five disagreeing pairs in that sample. It is not warranted.
+            #
+            # A veto belongs where there is no model to put the signal into:
+            # find_exact_catalogue_merges.py is an exact-key rule and vetoes on technique there,
+            # because that is the only way the signal can enter at all.
             CustomComparison(output_column_name="tech_family", comparison_levels=[
                 cll.NullLevel("tech_family"), cll.ExactMatchLevel("tech_family"),
-                cll.ElseLevel(),      # the veto level; EM gives it log2 BF -4.05 unprompted
+                cll.ElseLevel(),
             ]),
             CustomComparison(output_column_name="dims", comparison_levels=[
                 cll.CustomLevel("dim_w_l IS NULL OR dim_w_r IS NULL", "no dimensions")
