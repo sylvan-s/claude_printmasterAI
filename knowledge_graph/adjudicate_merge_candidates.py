@@ -85,8 +85,7 @@ These are DIFFERENT works even when the pictures look nearly identical:
   - different PLATES of one subject — a second, separately cut matrix of the same scene. The
     catalogue gives each plate its own number
   - different COLOURWAYS printed from one matrix
-  - a different EDITION only if the catalogue treats it as a separate work; a later printing of
-    the same plate is the SAME work
+  - a different EDITION, but ONLY where the catalogue treats it as a separate work
 
 These are the SAME work even when the pictures look different:
   - different STATES of one plate — successive reworkings, with added shading, strengthened or
@@ -100,6 +99,15 @@ These are the SAME work even when the pictures look different:
   - different INKING: a weakly inked or heavily wiped impression against a richly inked one,
     more or less plate tone, more or less drypoint burr showing. Impression strength is a
     printing variable, not a change to the plate
+  - a LATER PRINTING of the same plate — a reissue, a posthumous edition, a restrike. The design
+    did not change because someone pulled another impression decades afterwards
+
+THE DATE YOU ARE SHOWN MAY BE THE IMPRESSION'S, NOT THE DESIGN'S. Several sources record the year
+an individual sheet was printed or acquired, so one work can appear with several different years:
+Tate holds Constable's "Noon" as impressions dated 1831, 1831, 1855 and two undated, all of them
+the same Lucas mezzotint. Treat a year gap as WEAK evidence at best, and never as decisive on its
+own. Look at the printed image. Added lettering, a publication line, or a changed address in the
+margin is a STATE change, which is the same work.
 
 THE HARDEST DISTINCTION, and the one to get right: a lightly inked impression and an earlier
 state look alike in a photograph. They are told apart by WHAT IS ON THE PLATE, not by how dark
