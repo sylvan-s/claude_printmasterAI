@@ -242,10 +242,19 @@ def main():
     ap.add_argument("--model", default=DEFAULT_MODEL)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--min-weight", type=float, default=None)
+    ap.add_argument("--route", default="needsVision",
+                    help="which generator route to adjudicate; 'all' to ignore routing. "
+                         "stateFamily and plateConflict are decided on the catalogue citation "
+                         "and cost nothing — see generate_splink_merge_candidates.route()")
     args = ap.parse_args()
 
     _require_env("ANTHROPIC_API_KEY")
     rows = list(csv.DictReader(open(args.infile, encoding="utf-8")))
+    if args.route != "all" and rows and "route" in rows[0]:
+        before = len(rows)
+        rows = [r for r in rows if r["route"] == args.route]
+        print(f"routing: {len(rows)}/{before} rows are {args.route}; "
+              f"the rest were decided on metadata", flush=True)
     if args.min_weight is not None:
         rows = [r for r in rows if float(r["matchWeight"]) >= args.min_weight]
     if args.limit:

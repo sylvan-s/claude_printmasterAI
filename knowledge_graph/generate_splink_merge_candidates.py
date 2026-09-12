@@ -206,7 +206,39 @@ def load_evidence(session, work_ids):
     return out
 
 
-COLUMNS = ["rank", "matchWeight", "matchProbability", "artist",
+# ROUTING — decided on metadata, BEFORE anything reaches a vision model.
+#
+# Measured on the graph 2026-09-12, from two families that look identical in syntax:
+#
+#   La Femme qui pleure. I .. VII   ALL cite Baer 623   -> one plate, seven states, ONE work
+#   L'Homme attable.   I .. IV      Baer 47/48/49/50    -> four plates, FOUR works
+#                                                          (each already carrying its own states 1-3)
+#
+# Baer numbers each PLATE separately and gives the states of one plate a shared number, so the
+# catalogue itself separates the two axes and no picture is needed to do it. The four
+# La Femme qui pleure pairs were sent to three different vision models before anyone noticed
+# they were decidable from the citation alone.
+#
+#   stateFamily    designation differs, catalogue base AGREES -> one work; fold and keep the
+#                  State nodes. State-[:PRINTED_AS]->EditionRun is untouched by MERGE_QUERY, so
+#                  the states survive the fold with no new merge code.
+#   plateConflict  catalogue bases CONFLICT -> different plates. Same standing veto
+#                  find_museum_anchored_work_clusters applies, and not worth a vision call.
+#   needsVision    everything else — no shared catalogue to decide with, or no designation in
+#                  play. This is what the adjudicator is actually for.
+#
+# The known error rate on plateConflict is the held-title triage's 4 wrong citations in 63
+# (the Carmen plates cited as Baer 80). Those rows stay IN THE FILE under their own route, so a
+# wrong citation costs a review rather than a silent disappearance.
+def route(designation_differs, verdict):
+    if verdict == "conflict":
+        return "plateConflict"
+    if designation_differs and verdict == "agree":
+        return "stateFamily"
+    return "needsVision"
+
+
+COLUMNS = ["route", "rank", "matchWeight", "matchProbability", "artist",
            "workA", "workB", "titleA", "titleB", "yearA", "yearB",
            "institutionsA", "institutionsB", "impressionsA", "impressionsB",
            "catalogueA", "catalogueB", "catalogueVerdict",
@@ -267,6 +299,7 @@ def main():
         def cite(rec):
             return "; ".join(sorted({f"{p} {n}" for p, n in rec["citations"]}))
         rows.append({
+            "route": route(designation, verdict),
             "matchWeight": round(weight, 3), "matchProbability": round(prob, 6),
             "artist": args.artist, "workA": wa, "workB": wb,
             "titleA": (a["sourceTitles"] or [None])[0] or a["name"],
@@ -291,10 +324,16 @@ def main():
         writer.writeheader()
         writer.writerows(rows)
 
-    both = sum(1 for r in rows if r["imagesA"] and r["imagesB"])
     print(f"\nwrote {len(rows)} candidates -> {args.out}")
-    print(f"  {both} have an image on BOTH sides and can be visually adjudicated "
-          f"({both/max(len(rows),1):.0%})")
+    print("\nrouting (decided on metadata, before any vision call)")
+    for name, note in (("stateFamily", "one work, differing state designation — fold, keep States"),
+                       ("plateConflict", "different catalogue bases — different plates"),
+                       ("needsVision", "undecidable from metadata — send to the adjudicator")):
+        n = sum(1 for r in rows if r["route"] == name)
+        print(f"  {name:14s} {n:5d}  ({n/max(len(rows),1):3.0%})  {note}")
+    vision = [r for r in rows if r["route"] == "needsVision"]
+    both = sum(1 for r in vision if r["imagesA"] and r["imagesB"])
+    print(f"\n  of {len(vision)} needsVision rows, {both} have an image on both sides")
     for name in ("designationDiffers", "catalogueAgrees", "catalogueConflict",
                  "techFamilyVeto", "yearConflict"):
         n = sum(1 for r in rows if name in r["flags"])
