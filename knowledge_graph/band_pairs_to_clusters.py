@@ -92,6 +92,18 @@ def main():
     ap.add_argument("--out", default="band_clusters.json")
     ap.add_argument("--verdicts", action="append",
                     help="verdicts.csv:pairs.csv — repeatable; DIFFERENT_WORK rows are dropped")
+    # WHAT ACTUALLY DECIDED THIS BAND, in the operator's words. Required, because the
+    # alternative was a literal: this script spent its whole life writing
+    # "splink band: weight >= 15" into every cluster's corroborator, which was true of
+    # COLLISION-RANK-1.0 and of nothing since. 4,099 MergeEvents carry that sentence over
+    # merges made at weight 10-15 and at 3.06-8.97, each asserting a threshold it did not
+    # meet and contradicted by the `splink weight` this same line appends. `rule` stayed
+    # correct so the merges remained attributable, but the human-readable WHY was false on
+    # 76% of the graph's merge history. A band is chosen per run; its description has to be
+    # passed per run, not compiled in.
+    ap.add_argument("--label", required=True,
+                    help="the decision rule in words, e.g. 'auction sources only, no series "
+                         "marker in the title' — written to MergeEvent.evidence verbatim")
     args = ap.parse_args()
 
     band = list(csv.DictReader(open(args.pairs, encoding="utf-8")))
@@ -135,11 +147,12 @@ def main():
         if len(members) < 2:
             continue
         m = meta[members[0]]
+        cat = m["cat"] or "none"
         clusters.append({
             "artist": m["artist"], "title": m["title"],
             "year": int(m["year"]) if str(m["year"]).isdigit() else None,
             "workIds": sorted(members), "size": len(members),
-            "corroborator": f"splink band: weight >= 15, catalogue {m['cat']}",
+            "corroborator": f"{args.label}; catalogue {cat}",
             "matchWeight": m["weight"],
         })
     clusters.sort(key=lambda c: (-c["size"], c["artist"]))

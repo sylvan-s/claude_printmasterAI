@@ -213,6 +213,18 @@ WITH DISTINCT surv, dup
 OPTIONAL MATCH (di:DigitalImage)-[:SHOWS]->(dup)
 FOREACH (x IN CASE WHEN di IS NULL THEN [] ELSE [di] END | MERGE (x)-[:SHOWS]->(surv))
 WITH DISTINCT surv, dup
+// A SURVIVOR CAN ITSELF BE FOLDED LATER, and DETACH DELETE takes the inbound MERGED_INTO edge
+// with it — orphaning every earlier event that pointed here and breaking the documented lookup
+// `MATCH (e:MergeEvent {mergedFromId:$goneId})-[:MERGED_INTO]->(w)`. 34 such events existed on
+// 2026-09-12, every one a two-step chain (navigart11-1866 -> navigart11-3097 -> navigart11-3098).
+// So carry them forward. `id` is NOT rewritten: it records the fold that actually happened, and
+// the middle node's id is the only remaining trace of it. `repointedFrom` accumulates the hops,
+// so a chained event still says where it went and how it got there.
+OPTIONAL MATCH (prior:MergeEvent)-[:MERGED_INTO]->(dup)
+FOREACH (x IN CASE WHEN prior IS NULL THEN [] ELSE [prior] END |
+         MERGE (x)-[:MERGED_INTO]->(surv)
+         SET x.repointedFrom = coalesce(x.repointedFrom, []) + dup.id)
+WITH DISTINCT surv, dup
 // Written BEFORE the delete and in the same transaction, so a fold either leaves a record of
 // itself or does not happen. mergedFromId is what makes a stale external reference resolvable:
 // a saved comparable, another session's CSV or a workIds column can be looked up after the node

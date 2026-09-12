@@ -519,7 +519,8 @@ MergeEvent {
   ruleVersion,      # the generator's own Version: string
   decidedBy,        # rule | model | human
   evidence,         # WHY, assembled by cluster_evidence() from whatever the generator wrote
-  confidence,       # present when a model decided it
+  confidence,       # present when a model decided it — the adjudicator's own 0-1 score
+  repointedFrom,    # intermediate ids, present only when the survivor was itself folded later
   at                # datetime()
 }
 
@@ -537,6 +538,11 @@ MergeEvent -[:MERGED_INTO]-> ConceptualWork
 | `splinkStateFamily` | `SPLINK-CANDIDATES-1.0` | same catalogue base, differing state designation |
 | `visualAdjudication` | `VISUAL-ADJUDICATOR-1.0` | a vision model's cited verdict |
 | `plateImpressionJoin` | `PLATE-JOIN-1.0` | a `Matrix` record joined to its impressions |
+| `exactCatalogueTitle` | `EXACT-CAT-MERGE-1.0` | same artist node, folded title and catalogue base |
+| `editionSiblings` | `EDITION-SIBLINGS-1.0` | one numbered edition held as many nodes |
+| `titleCollisionBand` | `COLLISION-RANK-1.0` | splink weight >= 15, catalogue agree or none |
+| `noCatalogueBand` | `COLLISION-RANK-1.0` | no catalogue at all, splink weight 10-15 |
+| `auctionPlainTitle` | `COLLISION-RANK-1.1` | auction sources only, no series marker in the title |
 | `humanTriage` | `human` | a person read the evidence and decided |
 
 **Written before the delete and in the same transaction**, so a fold either leaves a record of
@@ -552,7 +558,20 @@ line. A new generator needs no change to the merger.
 exactCatalogueTitle   same artist node, folded title and catalogue base Levinson 391;
                       best image cosine 0.9597; year gap 0
 editionSiblings       one numbered edition at Musée Zadkine: 8 distinct impressions 1-8 of 25
+auctionPlainTitle     title collision, no catalogue citation on either side; auction sources
+                      only, no series/portfolio marker in the title; splink weight 7.2
+visualAdjudication    claude-haiku-4-5 adjudicated the two images SAME_WORK at confidence 0.92:
+                      Identical composition: surrealist intaglio with stacked heads...
 ```
+
+**`evidence` must describe the rule that was used, not the rule the generator was written for.**
+`band_pairs_to_clusters.py` hard-coded `"splink band: weight >= 15"` into every cluster it
+emitted. That was true of `COLLISION-RANK-1.0` and of nothing since: 4,099 events carried it over
+merges made at weight 10-15 and at 3.06-8.97, each asserting a threshold it did not meet and
+contradicted by the `splink weight` the same line appends. `rule` stayed correct, so the merges
+remained attributable and reversible — but the human-readable WHY was false on 76% of the merge
+history. The band is now passed per run as `--label` and the events were backfilled on
+2026-09-12. A generator that describes its own band in a literal will do this again.
 
 The first 773 events were written with this field empty — `run()` read `corroborator` off the
 PLAN and the plan never carried it — and were backfilled on 2026-09-12 by matching the
@@ -566,11 +585,22 @@ after the node it names has gone:
 MATCH (e:MergeEvent {mergedFromId: $goneId})-[:MERGED_INTO]->(w:ConceptualWork) RETURN w
 ```
 
+**Chained folds are carried forward.** A survivor can itself be folded later, and `DETACH DELETE`
+takes the inbound `MERGED_INTO` edge with it — which silently orphaned 34 events before
+2026-09-12 and broke the lookup above for exactly the ids most likely to be stale. The merge
+query now re-points any inbound `MERGED_INTO` onto the new survivor and appends the hop to
+
+```
+repointedFrom     # [] of intermediate ids, in order, present only on a chained event
+```
+
+`id` is deliberately NOT rewritten: it records the fold that actually happened, and the middle
+node's id is the only surviving trace of it. So `id = "<survivor> <- <mergedFromId>"` holds for
+every event EXCEPT one carrying `repointedFrom`, where the survivor named in `id` is the first
+hop rather than the current target.
+
 **What this does NOT provide.** It is a record, not an undo — the duplicate's own relationships
-are gone and only the `--backup` JSON can rebuild them. And it does not chain: if a survivor is
-later folded into a third work, the first event still points at the now-deleted middle node.
-Resolving that needs following `mergedFromId` transitively, the same alias-map problem
-`merge_duplicate_work_clusters.py` already solves in memory for overlapping clusters.
+are gone and only the `--backup` JSON can rebuild them.
 
 This complements [ADR-0017](../docs/adr/0017-work-title-identity-principal-name-and-aliases.md)
 Decision 4 rather than duplicating it. That decision puts provenance of the **wording** on the
