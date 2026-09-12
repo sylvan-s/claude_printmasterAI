@@ -108,6 +108,7 @@ MERGE_RULES = {
     "splinkStateFamily":   "SPLINK-CANDIDATES-1.0",   # same catalogue base, differing state designation
     "visualAdjudication":  "VISUAL-ADJUDICATOR-1.0",  # a vision model's cited verdict
     "plateImpressionJoin": "PLATE-JOIN-1.0",          # a Matrix record joined to its impressions
+    "editionSiblings":     "EDITION-SIBLINGS-1.0",   # one numbered edition held as many nodes
     "humanTriage":         "human",                   # a person read the evidence and decided
 }
 

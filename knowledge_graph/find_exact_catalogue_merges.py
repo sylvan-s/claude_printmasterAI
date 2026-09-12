@@ -18,7 +18,6 @@ PROMOTE when all four hold:
 VETO on any of:
   5. a catalogue CONFLICT on some other shared prefix
   6. technique families known on both sides and disjoint
-  7. years known on both sides and more than MAX_YEAR_GAP apart
   8. images present on both sides and their best cosine below the artist's own floor
   9. a work reachable from two different groups (only possible via a split Artist node)
 
@@ -46,8 +45,12 @@ WHY EACH VETO IS THERE, measured rather than assumed:
   negatives, a likelihood ratio near 3.4. Splink's EM arrived at the same asymmetry unprompted,
   giving disagreement log2 BF -3.90 while agreement is worth +0.33.
 
-  the year gap — Picasso reused titles decades apart (*Le Taureau* 1936 and 1946, *Tête de jeune
-  fille* 1925 and 1945). Costs 24 collisions in the current band.
+  the year gap is REPORTED as `yearGap`, not vetoed. It was a veto until 2026-09-12, guarding
+  against title reuse — Picasso made *Le Taureau* in 1936 and again in 1946. But reuse produces
+  DIFFERENT catalogue numbers and this rule already requires a shared numeric base, so that case
+  cannot arrive here. What the veto actually caught was IMPRESSION DATES written onto the work:
+  Tate holds Constable's *Noon* as 1831, 1831, 1855 and two undated, all one Lucas mezzotint,
+  and 107 Tate title-groups have a spread over 3.
 
   the per-artist image floor — DINOv2 similarity is artist-dependent and the threshold holding a
   1% false-positive rate runs from 0.533 to 1.000 across 977 measured artists. A global floor is
@@ -260,11 +263,18 @@ def main():
         if len(fams) > 1 and not set.intersection(*fams):
             hold("technique families disjoint")
             continue
-        # 7. year gap
+        # 7. YEAR IS REPORTED, NOT VETOED — a change made 2026-09-12 after measuring what it
+        # held. The veto existed to catch title reuse: Picasso made "Le Taureau" in 1936 and
+        # again in 1946. But title reuse produces DIFFERENT catalogue numbers, and this rule
+        # already requires a shared numeric base, so the case it guards against cannot reach
+        # here. What it actually held was impression dates: several sources write the year an
+        # individual sheet was printed onto the WORK, so one design arrives with several years —
+        # Tate holds Constable's "Noon" as 1831, 1831, 1855 and two undated, all one Lucas
+        # mezzotint, and 107 Tate title-groups have a spread over 3. Of the 4 clusters this
+        # veto held, the example is Muirhead Bone's "Canal and Bridge of S.S..." at 1916-1928,
+        # one drypoint printed twice.
         years = [m["year"] for m in members if m["year"]]
-        if years and (max(years) - min(years)) > MAX_YEAR_GAP:
-            hold(f"year gap over {MAX_YEAR_GAP}")
-            continue
+        year_gap = (max(years) - min(years)) if len(years) > 1 else 0
         # 8. image dissent, against the artist's own floor where it exists
         top = best_cosine(members)
         floor = members[0]["artistFloor"]
@@ -283,6 +293,7 @@ def main():
             "corroborator": "same artist node, folded title and catalogue base "
                             + "; ".join(sorted(f"{p} {b}" for p, b in common)),
             "bestImageCosine": round(top, 4) if top is not None else None,
+            "yearGap": year_gap,
             "spellings": sorted({m["name"] for m in members}),
             "_members": members,
         })
