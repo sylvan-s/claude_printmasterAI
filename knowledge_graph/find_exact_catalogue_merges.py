@@ -92,7 +92,7 @@ WORKS_QUERY = """
 MATCH (a:Artist)-[:CREATED]->(w:ConceptualWork)
 WHERE w.name IS NOT NULL AND ($artist IS NULL OR a.name = $artist)
 OPTIONAL MATCH (w)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
-OPTIONAL MATCH (w)-[:PRINTED_AS]->(:EditionRun)-[:INCLUDES]->(i:Impression)
+OPTIONAL MATCH (w)-[:PRINTED_AS]->(er:EditionRun)-[:INCLUDES]->(i:Impression)
 OPTIONAL MATCH (i)-[:USES_TECHNIQUE]->(t:Technique)
 OPTIONAL MATCH (i)<-[:SHOWS]-(img:DigitalImage) WHERE img.embedding IS NOT NULL
 OPTIONAL MATCH (i)<-[:SHOWS]-(pic:DigitalImage) WHERE pic.sourceUrl IS NOT NULL
@@ -105,6 +105,8 @@ RETURN elementId(a) AS artistNode, a.name AS artist,
        collect(DISTINCT img.embedding)[0..2] AS embeddings,
        collect(DISTINCT pic.sourceUrl)[0..2] AS imageUrls,
        collect(DISTINCT coalesce(s.institutionName, s.sourceType)) AS institutions,
+       collect(DISTINCT i.editionNumber) AS editionNumbers,
+       collect(DISTINCT er.declaredSize) AS declaredSizes,
        count(DISTINCT i) AS impressions
 """
 
@@ -125,6 +127,17 @@ def _require_env(name):
     if not value:
         raise RuntimeError(f"{name} is not set. Source knowledge_graph/.env first.")
     return value
+
+
+def _edition_label(numbers, sizes):
+    """"5/55; 8/55" — decisive for a VARIABLE EDITION, where the printed images are MEANT to
+    differ between numbered impressions and only the numbering says the works are one. See
+    adjudicate_merge_candidates' SAME-work list."""
+    ns = sorted(n for n in (numbers or []) if n is not None)
+    if not ns:
+        return ""
+    size = next((s for s in (sizes or []) if s), "?")
+    return "; ".join(f"{n}/{size}" for n in ns[:6])
 
 
 def families(texts):
@@ -204,6 +217,7 @@ def main():
                     "centroid": centroid,
                     "imageUrls": [u for u in r["imageUrls"] if u],
                     "institutions": sorted({x for x in r["institutions"] if x}),
+                    "edition": _edition_label(r["editionNumbers"], r["declaredSizes"]),
                     "impressions": r["impressions"]})
                 seen_work[r["workId"]].add((r["artistNode"], key))
     finally:
@@ -299,7 +313,8 @@ def main():
                 "titleA", "titleB", "yearA", "yearB", "institutionsA", "institutionsB",
                 "impressionsA", "impressionsB", "catalogueA", "catalogueB", "catalogueVerdict",
                 "techFamilyA", "techFamilyB", "techFamilyVeto", "yearConflict",
-                "designationDiffers", "imagesA", "imagesB", "flags", "note"]
+                "designationDiffers", "editionA", "editionB",
+                "imagesA", "imagesB", "flags", "note"]
         rows = []
         for c in chosen:
             imaged = [m for m in c["_members"] if m["imageUrls"]]
@@ -320,6 +335,7 @@ def main():
                 "techFamilyA": "; ".join(sorted(a["families"])),
                 "techFamilyB": "; ".join(sorted(b["families"])),
                 "techFamilyVeto": 0, "yearConflict": 0, "designationDiffers": 0,
+                "editionA": a["edition"], "editionB": b["edition"],
                 "imagesA": " | ".join(a["imageUrls"]),
                 "imagesB": " | ".join(b["imageUrls"]),
                 "flags": "", "note": c["corroborator"][:80]})

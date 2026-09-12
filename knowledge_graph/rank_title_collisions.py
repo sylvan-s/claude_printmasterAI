@@ -87,7 +87,7 @@ DEFAULT_MAX_NODES = 10
 
 WORKS_QUERY = """
 MATCH (w:ConceptualWork) WHERE w.id IN $ids
-OPTIONAL MATCH (w)-[:PRINTED_AS]->(:EditionRun)-[:INCLUDES]->(i:Impression)
+OPTIONAL MATCH (w)-[:PRINTED_AS]->(er2:EditionRun)-[:INCLUDES]->(i:Impression)
 OPTIONAL MATCH (i)<-[:SHOWS]-(img:DigitalImage) WHERE img.embedding IS NOT NULL
 OPTIONAL MATCH (i)<-[:SHOWS]-(img2:DigitalImage) WHERE img2.sourceUrl IS NOT NULL
 OPTIONAL MATCH (i)<-[:DOCUMENTS]-(src:SourceRecord)
@@ -95,6 +95,8 @@ OPTIONAL MATCH (i)-[:USES_TECHNIQUE]->(t:Technique)
 OPTIONAL MATCH (w)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
 RETURN w.id AS workId, w.name AS name, w.dateCreated_year AS year,
        collect(DISTINCT i.rawMedium)        AS media,
+       collect(DISTINCT i.editionNumber)    AS editionNumbers,
+       collect(DISTINCT er2.declaredSize)   AS declaredSizes,
        collect(DISTINCT img2.sourceUrl)[0..2] AS imageUrls,
        collect(DISTINCT coalesce(src.institutionName, src.sourceType)) AS institutions,
        count(DISTINCT i)                    AS impressions,
@@ -104,6 +106,15 @@ RETURN w.id AS workId, w.name AS name, w.dateCreated_year AS year,
        collect(DISTINCT ce.number)          AS entries,
        collect(DISTINCT img.embedding)[0..3] AS embeddings
 """
+
+
+def _edition_label(numbers, sizes):
+    """"5/55; 8/55" — the impression numbers this work holds, against the declared size."""
+    ns = sorted(n for n in (numbers or []) if n is not None)
+    if not ns:
+        return ""
+    size = next((s for s in (sizes or []) if s), "?")
+    return "; ".join(f"{n}/{size}" for n in ns[:6])
 
 
 def load_collisions(path, min_nodes, max_nodes):
@@ -155,6 +166,9 @@ def build_frame(session, groups):
                 "impressions": m["impressions"],
                 "catalogueRefs": "; ".join(sorted(x for x in m["catalogueRefs"] if x)),
                 "imageUrls": " | ".join(u for u in m["imageUrls"] if u),
+                # Decisive for a VARIABLE EDITION, where the images are meant to differ and only
+                # the numbering says the works are one. See adjudicate_merge_candidates.
+                "edition": _edition_label(m["editionNumbers"], m["declaredSizes"]),
             })
             key_of[work_id] = n
     return pd.DataFrame(rows), key_of
@@ -288,6 +302,7 @@ def main():
                 "yearConflict": int(bool(a["year"] and b["year"]
                                          and abs(a["year"] - b["year"]) > 3)),
                 "designationDiffers": designation,
+                "editionA": a["edition"], "editionB": b["edition"],
                 "imagesA": a["imageUrls"], "imagesB": b["imageUrls"],
                 "flags": "designationDiffers" if designation else "",
                 "note": "title collision, no catalogue citation",
@@ -300,7 +315,8 @@ def main():
                      "institutionsA", "institutionsB", "impressionsA", "impressionsB",
                      "catalogueA", "catalogueB", "catalogueVerdict",
                      "techFamilyA", "techFamilyB", "techFamilyVeto", "yearConflict",
-                     "designationDiffers", "imagesA", "imagesB", "flags", "note"]
+                     "designationDiffers", "editionA", "editionB",
+                     "imagesA", "imagesB", "flags", "note"]
         with open(args.pairs_out, "w", newline="", encoding="utf-8") as fh:
             w = csv.DictWriter(fh, fieldnames=pair_cols)
             w.writeheader()

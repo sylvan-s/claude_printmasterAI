@@ -101,6 +101,13 @@ These are the SAME work even when the pictures look different:
     printing variable, not a change to the plate
   - a LATER PRINTING of the same plate — a reissue, a posthumous edition, a restrike. The design
     did not change because someone pulled another impression decades afterwards
+  - NUMBERED IMPRESSIONS OF ONE EDITION, however much the printed images differ. If the two
+    records carry different numbers from the same edition — 1/55 and 10/55, or edition 1 and
+    edition 10 of a declared size — they are one work by definition, and no visual difference
+    overturns that. Some artists compose each impression differently (a VARIABLE EDITION): the
+    images are SUPPOSED to differ, and only the numbering tells you so. The edition numbers are
+    given to you under "edition" in the record summary, and the sheet often carries them in
+    pencil in the lower margin.
 
 THE DATE YOU ARE SHOWN MAY BE THE IMPRESSION'S, NOT THE DESIGN'S. Several sources record the year
 an individual sheet was printed or acquired, so one work can appear with several different years:
@@ -201,11 +208,17 @@ def _sniff_media_type(body):
 
 
 def side_summary(row, side):
+    # `edition` is decisive for a variable edition and was missing until 2026-09-12: the graph
+    # carried Impression.editionNumber all along, and withholding it asked the model to tell a
+    # variable edition from a variation series on pixels alone, which is impossible in principle
+    # because a variable edition's pixels are meant to differ. `.get` keeps older CSVs readable.
+    edition = row.get("edition" + side, "")
     return (f"  title:        {row['title'+side]!r}\n"
             f"  year:         {row['year'+side] or 'not recorded'}\n"
             f"  institutions: {row['institutions'+side] or 'not recorded'}\n"
             f"  catalogue:    {row['catalogue'+side] or 'none cited'}\n"
             f"  technique:    {row['techFamily'+side] or 'not resolved'}\n"
+            f"  edition:      {edition or 'not recorded'}\n"
             f"  impressions:  {row['impressions'+side]}")
 
 
