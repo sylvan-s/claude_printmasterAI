@@ -111,6 +111,7 @@ MERGE_RULES = {
     "exactCatalogueTitle": "EXACT-CAT-MERGE-1.0",    # same artist node, folded title and cat base
     "editionSiblings":     "EDITION-SIBLINGS-1.0",   # one numbered edition held as many nodes
     "titleCollisionBand":  "COLLISION-RANK-1.0",     # splink weight >= 15 and catalogue agree/none
+    "noCatalogueBand":     "COLLISION-RANK-1.0",     # no catalogue at all: splink weight 10-15
     "humanTriage":         "human",                   # a person read the evidence and decided
 }
 
