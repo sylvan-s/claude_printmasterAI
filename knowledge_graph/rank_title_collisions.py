@@ -24,6 +24,31 @@ DIFFERENT artists — an easier population than the pairs being scored.
   compared against the Picasso-within-Baer operating points. The RANKING is what this produces,
   and ranking is far less sensitive to u than the absolute scale is.
 
+WHICH BAND IS WORTH CHECKING, measured on 60 stratified pairs at weight >= 15 (43 artists, at
+most 2 each), every failure confirmed by triplicate replication — 5 of 5 unanimous, so none is
+model instability:
+
+    stratum     n   precision   95% lower bound
+    agree      14       100%          81%
+    none       30        97%          85%
+    partial    12        83%          56%
+    conflict    4        50%          10%
+    ALL        60        92%          83%
+
+PRECISION IS FLAT IN WEIGHT — 92% at 15-18, 95% at 18-21 — so raising the threshold buys
+nothing. What separates the errors is the CATALOGUE STRATUM. Both `conflict` failures were
+decidable from metadata alone: Rembrandt's "Joseph telling his dreams" cites Bartsch 27 against
+37, and Warhol's "Camouflage" cites F&S 406/407/409 against 409.
+
+So the default band is weight >= 15 AND stratum in {agree, none}: 43/44 correct on the sample,
+and at weight >= 15 graph-wide the dropped strata are 78 `partial` and 16 `conflict` of 1,099
+pairs — losing ~9% of the band to remove ~80% of the errors.
+
+THE RESIDUAL IS NOT REMOVABLE BY RULE. The one failure inside the band is Gordon House's
+"Triangles within a Square", a variation series where the title genuinely repeats across plates
+and the triangle count differs. Only the picture catches that, which is why this emits a review
+queue and not a merge plan.
+
 ONE RECORD PER WORK, not per (work, institution). The unit being compared here is the work node,
 and collapsing institutions first removes the same-work pairs that the candidate generator has
 to filter out afterwards.
@@ -143,10 +168,12 @@ def main():
     ap.add_argument("--max-nodes", type=int, default=DEFAULT_MAX_NODES)
     ap.add_argument("--pairs-out", help="also emit PAIRS in adjudicate_merge_candidates.py's "
                                         "schema, for the band selected below")
-    ap.add_argument("--pairs-min-weight", type=float, default=10.0)
-    ap.add_argument("--pairs-catalogue", default="none",
-                    help="'none' = collisions with no citation anywhere, which the metadata "
-                         "routing cannot decide; 'any' for all")
+    # THE BAND, measured rather than chosen. See "WHICH BAND IS WORTH CHECKING" above.
+    ap.add_argument("--pairs-min-weight", type=float, default=15.0)
+    ap.add_argument("--pairs-catalogue", default="agree,none",
+                    help="comma-separated catalogue strata to emit: agree, none, partial, "
+                         "conflict, or 'any'. The default drops the two strata that carried "
+                         "4 of 5 measured failures")
     args = ap.parse_args()
 
     groups = load_collisions(args.collisions, args.min_nodes, args.max_nodes)
@@ -232,8 +259,9 @@ def main():
         w.writeheader()
         w.writerows(rows)
     if args.pairs_out:
+        strata = {x.strip() for x in args.pairs_catalogue.split(",")}
         wanted = {f"{n}" for n, g in enumerate(groups)
-                  if (args.pairs_catalogue == "any" or not g["catalogue"])}
+                  if "any" in strata or (g["catalogue"] or "none") in strata}
         pair_rows = []
         for left, right, weight, prob in pred.itertuples(index=False):
             a, b = info[left], info[right]
@@ -243,8 +271,8 @@ def main():
                 continue        # nothing for a vision pass to look at
             designation = int(designation_only_difference(a["title"], b["title"]))
             pair_rows.append({
-                # No catalogue anywhere in this band, so catalogueVerdict is 'silent' and the
-                # route is needsVision by construction — that IS the selection.
+                # Was hardcoded 'silent' when this only served the no-catalogue band; the
+                # refined rule selects ON this field, so it has to carry the real state.
                 "route": "needsVision", "matchWeight": round(float(weight), 3),
                 "matchProbability": round(float(prob), 6), "artist": a["artist"],
                 "workA": a["work_id"], "workB": b["work_id"],
@@ -253,7 +281,7 @@ def main():
                 "institutionsA": a["institutions"], "institutionsB": b["institutions"],
                 "impressionsA": a["impressions"], "impressionsB": b["impressions"],
                 "catalogueA": a["catalogueRefs"], "catalogueB": b["catalogueRefs"],
-                "catalogueVerdict": "silent",
+                "catalogueVerdict": groups[int(a["collision_key"])]["catalogue"] or "none",
                 "techFamilyA": a["tech_family"] or "", "techFamilyB": b["tech_family"] or "",
                 "techFamilyVeto": int(bool(a["tech_family"] and b["tech_family"]
                                            and a["tech_family"] != b["tech_family"])),
