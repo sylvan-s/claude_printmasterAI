@@ -106,6 +106,7 @@ from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
 from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id
+from ulan_url import canonical_ulan_url
 
 
 def _require_env(name):
@@ -140,9 +141,9 @@ IMAGE_SIZE_PX = 1000  # 2000 returns HTTP 415 — 1000 is the long-edge ceiling
 # holds 1,996 works; a blind MERGE on "PICASSO Pablo" would create a second one.
 ARTIST_RESOLUTION = {
     "picasso pablo": {"canonicalName": "Pablo Picasso",
-                      "ulanUrl": "http://vocab.getty.edu/page/ulan/500009666"},
+                      "ulanId": "500009666"},
     "degas edgar (gas hilaire germain edgar de, dit)": {"canonicalName": "Edgar Degas",
-                      "ulanUrl": "http://vocab.getty.edu/ulan/500115460"},
+                      "ulanId": "500115460"},
     "gonzález julio": {"canonicalName": "Julio González", "ulanUrl": None},
     "tobey mark": {"canonicalName": "Mark Tobey", "ulanUrl": None},
     "bissier julius": {"canonicalName": "Julius Bissier", "ulanUrl": None},
@@ -513,7 +514,11 @@ def normalize_catalogue_refs(raw, inventory):
 def resolve_artist(authors_list):
     key = (authors_list or "").strip().lower()
     if key in ARTIST_RESOLUTION:
-        resolved = dict(ARTIST_RESOLUTION[key])
+        hit = ARTIST_RESOLUTION[key]
+        # Bare id in the table, URL built here — see bm_ingest.resolve_artist. The "picasso
+        # pablo" entry held a page-form URL until 2026-09-12.
+        resolved = {"canonicalName": hit["canonicalName"],
+                    "ulanUrl": canonical_ulan_url(hit.get("ulanId"))}
         resolved["rawName"] = authors_list
         return resolved
     return {"canonicalName": _clean(authors_list) or "unknown", "ulanUrl": None,
@@ -579,7 +584,7 @@ def map_record(record):
         "accessionNumber": inventory,
         "artistName": artist["canonicalName"],
         "artistRawName": artist["rawName"],
-        "artistUlanUrl": artist["ulanUrl"],
+        "artistUlanUrl": canonical_ulan_url(artist["ulanUrl"]),
         "title": title,
         "dateYear": date["year"],
         "dateEndYear": date["endYear"],

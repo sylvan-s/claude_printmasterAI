@@ -14,6 +14,7 @@ tests/backtest/output/
 __pycache__/
 *.pyc
 knowledge_graph/venv-embeddings/
+knowledge_graph/venv-splink/
 knowledge_graph/embed_dinov2_failures.json
 knowledge_graph/tmp_tate_images/
 knowledge_graph/resolve_tate_images_failures.json
@@ -45,6 +46,10 @@ knowledge_graph/picasso_plate_join_presnapshot_*.json
 # ULAN backfill reports (regenerate on demand)
 knowledge_graph/artist_ulan_report.csv
 knowledge_graph/artist_dedup_candidates.csv
+knowledge_graph/artist_splink_triage.csv
+knowledge_graph/artist_splink_candidates*.csv
+knowledge_graph/artist_records.parquet
+knowledge_graph/ulan_canon_presnapshot_*.json
 knowledge_graph/artist_ulan_report_session1.csv
 knowledge_graph/artist_verification_report.csv
 knowledge_graph/artist_verification_report_haiku.csv

@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from neo4j import GraphDatabase
 
 from resolve_artist_identity import resolve_artist
+from ulan_url import canonical_ulan_url
 
 NEO4J_URI = os.environ["NEO4J_URI"]
 NEO4J_USER = os.environ["NEO4J_USER"]
@@ -76,7 +77,7 @@ def main():
                 rf.flush()
                 continue
 
-            uid = r["resolvedUlanUrl"]
+            uid = canonical_ulan_url(r["resolvedUlanUrl"])
             wd_new = r.get("resolvedWikidataUrl")
             clash = session.run(
                 "MATCH (o:Artist {ulanUrl: $u}) RETURN o.name AS name LIMIT 1", u=uid

@@ -37,6 +37,7 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import json
+from ulan_url import canonical_ulan_url
 
 SPARQL_ENDPOINT = "https://vocab.getty.edu/sparql.json"
 
@@ -154,7 +155,7 @@ def _search_ulan(name):
     except sqlite3.OperationalError:
         return []
     return [
-        {"ulan": {"value": f"http://vocab.getty.edu/ulan/{uid}"}, "name": {"value": pname}}
+        {"ulan": {"value": canonical_ulan_url(uid)}, "name": {"value": pname}}
         for uid, pname in rows
     ]
 
@@ -394,7 +395,7 @@ def resolve_artist(raw_name):
         if not any(c["ulanId"] == uid for c in candidates):
             candidates.insert(0, {
                 "ulanId": uid,
-                "ulanUrl": f"http://vocab.getty.edu/ulan/{uid}",
+                "ulanUrl": canonical_ulan_url(uid),
                 "ulanName": wd_top["label"],
                 "bio": None,
                 "matchScore": wd_top["matchScore"],
@@ -455,7 +456,7 @@ def resolve_artist(raw_name):
         elif idx is None:
             candidates.insert(0, {
                 "ulanId": uid,
-                "ulanUrl": f"http://vocab.getty.edu/ulan/{uid}",
+                "ulanUrl": canonical_ulan_url(uid),
                 "ulanName": wd_top["label"],
                 "bio": None,
                 "matchScore": wd_top["matchScore"],

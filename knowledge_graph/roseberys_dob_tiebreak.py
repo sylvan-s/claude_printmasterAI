@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from neo4j import GraphDatabase
 
 from resolve_artist_identity import resolve_artist_with_dob
+from ulan_url import canonical_ulan_url
 
 NEO4J_URI = os.environ["NEO4J_URI"]
 NEO4J_USER = os.environ["NEO4J_USER"]
@@ -69,7 +70,7 @@ def main():
                 counts["no_dob_or_no_tiebreak"] += 1
                 continue
 
-            uid = r["resolvedUlanUrl"]
+            uid = canonical_ulan_url(r["resolvedUlanUrl"])
             ev = r.get("dobTiebreakEvidence", {"tiedCandidates": ""})
             tag = RESOLVER_TAG if r["confidence"] == "dob_tiebreak_auto" else "ulan-wd-resolver-1.0-recheck"
             clash = session.run(

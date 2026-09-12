@@ -73,6 +73,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 
 from neo4j import GraphDatabase
+from ulan_url import canonical_ulan_url
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(HERE, "ulan_local.sqlite")
@@ -270,7 +271,11 @@ def main(apply_changes, source, tolerance, min_works):
                 if is_pm:
                     stats["also_flagged_printmaker"] += 1
                 rows.append({"name": a["name"],
-                             "ulanUrl": f"http://vocab.getty.edu/page/ulan/{ulan_id}",
+                             # WAS f".../page/ulan/{ulan_id}" — the page form addresses
+                             # Getty's HTML page, not the resource, and this resolver was the
+                             # single largest source of the duplicate-Artist bug repaired
+                             # 2026-09-12. See ulan_url.py.
+                             "ulanUrl": canonical_ulan_url(ulan_id),
                              "isPrintmaker": bool(is_pm),
                              "resolvedAt": now, "resolvedBy": RESOLVER_TAG})
 

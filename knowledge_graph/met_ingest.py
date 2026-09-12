@@ -87,6 +87,7 @@ MET_CSV_PATH = "/Users/sylvansitkey/PycharmProjects/claude_printmasterAI/benchma
 # vocabularies from silently drifting apart from each other).
 from crosswalk_matching import extract_techniques, extract_papers
 from embed_titles_hook import embed_new_titles
+from ulan_url import canonical_ulan_url
 
 # --- doc 09 §4 SEMANTIC_SPLIT: tags -> Genre vs Subject ---
 # Standard fine-art/print genre categories (a stable, well-established art-cataloguing
@@ -217,7 +218,8 @@ def parse_constituents(r):
             continue
         bucket = _classify_role(at(roles, i))
         if bucket == "creator":
-            ulan_url = _none_if_placeholder(_clean(at(ulans, i))) or _CREATOR_ULAN_BY_NAME.get(name)
+            ulan_url = canonical_ulan_url(
+                _none_if_placeholder(_clean(at(ulans, i))) or _CREATOR_ULAN_BY_NAME.get(name))
             wikidata_url = _none_if_placeholder(_clean(at(wikidatas, i))) or _CREATOR_WIKIDATA_BY_NAME.get(name)
             creators.append({
                 "name": name,

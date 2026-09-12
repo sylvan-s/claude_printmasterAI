@@ -106,6 +106,7 @@ from picasso_paris_ingest import (
 )
 from navigart_fetch import VAULTS, CACHE_DIR
 from navigart_resolve_artists import split_authors
+from ulan_url import canonical_ulan_url
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 RESOLUTION_PATH = os.path.join(HERE, "navigart_artist_resolution.json")
@@ -322,7 +323,7 @@ def map_record(record, vault, slug, resolution):
         "accessionNumber": inventory,
         "artistName": artist["canonicalName"],
         "artistRawName": raw_author,
-        "artistUlanUrl": artist.get("ulanUrl"),
+        "artistUlanUrl": canonical_ulan_url(artist.get("ulanUrl")),
         "artistMatchRule": artist["matchRule"],
         "secondaryAuthorsNote": secondary,
         "afterArtist": is_after(artwork, authors[0]),

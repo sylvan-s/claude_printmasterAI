@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from neo4j import GraphDatabase
 
 from resolve_artist_identity import strip_honorifics, _name_match_score
+from ulan_url import canonical_ulan_url
 
 NEO4J_URI = os.environ["NEO4J_URI"]
 NEO4J_USER = os.environ["NEO4J_USER"]
@@ -108,7 +109,7 @@ def main():
                     print(f"  ...{i}/{len(artists)}", flush=True)
                 continue
 
-            ulan_url = f"http://vocab.getty.edu/ulan/{top['ulan_id']}"
+            ulan_url = canonical_ulan_url(top["ulan_id"])
             wikidata_url = f"http://www.wikidata.org/entity/{top['qid']}" if top["qid"] else None
 
             clash = session.run(

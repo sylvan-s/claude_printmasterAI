@@ -21,6 +21,7 @@ from neo4j import GraphDatabase
 
 from resolve_artist_identity import resolve_artist
 from verify_ambiguous_artists import verify_one, DEFAULT_MODEL
+from ulan_url import canonical_ulan_url
 
 NEO4J_URI = os.environ["NEO4J_URI"]
 NEO4J_USER = os.environ["NEO4J_USER"]
@@ -115,7 +116,7 @@ def main():
             matched = next((c for c in candidates_with_bio if c["ulanId"] == matched_id), None)
 
             if v == "CONFIRM" and matched:
-                ulan_url = matched["ulanUrl"]
+                ulan_url = canonical_ulan_url(matched["ulanUrl"])
                 clash = session.run(
                     "MATCH (o:Artist {ulanUrl: $u}) RETURN o.name AS name LIMIT 1", u=ulan_url
                 ).single()
