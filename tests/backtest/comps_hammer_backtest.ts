@@ -78,6 +78,10 @@ const FORUM_PREMIUM = Number(arg("forum-premium", "1.30"));
 const INCLUDE_QUALIFIED = has("include-qualified");
 const SOLD_ONLY = has("sold-only");
 const RESUME = has("resume");
+/** Market drift applied to the catalogue midpoint as a rival predictor. 0.82 was the median
+ *  hammer/midpoint on the first 2x2,500-lot runs (2026-09-13); pass --drift to override. It
+ *  is a prior, not fitted per run — the in-sample figure is printed alongside for reference. */
+const DRIFT = Number(arg("drift", "0.82"));
 const SUMMARY_ONLY = arg("summary-only");
 const OUT_DIR = join(process.cwd(), "tests/backtest/comps_hammer");
 const OUT = arg("out", join(OUT_DIR, `${SOURCE}${SALES ? "_" + SALES.join("-") : ""}${LIMIT ? "_n" + LIMIT : ""}.jsonl`));
@@ -404,6 +408,29 @@ function summarize(rows: Row[]) {
       const lo = gs.filter((r) => r.hammer! < r.lowEst).length, hi = gs.filter((r) => r.hammer! > r.highEst).length;
       const med = gs.length ? Math.exp(quantile(gs.map(outcome), 0.5)) : NaN;
       console.log(`  ${name.padEnd(22)} ${String(g.length).padStart(5)}  ${pct(unsold, g.length).padStart(7)}  ${pct(lo, gs.length).padStart(11)}  ${pct(hi, gs.length).padStart(12)}  ${(isNaN(med) ? "-" : f2(med)).padStart(18)}`);
+    }
+  }
+
+  // predictors of hammer, head to head: does the comp add anything to the estimate?
+  console.log(`\n── Predictors of HAMMER, head to head (sold lots with same_work comps) ──`);
+  const inSampleDrift = withEst.length ? Math.exp(quantile(withEst.map((r) => ln(r.hammer! / ((r.lowEst + r.highEst) / 2))), 0.5)) : NaN;
+  console.log(`  drift prior ${DRIFT} (in-sample median hammer/mid on this run: ${isNaN(inSampleDrift) ? "n/a" : f2(inSampleDrift)})`);
+  for (const [label, tier, minN] of [["same_work n>=2", "same_work", 2], ["same_work n>=1", "same_work", 1], ["same_artist_technique n>=3", "same_artist_technique", 3]] as const) {
+    const g = withEst.filter((r) => r.tiers[tier].n >= minN);
+    if (g.length < 5) { console.log(`  ${label}: n=${g.length} (too few)`); continue; }
+    const mid = (r: Row) => (r.lowEst + r.highEst) / 2;
+    const comp = (r: Row) => r.tiers[tier].median! / r.premiumRatio; // back to hammer basis
+    const preds: Array<[string, (r: Row) => number]> = [
+      ["catalogue midpoint", mid],
+      [`catalogue midpoint x ${DRIFT}`, (r) => mid(r) * DRIFT],
+      ["comp median / premium", comp],
+      ["geo blend (mid x drift, comp / 1.1)", (r) => Math.sqrt(mid(r) * DRIFT * (comp(r) / 1.1))],
+    ];
+    console.log(`  ${label} (n=${g.length})`);
+    for (const [name, fn] of preds) {
+      const e = g.map((r) => ln(fn(r) / r.hammer!));
+      const mae = e.reduce((t, x) => t + Math.abs(x), 0) / e.length;
+      console.log(`     ${name.padEnd(36)} geo=${f2(geo(e)).padStart(5)}  ±25%: ${pct(e.filter((x) => Math.abs(x) <= ln(1.25)).length, e.length).padStart(4)}  within 2x: ${pct(e.filter((x) => Math.abs(x) <= ln(2)).length, e.length).padStart(4)}  MAE(log)=${mae.toFixed(3)}`);
     }
   }
 
