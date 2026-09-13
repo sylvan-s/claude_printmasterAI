@@ -54,6 +54,14 @@ export interface AuctionComparable {
    *  small-edition print and an unsigned book plate by the same artist are different
    *  markets; callers stratify on this rather than discounting by guesswork. */
   signed: boolean | null;
+  /** The impression's medium / inscription text as the house printed it (Impression.rawMedium). */
+  rawMedium: string | null;
+  /** Impression.copyType as ingested ("numbered", "AP", "HC", "TP", "BAT", "PP", ...). */
+  copyType: string | null;
+  /** Impression dimension strings ("30.0x34.0cm"); plate is set on ~4%, image ~8%, sheet ~72% of sold comps. */
+  plateDimensions: string | null;
+  imageDimensions: string | null;
+  sheetDimensions: string | null;
   /** Premium-inclusive realised price, GBP at the sale-date rate. What the buyer paid.
    *  Null on the few records that carry only a hammer. */
   priceRealisedGBP: number | null;
@@ -170,7 +178,9 @@ WITH cw, src, er, imp, techniques,
 ORDER BY tierRank ASC
 WITH src, collect({
        tierRank: tierRank, workId: cw.id, workTitle: cw.name,
-       editionSize: coalesce(er.declaredSize, er.editionSize), techniques: techniques, signed: imp.signed
+       editionSize: coalesce(er.declaredSize, er.editionSize), techniques: techniques, signed: imp.signed,
+       rawMedium: imp.rawMedium, copyType: imp.copyType,
+       plateDimensions: imp.plateDimensions, imageDimensions: imp.imageDimensions, sheetDimensions: imp.sheetDimensions
      })[0] AS best
 ORDER BY best.tierRank ASC, src.saleDate DESC
 LIMIT $limit
@@ -195,7 +205,12 @@ RETURN best.tierRank AS tierRank,
        src.listingUrl AS listingUrl,
        best.editionSize AS editionSize,
        best.signed AS signed,
-       best.techniques AS techniques
+       best.techniques AS techniques,
+       best.rawMedium AS rawMedium,
+       best.copyType AS copyType,
+       best.plateDimensions AS plateDimensions,
+       best.imageDimensions AS imageDimensions,
+       best.sheetDimensions AS sheetDimensions
 `;
 
 function num(value: unknown): number | null {
@@ -280,6 +295,11 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
         techniques,
         editionSize: num(r.get("editionSize")),
         signed: typeof r.get("signed") === "boolean" ? (r.get("signed") as boolean) : null,
+        rawMedium: r.get("rawMedium") ?? null,
+        copyType: r.get("copyType") ?? null,
+        plateDimensions: r.get("plateDimensions") ?? null,
+        imageDimensions: r.get("imageDimensions") ?? null,
+        sheetDimensions: r.get("sheetDimensions") ?? null,
         priceRealisedGBP: num(r.get("priceRealisedGBP")),
         hammerPriceGBP: num(r.get("hammerPriceGBP")),
         priceCurrency: r.get("priceCurrency") ?? null,

@@ -10,6 +10,9 @@ export { resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery } 
 export { queryArtistDinoFloor } from "./artist_dino_floor.js";
 export { queryArtistPriceProfile, adjustmentBetween, editionBand, areaBand, periodOf, nationalityGroup, segmentKey, pickSegmentDefault, multipliersFrom } from "./artist_price_profile.js";
 export type { ArtistPriceProfile, PriceAttrs, PriceAdjustment, PriceProfileBasis, SignatureClass, ProofClass, EditionBand, AreaBand } from "./artist_price_profile.js";
+export { priceAttrsOfComparable, priceAttrsOfLot, signatureClass, proofClass, editionSizeOf, dimsCm, primaryProcess, PROCESSES } from "./price_attrs.js";
+export { queryWorkFacts } from "./query_work_facts.js";
+export type { WorkFacts } from "./query_work_facts.js";
 export { lookupArtistNames } from "./artist_lookup.js";
 export type { ArtistLookup, ArtistLookupVia } from "./artist_lookup.js";
 export type { ArtistDinoFloor } from "./artist_dino_floor.js";

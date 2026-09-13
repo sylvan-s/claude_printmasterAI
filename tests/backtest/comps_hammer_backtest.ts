@@ -61,8 +61,14 @@ import {
   isLowInformationTitle,
   resolveWorkIdentity,
   fetchArtistWorks,
+  queryArtistPriceProfile,
+  adjustmentBetween,
+  priceAttrsOfComparable,
+  priceAttrsOfLot,
   type ComparablesResult,
   type WorkIdentityBasis,
+  type ArtistPriceProfile,
+  type PriceAttrs,
 } from "../../src/appraisal/knowledge_graph/index";
 import { getDriver, getDatabase } from "../../src/appraisal/knowledge_graph/client";
 import { mapTechniqueToAckgVocabulary } from "../../src/appraisal/stage2a_query_plan";
@@ -93,6 +99,10 @@ const RESOLVE_WORK = has("resolve-work");
  *  comp window) and report it beside plain tier 2. The question: does matching the market
  *  segment beat discounting a mixed population by judgement? */
 const STRATIFY = has("stratify");
+/** Plan step 6 gate: multiply each same-work comp's hammer by the artist's stored elasticities
+ *  over the attributes that differ from the lot (signature, proof, edition, size, process —
+ *  never house) and score the adjusted median against the raw one on the same lots. */
+const ADJUST = has("adjust");
 /** Edition bands: unsigned book plates and portfolio sheets sit in the hundreds; signed
  *  editions in the tens. Boundaries chosen on the Picasso etching split (2026-09-13). */
 const editionBand = (n: number | null | undefined): string => (n == null || n <= 0 ? "unknown" : n <= 50 ? "<=50" : n <= 150 ? "51-150" : ">150");
@@ -162,7 +172,12 @@ interface Lot {
   catalogueRefs: string | null;
   signed: boolean | null;
   editionSize: number | null;
+  /** Catalogue fields the pricing-model attributes are read from (--adjust). */
+  editionNote: string | null;
+  widthCm: number | null;
+  heightCm: number | null;
 }
+const numOrNull = (v: string | undefined) => (Number(v) > 0 ? Number(v) : null);
 
 function loadRoseberys(): Lot[] {
   const dates = JSON.parse(readFileSync("knowledge_graph/roseberys_sale_dates.json", "utf8")).sales as Record<string, { saleDate: string }>;
@@ -190,6 +205,7 @@ function loadRoseberys(): Lot[] {
       listingUrl: r.lot_url || null, catalogueRefs: r.catalogue_refs?.trim() || null,
       signed: r.signed === "yes" ? true : r.signed === "no" ? false : null,
       editionSize: Number(r.edition_size) > 0 ? Number(r.edition_size) : null,
+      editionNote: r.edition_note?.trim() || null, widthCm: numOrNull(r.width_cm), heightCm: numOrNull(r.height_cm),
     });
   }
   return out;
@@ -212,6 +228,7 @@ function loadForum(): Lot[] {
       listingUrl: r.lot_url || null, catalogueRefs: r.catalogue_refs?.trim() || null,
       signed: r.signed === "yes" ? true : r.signed === "no" ? false : null,
       editionSize: Number(r.edition_size) > 0 ? Number(r.edition_size) : null,
+      editionNote: r.edition_note?.trim() || null, widthCm: numOrNull(r.width_cm), heightCm: numOrNull(r.height_cm),
     });
   }
   return out;
@@ -233,6 +250,13 @@ interface Row extends Lot {
   bestTier: "same_work" | "same_artist_technique" | "same_artist" | "none";
   bestMedian: number | null;
   sellThrough: { sold: number; unsold: number } | null;
+  /** --adjust: same-work comps re-priced to the lot's attributes by the artist's elasticities. */
+  adjusted?: {
+    basis: ArtistPriceProfile["basis"]; earlierSales: number | null; lotAttrs: PriceAttrs; lotAttrsSource: "graph" | "csv";
+    n: number; medianRawHammer: number | null; medianAdjHammer: number | null;
+    /** Median |log multiplier| — how much the adjustment actually moved the comps. */
+    medianAbsLogAdj: number; differingAttrs: Record<string, number>; unknownColumns: string[];
+  } | null;
   /** How the lot was resolved to a work (only when --resolve-work). */
   workIdentity?: { basis: WorkIdentityBasis | null; ids: number; ambiguousAt: WorkIdentityBasis | null; matchedName: string | null };
   error?: string;
@@ -273,6 +297,38 @@ function tierStat(c: ComparablesResult, tier: Row["bestTier"]): TierStat {
 }
 
 const identityCache = new Map<string, { canonical: string | null; ambiguous: number }>();
+const profileCache = new Map<string, Promise<ArtistPriceProfile | null>>();
+function priceProfile(canonical: string) {
+  if (!profileCache.has(canonical)) profileCache.set(canonical, queryArtistPriceProfile(canonical));
+  return profileCache.get(canonical)!;
+}
+/** The lot's OWN catalogue record in the graph (excluded from comps, but its description is
+ *  what the house printed and a valuer reads pre-sale). Used for the lot's pricing attributes
+ *  so both sides of the adjustment are classified from the same fields by the same rules: the
+ *  CSV drops the "numbered 12/50" text and the structured copyType that the graph keeps, which
+ *  made proof class differ on 30 of 32 smoke-run lots for no real reason. */
+const LOT_ATTRS = `
+MATCH (src:SourceRecord)-[:DOCUMENTS]->(i:Impression)<-[:INCLUDES]-(er:EditionRun)
+WHERE src.saleId = $saleId AND src.lotNumber = $lotNumber AND src.institutionName = $house
+OPTIONAL MATCH (i)-[:USES_TECHNIQUE]->(t:Technique)
+RETURN i.rawMedium AS rawMedium, i.copyType AS copyType, i.signed AS signed, coalesce(er.declaredSize, er.editionSize) AS editionSize,
+       i.plateDimensions AS plateDimensions, i.imageDimensions AS imageDimensions, i.sheetDimensions AS sheetDimensions,
+       collect(DISTINCT t.name) AS techniques
+LIMIT 1`;
+async function lotAttrsFromGraph(lot: Lot): Promise<PriceAttrs | null> {
+  const s = getDriver().session({ database: getDatabase() });
+  try {
+    const r = await s.run(LOT_ATTRS, { saleId: lot.saleId, lotNumber: lot.lotNumber, house: lot.source === "roseberys" ? "Roseberys London" : "Forum Auctions" });
+    const rec = r.records[0]; if (!rec) return null;
+    const n = (v: any) => (v == null ? null : typeof v === "number" ? v : v.toNumber?.() ?? null);
+    return priceAttrsOfComparable({
+      techniques: (rec.get("techniques") as unknown[]).filter(Boolean).map(String), signed: typeof rec.get("signed") === "boolean" ? rec.get("signed") : null,
+      editionSize: n(rec.get("editionSize")), rawMedium: rec.get("rawMedium") ?? null, copyType: rec.get("copyType") ?? null,
+      plateDimensions: rec.get("plateDimensions") ?? null, imageDimensions: rec.get("imageDimensions") ?? null, sheetDimensions: rec.get("sheetDimensions") ?? null,
+    });
+  } finally { await s.close(); }
+}
+const medianOf = (xs: number[]): number | null => { if (!xs.length) return null; const s = [...xs].sort((a, b) => a - b); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
 const worksCache = new Map<string, Awaited<ReturnType<typeof fetchArtistWorks>>>();
 async function artistWorks(canonical: string) {
   if (!worksCache.has(canonical)) worksCache.set(canonical, await fetchArtistWorks(canonical));
@@ -322,6 +378,26 @@ async function processLot(lot: Lot): Promise<Row> {
       const sameSigned = lot.signed == null ? [] : t2.filter((x) => x.signed === lot.signed);
       const sameBand = lot.signed == null || lot.editionSize == null ? [] : sameSigned.filter((x) => editionBand(x.editionSize) === editionBand(lot.editionSize));
       base.strata = { signedOnly: statOf(sameSigned), signedAndBand: statOf(sameBand) };
+    }
+    if (ADJUST) {
+      const sw = c.comparables.filter((x) => x.tier === "same_work" && x.hammerPriceGBP != null && x.hammerPriceGBP > 0);
+      const profile = sw.length ? await priceProfile(id.canonical) : null;
+      if (profile && sw.length) {
+        const fromGraph = await lotAttrsFromGraph(lot);
+        const lotAttrs = fromGraph ?? priceAttrsOfLot({ text: [lot.medium, lot.editionNote].filter(Boolean).join(", "), techniques: base.technique ? [base.technique] : null, signed: lot.signed, editionSize: lot.editionSize, widthCm: lot.widthCm, heightCm: lot.heightCm });
+        const differing: Record<string, number> = {};
+        const unknown = new Set<string>();
+        const adj: number[] = [], raw: number[] = [], logs: number[] = [];
+        for (const x of sw) {
+          const a = adjustmentBetween(lotAttrs, priceAttrsOfComparable(x), profile);
+          for (const f of a.factors) differing[f.attribute] = (differing[f.attribute] ?? 0) + 1;
+          for (const u of a.unknownColumns) unknown.add(u);
+          raw.push(x.hammerPriceGBP!); adj.push(x.hammerPriceGBP! * a.multiplier); logs.push(Math.abs(a.logAdjustment));
+        }
+        base.adjusted = { basis: profile.basis, earlierSales: profile.earlierSales, lotAttrs, lotAttrsSource: fromGraph ? "graph" : "csv", n: sw.length, medianRawHammer: medianOf(raw), medianAdjHammer: medianOf(adj), medianAbsLogAdj: medianOf(logs) ?? 0, differingAttrs: differing, unknownColumns: [...unknown].sort() };
+      } else {
+        base.adjusted = null;
+      }
     }
     base.tiers = {
       same_work: tierStat(c, "same_work"),
@@ -514,6 +590,47 @@ function summarize(rows: Row[]) {
       const e = g.map((r) => ln(fn(r) / r.hammer!));
       const mae = e.reduce((t, x) => t + Math.abs(x), 0) / e.length;
       console.log(`     ${name.padEnd(36)} geo=${f2(geo(e)).padStart(5)}  ±25%: ${pct(e.filter((x) => Math.abs(x) <= ln(1.25)).length, e.length).padStart(4)}  within 2x: ${pct(e.filter((x) => Math.abs(x) <= ln(2)).length, e.length).padStart(4)}  MAE(log)=${mae.toFixed(3)}`);
+    }
+  }
+
+  // step 6 gate: same-work comps adjusted by the artist's elasticities vs raw, same lots
+  const adjRows = withEst.filter((r) => r.adjusted && r.adjusted.medianAdjHammer != null && r.adjusted.medianRawHammer != null);
+  if (adjRows.length) {
+    console.log(`\n── Step 6 gate: same-work comp hammer ADJUSTED by the artist's elasticities vs raw (same sold lots) ──`);
+    const nAdj = all.filter((r) => r.adjusted).length, nNoProfile = all.filter((r) => r.adjusted === null && r.tiers.same_work.n > 0).length;
+    console.log(`  lots with a profile and same-work hammer comps: ${nAdj}; same-work comps but no profile: ${nNoProfile}`);
+    const byBasis: Record<string, number> = {};
+    for (const r of adjRows) byBasis[r.adjusted!.basis] = (byBasis[r.adjusted!.basis] ?? 0) + 1;
+    console.log(`  profile basis: ${Object.entries(byBasis).map(([k, v]) => `${k} ${v}`).join(", ")}   lot attrs from graph record: ${adjRows.filter((r) => r.adjusted!.lotAttrsSource === "graph").length}/${adjRows.length}`);
+    const moved = adjRows.filter((r) => r.adjusted!.medianAbsLogAdj > ln(1.25)).length;
+    console.log(`  adjustment moved the comps by >25% on ${moved}/${adjRows.length} lots (median |log mult| ${f2(Math.exp(quantile(adjRows.map((r) => r.adjusted!.medianAbsLogAdj), 0.5)))}x)`);
+    const diffCounts: Record<string, number> = {};
+    for (const r of adjRows) for (const k of Object.keys(r.adjusted!.differingAttrs)) diffCounts[k] = (diffCounts[k] ?? 0) + 1;
+    console.log(`  lots where an attribute differed from a comp: ${Object.entries(diffCounts).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(", ")}`);
+    const mid = (r: Row) => (r.lowEst + r.highEst) / 2;
+    const show = (name: string, e: number[]) => console.log(`     ${name.padEnd(44)} n=${String(e.length).padStart(4)} geo=${f2(geo(e)).padStart(5)}  ±25%: ${pct(e.filter((x) => Math.abs(x) <= ln(1.25)).length, e.length).padStart(4)}  within 2x: ${pct(e.filter((x) => Math.abs(x) <= ln(2)).length, e.length).padStart(4)}  MAE(log)=${(e.reduce((t, x) => t + Math.abs(x), 0) / e.length).toFixed(3)}`);
+    const groups: Array<[string, (r: Row) => boolean]> = [
+      ["same_work n>=1", () => true],
+      ["same_work n>=2", (r) => r.adjusted!.n >= 2],
+      ["same_work n>=3", (r) => r.adjusted!.n >= 3],
+      ["basis=shrunk (own fit)", (r) => r.adjusted!.basis === "shrunk"],
+      ["basis=prior (neighbours)", (r) => r.adjusted!.basis === "prior"],
+      ["basis=segment (market default)", (r) => r.adjusted!.basis === "segment"],
+      ["adjustment moved comps >25%", (r) => r.adjusted!.medianAbsLogAdj > ln(1.25)],
+      ["comp ATTRS ALL SAME as lot (control)", (r) => Object.keys(r.adjusted!.differingAttrs).length === 0],
+    ];
+    for (const [label, sel] of groups) {
+      const g = adjRows.filter(sel);
+      if (g.length < 5) { console.log(`  ${label}: n=${g.length} (too few)`); continue; }
+      console.log(`  ${label} (n=${g.length})`);
+      const err = (f: (r: Row) => number) => g.map((r) => ln(f(r) / r.hammer!));
+      show("raw same-work hammer median", err((r) => r.adjusted!.medianRawHammer!));
+      show("ADJUSTED same-work hammer median", err((r) => r.adjusted!.medianAdjHammer!));
+      show(`catalogue midpoint x ${DRIFT}`, err((r) => mid(r) * DRIFT));
+      show("geo blend (mid x drift, adjusted)", err((r) => Math.sqrt(mid(r) * DRIFT * r.adjusted!.medianAdjHammer!)));
+      const rhoRaw = spearman(g.map((r) => ln(r.adjusted!.medianRawHammer! / mid(r))), g.map((r) => ln(r.hammer! / mid(r))));
+      const rhoAdj = spearman(g.map((r) => ln(r.adjusted!.medianAdjHammer! / mid(r))), g.map((r) => ln(r.hammer! / mid(r))));
+      console.log(`     Spearman(comp/mid, hammer/mid): raw ${isNaN(rhoRaw) ? "n/a" : rhoRaw.toFixed(3)}  adjusted ${isNaN(rhoAdj) ? "n/a" : rhoAdj.toFixed(3)}`);
     }
   }
 
