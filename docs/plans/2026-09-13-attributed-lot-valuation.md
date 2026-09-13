@@ -381,7 +381,14 @@ for same-work comps and as a from-scratch fallback (71% within 2x, better than t
 a replacement for the estimate.
 
 Data defect found: Bonhams' stored `estimateLowGBP/HighGBP` equal the hammer (API field is
-overwritten post-sale). Read paths now use native ÷ FX; the property repair is a spawned task.
+overwritten post-sale). Repaired 2026-09-13 by `knowledge_graph/repair_bonhams_estimate_gbp.py`:
+39,851 collapsed Bonhams+Skinner rows rewritten as native ÷ sale-date FX, and 15,034 Roseberys/
+Forum rows (which never had a GBP estimate) filled the same way — 54,890 rows, old values kept
+under `estimate*GBPBeforeRepair`. `bonhams_ingest.py` no longer writes the API field and
+`backfill_fx_gbp.py` now owns every GBP estimate; `check_bonhams_estimate_gbp.py` guards it.
+`query_comparables.ts` reads the stored property again. Honest hammer-at-low-estimate sales
+remain: 5,132 of the 39,851 sold Bonhams+Skinner rows, down from every one of the 15,386
+GBP-native rows.
 
 ## Housekeeping done 2026-09-13
 

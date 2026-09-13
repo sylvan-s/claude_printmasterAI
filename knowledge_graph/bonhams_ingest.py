@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Bonhams Group bulk catalogue ingestion into the ACKG (Neo4j)
-Version: BONHAMS-INGEST-1.0
+Version: BONHAMS-INGEST-1.1
 
 Executable counterpart to doc 09's Bonhams adapter section, same relationship as every
 other adapter in this project: the doc describes the mapping, this file enforces it.
@@ -37,13 +37,18 @@ writing a single line of mapping code, not assumed from the filename:
   4. **Genuinely multi-currency** — unlike Roseberys/Forum (GBP-native), Bonhams' export
      carries USD/GBP/SEK/DKK etc. per lot (`estimates.currency`). `priceCurrency` is set
      from the row's own actual currency, not hardcoded "GBP" — hardcoding it would have
-     been a real, silent correctness bug for every non-UK sale. Bonhams' own already-
-     computed GBP-equivalent estimates (`pricing.gbp_low_estimate/gbp_high_estimate`) are
-     additionally stored as `estimateLowGBP`/`estimateHighGBP` for cross-currency
-     comparison, since that conversion is the source's own DIRECT data, not derived here.
-     No equivalent GBP conversion is supplied for the realised hammer price — `hammerPrice`/
-     `priceRealised` stay in the row's native currency rather than being approximated from
-     the estimate-time FX rate, which could easily be stale relative to the sale date.
+     been a real, silent correctness bug for every non-UK sale. NO GBP figure is written by
+     this adapter at all: `hammerPrice`/`priceRealised`/`estimateLow`/`estimateHigh` stay
+     in the row's native currency and `backfill_fx_gbp.py` derives every GBP form
+     (`hammerPriceGBP`, `priceRealisedGBP`, `estimateLowGBP`, `estimateHighGBP`) at the
+     ECB sale-date rate. Through 1.0 this adapter stored Bonhams' own
+     `pricing.gbp_low_estimate`/`gbp_high_estimate` as the GBP estimate, reasoning that the
+     source's conversion was DIRECT data. It is not an estimate once a lot has sold: the
+     API overwrites both fields with the SOLD price in GBP (measured 2026-09-13 — equal to
+     each other on all 39,851 sold Bonhams+Skinner rows with a real native spread, and
+     exactly the hammer on the 15,386 GBP-native ones), and on unsold rows it is converted
+     at a current rate, not the sale's. `repair_bonhams_estimate_gbp.py` corrected the
+     graph; `check_bonhams_estimate_gbp.py` guards this adapter against writing it again.
   5. **`status` determines `sold`/`hammerPrice`, and WD is excluded outright.** SOLD ->
      sold=True, hammerPrice = `pricing.hammer_price` (the hammer), priceRealised =
      `pricing.hammer_premium` (both native-currency). Despite its name, `hammer_premium`
@@ -327,8 +332,8 @@ def map_record(record):
         "imageUrl": record.get("primary_image_url"),
         "estimateLow": estimates.get("low"),
         "estimateHigh": estimates.get("high"),
-        "estimateLowGBP": pricing.get("gbp_low_estimate"),
-        "estimateHighGBP": pricing.get("gbp_high_estimate"),
+        # No estimateLowGBP/HighGBP here — see docstring item 4. The API's gbp_*_estimate is
+        # the sold price post-sale; backfill_fx_gbp.py derives the GBP forms from native x FX.
         "hammerPrice": hammer_price,
         "priceRealised": price_realised,
         "priceCurrency": currency,
@@ -393,8 +398,6 @@ SET src.sourceType = "auction",
     src.saleDate = row.saleDate,
     src.estimateLow = row.estimateLow,
     src.estimateHigh = row.estimateHigh,
-    src.estimateLowGBP = row.estimateLowGBP,
-    src.estimateHighGBP = row.estimateHighGBP,
     src.hammerPrice = row.hammerPrice,
     src.priceRealised = row.priceRealised,
     src.priceCurrency = row.priceCurrency,

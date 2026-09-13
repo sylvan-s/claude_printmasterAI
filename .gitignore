@@ -36,6 +36,7 @@ knowledge_graph/navigart_embed_images_failures.json
 knowledge_graph/picasso_merge_backup_*.json
 knowledge_graph/picasso_merge_presnapshot_*.json
 knowledge_graph/catalogue_comma_repair_*.json
+knowledge_graph/estimate_gbp_repair_presnapshot_*.json
 knowledge_graph/picasso_image_merge_backup_*.json
 knowledge_graph/picasso_image_merge_presnapshot_*.json
 knowledge_graph/picasso_bc_merge_backup_*.json

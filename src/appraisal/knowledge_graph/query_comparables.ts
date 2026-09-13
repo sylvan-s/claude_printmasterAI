@@ -186,11 +186,12 @@ RETURN best.tierRank AS tierRank,
        src.priceCurrency AS priceCurrency,
        src.priceRealised AS priceRealisedNative,
        src.fxRateDate AS fxRateDate,
-       // Bonhams' stored estimateLowGBP/HighGBP are the SOLD price in GBP (the API's
-       // gbp_low_estimate is overwritten post-sale — both equal the hammer on every sold
-       // row, found 2026-09-13). The native estimate at the sale-date rate is the estimate.
-       CASE WHEN src.estimateLow > 0 AND src.fxRateToGBP > 0 THEN src.estimateLow / src.fxRateToGBP ELSE src.estimateLowGBP END AS estimateLowGBP,
-       CASE WHEN src.estimateHigh > 0 AND src.fxRateToGBP > 0 THEN src.estimateHigh / src.fxRateToGBP ELSE src.estimateHighGBP END AS estimateHighGBP,
+       // Native estimate / sale-date FX, written by knowledge_graph/backfill_fx_gbp.py for
+       // every house. Until 2026-09-13 Bonhams rows held the API's gbp_*_estimate here, which
+       // is the SOLD price post-sale; repair_bonhams_estimate_gbp.py corrected the stored
+       // values and check_bonhams_estimate_gbp.py guards them, so the property is read as-is.
+       src.estimateLowGBP AS estimateLowGBP,
+       src.estimateHighGBP AS estimateHighGBP,
        src.listingUrl AS listingUrl,
        best.editionSize AS editionSize,
        best.signed AS signed,
