@@ -50,7 +50,7 @@ PER_HOST_SPACING_S = 0.25
 FETCH_QUERY = """
 MATCH (img:DigitalImage)-[:SHOWS]->(imp:Impression)
 WHERE img.sourceUrl IS NOT NULL
-  AND ($force OR img.hiresCheckedAt IS NULL)
+  AND ($force OR img.hiresCheckedAt IS NULL OR ($retryFailures AND img.hiresFailed = true))
   AND ($hostFilter IS NULL OR img.sourceUrl CONTAINS $hostFilter)
   AND (NOT $labelledOnly OR EXISTS { (imp)-[:USES_TECHNIQUE]->(:Technique) })
 RETURN elementId(img) AS id, img.sourceUrl AS sourceUrl,
@@ -80,8 +80,18 @@ def process(row, session_http):
     try:
         w, h, total = fetch_dimensions(url, session=session_http)
     except RuntimeError as e:
-        out["failed"], out["reason"] = True, str(e)[:200]
-        return out
+        # A substituted variant that does not exist (BM without a mid_, Roseberys without an
+        # xlarge) is not a dead image: fall back to the stored URL and record that as hires.
+        if url != row["sourceUrl"] and str(e).startswith("HTTP 4"):
+            try:
+                w, h, total = fetch_dimensions(row["sourceUrl"], session=session_http)
+                url = out["hiresUrl"] = row["sourceUrl"]
+            except RuntimeError as e2:
+                out["failed"], out["reason"] = True, f"{e}; fallback {e2}"[:200]
+                return out
+        else:
+            out["failed"], out["reason"] = True, str(e)[:200]
+            return out
     out["w"], out["h"], out["bytes"] = int(w), int(h), (int(total) if total else None)
     dims, basis = choose_dimensions(row["sheet"], row["image"], row["plate"])
     ppm = px_per_mm(w, h, dims)
@@ -96,6 +106,7 @@ def main():
     ap.add_argument("--host", choices=sorted(HOST_FILTERS))
     ap.add_argument("--limit", type=int)
     ap.add_argument("--force", action="store_true", help="re-check nodes that already have hiresCheckedAt")
+    ap.add_argument("--retry-failures", action="store_true", help="also re-check nodes marked hiresFailed")
     ap.add_argument("--dry-run", action="store_true", help="fetch and print, write nothing")
     ap.add_argument("--batch", type=int, default=50)
     args = ap.parse_args()
@@ -105,7 +116,7 @@ def main():
     driver = GraphDatabase.driver(os.environ["NEO4J_URI"], auth=(os.environ["NEO4J_USER"], os.environ["NEO4J_PASSWORD"]))
     db = os.environ.get("NEO4J_DATABASE", "neo4j")
     with driver.session(database=db) as s:
-        rows = [dict(r) for r in s.run(FETCH_QUERY, force=args.force,
+        rows = [dict(r) for r in s.run(FETCH_QUERY, force=args.force, retryFailures=args.retry_failures,
                                        hostFilter=HOST_FILTERS.get(args.host), labelledOnly=args.labelled_only)]
     if args.limit:
         rows = rows[:args.limit]
