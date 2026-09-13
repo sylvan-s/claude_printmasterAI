@@ -8,6 +8,7 @@
  *   npm run backtest:attributed-lot -- --url https://www.roseberys.co.uk/bidding/A0785-.../1-...
  *   npm run backtest:attributed-lot -- --sale A0785 --lot 1 [--method claude-4stage-attributed]
  *   npm run backtest:attributed-lot -- --sale A0793 --random 10 --seed 7 --dry-run     # pick + graph-side facts, NO model calls
+ *   npm run backtest:attributed-lot -- --sale A0793 --screen                            # rank the WHOLE sale, NO model calls
  *   npm run backtest:attributed-lot -- --sale A0793 --lots 12,45,301 [--stage3-model qwen-plus]
  *
  * Stage 1a (VEA) and Stage 1b (Gemini) are OFF on the attributed method (see the config in
@@ -31,7 +32,7 @@ import {
   appraiserConfigs, AttributedLotAppraiser, usageSummary, printUsageSummary, resetUsage,
   type AppraisalInput, type AppraisalMethodConfig,
 } from "../../src/appraisal/appraiser";
-import { type CatalogueAttribution } from "../../src/appraisal/attributed_lot";
+import { divergenceSignalUsable, ESTIMATE_DRIFT, type CatalogueAttribution } from "../../src/appraisal/attributed_lot";
 import { resolveArtistIdentity, resolveWorkIdentity, queryAuctionComparables, queryWorkFacts } from "../../src/appraisal/knowledge_graph/index.js";
 import { compareResults } from "./compare";
 import { buildBacktestReport } from "./build_report";
@@ -43,9 +44,9 @@ import { parseDescription, type ParsedLot } from "../../benchmark/src/roseberys/
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_METHOD = "claude-4stage-attributed";
 
-interface Args { url?: string; sale?: string; lot?: string; lots: string[]; random: number; seed: number; dryRun: boolean; method: string; vea: boolean; stage3Model?: string }
+interface Args { url?: string; sale?: string; lot?: string; lots: string[]; random: number; seed: number; dryRun: boolean; screen: boolean; concurrency: number; minRatio: number; method: string; vea: boolean; stage3Model?: string }
 function parseArgs(argv: string[]): Args {
-  const a: Args = { method: DEFAULT_METHOD, vea: false, lots: [], random: 0, seed: 1, dryRun: false };
+  const a: Args = { method: DEFAULT_METHOD, vea: false, lots: [], random: 0, seed: 1, dryRun: false, screen: false, concurrency: 6, minRatio: 1.25 };
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i];
     if (x === "--url") a.url = argv[++i];
@@ -55,6 +56,9 @@ function parseArgs(argv: string[]): Args {
     else if (x === "--random") a.random = Number(argv[++i]);
     else if (x === "--seed") a.seed = Number(argv[++i]);
     else if (x === "--dry-run") a.dryRun = true;
+    else if (x === "--screen") { a.screen = true; a.dryRun = true; }
+    else if (x === "--concurrency") a.concurrency = Number(argv[++i]);
+    else if (x === "--min-ratio") a.minRatio = Number(argv[++i]);
     else if (x === "--method") a.method = argv[++i];
     else if (x === "--vea") a.vea = true;
     else if (x === "--stage3-model") a.stage3Model = argv[++i];
@@ -67,6 +71,7 @@ function parseArgs(argv: string[]): Args {
     a.sale = m[1]; a.lot = m[2];
   }
   if (a.lot) a.lots = [a.lot];
+  if (a.screen) { if (!a.sale) { console.error("--screen needs --sale <code>"); process.exit(1); } return a; }
   if (!a.sale || (!a.lots.length && !a.random)) { console.error("Usage: --url <roseberys lot url> | --sale <code> (--lot <n> | --lots a,b,c | --random N [--seed S]) [--dry-run] [--method <id>] [--stage3-model <m>] [--vea]"); process.exit(1); }
   return a;
 }
@@ -138,15 +143,75 @@ async function dryRun(rawLot: RawLot, gt: ParsedLot, auction: AuctionRef) {
   const id = await resolveArtistIdentity(claim.artist);
   const canonical = id?.canonicalName ?? null;
   let work = "no artist node", sameWork = 0, sellThrough = "-";
+  let basis: string | null = null, swMedianHammer: number | null = null, swLatest: string | null = null;
+  let tier2 = 0, sold = 0, unsold = 0, signal: { usable: boolean; reason: string } = { usable: false, reason: "not reached" };
   if (canonical) {
     const wi = await resolveWorkIdentity({ artistName: canonical, title: claim.title ?? "", catalogueRefs: claim.catalogueRefs?.length ? claim.catalogueRefs.join("; ") : null, excludeSaleLot: saleLot });
+    basis = wi.basis;
     work = wi.basis ? `resolved (${wi.basis})` : wi.ambiguousAt ? `ambiguous@${wi.ambiguousAt}` : "unresolved";
-    const comps = await queryAuctionComparables({ artistName: canonical, conceptualWorkIds: wi.workIds, workTitle: claim.title ?? null, sinceDate: "2015-01-01", limit: 40, excludeSaleLot: saleLot, excludeListingUrl: claim.lotUrl });
+    const comps = await queryAuctionComparables({ artistName: canonical, conceptualWorkIds: wi.workIds, workTitle: claim.title ?? null, sinceDate: "2015-01-01", limit: 60, excludeSaleLot: saleLot, excludeListingUrl: claim.lotUrl });
     sameWork = comps.summary.tierCounts.same_work;
-    if (wi.workIds.length) { const wf = await queryWorkFacts(wi.workIds, { excludeSaleLot: saleLot }); if (wf) sellThrough = `${wf.sellThrough.sold}/${wf.sellThrough.sold + wf.sellThrough.unsold}`; }
+    tier2 = comps.summary.tierCounts.same_artist_technique;
+    const sw = comps.comparables.filter((c) => c.tier === "same_work");
+    const h = sw.map((c) => c.hammerPriceGBP).filter((x): x is number => x != null && x > 0).sort((a, b) => a - b);
+    swMedianHammer = h.length ? (h.length % 2 ? h[(h.length - 1) / 2] : (h[h.length / 2 - 1] + h[h.length / 2]) / 2) : null;
+    swLatest = sw.map((c) => c.saleDate?.slice(0, 10) ?? "").filter(Boolean).sort().pop() ?? null;
+    signal = divergenceSignalUsable(sw, claim.saleDate);
+    if (wi.workIds.length) {
+      const wf = await queryWorkFacts(wi.workIds, { excludeSaleLot: saleLot });
+      if (wf) { sold = wf.sellThrough.sold; unsold = wf.sellThrough.unsold; sellThrough = `${sold}/${sold + unsold}`; }
+    }
   }
   const stage2bCertain = !canonical || !work.startsWith("resolved") || sameWork === 0;
-  return { claim, canonical, work, sameWork, sellThrough, stage2bCertain };
+  const mid = ((rawLot.low_estimate ?? 0) + (rawLot.high_estimate ?? 0)) / 2;
+  const anchor = mid > 0 ? mid * ESTIMATE_DRIFT : null;
+  return {
+    lot: rawLot.lot_number, claim, canonical, work, basis, sameWork, tier2, sellThrough, sold, unsold, stage2bCertain,
+    swMedianHammer, swLatest, signal, anchor,
+    ratio: anchor && swMedianHammer ? swMedianHammer / anchor : null,
+  };
+}
+type ScreenRow = Awaited<ReturnType<typeof dryRun>>;
+
+/**
+ * Rank a whole sale for lots the graph prices ABOVE the house, at zero LLM spend.
+ *
+ * "Undervalued" here is one specific, measured thing: this work's own prior HAMMER prices sit
+ * well above the printed estimate scaled by the market's 0.82 drift. On the 2026-09-13 backtest
+ * that bucket (comps > 1.5x the anchor) went above the high estimate 33% of the time against a
+ * 19% base rate on Roseberys. It is a candidate generator and not a valuation: it knows nothing
+ * about this impression's condition, state or edition position, which is what the pipeline is for.
+ *
+ * Three disciplines carried from screen_sale.ts, each bought with a wrong answer:
+ *   - identity before price: the ratio is only computed for a work the TITLE resolved (an image
+ *     matching a sibling in a series idiom is how "I hate humans" got priced as "I Hate Human
+ *     Beings");
+ *   - sell-through beside every ratio: a work that fails to sell is marked to clear, not
+ *     underpriced (the Ai Weiwei case: five sales against seven bought-in attempts);
+ *   - the signal gate: one stale comp is not a directional signal (divergenceSignalUsable).
+ */
+function reportScreen(rows: ScreenRow[], minRatio: number) {
+  const priced = rows.filter((r) => r.ratio != null && r.basis);
+  const ranked = priced.filter((r) => r.ratio! >= minRatio).sort((a, b) => b.ratio! - a.ratio!);
+  const gated = ranked.filter((r) => r.signal.usable);
+  const thin = ranked.filter((r) => !r.signal.usable);
+  const line = (r: ScreenRow) =>
+    `${String(r.lot).padStart(4)}  ${(r.claim.artist ?? "").slice(0, 24).padEnd(24)} ${(r.claim.title ?? "").slice(0, 32).padEnd(32)} ` +
+    `${`${r.claim.estimateLow}-${r.claim.estimateHigh}`.padStart(11)} ${String(Math.round(r.anchor!)).padStart(6)} ` +
+    `${String(Math.round(r.swMedianHammer!)).padStart(7)} ${r.ratio!.toFixed(2).padStart(5)}  ${String(r.sameWork).padStart(2)} ${(r.swLatest ?? "-").padStart(10)} ${r.sellThrough.padStart(5)}  ${(r.basis ?? "").slice(0, 16)}`;
+  const head = `${"lot".padStart(4)}  ${"artist".padEnd(24)} ${"title".padEnd(32)} ${"estimate".padStart(11)} ${"anchor".padStart(6)} ${"comp".padStart(7)} ${"ratio".padStart(5)}   n ${"latest".padStart(10)} ${"sold".padStart(5)}  basis`;
+  console.log(`\n== ${rows.length} single-artist lots screened; ${priced.length} reached a same-work hammer price ==`);
+  console.log(`\n-- Graph prices the work ABOVE the house's drift anchor (>= ${minRatio}x), signal usable --\n${head}`);
+  for (const r of gated) console.log(line(r));
+  if (!gated.length) console.log("  (none)");
+  console.log(`\n-- Same ratio, signal too thin to lean on (shown, not ranked) --\n${head}`);
+  for (const r of thin.slice(0, 20)) console.log(`${line(r)}  << ${r.signal.reason}`);
+  if (!thin.length) console.log("  (none)");
+  const under = priced.filter((r) => r.ratio! <= 0.67 && r.signal.usable).sort((a, b) => a.ratio! - b.ratio!);
+  console.log(`\n-- For contrast: graph prices the work BELOW the anchor (<= 0.67x), signal usable --\n${head}`);
+  for (const r of under.slice(0, 10)) console.log(line(r));
+  if (!under.length) console.log("  (none)");
+  console.log(`\ncoverage: artist node ${rows.filter((r) => r.canonical).length}/${rows.length}  work resolved ${rows.filter((r) => r.basis).length}  same-work comps ${priced.length}  signal usable ${priced.filter((r) => r.signal.usable).length}`);
 }
 
 async function main() {
@@ -167,6 +232,29 @@ async function main() {
     console.log(`[Attributed lot] ${pool.length} eligible single-artist lots; picked ${picked.length} with seed ${args.seed}: ${picked.map((l) => l.lot_number).join(", ")}`);
   } else {
     picked = args.lots.map((n) => { const l = allLots.find((x) => String(x.lot_number) === n || String(x.total_lot_number).toLowerCase() === n.toLowerCase()); if (!l) throw new Error(`Lot ${n} not found in sale ${auction.saleCode}`); return l; });
+  }
+
+  if (args.screen) {
+    const pool = allLots.filter((l) => eligible(l).ok);
+    console.log(`[Attributed lot] screening ${pool.length} eligible single-artist lots (of ${allLots.length}) at ${args.concurrency}x — zero LLM spend`);
+    const rows: ScreenRow[] = [];
+    let i = 0;
+    const worker = async () => {
+      while (i < pool.length) {
+        const lot = pool[i++];
+        const e = eligible(lot);
+        try { rows.push(await dryRun(lot, e.gt!, auction)); }
+        catch (err: any) { console.warn(`  lot ${lot.lot_number}: ${err?.message ?? err}`); }
+        if (rows.length % 50 === 0) console.log(`  …${rows.length}/${pool.length}`);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.max(1, args.concurrency) }, worker));
+    rows.sort((a, b) => a.lot - b.lot);
+    mkdirSync(`${__dirname}/attrpath_logs`, { recursive: true });
+    writeFileSync(`${__dirname}/attrpath_logs/${auction.saleCode}_screen.json`, JSON.stringify(rows, null, 1));
+    reportScreen(rows, args.minRatio);
+    await closeDriver();
+    return;
   }
 
   if (args.dryRun) {
