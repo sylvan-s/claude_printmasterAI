@@ -118,3 +118,6 @@ roseberys_excluded_rows.csv
 
 # Comps-vs-hammer backtest runs (regenerate: npm run backtest:comps-hammer)
 tests/backtest/comps_hammer/
+
+# Pricing-model exports (regenerate: knowledge_graph/pricing_ml/export_sales.py)
+knowledge_graph/pricing_ml/data/

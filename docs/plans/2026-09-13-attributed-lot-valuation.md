@@ -358,6 +358,31 @@ the house's estimate already prices that lot. Signed status and edition size bel
 prompt as facts about each comp (now present) and as filters on tier 2, not as a licence to
 anchor on tier 2.
 
+## Pricing model, first test on Picasso (2026-09-13)
+
+`knowledge_graph/pricing_ml/` — an attribute model (technique, signature, condition, citation,
+edition size, bucketed dimensions, plus paper/publisher/work year) on 1,385 Picasso sales,
+temporal split, test = 212 sales from 2024-07. Full write-up in its README.
+
+| predictor | MAE(log) | within 2x |
+|---|---:|---:|
+| artist median | 0.794 | 60% |
+| attributes only | 0.601 | 71% |
+| attributes + same-work prior | 0.575 | 72% |
+| house estimate midpoint | **0.340** | **91%** |
+| attributes + prior + estimate | 0.358 | 87% |
+
+Signature is the dominant attribute (hand-signed ×2.2 over unsigned); edition size, sheet
+size, paper/suite and process follow. Condition could not be modelled: no condition field is
+ingested and Bonhams stopped writing condition sentences in 2020. The attributes do not add
+to the house estimate, which already prices them plus rarity and state — the largest misses
+are "one of four recorded impressions" and "a rare aquatint". Useful as an adjustment table
+for same-work comps and as a from-scratch fallback (71% within 2x, better than tier 2), not as
+a replacement for the estimate.
+
+Data defect found: Bonhams' stored `estimateLowGBP/HighGBP` equal the hammer (API field is
+overwritten post-sale). Read paths now use native ÷ FX; the property repair is a spawned task.
+
 ## Housekeeping done 2026-09-13
 
 - The checkout was on `technique-classifier-deepdive`, 127 commits behind main, which is why
