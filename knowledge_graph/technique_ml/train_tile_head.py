@@ -1,6 +1,6 @@
 """
 PrintMasterAI — ADR-0019 Phase 4 (pilot): technique heads over per-tile DINOv3 embeddings.
-Version: TECHML-TILEHEAD-1.1
+Version: TECHML-TILEHEAD-1.3
 
 Trains and evaluates, on the Phase 2 shards + manifest, with the same artist-grouped protocol
 the existing classifier uses (no artist in both train and test; artist-balanced metrics):
@@ -160,6 +160,74 @@ def fit(model_kind, Xtr, Mtr, Str, Ytr, wtr, d_in, epochs, seed, device, lr=5e-4
     return predict
 
 
+
+
+def weighted_auroc(y, p, w):
+    """Artist-weighted AUROC (weighted Mann-Whitney), prevalence-invariant — the right statistic
+    for comparing runs with different class balances. Ties count half."""
+    order = np.argsort(p, kind="mergesort")
+    y, p, w = y[order], p[order], w[order]
+    wp, wn = w * (y == 1), w * (y == 0)
+    tot_p, tot_n = wp.sum(), wn.sum()
+    if tot_p == 0 or tot_n == 0:
+        return float("nan")
+    # cumulative negative weight strictly below each score, plus half of ties
+    cum_n = np.cumsum(wn)
+    below = np.zeros_like(cum_n)
+    i = 0
+    n = len(p)
+    while i < n:
+        j = i
+        while j + 1 < n and p[j + 1] == p[i]:
+            j += 1
+        before = cum_n[i - 1] if i > 0 else 0.0
+        tie = cum_n[j] - before
+        below[i:j + 1] = before + 0.5 * tie
+        i = j + 1
+    return float((wp * below).sum() / (tot_p * tot_n))
+
+
+def fold_metrics(Y, oof, groups, folds, thr):
+    """Per-fold artist-balanced F1/AP (each fold's held-out artists weighted within the fold)."""
+    out = []
+    for f in sorted(set(folds.tolist())):
+        m = folds == f
+        w = artist_eval_weights(groups[m])
+        out.append([(float(weighted_f1(Y[m, c], oof[m, c], w, thr[c])), weighted_ap(Y[m, c], oof[m, c], w),
+                     weighted_auroc(Y[m, c], oof[m, c], w)) for c in range(Y.shape[1])])
+    return np.array(out)   # [folds, classes, 3]  (F1, AP, AUROC)
+
+
+def bootstrap_artists(Y, oof, groups, thr, n_boot=1000, seed=0):
+    """Resample ARTISTS with replacement over the out-of-fold predictions; -> [classes, 2, 3]
+    (F1/AP x 5th percentile, median, 95th). Artists, not images, are the unit of replication."""
+    rng = np.random.default_rng(seed)
+    uniq, inv = np.unique(groups, return_inverse=True)
+    by_artist = [np.where(inv == a)[0] for a in range(len(uniq))]
+    stats = np.zeros((n_boot, Y.shape[1], 3))
+    for b in range(n_boot):
+        pick = rng.integers(0, len(uniq), len(uniq))
+        idx = np.concatenate([by_artist[a] for a in pick])
+        g = np.concatenate([np.full(len(by_artist[a]), i) for i, a in enumerate(pick)])
+        w = artist_eval_weights(g)
+        for c in range(Y.shape[1]):
+            stats[b, c, 0] = weighted_f1(Y[idx, c], oof[idx, c], w, thr[c])
+            stats[b, c, 1] = weighted_ap(Y[idx, c], oof[idx, c], w)
+            stats[b, c, 2] = weighted_auroc(Y[idx, c], oof[idx, c], w)
+    return np.percentile(stats, [5, 50, 95], axis=0).transpose(1, 2, 0)
+
+
+def fmt_var(name, res, classes):
+    parts = []
+    for c, cname in enumerate(classes):
+        fm, fs = res["fold_mean"][c], res["fold_sd"][c]
+        ci = res["bootstrap_5_95"][c]
+        parts.append(f"{cname[:4]} F1 {fm[0]:.3f}±{fs[0]:.3f} [{ci[0][0]:.2f}-{ci[0][1]:.2f}]  "
+                     f"AP {fm[1]:.3f}±{fs[1]:.3f} [{ci[1][0]:.2f}-{ci[1][1]:.2f}]  "
+                     f"AUROC {fm[2]:.3f}±{fs[2]:.3f} [{ci[2][0]:.2f}-{ci[2][1]:.2f}]")
+    return f"    {name:9s} folds mean±sd [artist-bootstrap 5–95%]: " + " | ".join(parts)
+
+
 # ---------------------------------------------------------------------------
 # evaluation
 # ---------------------------------------------------------------------------
@@ -189,7 +257,7 @@ def standardise(X, fit_mask):
     return ((X - mu) / sd).astype(np.float32)
 
 
-def evaluate(d, classes, kinds, k, seed, epochs, device, out_path, lr=5e-4):
+def evaluate(d, classes, kinds, k, seed, epochs, device, out_path, lr=5e-4, args_n_boot=1000):
     Y, groups, native = d["Y"], d["groups"], d["native"]
     folds = group_kfold(groups, k, seed)
     n_cls = len(classes)
@@ -224,6 +292,14 @@ def evaluate(d, classes, kinds, k, seed, epochs, device, out_path, lr=5e-4):
             res["classes"][name] = {"F1": float(weighted_f1(Y[:, c], oof[:, c], w, thr[c])),
                                     "AP": weighted_ap(Y[:, c], oof[:, c], w)}
         print(f"  {kind:9s} " + "  ".join(f"{n[:4]} F1={r['F1']:.3f} AP={r['AP']:.3f}" for n, r in res["classes"].items()))
+        fm = fold_metrics(Y, oof, groups, folds, thr)
+        bs = bootstrap_artists(Y, oof, groups, thr, n_boot=args_n_boot, seed=seed)
+        res["fold_mean"] = fm.mean(0).tolist(); res["fold_sd"] = fm.std(0, ddof=1).tolist()
+        res["per_fold"] = fm.tolist()
+        res["bootstrap_5_95"] = [[[float(bs[c, m, 0]), float(bs[c, m, 2])] for m in range(3)] for c in range(n_cls)]
+        for c, cname in enumerate(classes):
+            res["classes"][cname]["AUROC"] = weighted_auroc(Y[:, c], oof[:, c], w)
+        print(fmt_var(kind, res, classes), flush=True)
         for lo, hi in BUCKETS:
             m = (native >= lo) & (native < hi)
             if m.sum() >= 30:
@@ -270,6 +346,7 @@ def main():
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--lr", type=float, default=5e-4)
+    ap.add_argument("--n-boot", type=int, default=1000)
     ap.add_argument("--restrict", help="comma-separated: keep only images whose techniques are all in this set")
     ap.add_argument("--seed", type=int, default=13)
     ap.add_argument("--device", default=None)
@@ -280,7 +357,7 @@ def main():
     classes = [c.strip() for c in args.classes.split(",")]
     restrict = [c.strip() for c in args.restrict.split(",")] if args.restrict else None
     d = load(args.shards, args.manifest, classes, restrict)
-    evaluate(d, classes, [m.strip() for m in args.models.split(",")], args.folds, args.seed, args.epochs, device, args.out, args.lr)
+    evaluate(d, classes, [m.strip() for m in args.models.split(",")], args.folds, args.seed, args.epochs, device, args.out, args.lr, args.n_boot)
 
 
 if __name__ == "__main__":

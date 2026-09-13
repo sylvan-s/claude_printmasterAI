@@ -1,7 +1,7 @@
 # ADR-0019: Technique classification needs native-resolution features, not a bigger head
 
 **Date:** 2026-09-13
-**Status:** Proposed. **Phase 0 gate passed on 2026-09-13** (results below): tiling at a fixed
+**Status:** Proposed. **Corrected 2026-09-14** — the Phase 0/0b drypoint figures were host-confounded; see "Correction and variance" under Phase 4. **Phase 0 gate passed on 2026-09-13** (results below): tiling at a fixed
 physical scale is worth +0.09 / +0.15 artist-balanced F1 on aquatint / drypoint over the same
 encoder at 518px, and resolution alone is worth nothing. **Amended 2026-09-13** after the
 physical-cue research in [`docs/research/intaglio-technique-visual-cues-2026-09-13.md`](../research/intaglio-technique-visual-cues-2026-09-13.md):
@@ -451,6 +451,59 @@ Design state after the pilot: pooled mean ⊕ max of stratified 40 mm DINOv3 til
 MLP, per family; drypoint and aquatint posed hierarchically within intaglio; no MIL, no fine
 scale, no hand-crafted channels. Etching-as-a-class is dropped (78% prevalent, trivially
 predicted); it is the intaglio default that the other processes are detected against.
+
+#### Correction and variance (2026-09-14) — the Phase 0/0b drypoint figures were host-confounded
+
+Adding fold-level variance and an artist bootstrap (`train_tile_head.py --n-boot`,
+`artifacts/*_var.json`, `phase0b_variance.json`) to every number, and reporting
+**artist-weighted AUROC** — the only statistic comparable across class balances (F1 and AP both
+depend on prevalence, which is why the earlier "AP ÷ prevalence" comparison was also unsound) —
+led to the following.
+
+**1. The Phase 0 sample was institution-confounded.** Its sampler put Roseberys first and took
+up to 300 per class; Roseberys had 306 etching-only lots and ~30 drypoints, so the sample came
+out etching-only 83% Roseberys / drypoint 92% Bonhams. Host identity alone ranks drypoint
+against etching-only at AUROC 0.860 on that sample. The source-institution probe that would have
+caught this was not run on the Phase 0 sample. Aquatint was far less skewed (177 / 123; host
+alone 0.62), which is why every aquatint number reproduced and every drypoint number did not.
+
+**2. Within host, the Phase 0 claims survive with smaller magnitudes** (AUROC, positives vs
+etching-only negatives, DINOv2-L features):
+
+| Features | Drypoint pooled (confounded) | Drypoint within Bonhams / Roseberys | Aquatint within Bonhams / Roseberys |
+|---|---|---|---|
+| F0 stored 224 px whole | 0.686 | 0.573 / 0.586 | 0.739 / 0.677 |
+| F1 518 px whole | 0.711 | 0.602 / 0.652 | 0.749 / 0.684 |
+| F2 tiles at 40 mm | 0.842 | 0.683 / 0.748 | 0.815 / 0.756 |
+
+Tiling at a fixed physical scale remains the main effect (+0.10–0.16 AUROC over the stored
+embedding within host); the 518 px whole image is worth a little (+0.03–0.07), not nothing; and
+the true drypoint level on these features is ~0.7–0.75, not the 0.84 the confounded pooling
+showed. Phase 0b's DINOv3 drypoint AUROC of 0.925 ± 0.022 is 0.778 / 0.773 within host — the
+same as the pilot's 0.785–0.790 on mixed institutions. **DINOv3's selection over DINOv2 was
+made on confounded drypoint numbers and stands only on aquatint (0.829 vs 0.848, i.e. no
+advantage) and engraving (untested in 0b).** It is not reversed here, because the pilot shards
+are DINOv3 and re-extraction is cheap, but the choice is open again and should be re-run with
+DINOv2-L on the pilot manifest before the full-corpus extraction.
+
+**3. Pilot numbers with intervals** (folds mean ± SD; artist-bootstrap 5–95%; pooled MLP):
+
+| Task | F1 | AP | AUROC |
+|---|---|---|---|
+| 4-way: aquatint | 0.633 ± 0.039 | 0.651 ± 0.090 [0.59–0.69] | 0.833 ± 0.026 [0.81–0.85] |
+| 4-way: drypoint | 0.369 ± 0.113 | 0.338 ± 0.118 [0.25–0.38] | 0.785 ± 0.062 [0.77–0.83] |
+| 4-way: engraving | 0.649 ± 0.045 | 0.670 ± 0.093 [0.56–0.74] | 0.893 ± 0.037 [0.87–0.92] |
+| 4-way: etching | 0.885 ± 0.026 | 0.892 ± 0.033 | 0.738 ± 0.020 [0.70–0.77] |
+| hierarchical drypoint (etching-only negatives) | 0.451 ± 0.043 [0.38–0.52] | 0.461 ± 0.092 [0.36–0.51] | 0.790 ± 0.045 [0.75–0.83] |
+| hierarchical aquatint | 0.686 ± 0.016 [0.65–0.72] | 0.727 ± 0.029 [0.68–0.76] | 0.822 ± 0.023 [0.80–0.84] |
+
+Everything in this ADR before this section that quotes a drypoint F1 or AP from Phase 0 or 0b
+should be read through this correction. The design decisions that rested only on aquatint and
+on within-host effects (tiling at physical scale; CLS pooling; no hand-crafted channels; no
+MIL; no fine-scale concatenation) stand. The decisions that rested on the confounded drypoint
+figures (the size of the tiling effect, DINOv3 over DINOv2, the fine-scale subset result) are
+reopened and must be re-measured on the pilot manifest with a class × institution cross-tab
+and the source probe reported alongside.
 
 ### Phase 5 — product implication
 
