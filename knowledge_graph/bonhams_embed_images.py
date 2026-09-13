@@ -48,6 +48,7 @@ Usage:
     python3 bonhams_embed_images.py --all
     python3 bonhams_embed_images.py --all --force
     python3 bonhams_embed_images.py --all --retry-failures --limit 50   # recheck dead URLs
+    python3 bonhams_embed_images.py --all --min-sale-date 2026-01-01    # prioritize 2026 sales
 """
 
 import argparse
@@ -134,9 +135,17 @@ FAILURE_LOG_PATH = "bonhams_embed_images_failures.json"
 # embeddingFailed is skipped by default (a prior attempt already recorded a real error —
 # most commonly a permanently dead source URL, not a transient blip) unless --retry-failures
 # or --force is passed. --force bypasses both the embedding and embeddingFailed checks.
+#
+# $minSaleDate lets a run prioritize recent sales instead of taking whatever ORDER BY imgId
+# happens to hand it — imgId's saleId component sorts lexicographically, not numerically
+# or chronologically ("bonhams-10133-..." sorts before "bonhams-9999-..."), so the default
+# order has no real correlation with sale recency. Added 2026-09-09 when a "what proportion
+# of 2026 sales are repeats" analysis needed 2026 lots specifically embedded and found 0 of
+# 1,215 had been reached yet by the daily incremental job.
 FETCH_CANDIDATES_QUERY = """
 MATCH (img:DigitalImage)-[:SHOWS]->(target)<-[:DOCUMENTS]-(src:SourceRecord)
 WHERE src.institutionName IN ['Bonhams', 'Skinner']
+  AND ($minSaleDate IS NULL OR src.saleDate >= $minSaleDate)
   AND (
     $force
     OR (img.embedding IS NULL AND ($retryFailures OR coalesce(img.embeddingFailed, false) = false))
@@ -149,11 +158,13 @@ ORDER BY imgId
 """
 
 
-def fetch_candidates(force=False, retry_failures=False, limit=None):
+def fetch_candidates(force=False, retry_failures=False, limit=None, min_sale_date=None):
     driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
     try:
         with driver.session(database=NEO4J_DATABASE) as session:
-            result = session.run(FETCH_CANDIDATES_QUERY, force=force, retryFailures=retry_failures)
+            result = session.run(
+                FETCH_CANDIDATES_QUERY, force=force, retryFailures=retry_failures, minSaleDate=min_sale_date,
+            )
             rows = [dict(r) for r in result]
     finally:
         driver.close()
@@ -323,11 +334,12 @@ if __name__ == "__main__":
     parser.add_argument("--retry-failures", action="store_true", help="Include images previously marked embeddingFailed (e.g. to recheck dead URLs later); skipped by default so a persistent failure (a dead source URL) isn't retried on every run forever")
     parser.add_argument("--keep-cache", action="store_true", help="Don't delete downloaded images after embedding")
     parser.add_argument("--chunk-size", type=int, default=25, help="Neo4j write batch size")
+    parser.add_argument("--min-sale-date", help="Only embed lots with saleDate >= this ISO date (e.g. 2026-01-01) — prioritizes recent sales ahead of imgId's lexicographic (non-chronological) default order")
     args = parser.parse_args()
 
     if not args.all:
-        parser.error("Provide --all (optionally with --limit/--force/--retry-failures/--keep-cache)")
+        parser.error("Provide --all (optionally with --limit/--force/--retry-failures/--keep-cache/--min-sale-date)")
 
-    candidates = fetch_candidates(force=args.force, retry_failures=args.retry_failures, limit=args.limit)
-    print(f"Found {len(candidates)} image(s) to embed (force={args.force}, retry_failures={args.retry_failures})", flush=True)
+    candidates = fetch_candidates(force=args.force, retry_failures=args.retry_failures, limit=args.limit, min_sale_date=args.min_sale_date)
+    print(f"Found {len(candidates)} image(s) to embed (force={args.force}, retry_failures={args.retry_failures}, min_sale_date={args.min_sale_date})", flush=True)
     run_embeddings(candidates, chunk_size=args.chunk_size, keep_cache=args.keep_cache)

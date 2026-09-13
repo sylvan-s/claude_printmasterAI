@@ -66,7 +66,9 @@ import time
 import pandas as pd
 from neo4j import GraphDatabase
 
+from catalogue_matching import resolve_merged_work_cypher
 from crosswalk_matching import extract_techniques, extract_papers
+from embed_titles_hook import embed_new_titles
 
 
 def _require_env(name):
@@ -247,7 +249,7 @@ CALL {
   RETURN count(*) AS artistWritten
 }
 
-MERGE (cw:ConceptualWork {id: row.objectId})
+""" + resolve_merged_work_cypher("row.objectId", ["row"]) + """
 SET cw.name = row.title,
     cw.dateCreated_year = row.dateYear,
     cw.dateCreated_precision = "exact"
@@ -382,6 +384,7 @@ def run(df, artists_by_id, chunk_size=200):
         print(f"[PROGRESS] {done}/{total} done | elapsed={elapsed:.0f}s "
               f"| est_remaining={(elapsed/done)*(total-done):.0f}s", flush=True)
     print(f"[DONE] total={total} elapsed={time.time()-start:.0f}s", flush=True)
+    embed_new_titles(total)
 
 
 if __name__ == "__main__":

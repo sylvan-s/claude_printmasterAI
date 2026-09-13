@@ -376,8 +376,11 @@ export const SPECIALIST_ATTRIBUTION_SCHEMA = {
       properties: {
         referenceFound: { type: Type.BOOLEAN },
         catalogueName: { type: Type.STRING },
+        catalogueTitle: { type: Type.STRING },
         plateOrCatalogueNumber: { type: Type.STRING },
         catalogueEditionInfo: { type: Type.STRING },
+        sourceUrl: { type: Type.STRING },
+        noCatalogueRaisonneExists: { type: Type.BOOLEAN },
         humanReferenceRequired: { type: Type.BOOLEAN }
       },
       required: ["referenceFound", "humanReferenceRequired"]
@@ -458,10 +461,18 @@ export const SPECIALIST_ATTRIBUTION_SCHEMA = {
           saleDate: { type: Type.STRING },
           auctionHouse: { type: Type.STRING },
           conditionState: { type: Type.STRING },
+          listingUrl: { type: Type.STRING },
+          saleId: { type: Type.STRING },
+          lotNumber: { type: Type.STRING },
+          priceAmount: { type: Type.NUMBER },
+          priceCurrency: { type: Type.STRING },
+          priceBasis: { type: Type.STRING },
           wasSoldInBroaderLot: { type: Type.BOOLEAN },
           broaderLotPriceAdjustment: { type: Type.STRING }
         },
-        required: ["artworkTitle", "artist", "technique", "hammerPrice", "saleDate", "auctionHouse", "conditionState", "wasSoldInBroaderLot", "broaderLotPriceAdjustment"]
+        // The structured keying/price fields are deliberately NOT required: a source that
+        // does not carry a URL or state its price basis must yield a null, not an invention.
+        required: ["artworkTitle", "artist", "technique", "hammerPrice", "saleDate", "auctionHouse", "conditionState", "priceBasis", "wasSoldInBroaderLot", "broaderLotPriceAdjustment"]
       }
     }
   },
@@ -791,7 +802,6 @@ export const ATTRIBUTION_EVIDENCE_SCHEMA = {
         appraiserArtistName: { type: Type.STRING },
         appraiserTrust: { type: Type.STRING, description: '"documented_fact" (the note references supporting paperwork) | "hypothesis" (bare assertion) | "none".' },
         dominantCandidateName: { type: Type.STRING, description: "Your single best artist identity given all sources — the one the K_* queries below are about." },
-        dominantCandidateIdentityKey: { type: Type.STRING, description: 'ULAN or Wikidata URI for the dominant candidate if query_ackg returned one, else "".' },
         kId: { type: Type.STRING, description: '"true" = an institutional authority record exists (ULAN/Wikidata/Tate/Met) | "false" = confidently not | "unknown" (incl. the East-Asian coverage-gap carve-out).' },
         kOeuvreMatchCount: { type: Type.INTEGER, description: "query_ackg supportCount for the dominant candidate at the observed technique/period(/paper/region); -1 if query_ackg was not called for this candidate. 0 is a real absence-of-population signal, never evidence against." },
         kOeuvreProvenanceTags: { type: Type.ARRAY, items: { type: Type.STRING }, description: '"institutional" and/or "auction_history".' },
@@ -803,7 +813,7 @@ export const ATTRIBUTION_EVIDENCE_SCHEMA = {
         "reverseImageNamesArtist", "reverseImageArtistName", "reverseImageSimilarity",
         "reverseImageConsistentWithVea", "reverseImageConsistencyRationale",
         "appraiserNamesArtist", "appraiserArtistName", "appraiserTrust",
-        "dominantCandidateName", "dominantCandidateIdentityKey",
+        "dominantCandidateName",
         "kId", "kOeuvreMatchCount", "kOeuvreProvenanceTags", "kSubject", "kSubjectNote",
       ],
     },
@@ -814,7 +824,7 @@ export const ATTRIBUTION_EVIDENCE_SCHEMA = {
         veaInImageTitleLegible: { type: Type.BOOLEAN, description: "A legible in-image title/series cartouche is present (Decision 6 — triggers Pass 2 even when the artist is unresolved; matters most for ukiyo-e)." },
         reverseImageTitle: { type: Type.STRING },
         reverseImageTitleSimilarity: { type: Type.NUMBER, description: "-1 if not scored." },
-        appraiserTitle: { type: Type.STRING },
+        appraiserTitle: { type: Type.STRING, description: 'Stage 1c\'s claimedAttribution.title VERBATIM, or "" when Stage 1c states none. Deciding what in the notes is a title rather than an inscription is Stage 1c\'s job — do NOT infer a title from edition marks, blindstamps, series/publisher names or any other inscription text. This cell is REPORTED, not voted: the A_t title vote is taken from Stage 1c directly, and a value here that disagrees with Stage 1c is logged and discarded.' },
         kWorkQueried: { type: Type.BOOLEAN, description: "Did you call query_ackg_work for the identified/candidate work?" },
         kWorkTitleSim: { type: Type.NUMBER, description: 'The "computed title similarity" value query_ackg_work reports for its best match — TRANSCRIBE it, do not estimate your own. -1 if you did not call query_ackg_work.' },
         kWorkMatchedTitle: { type: Type.STRING, description: 'The catalogued title query_ackg_work reported as the best match, verbatim. "" if none / not called.' },
@@ -829,7 +839,7 @@ export const ATTRIBUTION_EVIDENCE_SCHEMA = {
       type: Type.OBJECT,
       properties: {
         assessable: { type: Type.BOOLEAN, description: "true only when a Conceptual Work was identified/candidate. When true, call query_ackg_work for that work and fill the cells below from its catalogued facts. false ⇒ the whole block is ignored." },
-        observedTechniques: { type: Type.ARRAY, items: { type: Type.STRING }, description: "VEA's observed printing technique name(s), e.g. [\"Etching\", \"Drypoint\"]. Verbatim from VEA printingTechniques." },
+        observedTechniques: { type: Type.ARRAY, items: { type: Type.STRING }, description: "The observed printing technique name(s), e.g. [\"Etching\", \"Drypoint\"]. Verbatim from VEA printingTechniques when VEA observed one. If VEA did not run or saw none, and Stage 1c states a technique, leave this EMPTY — the code fills it from Stage 1c and records that it was a claim rather than an observation." },
         observedIsPhotomechanical: { type: Type.BOOLEAN, description: "VEA read halftone dot structure / offset / giclée / digital-pigment — i.e. NOT a hand-pulled process." },
         catalogueTechniques: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Catalogued technique(s) for the identified work, from query_ackg_work (the `techniques` field; merge across near-duplicate title rows). [] if the work is not in the graph." },
         catalogueMediumRaw: { type: Type.STRING, description: "The single most informative catalogued rawMedium string from query_ackg_work, e.g. \"Laminated giclée print in colours on aluminium composite panel\". \"\" if none." },
@@ -838,6 +848,8 @@ export const ATTRIBUTION_EVIDENCE_SCHEMA = {
         observedPlateMm: AEA_WH,
         observedImageMm: AEA_WH,
         cataloguePlateMm: AEA_WH,
+        observedSheetMm: { type: Type.OBJECT, properties: { width: { type: Type.NUMBER }, height: { type: Type.NUMBER } }, required: ["width", "height"], description: "Observed SHEET size in mm (0/0 if not stated). Compared last and at a wider tolerance than plate/image, since paper gets trimmed — but for most auction lots it is the only measurement given." },
+        catalogueSheetMm: { type: Type.OBJECT, properties: { width: { type: Type.NUMBER }, height: { type: Type.NUMBER } }, required: ["width", "height"], description: "Catalogued SHEET size in mm from query_ackg_work (0/0 if none)." },
         catalogueImageMm: AEA_WH,
       },
       required: [

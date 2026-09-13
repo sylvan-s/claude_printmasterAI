@@ -70,7 +70,8 @@ import pandas as pd
 from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
-from catalogue_matching import parse_catalogue_refs, build_conceptual_work_id
+from catalogue_matching import parse_catalogue_refs, build_conceptual_work_id, resolve_merged_work_cypher
+from embed_titles_hook import embed_new_titles
 
 def _require_env(name):
     value = os.environ.get(name)
@@ -317,7 +318,7 @@ SET artist.dateBorn_year = coalesce(row.artistBeginYear, artist.dateBorn_year),
 // raisonné entry (see map_row's comment) — coalesce() on every SET so a second lot
 // merging into an already-created node doesn't clobber it with its own (equivalent,
 // but not necessarily identically-worded) title/date.
-MERGE (cw:ConceptualWork {id: row.conceptualWorkId})
+""" + resolve_merged_work_cypher('row.conceptualWorkId', ['row', 'artist']) + """
 SET cw.name = coalesce(cw.name, row.title),
     cw.dateCreated_year = coalesce(cw.dateCreated_year, row.dateYear),
     cw.dateCreated_precision = coalesce(cw.dateCreated_precision, "exact")
@@ -478,6 +479,7 @@ def run(df, chunk_size=200):
         print(f"[PROGRESS] {done}/{total} done | elapsed={elapsed:.0f}s "
               f"| est_remaining={(elapsed/done)*(total-done):.0f}s", flush=True)
     print(f"[DONE] total={total} elapsed={time.time()-start:.0f}s", flush=True)
+    embed_new_titles(total)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,204 @@
+{
+  "lot": {
+    "house": "Roseberys London",
+    "saleId": "A0793",
+    "lotNumber": "A0793-303-1c1d-attr",
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0793-prints-multiples-673/303-pablo-picasso-spanish-1881-1973peinter-et-modele-painter-623581",
+    "lotUrl": "https://www.roseberys.co.uk/bidding/A0793-prints-multiples-673/303-pablo-picasso-spanish-1881-1973peinter-et-modele-painter-623581",
+    "estimateLow": 2000,
+    "estimateHigh": 3000
+  },
+  "groundTruth": {
+    "poolArtistName": "Pablo Picasso",
+    "artist": "Pablo Picasso",
+    "title": "Peinter et Modele (Painter with woman picking flowers), (156 series) 1970",
+    "medium": "monochrome etching",
+    "editionSize": 50
+  },
+  "resolvedFrom": "a0793-isolation-capture",
+  "method": "claude-4stage-1c1d",
+  "note": "Captured from the A0793 1c+1d isolation run so Stage 2a can be replayed alone. VEA did not run (stage1a_vea is the 'not run' stub) and Stage 1b was disabled, so Stage 1d is the only voting evidence source besides Stage 1c's documented claims \u2014 the same configuration in which the observed failure occurred.",
+  "imageUrl": null,
+  "appraiserInputNotes": {
+    "inscribedMarksNotes": "monochrome etching on wove, with stamped signature, numbered 30/50 in pencil, published by Galerie Louise Leiris, Paris, printed by Crommelynck, Mougins, France, sheet 37 x 46 cm (framed) (ARR)",
+    "provenanceNotes": null,
+    "conditionNotes": null,
+    "catalogueNotes": "Pablo Picasso,\nPeinter et Modele (Painter with woman picking flowers), (156 series) 1970, 1970;\n\nmonochrome etching on wove, with stamped signature, numbered 30/50 in pencil, published by Galerie Louise Leiris, Paris, printed by Crommelynck, Mougins, France, sheet 37 x 46 cm (framed) (ARR)"
+  },
+  "stage1a_vea": {
+    "schemaVersion": "VEA-1.1",
+    "inspectionTimestamp": "2026-09-09T18:14:59.452Z",
+    "imagesReceived": {
+      "primaryScan": false,
+      "supplementaryScanCount": 0
+    },
+    "imageAuthenticity": {
+      "haltRecommended": false
+    },
+    "titleInscriptions": [],
+    "signatures": [],
+    "editionInfo": [],
+    "editionInfoAbsent": true,
+    "printingTechniques": [],
+    "plateMark": {},
+    "dimensions": {},
+    "paper": {},
+    "condition": {},
+    "inkAndColour": {},
+    "stampsAndLabels": [],
+    "composition": {},
+    "photographicQuality": {},
+    "visualEvidenceHighlights": [],
+    "overallExtractionConfidence": 0,
+    "lowConfidenceFlags": [
+      "Stage 1a (Visual Extraction Agent) WAS NOT RUN in this appraisal \u2014 no image was examined and no physical observation exists. Every field below is empty because nothing was looked at, NOT because the work lacks those features. Draw no inference from the absence of signatures, inscriptions, technique or condition data."
+    ],
+    "provisionalOutput": true
+  },
+  "stage1b_visualSearch": null,
+  "stage1c_appraiserInput": {
+    "schemaVersion": "AIA-1.0",
+    "inputReceived": {
+      "inscribedMarksNotes": true,
+      "provenanceNotes": false,
+      "conditionNotes": false,
+      "catalogueNotes": true
+    },
+    "claimedAttribution": {
+      "artist": "Pablo Picasso",
+      "title": "Peinter et Modele (Painter with woman picking flowers)",
+      "period": "1970",
+      "technique": "monochrome etching on wove",
+      "status": "documented_fact",
+      "sourceField": "catalogueNotes",
+      "sourceExcerpt": "Pablo Picasso, Peinter et Modele (Painter with woman picking flowers), (156 series) 1970, 1970; monochrome etching on wove"
+    },
+    "inscriptionClaims": {
+      "signatureClaim": "stamped signature",
+      "editionClaim": "30/50",
+      "editionSizeClaim": 50,
+      "monogramOrStampClaim": "stamped signature",
+      "status": "documented_fact"
+    },
+    "provenanceChain": [],
+    "conditionClaims": [],
+    "catalogueReferences": [],
+    "literatureOrExhibitionClaims": [],
+    "dimensionsClaim": {
+      "widthCm": 37,
+      "heightCm": 46,
+      "kind": "sheet",
+      "source": "both"
+    },
+    "paperOrSupport": "wove",
+    "rawNotes": {
+      "inscribedMarksNotes": "monochrome etching on wove, with stamped signature, numbered 30/50 in pencil, published by Galerie Louise Leiris, Paris, printed by Crommelynck, Mougins, France, sheet 37 x 46 cm (framed) (ARR)",
+      "provenanceNotes": null,
+      "conditionNotes": null,
+      "catalogueNotes": "Pablo Picasso, Peinter et Modele (Painter with woman picking flowers), (156 series) 1970, 1970; monochrome etching on wove, with stamped signature, numbered 30/50 in pencil, published by Galerie Louise Leiris, Paris, printed by Crommelynck, Mougins, France, sheet 37 x 46 cm (framed) (ARR)"
+    },
+    "overallExtractionConfidence": 0.95,
+    "lowConfidenceFlags": [
+      "Title spelling 'Peinter' may be a transcription error (possibly 'Peintre'); confirm against catalogue raisonn\u00e9",
+      "ARR notation present but not interpreted \u2014 may indicate droit de suite or other rights claim"
+    ]
+  },
+  "stage1d_embeddingMatch": {
+    "schemaVersion": "IES-1.0",
+    "embeddingModelsUsed": {
+      "dinov2": "facebook/dinov2-large",
+      "clip": "openai/clip-vit-base-patch32"
+    },
+    "indexCoverageNote": "ACKG image index currently covers Bonhams (40,224), Tate (10,208) and the British Museum (2,507) \u2014 52,939 images on DINOv2-Large/CLIP, verified 2026-09-07. Roseberys and Forum Auctions are not yet embedded \u2014 a weak or absent match reflects this coverage gap, not evidence against attribution.",
+    "candidateMatches": [
+      {
+        "artistName": "Pablo Picasso",
+        "conceptualWorkTitle": "Danse du Ventre devant Homme impassible, Pl. 43, from Series 156",
+        "impressionId": "bonhams-15403-167",
+        "dinov2Similarity": 0.8508291244506836,
+        "clipSimilarity": 0.9371833801269531,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Pablo Picasso",
+        "conceptualWorkTitle": "Rapha\u00ebl et la Fornarina VI: Enfin seuls!,from S\u00e9ries 347",
+        "impressionId": "bonhams-18284-3",
+        "dinov2Similarity": 0.860724925994873,
+        "clipSimilarity": 0.933380126953125,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Pablo Picasso",
+        "conceptualWorkTitle": "Peintre et Mod\u00e8le",
+        "impressionId": "bonhams-24586-103",
+        "dinov2Similarity": 0.8577792644500732,
+        "clipSimilarity": 0.9270401000976562,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Pablo Picasso",
+        "conceptualWorkTitle": "Femme aux trois Profils, en Chemise et en Bottines, et Femme nue songeant, Pl. 142, from S\u00e9ries 156",
+        "impressionId": "bonhams-17681-119",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9399833679199219,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Pablo Picasso",
+        "conceptualWorkTitle": "Femme aux trois Profils, en Chemise et en Bottines, et Femme nue songeant, Pl. 142, from S\u00e9ries 156",
+        "impressionId": "bonhams-18271-155",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9399833679199219,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Pablo Picasso",
+        "conceptualWorkTitle": "Mes dessins d'Antibes",
+        "impressionId": "bonhams-24037-113",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.937103271484375,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Pablo Picasso",
+        "conceptualWorkTitle": "One Plate from 'Mes dessins d'Antibes'",
+        "impressionId": "bonhams-23546-126",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.937103271484375,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Pablo Picasso",
+        "conceptualWorkTitle": "Peintre barbu avec mod\u00e8le nu et un spectateur",
+        "impressionId": "bonhams-26523-73",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9370803833007812,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Henry Moore",
+        "conceptualWorkTitle": "Two Seated Figures II",
+        "impressionId": "bonhams-18560-123",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.933837890625,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Marc Chagall",
+        "conceptualWorkTitle": "Bearded Man Seated with Violin under His Arm",
+        "impressionId": "bonhams-23150-74",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.93316650390625,
+        "provenanceLayer": "auction_history"
+      }
+    ],
+    "bestMatchArtist": "Pablo Picasso",
+    "bestMatchConceptualWorkTitle": "Danse du Ventre devant Homme impassible, Pl. 43, from Series 156",
+    "dinov2SimilarityScore": 0.8508291244506836,
+    "clipSimilarityScore": 0.9371833801269531,
+    "matchConfidence": "MEDIUM",
+    "attributionCaveat": "DINOv2/CLIP similarity reflects visual/stylistic closeness, not verified authorship \u2014 one corroborating evidence point, never a standalone attribution (see ADR-0002, ADR-0013).",
+    "hypothesisWarning": "\u26a0\ufe0f HYPOTHESIS ONLY \u2014 Stage 1d image-embedding match. Shadow-run: not yet used in attribution. DINOv2/CLIP visual similarity, not verified authorship. Do not treat as confirmed attribution."
+  },
+  "generatedAt": "2026-09-09T20:00:00.000Z"
+}

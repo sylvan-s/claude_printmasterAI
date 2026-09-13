@@ -45,7 +45,22 @@ writing a single line of mapping code, not assumed from the filename:
      `priceRealised` stay in the row's native currency rather than being approximated from
      the estimate-time FX rate, which could easily be stale relative to the sale date.
   5. **`status` determines `sold`/`hammerPrice`, and WD is excluded outright.** SOLD ->
-     sold=True, hammerPrice = hammer_price + hammer_premium (both native-currency). BI
+     sold=True, hammerPrice = `pricing.hammer_price` (the hammer), priceRealised =
+     `pricing.hammer_premium` (both native-currency). Despite its name, `hammer_premium`
+     is NOT the premium amount to be added to the hammer — it is the premium-INCLUSIVE
+     TOTAL, the figure Bonhams' own lot pages print as "Sold for X inc. premium".
+     Confirmed three ways rather than inferred from the field name: (a) against live
+     Bonhams pages in two currencies — sale 26785 lot 179 (hammer 700.0, hammer_premium
+     892.5) reads "Sold for GBP892.50 inc. premium", and sale 15403 lot 330 (hammer
+     1800.0, hammer_premium 2160.0) reads "Sold for US$2,160 inc. premium"; (b) by sign
+     test across all 59,824 eligible SOLD rows — not one has hammer_premium <
+     hammer_price, which a genuine premium amount would have to be in every single case;
+     (c) by the ratio distribution, which clusters on the real Bonhams schedules
+     (1.175/1.195/1.20/1.22/1.25/1.275/1.28 by era and currency) rather than on the
+     absurd 117%-128% premium rates the additive reading implies. An earlier version of
+     this adapter read the field additively, inflating priceRealised by one whole hammer
+     on every sold row; `migrations/2026-09-08_bonhams_price_realised_premium_basis.py`
+     repairs graph data written by it. BI
      (bought in / reserve not met), NEW (future/pending lot), CS, WR -> sold=False,
      hammerPrice=None (their raw `pricing.hammer_price` is a literal 0.0 placeholder, not
      a real sale total — storing it as-is would fabricate a "sold for 0" fact). WD
@@ -113,13 +128,15 @@ from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
 from resolve_artist_identity import strip_honorifics
-from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, sanitize_id_part
+from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, sanitize_id_part, resolve_merged_work_cypher
 from bonhams_parsing import (
     strip_tags, extract_lot_heading, extract_lot_name_html, extract_lot_desc_html,
     strip_qualifier_prefix, clean_artist_name, normalize_all_caps_name, parse_lot_name,
+    strip_leading_parenthetical,
     parse_lot_desc, detect_signed, extract_edition_size, extract_printer_publisher,
     extract_dimensions, detect_multi_work,
 )
+from embed_titles_hook import embed_new_titles
 
 
 def _require_env(name):
@@ -163,6 +180,25 @@ DEFAULT_ELIGIBLE_BRANDS = {"bonhams", "skinner"}
 # represent at all.
 PLACEHOLDER_ARTIST_NAMES = {"various artists", "artist unknown", "anonymous", "unknown artist", "unknown"}
 
+
+def resolve_artist_fields(raw_artist):
+    """The ONE artist-name assembly chain for this adapter — `map_record()` maps with it
+    and `load_records()` filters with it, so the "two divergent lists problem" that
+    crosswalk_matching.py/catalogue_matching.py both warn about cannot open up between
+    the filter and the mapper. Returns (qualifier, name); `name` is "" when the source
+    value cleans away to nothing, which the caller MUST treat as unusable rather than
+    pass to the `MERGE (artist:Artist {name: ...})` key.
+
+    strip_leading_parenthetical() runs FIRST, before strip_qualifier_prefix(): on
+    "(n/a) After John James Audubon" the qualifier is hidden behind the parenthetical,
+    so the old order matched no prefix and recorded a print Audubon did not make as a
+    `direct` attribution (confirmed live, repaired 2026-09-11)."""
+    fixed = strip_leading_parenthetical(raw_artist)
+    qualifier, remainder = strip_qualifier_prefix(fixed)
+    name = strip_honorifics(normalize_all_caps_name(clean_artist_name(remainder)))
+    return qualifier, (name or "").strip()
+
+
 _PLAUSIBLE_YEAR_RANGE = (1200, 2030)
 
 
@@ -200,9 +236,7 @@ def map_record(record):
     institution = BRAND_INSTITUTION_MAP.get(brand, brand)
 
     raw_artist = record["artist"]
-    qualifier, remainder = strip_qualifier_prefix(raw_artist)
-    name_no_prefix = normalize_all_caps_name(clean_artist_name(remainder))
-    stripped_name = strip_honorifics(name_no_prefix)
+    qualifier, stripped_name = resolve_artist_fields(raw_artist)
 
     catalog_html = record.get("catalog_description") or ""
     lot_name_html = extract_lot_name_html(catalog_html)
@@ -239,9 +273,12 @@ def map_record(record):
     currency = estimates.get("currency") or None
 
     raw_hammer = pricing.get("hammer_price")
-    hammer_premium = pricing.get("hammer_premium") or 0.0
+    # `pricing.hammer_premium` is the premium-INCLUSIVE TOTAL, not the premium amount:
+    # it is the exact figure Bonhams' own lot pages print as "Sold for X inc. premium"
+    # (see docstring item 5). It is therefore `priceRealised` as-is, never an addend.
+    raw_realised = pricing.get("hammer_premium")
     hammer_price = raw_hammer if (sold and raw_hammer) else None
-    price_realised = (raw_hammer + hammer_premium) if (sold and raw_hammer) else None
+    price_realised = raw_realised if (sold and raw_hammer and raw_realised) else None
 
     auction_id = record.get("auction", {}).get("id")
     try:
@@ -316,7 +353,7 @@ SET artist.nationality = coalesce(row.artistNationality, artist.nationality),
         ELSE artist.alternateNames
     END
 
-MERGE (cw:ConceptualWork {id: row.conceptualWorkId})
+""" + resolve_merged_work_cypher('row.conceptualWorkId', ['row', 'artist']) + """
 SET cw.name = coalesce(cw.name, row.title),
     cw.dateCreated_year = coalesce(cw.dateCreated_year, row.dateYear),
     cw.dateCreated_precision = coalesce(cw.dateCreated_precision, "exact")
@@ -440,6 +477,9 @@ def load_records(brands=None, limit=None, exclude_multi_work=True,
         if r["artist"].strip().lower() in PLACEHOLDER_ARTIST_NAMES:
             excluded.append((r, "placeholder_artist_name"))
             continue
+        if not resolve_artist_fields(r["artist"])[1]:
+            excluded.append((r, "artist_name_empty_after_cleaning"))
+            continue
         if r.get("status") == "WD":
             excluded.append((r, "withdrawn"))
             continue
@@ -452,6 +492,9 @@ def load_records(brands=None, limit=None, exclude_multi_work=True,
           flush=True)
     print(f"[FILTER] excluded {sum(1 for _, reason in excluded if reason == 'placeholder_artist_name')} rows with a "
           f"placeholder artist value (various artists/anonymous/unknown — see PLACEHOLDER_ARTIST_NAMES)", flush=True)
+    print(f"[FILTER] excluded {sum(1 for _, reason in excluded if reason == 'artist_name_empty_after_cleaning')} "
+          f"rows whose artist value cleans away to an empty string — these must never reach the "
+          f"MERGE (artist:Artist {{name: ...}}) key, see resolve_artist_fields()", flush=True)
     print(f"[FILTER] excluded {sum(1 for _, reason in excluded if reason == 'withdrawn')} withdrawn (status=WD) lots",
           flush=True)
 
@@ -520,6 +563,7 @@ def run(records, chunk_size=200, dry_run=False):
         if dry_run:
             break
     print(f"[DONE] total={total} elapsed={time.time()-start:.0f}s", flush=True)
+    embed_new_titles(total, dry_run=dry_run)
 
 
 if __name__ == "__main__":

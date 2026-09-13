@@ -36,6 +36,15 @@ OPTIONAL MATCH (img)-[:SHOWS]->(cw2:ConceptualWork)
 WITH img, score, imp, coalesce(cw1, cw2) AS cw
 OPTIONAL MATCH (a:Artist)-[:CREATED]->(cw)
 OPTIONAL MATCH (src:SourceRecord)-[:DOCUMENTS]->(imp)
+WITH img, score, imp, cw, a, src,
+     // Sale-level self-match guard. Once an upcoming sale is ingested, its own lots are in
+     // the image index, so a lot would match ITSELF at dino ~1.0 and "confirm" its own
+     // identity. queryAuctionComparables already guards the price side by listingUrl and
+     // sale/lot; this is the same guard on the image side, at sale granularity because a
+     // whole catalogue is ingested at once. Collected before the row is dropped so the
+     // caller can see how many were suppressed rather than wondering where they went.
+     [x IN collect(src.saleId) WHERE x IS NOT NULL] AS saleIds
+WHERE $excludeSaleId IS NULL OR NOT $excludeSaleId IN saleIds
 RETURN img.id AS imgId, coalesce(imp.id, cw.id, img.id) AS matchKey,
        a.name AS artistName, cw.name AS workTitle, src.sourceType AS sourceType, score
 ORDER BY score DESC
@@ -50,11 +59,11 @@ interface RawRow {
   score: number;
 }
 
-async function runVectorQuery(indexName: string, vector: number[], k: number): Promise<RawRow[]> {
+async function runVectorQuery(indexName: string, vector: number[], k: number, excludeSaleId?: string | null): Promise<RawRow[]> {
   const driver = getDriver();
   const session = driver.session({ database: getDatabase() });
   try {
-    const result = await session.run(VECTOR_QUERY, { indexName, vector, k: neo4j.int(k) });
+    const result = await session.run(VECTOR_QUERY, { indexName, vector, k: neo4j.int(k), excludeSaleId: excludeSaleId ?? null });
     return result.records.map((r) => ({
       imgId: r.get("imgId"),
       matchKey: r.get("matchKey"),
@@ -81,14 +90,14 @@ function provenanceLayerFor(sourceType: string | null): "institutional" | "aucti
 export async function queryImageEmbeddingMatches(
   dinov2Vector: number[] | null,
   clipVector: number[] | null,
-  opts: { topKPerIndex?: number; limit?: number } = {},
+  opts: { topKPerIndex?: number; limit?: number; excludeSaleId?: string | null } = {},
 ): Promise<EmbeddingMatchCandidate[]> {
   const topK = opts.topKPerIndex ?? 25;
   const limit = opts.limit ?? 10;
 
   const [dinoRows, clipRows] = await Promise.all([
-    dinov2Vector ? runVectorQuery(DINOV2_INDEX, dinov2Vector, topK) : Promise.resolve([]),
-    clipVector ? runVectorQuery(CLIP_INDEX, clipVector, topK) : Promise.resolve([]),
+    dinov2Vector ? runVectorQuery(DINOV2_INDEX, dinov2Vector, topK, opts.excludeSaleId) : Promise.resolve([]),
+    clipVector ? runVectorQuery(CLIP_INDEX, clipVector, topK, opts.excludeSaleId) : Promise.resolve([]),
   ]);
 
   const byKey = new Map<string, EmbeddingMatchCandidate>();

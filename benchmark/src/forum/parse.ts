@@ -13,7 +13,14 @@
  * ';', and gave dimensions in cm. Forum uses mm.
  *
  * Output field names match the Roseberys parser so the two extracts combine.
+ *
+ * The dimension / catalogue-ref / edition logic stays deliberately independent of
+ * src/shared/text_extraction.ts (see that file's header): those are house-format
+ * concerns and Forum's format differs. The honorifics vocabulary is not a house
+ * concern — post-nominals read the same in any catalogue — so the blind-mode leak
+ * detector below does share it, rather than keeping a third drifting copy.
  */
+import { artistNameLeakTokens, artistSurnameToken } from "../../../src/shared/text_extraction";
 
 export type ArtistQualifier =
   | "certain" | "attributed" | "circle" | "studio" | "follower" | "after" | "unknown";
@@ -208,9 +215,30 @@ export function parseDescription(html: string): ParsedLot {
   const { isMultiWork, reason } = detectMultiWork(full);
 
   const leakRisks: string[] = [];
-  const surname = artist?.split(/\s+/).pop()?.replace(/[^\p{L}\p{M}'-]/gu, "");
-  if (surname && surname.length > 3 && new RegExp(`\\b${escapeRe(surname)}\\b`, "i").test(body)) {
-    leakRisks.push(`artist surname "${surname}" appears in body`);
+  // See the identical fix in benchmark/src/roseberys/parse.ts for why the previous
+  // `.pop()` was not the surname on any header carrying post-nominals.
+  // Search body AND provenance: provenance is split out of `body` by this parser,
+  // but the harnesses send it to Stage 1c as provenanceNotes, so a name there is
+  // every bit as much a leak. A0785 lot 290 (Pablo Picasso) hid its only mention
+  // of "Picasso" in the provenance line and passed as a blind run.
+  const leakSurface = [body, provenance].filter(Boolean).join("\n");
+  const appearsInBody = (tok: string) => new RegExp(`\\b${escapeRe(tok)}\\b`, "i").test(leakSurface);
+  const namedArtists = [artist, ...additionalArtists];
+  // The surname is the identifying token and is reported on its own, because
+  // downstream harnesses gate blind runs on it (tests/backtest/blindness.ts).
+  for (const surname of namedArtists.map(artistSurnameToken)) {
+    if (surname && appearsInBody(surname)) {
+      leakRisks.push(`artist surname "${surname}" appears in body/provenance`);
+    }
+  }
+  // Remaining tokens are reported but do not gate: a forename on its own rarely
+  // identifies anyone, and matching them indiscriminately produces false
+  // positives (A0777/1, Paul Gauguin, matched "the Paul Kovesdy Gallery").
+  const otherTokens = [...new Set(
+    namedArtists.flatMap((n) => artistNameLeakTokens(n).slice(0, -1)).filter(appearsInBody),
+  )];
+  if (otherTokens.length) {
+    leakRisks.push(`artist forename/middle name(s) appear in body/provenance: ${otherTokens.join(", ")}`);
   }
   const refs = extractCatalogueRefs(full);
   if (refs.length) leakRisks.push(`catalogue ref(s): ${refs.join(", ")}`);

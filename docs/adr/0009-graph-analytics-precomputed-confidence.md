@@ -3,6 +3,9 @@
 **Date:** 2026-08-26
 **Status:** Proposed — similarity/centrality prototyped and tested live against real ACKG
 data (`knowledge_graph/gds_prototype.py`); write-back into `query_ackg` not implemented.
+Amended 2026-09-11 (see *Amendment 1*): the labels sequencing step 4(a) asked for now exist and
+the technique+dimension heuristic fails against them, so `gds.nodeSimilarity` is ruled out at
+work grain; the Aura Graph Analytics framing in *Context* is superseded by a local GDS install.
 
 ---
 
@@ -468,3 +471,92 @@ before it gates anything, not just the same heuristic ported over as-is.
 - The prior-appraisal fast-path's actual pre-flight gate design, its "reconfirm and refresh"
   lightweight path, and its precision/recall validation — flagged as the next real design step
   in Decision 6, not designed here.
+
+---
+
+## Amendment 1 — the labels step 4(a) wanted now exist, and the heuristic fails against them (2026-09-11)
+
+This ADR's *Accepted limitations* recorded that "no confirmed-duplicate labels exist to validate
+precision/recall against", and sequencing step 4(a) made producing them the precondition for
+Decision 6's prior-appraisal fast-path. Both are now answerable.
+[ADR-0017](0017-work-title-identity-principal-name-and-aliases.md)'s scan tooling
+(`knowledge_graph/find_duplicate_work_clusters.py`) produces the labels as a by-product:
+
+- **Positives** — 7,553 clusters of `ConceptualWork` nodes sharing an exact
+  (artist, normalized title, year) key with no catalogue or accession conflict.
+- **Hard negatives** — 384 catalogue-conflict clusters (same catalogue, different entry numbers)
+  and 550 one-institution-many-accessions clusters. Same artist, same title, same year, and
+  provably *different works*.
+
+The hard negatives are the valuable half, and they are the population Decision 6 actually has to
+survive: a fast-path that gates verification off is only dangerous where it confuses two
+different prints, not where it confuses a print with an unrelated one.
+
+**Measured, 2026-09-11.** Feature overlap is Jaccard over technique + paper + subject + publisher
+— Decision 6's own heuristic dimensions, the same controlled-vocabulary profile
+`gds_prototype.py --test similarity` projects:
+
+| Signal | Positives | Catalogue conflict | Accession conflict |
+|---|---|---|---|
+| Technique/paper/subject/publisher, Jaccard | 0.861 mean, **74% exactly 1.0** (n=381) | 0.737, 54% (n=222) | 0.735, 68% (n=400) |
+| Dimensions, raw strings, Jaccard | 0.546, 54% at 1.0 | 0.214, 19% | 0.261, 25% |
+| Dimensions parsed to mm, matched ±2% | **83.4%** (n=518) | **55.6%** (n=214) | **52.7%** (n=273) |
+| Declared edition size identical | 97% (n=236, 59% coverage) | 72% (n=114, 51%) | no coverage |
+
+**The technique+dimension heuristic does not clear the bar step 4(a) set for it.** Three-quarters
+of true positives and two-thirds of hard negatives both score a *perfect* feature Jaccard, which
+is not a threshold problem — there is no separation to threshold. Parsing dimensions into
+millimetres and allowing 2% tolerance lifts recall from 54% to 83%, but lifts the hard-negative
+match rate from ~22% to ~54% at the same time: a likelihood ratio around 1.5. Useful as one input
+among several. Not sound as a gate on whether a lot gets full scrutiny.
+
+**The cause is structural, not a coverage gap, and it is worth stating because it forecloses a
+whole family of fixes.** The hard negatives are overwhelmingly plates from one portfolio. They
+share artist, year, title text, technique, paper, publisher, sheet size and visual style, because
+that is what a portfolio *is*. The controlled vocabularies make this worse rather than better:
+the graph holds **32 distinct `Technique` nodes and 7 `Paper` nodes** in total, so those
+dimensions cannot separate two prints by one artist even in principle. The only fields that do
+separate them are the catalogue entry number and the accession number — which is precisely what
+ADR-0017's two deterministic checks already use, and they need no analytics at all.
+
+This is the third signal to fail on the same population in the same way. DINOv2 image similarity
+was probed for work identity on 2026-09-10 and rejected at 44% recall (see
+`find_duplicate_work_clusters.py`'s docstring); title embedding was rejected as an identity
+trigger in ADR-0017 Decision 6; feature/dimension similarity is rejected here. Treat "find a
+better similarity signal" as a closed line of enquiry for work identity until some genuinely new
+field is ingested — catalogue titles being the obvious candidate (ADR-0017, *Not addressed*).
+
+**`gds.nodeSimilarity` therefore should not be committed to for work-grain identity**, which
+narrows this ADR's own open question of which algorithm to pick. It says nothing about the
+artist-grain centrality work in Decision 1b, which is a different problem on a different
+population and is not affected.
+
+**Where GDS still earns its place: clustering, not scoring.** `gds.wcc` (or Louvain) over a
+similarity graph built from *deterministic* links would give transitive closure — if A≡B by exact
+key and B≡C by catalogue entry, all three are one work. Pairwise matching structurally cannot see
+that, and it is the one piece of this problem the current scan genuinely cannot do. `gds.knn`
+over the DINOv2 vectors would only duplicate the native `digitalImageDinov2Embedding` vector
+index.
+
+**Two mechanical corrections to this ADR's Context, both confirmed live 2026-09-11:**
+
+1. **The Aura Graph Analytics framing is stale.** The ACKG has since moved off Aura to
+   self-hosted Neo4j CE on Oracle Cloud, where **GDS is installed as a local plugin — version
+   2.13.2, 423 `gds.*` procedures**. The "isolated compute session, not invokable live inside a
+   single request" constraint that shaped Decision 1's whole offline-precompute design no longer
+   applies in the same form. `gds_prototype.py` still provisions an ephemeral Aura session and
+   still requires `AURA_API_CLIENT_ID`/`AURA_API_CLIENT_SECRET`, so it will not run as written
+   and needs rewiring to the local plugin before any of this is retried. Note APOC is *not*
+   installed on that instance, which is a separate constraint on any script assuming it.
+2. **"Confirmed-same-edition" ground truth cannot come from `EditionRun`.** All **97,425**
+   `EditionRun` nodes hold exactly one `Impression`. The node is a per-lot wrapper, not a
+   grouping — no edition anywhere in this graph collects multiple impressions — so step 4(a)'s
+   phrasing is unsatisfiable as written. The cluster labels above are the available substitute.
+
+**Not settled by this amendment.** Decision 6's fast-path is not withdrawn, only its heuristic is
+disqualified as a gate; whether a gate built on the deterministic catalogue/accession checks
+would recover the 15.5% is unmeasured. The positive label set is itself the output of an exact
+key, so it inherits that key's conservatism and under-counts genuine duplicates whose titles
+drift — meaning the recall figures above are optimistic about the easy cases and say nothing
+about the ones the key never proposes. And no WCC/Louvain transitive-closure pass has been run;
+its value is argued here, not measured.

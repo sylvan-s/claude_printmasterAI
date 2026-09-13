@@ -275,3 +275,67 @@ Both changes are covered by new/updated tests in `tests/routing/` (21/21 passing
 named regression test asserting `authenticationBodyExists` alone can no longer trigger
 Scenario 2). A second backtest pass on the same 5 lots follows this note to confirm the fix
 actually produces varied risk profiles rather than a different constant.
+
+---
+
+## Implementation note 3 (2026-09-11) — `misattributionRisk` only routes when something is attributed
+
+The Scenario 2 trigger is narrowed a second time, for the same reason it was narrowed the
+first. Implementation note 2 dropped `authenticationBodyExists` because it was a fact about
+the artist's documentation status rather than a risk about this transaction, and it fired on
+nearly every lot. `misattributionRisk` has the same defect in a different place: it fires on
+lots where **nothing has been attributed at all**.
+
+Measured over 60 Stage 2a stability runs (5 committed fixtures and 10 unseen pool lots, four
+repetitions each, Haiku 4.5 on the ADR-0018 query plan):
+
+| | |
+|---|---:|
+| runs with `misattributionRisk` true | 20 / 60 (33%) |
+| …of those, artist verdict `not_attributed` (A11) | **14 (70%)** |
+| …of those 14, with no `forgeryRisk` either | **13** |
+| share of all `not_attributed` runs pulled into Scenario 2 this way | **56%** |
+
+Three things make this wrong rather than merely noisy.
+
+The flag's own definition presupposes a candidate — "VEA's physical evidence itself conflicts
+with **the leading candidate**", or "two or more candidates ... pointing to DIFFERENT
+identities". A11 means there is no leading candidate, and the second clause, if it were
+genuinely true, produces verdict `conflict` and Scenario 5, not `not_attributed`.
+
+The task profile this trigger injects is undeliverable. Scenario 2 orders Stage 2b to
+"actively try to falsify the leading attribution hypothesis". On an A11 lot there is no
+hypothesis to falsify: the adversarial pass has no target, and is paid for regardless.
+
+And it was the largest single source of Stage 2a's run-to-run instability. On the unseen pool
+slice, four of the five unstable lots produced a **byte-identical tree verdict in every
+repetition** and flipped Scenario 4 ↔ 2 on this one boolean.
+
+**The change.** In `mapTwoPassToScenario`, `misattributionRisk` routes only when
+`artist.verdict !== "not_attributed"`. `forgeryRisk` is deliberately NOT gated — an object can
+be a forgery whether or not anyone has worked out who it purports to be by. The flag itself is
+untouched: it still reaches Stage 2b, the report and `riskFlags`. Only its power to route
+changes, and a suppressed firing is stated in the routing rationale rather than vanishing.
+
+**Measured effect**, re-running the same 10 unseen lots × 4 repetitions:
+
+| | before | after |
+|---|---:|---:|
+| `misattributionRisk` on a `not_attributed` lot | 14 | 9 |
+| …of those routed to Scenario 2 | **14** | **1** |
+| …and that one also carries `forgeryRisk` | 1 | 1 |
+
+Every remaining firing is correctly suppressed; the one surviving Scenario 2 is `forgeryRisk`,
+by design.
+
+Two cautions about how to read this. The aggregate stability figure moved 85% → 88% and 5/10 →
+6/10 fully stable, which is **within sampling noise** at this size — the before and after are
+different draws of 40 runs. The per-lot attribution is the real evidence: 1012_147, 1147_303
+and A0724_373 went from mixed to uniform Scenario 4, while the three lots that got *worse*
+(1171_177, A0731_171, A0673_182) all carry `misattributionRisk=false` in every repetition, so
+the gate never fired on them and cannot be the cause.
+
+The second caution is the more interesting one. **1151_41 was stable before and stably wrong**
+— four repetitions of Scenario 2 on a lot with nothing attributed, buying an adversarial pass
+with no target every time. A stability metric cannot see that failure at all, which is a
+standing argument against reading agreement percentages as a quality measure on their own.

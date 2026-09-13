@@ -31,6 +31,7 @@ from datetime import datetime, timezone
 from neo4j import GraphDatabase
 
 from resolve_artist_identity import resolve_artist, strip_honorifics
+from ulan_url import canonical_ulan_url
 
 NEO4J_URI = os.environ["NEO4J_URI"]
 NEO4J_USER = os.environ["NEO4J_USER"]
@@ -112,7 +113,7 @@ def backfill(session, min_works, limit, resume, dry_run):
         wd_top = r["wikidata"][0] if r.get("wikidata") else None
 
         if r["confidence"] == "high_confidence_auto" and r.get("resolvedUlanUrl"):
-            uid = r["resolvedUlanUrl"]
+            uid = canonical_ulan_url(r["resolvedUlanUrl"])
             wd_new = r.get("resolvedWikidataUrl")
             clash = session.run(
                 "MATCH (o:Artist {ulanUrl: $u}) RETURN o.name AS name LIMIT 1", u=uid

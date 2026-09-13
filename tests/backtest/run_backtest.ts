@@ -29,12 +29,14 @@ import { writeFileSync, mkdirSync } from "fs";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { GoogleGenAI } from "@google/genai";
-import { getAppraiserFromConfig, appraiserConfigs, type AppraisalInput } from "../../src/appraisal/appraiser";
+import { appraiserConfigs, type AppraisalInput } from "../../src/appraisal/appraiser";
 import { resolveSaleRef } from "../../benchmark/src/roseberys/discover";
 import { fetchLotByNumber, imageUrl, lotUrl, type RawLot } from "../../benchmark/src/roseberys/api";
 import { parseDescription, type ParsedLot } from "../../benchmark/src/roseberys/parse";
 import { compareResults, type BacktestComparison } from "./compare";
 import { buildBacktestReport } from "./build_report";
+import { assertBlindOrExit } from "./blindness";
+import { appraiserWithEvidenceCapture, buildEvidenceRecord } from "./evidence_capture";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -44,17 +46,20 @@ interface Args {
   sale: string;
   lot: string;
   method: string;
+  allowLeak: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
   let sale: string | undefined;
   let lot: string | undefined;
   let method = DEFAULT_METHOD;
+  let allowLeak = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--sale") sale = argv[++i];
     else if (arg === "--lot") lot = argv[++i];
     else if (arg === "--method") method = argv[++i];
+    else if (arg === "--allow-leak") allowLeak = true;
     else if (arg === "--help" || arg === "-h") {
       printHelp();
       process.exit(0);
@@ -69,7 +74,7 @@ function parseArgs(argv: string[]): Args {
     printHelp();
     process.exit(1);
   }
-  return { sale, lot, method };
+  return { sale, lot, method, allowLeak };
 }
 
 function printHelp() {
@@ -80,6 +85,10 @@ the output against the withheld catalogue facts.
   --sale <ref>      Auction id ("665"), sale code ("A0800"), or slug fragment
   --lot <number>     Lot number as shown in the catalogue, e.g. "123" or "45A"
   --method <id>      Appraiser config id from appraiserConfigs (default: ${DEFAULT_METHOD})
+  --allow-leak       Run even when the catalogue body names the artist. Without it
+                     such a lot aborts, because Stage 1c would receive the name
+                     verbatim and the run would not be blind. Recorded in the
+                     output as blindnessCompromised.
 
 Example:
   npx tsx tests/backtest/run_backtest.ts --sale A0800 --lot 123
@@ -99,7 +108,7 @@ function slugify(s: string): string {
 }
 
 async function main() {
-  const { sale, lot: lotNumber, method } = parseArgs(process.argv.slice(2));
+  const { sale, lot: lotNumber, method, allowLeak } = parseArgs(process.argv.slice(2));
 
   console.log(`[Backtest] Resolving sale "${sale}"...`);
   const auction = await resolveSaleRef(sale);
@@ -123,17 +132,18 @@ async function main() {
   // is a genuine concern, since that's outside anything this harness intends
   // to send.
   const groundTruth: ParsedLot = parseDescription(rawLot.description);
-  const surnameLeak = groundTruth.leakRisks.find((r) => r.startsWith("artist surname"));
-  if (surnameLeak) {
-    console.log(`[Backtest] Note: ${surnameLeak} — the catalogue body itself restates the artist's name, beyond what this harness intends to send.`);
-  }
+  // Hard-stops unless --allow-leak: a body that names the artist makes the run
+  // non-blind, and Stage 1c gets that text verbatim. See ./blindness.ts.
+  const blindnessCompromised = assertBlindOrExit(groundTruth.leakRisks, { allowLeak, tag: "Backtest" });
 
   const config = appraiserConfigs.find((c) => c.id === method);
   if (!config) throw new Error(`Unknown method "${method}" — check appraiserConfigs in src/appraisal/appraiser.ts`);
 
   const geminiKey = process.env.GEMINI_API_KEY;
   const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
-  const appraiser = getAppraiserFromConfig(config, ai);
+  // Same appraiser, but keeping a copy of the Stage 2a cells — the pipeline discards them
+  // and a stored result is much harder to diagnose without them (see ./evidence_capture.ts).
+  const { appraiser, getAgentCells, getAckgRounds } = appraiserWithEvidenceCapture(config, ai);
 
   // catalogueNotes gets the raw, unprocessed catalogue body verbatim — everything
   // between the title line and the "Provenance" heading (medium, support, sheet/
@@ -207,6 +217,14 @@ async function main() {
         sale: auction,
         lotUrl: lotUrl(rawLot),
         method,
+        blindnessCompromised,
+        stage2aEvidence: buildEvidenceRecord(
+          getAgentCells(),
+          report.stage1dResult,
+          report.stage1cResult,
+          !!report.stage1Result?.imageAuthenticity?.haltRecommended,
+          getAckgRounds(),
+        ),
         appraiserInputNotes: {
           inscribedMarksNotes: input.inscribedMarksNotes ?? null,
           provenanceNotes: input.provenanceNotes ?? null,

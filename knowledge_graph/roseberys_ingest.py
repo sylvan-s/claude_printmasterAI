@@ -69,7 +69,8 @@ from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
 from resolve_artist_identity import strip_honorifics
-from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id
+from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, resolve_merged_work_cypher
+from embed_titles_hook import embed_new_titles
 
 def _require_env(name):
     value = os.environ.get(name)
@@ -289,7 +290,7 @@ SET artist.nationality = coalesce(row.artistNationality, artist.nationality),
 // raisonné entry (see map_row's comment) — coalesce() on every SET so a second lot
 // merging into an already-created node doesn't clobber it with its own (equivalent,
 // but not necessarily identically-worded) title/date.
-MERGE (cw:ConceptualWork {id: row.conceptualWorkId})
+""" + resolve_merged_work_cypher('row.conceptualWorkId', ['row', 'artist']) + """
 SET cw.name = coalesce(cw.name, row.title),
     cw.dateCreated_year = coalesce(cw.dateCreated_year, row.dateYear),
     cw.dateCreated_precision = coalesce(cw.dateCreated_precision, "exact")
@@ -388,8 +389,13 @@ def _write_chunk_with_retry(rows, retries=4, backoff_seconds=5.0):
     raise RuntimeError(f"Chunk write failed after {retries} attempts: {last_error}")
 
 
-def load_catalogue(sale_code=None, limit=None, exclude_multi_work=True, log_excluded_path="roseberys_excluded_rows.csv"):
-    df = pd.read_csv(CATALOGUE_CSV_PATH, low_memory=False)
+def load_catalogue(sale_code=None, limit=None, exclude_multi_work=True,
+                   log_excluded_path="roseberys_excluded_rows.csv", csv_path=None):
+    # csv_path lets a single-sale extract be ingested without appending it to the
+    # 10-year all-prints corpus. An UPCOMING sale has no hammer/price_realised/sold
+    # values yet; those columns are already optional here, so the lots land priced-
+    # unsold and a post-sale re-run backfills them by re-merging on the same keys.
+    df = pd.read_csv(csv_path or CATALOGUE_CSV_PATH, low_memory=False)
     df = df[df["artist"].notna()]
 
     narrative_mask = df.apply(is_narrative_row, axis=1)
@@ -441,6 +447,7 @@ def run(df, chunk_size=200):
         print(f"[PROGRESS] {done}/{total} done | elapsed={elapsed:.0f}s "
               f"| est_remaining={(elapsed/done)*(total-done):.0f}s", flush=True)
     print(f"[DONE] total={total} elapsed={time.time()-start:.0f}s", flush=True)
+    embed_new_titles(total)
 
 
 if __name__ == "__main__":
@@ -448,11 +455,18 @@ if __name__ == "__main__":
     parser.add_argument("--sale", help="Single sale code, e.g. A0777")
     parser.add_argument("--all", action="store_true", help="Ingest every sale in the catalogue")
     parser.add_argument("--limit", type=int, help="Cap the number of rows (for a test run)")
+    parser.add_argument("--csv", help="Read from this catalogue CSV instead of the all-prints corpus")
+    parser.add_argument("--dry-run", action="store_true", help="Load and filter only; write nothing")
     args = parser.parse_args()
 
     if not args.sale and not args.all:
         parser.error("Provide --sale CODE or --all")
 
-    df = load_catalogue(sale_code=args.sale, limit=args.limit)
-    print(f"Ingesting {len(df)} lot(s)...", flush=True)
-    run(df)
+    df = load_catalogue(sale_code=args.sale, limit=args.limit, csv_path=args.csv)
+    if args.dry_run:
+        print(f"[DRY RUN] would ingest {len(df)} lot(s); nothing written.", flush=True)
+        cols = [c for c in ("lot_number", "artist", "title", "low_estimate", "sold") if c in df.columns]
+        print(df[cols].head(8).to_string(index=False), flush=True)
+    else:
+        print(f"Ingesting {len(df)} lot(s)...", flush=True)
+        run(df)

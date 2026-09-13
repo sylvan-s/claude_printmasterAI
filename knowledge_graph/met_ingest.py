@@ -64,6 +64,8 @@ import time
 import pandas as pd
 from neo4j import GraphDatabase
 
+from catalogue_matching import resolve_merged_work_cypher
+
 def _require_env(name):
     value = os.environ.get(name)
     if not value:
@@ -86,6 +88,8 @@ MET_CSV_PATH = "/Users/sylvansitkey/PycharmProjects/claude_printmasterAI/benchma
 # roseberys_ingest.py — see that module for why (prevents the two source adapters'
 # vocabularies from silently drifting apart from each other).
 from crosswalk_matching import extract_techniques, extract_papers
+from embed_titles_hook import embed_new_titles
+from ulan_url import canonical_ulan_url
 
 # --- doc 09 §4 SEMANTIC_SPLIT: tags -> Genre vs Subject ---
 # Standard fine-art/print genre categories (a stable, well-established art-cataloguing
@@ -216,7 +220,8 @@ def parse_constituents(r):
             continue
         bucket = _classify_role(at(roles, i))
         if bucket == "creator":
-            ulan_url = _none_if_placeholder(_clean(at(ulans, i))) or _CREATOR_ULAN_BY_NAME.get(name)
+            ulan_url = canonical_ulan_url(
+                _none_if_placeholder(_clean(at(ulans, i))) or _CREATOR_ULAN_BY_NAME.get(name))
             wikidata_url = _none_if_placeholder(_clean(at(wikidatas, i))) or _CREATOR_WIKIDATA_BY_NAME.get(name)
             creators.append({
                 "name": name,
@@ -279,7 +284,7 @@ def map_record(r):
 LOAD_QUERY = """
 UNWIND $rows AS row
 
-MERGE (cw:ConceptualWork {id: "met-" + row.objectId})
+""" + resolve_merged_work_cypher('"met-" + row.objectId', ['row']) + """
 SET cw.name = row.title,
     cw.dateCreated_year = row.dateYear,
     cw.dateCreated_endYear = row.dateEndYear,
@@ -554,6 +559,7 @@ def run(df, chunk_size=200):
               f"est_remaining={(elapsed/done)*(total-done):.0f}s | resume_with: --skip {done}",
               flush=True)
     print(f"[DONE] total={total} elapsed={time.time()-start:.0f}s", flush=True)
+    embed_new_titles(total)
 
 
 if __name__ == "__main__":

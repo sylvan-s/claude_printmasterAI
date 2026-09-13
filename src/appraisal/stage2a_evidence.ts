@@ -18,7 +18,7 @@
  *
  * Pure and unit-tested — tests/stage2a_evidence/.
  */
-import type { TriageResult, Stage1dResult } from "../types";
+import type { TriageResult, Stage1dResult, AppraiserInputResult } from "../types";
 import {
   classifyTwoPass,
   nameSimilarity,
@@ -28,8 +28,13 @@ import {
   type NamingSource,
   type TitleSource,
   type KWorkResult,
+  titleContainment,
+  TAU_TITLE_AGREE,
+  type StyleConsistencyEvidence,
+  type WorkEvidence,
   type Confidence,
 } from "./two_pass_attribution";
+import { normalizeTitleForEmbedding } from "./knowledge_graph/title_normalize.js";
 import {
   Scenario,
   SCENARIO_NAMES,
@@ -41,6 +46,42 @@ import {
 // Numbers use -1 as a "not assessed / not applicable" sentinel (tool schemas can't
 // express nullable cleanly).
 // ───────────────────────────────────────────────────────────────────────────────
+/**
+ * Recover an evidence block a model returned as a JSON *string* rather than an object.
+ *
+ * Haiku 4.5 did this to `impressionEvidence` on A0793/122 — the whole block arrived as
+ * `"{\"assessable\": true, ...}"`. Two things then go wrong, and the quieter one is worse.
+ * Loudly, `applyCandidateFacts` tries to assign a property to a string primitive and throws,
+ * taking the lot down with a TypeError. Silently, `evidenceToTwoPassInput` reads `a.kId`,
+ * `a.kOeuvreMatchCount` and the rest off the string, gets `undefined` for every one, and the
+ * tree evaluates a block that looked present and was empty — which predates the query plan
+ * and would have shown up as an inexplicably uncorroborated lot.
+ *
+ * The evidence is all there; only its envelope is wrong. Parsing it back is recovery, not
+ * repair, and a block that will not parse is returned untouched for the caller's existing
+ * "report omitted X" path to degrade on honestly.
+ */
+export function normalizeEvidenceBlocks(ev: any): string[] {
+  const recovered: string[] = [];
+  if (!ev || typeof ev !== "object") return recovered;
+  for (const key of ["inputValidation", "traditionIdentification", "periodEstimation",
+                     "artistEvidence", "workEvidence", "impressionEvidence", "riskFlags"]) {
+    const v = ev[key];
+    if (typeof v !== "string") continue;
+    try {
+      const parsed = JSON.parse(v);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        ev[key] = parsed;
+        recovered.push(key);
+      }
+    } catch {
+      // Leave it. A block that is a string and not JSON is not evidence, and the caller's
+      // structural check is the right place to notice that.
+    }
+  }
+  return recovered;
+}
+
 export interface WH {
   width: number;
   height: number;
@@ -78,7 +119,6 @@ export interface EvidenceAgentOutput {
     appraiserArtistName: string;
     appraiserTrust: "documented_fact" | "hypothesis" | "none" | string;
     dominantCandidateName: string;
-    dominantCandidateIdentityKey: string;
     kId: "true" | "false" | "unknown" | string;
     kOeuvreMatchCount: number;
     kOeuvreProvenanceTags: string[];
@@ -116,6 +156,9 @@ export interface EvidenceAgentOutput {
     observedImageMm: WH;
     cataloguePlateMm: WH;
     catalogueImageMm: WH;
+    /** Sheet, added 2026-09-09 — compared last, at a wider tolerance. */
+    observedSheetMm?: WH;
+    catalogueSheetMm?: WH;
   };
   riskFlags: {
     forgeryRisk: boolean;
@@ -147,10 +190,29 @@ const wh = (o: WH | undefined | null): { w: number; h: number } | null =>
 /** Attach the model-resolved ULAN/Wikidata key to a source only when that source
  *  actually names the dominant candidate — otherwise identity-level agreement would
  *  be spuriously asserted between sources naming different people. */
-function identityKeyFor(name: string, dom: string, key: string): string | null {
-  if (!key) return null;
+/**
+ * A shared token for every source that names the SAME artist as the dominant candidate.
+ *
+ * sameIdentity() compares two votes' identityKeys for EQUALITY and nothing else, and every
+ * vote that earns a key here gets the same string — so the token's content has never been
+ * read as a URI, only as "these two agree". Its job is a transitivity bridge: V naming
+ * "P. Picasso" and A naming "Pablo Picasso" may each clear TAU_NAME against the dominant
+ * "Pablo Picasso" without clearing it against each other.
+ *
+ * It used to be the model-supplied dominantCandidateIdentityKey (ADR-0010's ULAN/Wikidata
+ * cell), which made a real mechanism depend on a cosmetic field. Across 13 stored runs the
+ * model wrote a wrong URI twice — Banksy as wikidata Q11701 (nobody: Banksy is Q133600) and
+ * Rachel Whiteread as ULAN 500118577 (she is 500118666, and her node carries no Wikidata at
+ * all, so it was not read off any row). Neither error changed a verdict, precisely because
+ * the value is only compared with itself — which is the argument for not asking for it.
+ *
+ * The dominant name serves identically and costs nothing. NOTE this makes the bridge
+ * unconditional where it was previously contingent on the model having filled the cell: a
+ * run where the model left it "" now gets the bridge it should always have had.
+ */
+function identityKeyFor(name: string, dom: string): string | null {
   if (!name || !dom) return null;
-  return nameSimilarity(name, dom) >= TAU_NAME ? key : null;
+  return nameSimilarity(name, dom) >= TAU_NAME ? `name:${dom.trim().toLowerCase()}` : null;
 }
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -160,22 +222,98 @@ export function evidenceToTwoPassInput(
   ev: EvidenceAgentOutput,
   veaHaltRecommended: boolean,
   stage1d?: Stage1dResult | null,
+  appraiserInput?: AppraiserInputResult | null,
+  styleConsistency?: StyleConsistencyEvidence | null,
+  /** This artist's own DINOv2 work-identity floor. Omitted -> the global one applies. */
+  artistDinoFloor?: number | null,
 ): TwoPassInput {
-  const a = ev.artistEvidence;
-  const w = ev.workEvidence;
+  // Defensive: callers should reject a report missing these (runStage2aTriage does), but
+  // this function is exported and also drives the fixture adapters and tests. A missing
+  // block yields empty cells and a not_attributed verdict rather than a TypeError.
+  const a = ev.artistEvidence ?? ({} as NonNullable<typeof ev.artistEvidence>);
+  const w = ev.workEvidence ?? ({} as NonNullable<typeof ev.workEvidence>);
   const dom = a.dominantCandidateName || "";
-  const domKey = a.dominantCandidateIdentityKey || "";
 
-  // D — Stage 1d DINOv2/CLIP match against the ACKG's own image index (ADR-0013 + the
-  // 2026-09-06 voting amendment). Computed entirely in code from Stage 1d's own output —
-  // no LLM judgement involved, unlike V/R/A/K — so this is built here rather than read off
-  // the evidence agent's tool-call output. eligibleVotes() below gates it to HIGH only.
+  // D / D_t — Stage 1d's DINOv2 + CLIP match against the ACKG's own image index (ADR-0013).
+  // Built here in code from Stage 1d's output; no LLM judgement, unlike V/R/A.
+  //
+  // BEST-OF ACROSS THE ARTIST'S ROWS, PER MEASURE. Stage 1d returns up to 10 candidate rows
+  // and the two vector searches do not return the same set — on A0793/122 the top row was
+  // Peter Blake with a dino score and NO clip, while rows 2 and 3 were also Peter Blake with
+  // clip scores and no dino. Reading only the top row threw away half the evidence for an
+  // artist who was, across those rows, plainly present. An artist counts as matched when any
+  // example in their corpus matches, so each measure is maxed over that artist's rows
+  // independently — and never averaged with the other, since they are different scales.
+  // Stage 1d's own top-level scores, used only as a fallback when candidateMatches is empty.
+  const dinoScore = typeof stage1d?.dinov2SimilarityScore === "number" ? stage1d.dinov2SimilarityScore : undefined;
+  const clipScore = typeof stage1d?.clipSimilarityScore === "number" ? stage1d.clipSimilarityScore : undefined;
+
+  const rows = stage1d?.candidateMatches ?? [];
+  const bestOf = (keep: (row: any) => boolean) => {
+    const sel = rows.filter(keep);
+    const pick = (f: (r: any) => unknown) => {
+      const vals = sel.map(f).filter((v): v is number => typeof v === "number");
+      return vals.length ? Math.max(...vals) : undefined;
+    };
+    return { dino: pick((r) => r.dinov2Similarity), clip: pick((r) => r.clipSimilarity) };
+  };
+
+  const bestArtist = stage1d?.bestMatchArtist ?? "";
+  const artistScores = bestArtist
+    ? bestOf((r) => !!r.artistName && nameSimilarity(r.artistName, bestArtist) >= TAU_NAME)
+    : { dino: undefined, clip: undefined };
+
+  const bestWork = stage1d?.bestMatchConceptualWorkTitle ?? "";
+  const workScores = bestWork
+    ? bestOf((r) => !!r.conceptualWorkTitle && titleContainment(r.conceptualWorkTitle, bestWork) >= TAU_TITLE_AGREE)
+    : { dino: undefined, clip: undefined };
+
   const embeddingMatch: NamingSource = stage1d?.bestMatchArtist
-    ? { kind: "names", raw: stage1d.bestMatchArtist, matchConfidence: stage1d.matchConfidence ?? undefined }
+    ? {
+        kind: "names",
+        raw: stage1d.bestMatchArtist,
+        matchConfidence: stage1d.matchConfidence ?? undefined,
+        // Fall back to the single top-row scores if the per-artist scan found nothing.
+        dinoSimilarity: artistScores.dino ?? dinoScore ?? undefined,
+        clipSimilarity: artistScores.clip ?? clipScore ?? undefined,
+      }
     : { kind: "no_match" };
 
+  // The best DINOv2 score belonging to a work OTHER than the one D_t names — the runner-up
+  // in Stage 1d's own ranked list, which it already returns. How far clear the best match is
+  // of its nearest rival turns out to matter more than its absolute height: measured over
+  // 2,501 queries against the full index, gating on the absolute score alone is right 56% of
+  // the time it fires, and adding "and the runner-up is well behind" lifts that to 74%.
+  //
+  // Titles are compared folded, so a duplicate NODE of the same work does not masquerade as
+  // a rival and suppress a correct match — ~30% of ConceptualWork nodes are variant-titled
+  // duplicates, and without this the guard would fire hardest on the best-documented prints.
+  const dtWorkKey = normalizeTitleForEmbedding(stage1d?.bestMatchConceptualWorkTitle ?? "");
+  const runnerUpDino: number | undefined = (() => {
+    if (!dtWorkKey) return undefined;
+    let best: number | undefined;
+    for (const c of stage1d?.candidateMatches ?? []) {
+      if (typeof c.dinov2Similarity !== "number") continue;
+      if (normalizeTitleForEmbedding(c.conceptualWorkTitle ?? "") === dtWorkKey) continue;
+      if (best == null || c.dinov2Similarity > best) best = c.dinov2Similarity;
+    }
+    return best;
+  })();
+
+  const titleEmbeddingMatch: WorkEvidence["titleEmbeddingMatch"] = stage1d?.bestMatchConceptualWorkTitle
+    ? {
+        kind: "names",
+        raw: stage1d.bestMatchConceptualWorkTitle,
+        matchConfidence: stage1d.matchConfidence ?? undefined,
+        // Work identity is DINOv2 only: on A0793 CLIP scored 0.937 and 0.946 against the
+        // WRONG works by the right artists — it recognises style and medium, not the image.
+        dinoSimilarity: workScores.dino ?? dinoScore ?? undefined,
+        runnerUpDinoSimilarity: runnerUpDino,
+      }
+    : { kind: "silent" };
+
   const veaSource: NamingSource = a.veaNamesArtist && a.veaArtistName
-    ? { kind: "names", raw: a.veaArtistName, identityKey: identityKeyFor(a.veaArtistName, dom, domKey) }
+    ? { kind: "names", raw: a.veaArtistName, identityKey: identityKeyFor(a.veaArtistName, dom) }
     : { kind: "silent" };
 
   const rNamed = a.reverseImageNamesArtist && !!a.reverseImageArtistName;
@@ -183,7 +321,7 @@ export function evidenceToTwoPassInput(
     ? {
         kind: "names",
         raw: a.reverseImageArtistName,
-        identityKey: identityKeyFor(a.reverseImageArtistName, dom, domKey),
+        identityKey: identityKeyFor(a.reverseImageArtistName, dom),
         sim: a.reverseImageSimilarity >= 0 ? a.reverseImageSimilarity : 0,
       }
     : { kind: "no_match" };
@@ -193,7 +331,7 @@ export function evidenceToTwoPassInput(
     ? {
         kind: "names",
         raw: a.appraiserArtistName,
-        identityKey: identityKeyFor(a.appraiserArtistName, dom, domKey),
+        identityKey: identityKeyFor(a.appraiserArtistName, dom),
         trust: appraiserTrust,
       }
     : { kind: "absent" };
@@ -218,6 +356,30 @@ export function evidenceToTwoPassInput(
 
   const titleSrc = (s: string): TitleSource => (s ? { kind: "names", raw: s } : { kind: "silent" });
 
+  // A_t — the appraiser's title. Deciding what in a set of notes is a TITLE and what is
+  // merely an inscription is Stage 1c's job, not the evidence agent's; when Stage 1c
+  // reports no title claim, there is no appraiser title. The agent's own `appraiserTitle`
+  // cell was the one cell in workEvidence with no schema description, and it filled the
+  // gap by inference: on A0793 lot 148 it read the edition inscription "Grimm edition
+  // B 35/100" as a title while Stage 1c had correctly recorded claimedAttribution.title
+  // as null. That invented vote collided with D_t and collapsed the work pass to a T6
+  // conflict. Stage 1c is authoritative here; the agent's cell is reported, never voted.
+  const claimedTitle = appraiserInput?.claimedAttribution?.title?.trim() || "";
+  const titleAppraiser: TitleSource = appraiserInput
+    ? claimedTitle
+      ? { kind: "names", raw: claimedTitle }
+      : { kind: "silent" }
+    // No Stage 1c result supplied at all — unit fixtures that drive the agent's cells
+    // directly. Production always passes one: runStage1cAppraiserInput returns a fully
+    // formed "absent" result rather than undefined even when there are no notes.
+    : titleSrc(w.appraiserTitle);
+  if (appraiserInput && w.appraiserTitle?.trim() && w.appraiserTitle.trim() !== claimedTitle) {
+    console.warn(
+      `[Stage 2a evidence] evidence agent reported appraiserTitle "${w.appraiserTitle.trim()}" but Stage 1c claimed ` +
+        `${claimedTitle ? `"${claimedTitle}"` : "no title"} — using Stage 1c; the agent's value does not vote.`,
+    );
+  }
+
   // ACKG work-level anchor (ADR-0010 Decision 4a amendment): a catalogued work whose title
   // matches an observed title AND is attributed to one artist. The agent puts that artist in
   // kWorkBackPropArtist and the title-match strength in kWorkTitleSim. This VOTES.
@@ -226,26 +388,71 @@ export function evidenceToTwoPassInput(
     anchorArtist && w.kWorkTitleSim >= 0
       ? {
           artist: anchorArtist,
-          identityKey: identityKeyFor(anchorArtist, dom, domKey),
+          identityKey: identityKeyFor(anchorArtist, dom),
           titleSim: w.kWorkTitleSim,
         }
       : null;
 
   const imp = ev.impressionEvidence;
+
+  // Stage 1c is a first-class source for the physical facts, not just VEA. The evidence
+  // schema ties observedTechniques to VEA ("verbatim from VEA printingTechniques"), so with
+  // Stage 1a skipped the technique cell came back empty on every A0793 lot even though
+  // Stage 1c had extracted "lithograph in colours" / "silkscreen print in colours" from the
+  // catalogue text. Dimensions were already Stage 1c's job by design; technique now is too.
+  const claimedTechnique = appraiserInput?.claimedAttribution?.technique?.trim() || "";
+  const agentTechniques = (imp?.observedTechniques ?? []).filter((t) => t && t.trim());
+  const observedTechniques = agentTechniques.length
+    ? agentTechniques
+    : claimedTechnique
+      ? [claimedTechnique]
+      : [];
+  const observedTechniqueSource: "vea" | "appraiser" | "none" = agentTechniques.length
+    ? "vea"
+    : claimedTechnique
+      ? "appraiser"
+      : "none";
+
+  // Sheet dimensions, admitted at a wider tolerance because 65% of A0793 lots state nothing
+  // else. Stage 1c's dimensionsClaim carries the kind, so only a stated SHEET becomes one.
+  const dc = appraiserInput?.dimensionsClaim;
+  const observedSheetMm =
+    dc && dc.kind === "sheet" && dc.widthCm && dc.heightCm
+      ? { w: dc.widthCm * 10, h: dc.heightCm * 10 }
+      : wh(imp?.observedSheetMm);
   const observedDimSource: "appraiser" | "vea_scaled" | "none" =
     imp?.observedDimSource === "appraiser" || imp?.observedDimSource === "vea_scaled"
       ? imp.observedDimSource
       : "none";
-  // Only run the impression layer when there's something concrete to compare — a catalogued
-  // technique or a like-for-like dimension pair. Otherwise it's noise (T4 world).
-  const impressionAssessable =
-    !!imp?.assessable &&
-    ((imp.catalogueTechniques ?? []).length > 0 ||
-      (observedDimSource !== "none" &&
-        (!!wh(imp.cataloguePlateMm) || !!wh(imp.catalogueImageMm))));
+  // Assessable when a real PAIR exists to compare — both sides of a technique or of one
+  // dimension kind. Otherwise it is noise (T4 world).
+  //
+  // Rewritten 2026-09-09. The previous gate discarded everything the code now supplies:
+  // it required the agent's own `assessable` flag (false on all five A0793 lots, since the
+  // agent judges that before the tree has ruled on the work), it counted only CATALOGUE
+  // techniques so a Stage 1c-supplied observed technique could never satisfy it, and its
+  // dimension leg knew nothing about sheet. The result was `work corroboration NONE` on
+  // every lot with the comparison data sitting unused one line below.
+  //
+  // The agent's flag is no longer an AND: if it transcribed catalogue facts at all it
+  // queried a work, and the presence of a comparable pair is the more reliable signal.
+  // observedIsPhotomechanical is an observed technique family in its own right —
+  // classifyTechniqueMatch adds it even when no process was named — so it counts as the
+  // observed side of a pair. (VEA seeing halftone dots but naming nothing is exactly the
+  // Hirst Empresses case: giclée observed against giclée catalogued, which is NOT a
+  // reproduction.)
+  const haveObservedTechnique = observedTechniques.length > 0 || !!imp?.observedIsPhotomechanical;
+  const haveTechniquePair = haveObservedTechnique && (imp?.catalogueTechniques ?? []).length > 0;
+  const haveDimPair =
+    observedDimSource !== "none" &&
+    ((!!wh(imp?.observedPlateMm) && !!wh(imp?.cataloguePlateMm)) ||
+      (!!wh(imp?.observedImageMm) && !!wh(imp?.catalogueImageMm)) ||
+      (!!observedSheetMm && !!wh(imp?.catalogueSheetMm)));
+  const impressionAssessable = !!imp && (haveTechniquePair || haveDimPair);
   const impressionEvidence = impressionAssessable && imp
     ? {
-        observedTechniques: imp.observedTechniques ?? [],
+        observedTechniques,
+        observedTechniqueSource,
         observedIsPhotomechanical: !!imp.observedIsPhotomechanical,
         catalogueTechniques: imp.catalogueTechniques ?? [],
         catalogueMediumRaw: imp.catalogueMediumRaw || "",
@@ -256,6 +463,8 @@ export function evidenceToTwoPassInput(
           observedImageMm: wh(imp.observedImageMm),
           cataloguePlateMm: wh(imp.cataloguePlateMm),
           catalogueImageMm: wh(imp.catalogueImageMm),
+          observedSheetMm,
+          catalogueSheetMm: wh(imp.catalogueSheetMm),
         },
       }
     : null;
@@ -273,6 +482,7 @@ export function evidenceToTwoPassInput(
       kOeuvreMatchCount: num(a.kOeuvreMatchCount),
       kSubject,
       kSubjectNote: a.kSubjectNote || "",
+      styleConsistency: styleConsistency ?? null,
       ackgWorkAnchor,
     },
     workEvidence: {
@@ -280,8 +490,10 @@ export function evidenceToTwoPassInput(
       titleReverseImageSearch: w.reverseImageTitle
         ? { kind: "names", raw: w.reverseImageTitle, sim: w.reverseImageTitleSimilarity >= 0 ? w.reverseImageTitleSimilarity : 0 }
         : { kind: "silent" },
-      titleAppraiser: titleSrc(w.appraiserTitle),
+      titleAppraiser,
+      titleEmbeddingMatch,
       kWork,
+      artistDinoFloor: artistDinoFloor ?? null,
     },
     impressionEvidence,
     veaInImageTitleLegible: !!w.veaInImageTitleLegible,
@@ -475,7 +687,7 @@ export function emptyEvidenceOutput(
       reverseImageNamesArtist: false, reverseImageArtistName: "", reverseImageSimilarity: -1,
       reverseImageConsistentWithVea: false, reverseImageConsistencyRationale: "",
       appraiserNamesArtist: false, appraiserArtistName: "", appraiserTrust: "none",
-      dominantCandidateName: "", dominantCandidateIdentityKey: "",
+      dominantCandidateName: "",
       kId: "unknown", kOeuvreMatchCount: -1, kOeuvreProvenanceTags: [], kSubject: "UNASSESSABLE", kSubjectNote: "",
     },
     workEvidence: {
@@ -505,11 +717,17 @@ export function runEvidenceTree(
   ev: EvidenceAgentOutput,
   veaHaltRecommended: boolean,
   stage1d?: Stage1dResult | null,
+  appraiserInput?: AppraiserInputResult | null,
+  styleConsistency?: StyleConsistencyEvidence | null,
+  /** This artist's own DINOv2 work-identity floor. Omitted -> the global one applies. */
+  artistDinoFloor?: number | null,
 ): {
   triage: TriageResult;
   twoPass: TwoPassResult;
 } {
-  const twoPass = classifyTwoPass(evidenceToTwoPassInput(ev, veaHaltRecommended, stage1d));
+  const twoPass = classifyTwoPass(
+    evidenceToTwoPassInput(ev, veaHaltRecommended, stage1d, appraiserInput, styleConsistency, artistDinoFloor),
+  );
   return { triage: assembleTriageResult(ev, twoPass), twoPass };
 }
 

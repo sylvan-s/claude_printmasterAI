@@ -184,7 +184,9 @@ import requests
 from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques
-from catalogue_matching import build_conceptual_work_id
+from catalogue_matching import build_conceptual_work_id, resolve_merged_work_cypher
+from embed_titles_hook import embed_new_titles
+from ulan_url import canonical_ulan_url
 
 
 def _require_env(name):
@@ -210,7 +212,7 @@ PILOT_CACHE_PATH = os.path.join(
 # See module docstring point on Artist identity — verified live against this graph
 # 2026-09-05 before writing this map, not guessed.
 PILOT_ARTIST_RESOLUTION = {
-    "rembrandt": {"canonicalName": "Rembrandt van Rijn", "ulanUrl": "http://vocab.getty.edu/ulan/500011051"},
+    "rembrandt": {"canonicalName": "Rembrandt van Rijn", "ulanId": "500011051"},
     # Confirmed live 2026-09-06, before writing a single Sidney Nolan row: this artist is
     # fragmented across EIGHT Artist nodes in this graph already ("Sidney Nolan"/"Sydney
     # Nolan" spelling variants crossed with every combination of "Sir"/OM/AC/CBE/RA/
@@ -224,7 +226,7 @@ PILOT_ARTIST_RESOLUTION = {
     # "has an id" (the lesson from that same prior dedupe pass). BM's own producer field
     # gives the bare name "Sidney Nolan", which would otherwise MERGE onto a DIFFERENT,
     # already-existing, ULAN-less 4-work fragment — a ninth split, not a consolidation.
-    "sidney nolan": {"canonicalName": "Sir Sidney Nolan", "ulanUrl": "http://vocab.getty.edu/ulan/500028209"},
+    "sidney nolan": {"canonicalName": "Sir Sidney Nolan", "ulanId": "500028209"},
     # Confirmed live 2026-09-06, before writing a single R.B. Kitaj row (10-artist BM
     # priority-list run): this artist is fragmented across FIVE Artist nodes already
     # ("R.B. Kitaj"/"R. B. Kitaj"/"R B Kitaj"/"Ronald Brooks Kitaj"/"Roland Brooks Kitaj"
@@ -235,7 +237,7 @@ PILOT_ARTIST_RESOLUTION = {
     # string is "R B Kitaj" (no periods) — a pre-existing 1-work "R B Kitaj" node exists
     # too, which a blind MERGE would have grown into a SIXTH fragment instead of
     # consolidating onto the 206-work canonical node.
-    "r b kitaj": {"canonicalName": "R.B. Kitaj", "ulanUrl": "http://vocab.getty.edu/page/ulan/500007852"},
+    "r b kitaj": {"canonicalName": "R.B. Kitaj", "ulanId": "500007852"},
     # Confirmed live 2026-09-06, before writing a single Stanley Anderson row (10-artist
     # BM priority-list run): this artist is split across a bare "Stanley Anderson" node
     # (10 works, no ulanUrl) and an honorific "Stanley Anderson RA RE" node (also 10
@@ -247,7 +249,7 @@ PILOT_ARTIST_RESOLUTION = {
     # [[feedback_defer_broad_sweeps]]). BM's own bare producer string "Stanley Anderson"
     # would otherwise grow the null-ulan duplicate instead of consolidating onto the
     # ULAN-bearing canonical node.
-    "stanley anderson": {"canonicalName": "Stanley Anderson RA RE", "ulanUrl": "http://vocab.getty.edu/ulan/500119555"},
+    "stanley anderson": {"canonicalName": "Stanley Anderson RA RE", "ulanId": "500119555"},
 }
 
 # `CatalogueRaisonne.numberingPrefix` is a raw string key (parse_bibliographic_ref's
@@ -410,7 +412,12 @@ def parse_producer(raw):
 def resolve_artist(name):
     key = name.strip().lower()
     if key in PILOT_ARTIST_RESOLUTION:
-        return PILOT_ARTIST_RESOLUTION[key]
+        hit = PILOT_ARTIST_RESOLUTION[key]
+        # The table holds a BARE GETTY ID and the URL is built here, so no URL shape is
+        # written by hand anywhere. The "r b kitaj" entry used to hold a full page-form URL
+        # and produced one of the twelve duplicate pairs repaired 2026-09-12.
+        return {"canonicalName": hit["canonicalName"],
+                "ulanUrl": canonical_ulan_url(hit.get("ulanId"))}
     return {"canonicalName": name, "ulanUrl": None}
 
 
@@ -676,7 +683,7 @@ UNWIND $rows AS row
 // catalogue-raisonné entry (module docstring point 4) — coalesce() on every SET so the
 // second record merging into an already-created node doesn't clobber it with its own
 // (equivalent, but not necessarily identically-worded) title/date.
-MERGE (cw:ConceptualWork {id: row.conceptualWorkId})
+""" + resolve_merged_work_cypher('row.conceptualWorkId', ['row']) + """
 SET cw.name = coalesce(cw.name, row.title),
     cw.seriesTitle = coalesce(cw.seriesTitle, row.seriesTitle),
     cw.dateCreated_year = coalesce(cw.dateCreated_year, row.dateYear),
@@ -865,6 +872,7 @@ def run(records, dry_run=False):
         driver.close()
     print(f"[DONE] loaded {len(print_rows)} print(s) + {len(matrix_rows)} matrix object(s), "
           f"skipped {len(excluded)} excluded record(s)", flush=True)
+    embed_new_titles(len(print_rows) + len(matrix_rows))
 
 
 if __name__ == "__main__":

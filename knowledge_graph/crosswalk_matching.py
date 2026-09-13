@@ -57,6 +57,17 @@ TECHNIQUE_KEYWORDS = [
     ("Drypoint", ["drypoint"]),
     ("Aquatint", ["aquatint"]),
     ("Mezzotint", ["mezzotint"]),
+    ("Crayon manner", ["crayon manner", "crayon-manner", "chalk manner"]),  # found missing
+                                        # 2026-09-11 auditing the Navigart public-domain load — two
+                                        # 18th-c Saint-Étienne intaglios ("Manière de crayon
+                                        # (sanguine) sur papier vergé", one by Demarteau le Jeune)
+                                        # resolved to no technique at all. A distinct roulette-based
+                                        # intaglio process, not a chalk DRAWING — the whole point of
+                                        # it is imitating one. AAT id verified live (300178621,
+                                        # broader term "intaglio printing processes") before adding,
+                                        # per this project's usual discipline. No existing record in
+                                        # the graph matches these keywords, so adding it changes no
+                                        # other adapter's output — checked before the edit.
     ("Photogravure", ["photogravure"]),
     ("Collotype", ["collotype"]),      # found missing 2026-09-06 investigating 4 records in a
                                         # Sir Muirhead Bone BM pull dropped by the technique gate
@@ -128,7 +139,7 @@ TECHNIQUE_SUPPRESSES = {
     # ALSO get the generic "Intaglio" tag — only bare "Intaglio print on paper" (no named
     # method) should resolve to the umbrella term itself.
     "Intaglio": ["Etching", "Drypoint", "Aquatint", "Mezzotint", "Photogravure", "Engraving",
-                 "Wood engraving"],
+                 "Wood engraving", "Crayon manner"],
 }
 
 # Aligned to doc 01's paperSurfaceType enum (wove, laid, japanese, BFK, vellum, card,

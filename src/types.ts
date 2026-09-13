@@ -1,3 +1,5 @@
+import type { Stage2bComp, CompStorabilityReport } from "./appraisal/comp_storability.js";
+
 export interface AuctionEstimate {
   lowEstimate: number;
   highEstimate: number;
@@ -381,9 +383,17 @@ export interface ASAAttributionResult {
   };
   catalogueRaisonne: {
     referenceFound: boolean;
+    /** An actual publication ("Bloch", "Wiseman 1998") or null. Never a category of
+     *  resource — see ATTRIBUTION_RESEARCH_SYSTEM_PROMPT STEP 3. */
     catalogueName: string | null;
+    catalogueTitle?: string | null;
     plateOrCatalogueNumber: string | null;
     catalogueEditionInfo: string | null;
+    /** Where Stage 2b established it, when the ACKG index did not already hold it. */
+    sourceUrl?: string | null;
+    /** Researched, and no catalogue raisonné has ever been compiled for this artist. An
+     *  honest terminal answer, written back to the graph so it is researched once. */
+    noCatalogueRaisonneExists?: boolean;
     humanReferenceRequired: boolean;
   };
   reprintForgeryAssessment: {
@@ -430,6 +440,15 @@ export interface ASAAttributionResult {
     /** What was tested and what was found/survived. Null only when verdict is NOT_APPLICABLE. */
     challengeNarrative: string | null;
   };
+  /** Web-research comps. Stage 3 reads ACKG comps first (ADR-0016) and treats these as the
+   *  fallback for artists the graph does not cover — 81% of ACKG artists have fewer than 3
+   *  priced records, so that fallback is not rare. */
+  auctionComps?: Stage2bComp[];
+  /** Attached by the pipeline, not the model: how many of the comps above carry a key, a
+   *  numeric price and an explicit price basis. Phase 0 of the comps write-back — a
+   *  measurement of whether those comps could ever be stored, not a decision to store them.
+   *  See src/appraisal/comp_storability.ts. */
+  compStorability?: CompStorabilityReport;
 }
 
 // Discriminated on schemaVersion: undefined → legacy 3-stage, "ASA-1.0" → 4-stage specialist.
@@ -471,6 +490,10 @@ export interface Stage1dResult {
    *  sharing style). */
   attributionCaveat: string;
   hypothesisWarning: string;
+  /** TRANSIENT. The submission's own DINOv2 vector, carried so Stage 2a can run a scoped
+   *  style comparison against a candidate artist's catalogued works. Stripped before the
+   *  result is stored — 1024 floats have no business in a saved report. */
+  dinov2QueryVector?: number[] | null;
 }
 
 export interface TriageResult {
@@ -558,6 +581,30 @@ export interface TriageResult {
     verdict: "attributed" | "candidate" | "not_attributed" | "conflict";
     artistName: string | null;
     confidence: "HIGH" | "MEDIUM_HIGH" | "MEDIUM" | "LOW" | null;
+    /**
+     * The graph's own identity for `artistName`, resolved ONCE in Stage 2a by
+     * resolveArtistIdentity() — a deterministic exact-match lookup, replacing the
+     * model-transcribed `dominantCandidateIdentityKey` cell that this retired. Null when
+     * the name is not in the ACKG, which is
+     * a coverage statement and never a verdict: ULAN is on 83% of artists with 50+
+     * catalogued works but only 8% of single-work artists.
+     *
+     * `canonicalArtistName` is the graph's spelling and is what every downstream ACKG query
+     * should use; `artistName` above stays the attributed name for reporting, so a
+     * resolution can never silently change who the report says made the print.
+     */
+    artistIdentity?: {
+      canonicalArtistName: string;
+      ulanUrl: string | null;
+      wikidataUrl: string | null;
+      matchedOn: "name" | "alternateName";
+      workCount: number;
+      /** Recorded aliases, so a later mention under a different name is recognisable as the
+       *  same artist without re-querying — see canonicalArtistForQuery. */
+      alternateNames?: string[];
+      /** >1 means duplicate Artist nodes matched; ULAN is withheld when they disagree. */
+      ambiguousMatchCount: number;
+    } | null;
     /** Which A1..A11 row of ADR-0010 Decision 3 fired (or "A-backprop" / "VEA-halt"). */
     evidenceBasis: string;
     agreementSet: string[];

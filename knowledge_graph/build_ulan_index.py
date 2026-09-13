@@ -82,6 +82,13 @@ AGENT_TYPE_NONPREF = "http://vocab.getty.edu/ontology#agentTypeNonPreferred"
 FOAF_FOCUS = "http://xmlns.com/foaf/0.1/focus"
 BIO_PREFERRED = "http://vocab.getty.edu/ontology#biographyPreferred"
 SCHEMA_DESCRIPTION = "http://schema.org/description"
+# Added 2026-09-11. ULAN's STRUCTURED life dates, on the same biography node this build
+# already resolves for `description` — no extra file, no extra pass over the zip.
+# Parsing them out of the bio text instead (which is what consumers were doing) recovers a
+# full range for only 41% of artist records: "German painter, author, 1802-1867" parses,
+# "painter, active before 1801" and "Unknown artist" do not, and a floruit is not a birth.
+EST_START = "http://vocab.getty.edu/ontology#estStart"
+EST_END = "http://vocab.getty.edu/ontology#estEnd"
 PREF_LABEL_GVP = "http://vocab.getty.edu/ontology#prefLabelGVP"
 ALT_LABEL = "http://www.w3.org/2008/05/skos-xl#altLabel"
 LITERAL_FORM = "http://www.w3.org/2008/05/skos-xl#literalForm"
@@ -190,7 +197,13 @@ def pass_agent_map(zf, persons):
 
 def pass_bios(zf, agent_uris):
     """Biographies.nt, two sub-passes: agent_uri -> bio_uri (preferred only), then
-    bio_uri -> description text, restricted to the bio_uris we actually need."""
+    bio_uri -> description text AND estStart/estEnd, restricted to the bio_uris we
+    actually need.
+
+    Returns (bio_text_by_person, dates_by_person) where dates are (est_start, est_end)
+    integers or None. The second sub-pass reads three predicates off the same line stream
+    rather than adding a pass — the file is ~1GB and walking it twice for two literals
+    would be the expensive way to do nothing."""
     needed_agents = set(agent_uris.values())
     agent_to_bio = {}
     with _open(zf, "ULANOut_Biographies.nt") as f:
@@ -203,21 +216,41 @@ def pass_bios(zf, agent_uris):
                 continue
             agent_to_bio[subj] = obj
     needed_bios = set(agent_to_bio.values())
-    bio_to_text = {}
+    bio_to_text, bio_to_start, bio_to_end = {}, {}, {}
+
+    def _year(value):
+        """estStart/estEnd are gYear literals, but ULAN carries BCE and padded forms too.
+        Anything that is not a plain 3-4 digit year is dropped rather than coerced."""
+        v = (value or "").strip().lstrip("+")
+        return int(v) if re.fullmatch(r"\d{3,4}", v) else None
+
     with _open(zf, "ULANOut_Biographies.nt") as f:
         for raw in f:
             t = parse_line(raw.decode("utf-8", "replace"))
             if not t:
                 continue
             subj, pred, obj, is_lit = t
-            if not is_lit or pred != SCHEMA_DESCRIPTION or subj not in needed_bios:
+            if not is_lit or subj not in needed_bios:
                 continue
-            bio_to_text[subj] = obj
-    return {
-        pid: bio_to_text.get(agent_to_bio.get(agent_uri, ""))
-        for pid, agent_uri in agent_uris.items()
-        if agent_uri in agent_to_bio
-    }
+            if pred == SCHEMA_DESCRIPTION:
+                bio_to_text[subj] = obj
+            elif pred == EST_START:
+                bio_to_start[subj] = _year(obj)
+            elif pred == EST_END:
+                bio_to_end[subj] = _year(obj)
+
+    text = {}
+    dates = {}
+    for pid, agent_uri in agent_uris.items():
+        bio_uri = agent_to_bio.get(agent_uri)
+        if not bio_uri:
+            continue
+        if bio_to_text.get(bio_uri) is not None:
+            text[pid] = bio_to_text[bio_uri]
+        start, end = bio_to_start.get(bio_uri), bio_to_end.get(bio_uri)
+        if start is not None or end is not None:
+            dates[pid] = (start, end)
+    return text, dates
 
 
 def pass_names(zf, persons):
@@ -283,6 +316,8 @@ def build(zip_path, db_path, limit=None):
             agent_types TEXT NOT NULL,
             agent_type_preferred TEXT,
             bio TEXT,
+            est_start INTEGER,
+            est_end INTEGER,
             wikidata_qid TEXT,
             is_artist INTEGER NOT NULL,
             is_printmaker INTEGER NOT NULL
@@ -315,9 +350,10 @@ def build(zip_path, db_path, limit=None):
         agent_map = pass_agent_map(zf, persons)
         print(f"      {len(agent_map)} agent links", flush=True)
 
-        print("[4/6] Biographies -> bio text ...", flush=True)
-        bios = pass_bios(zf, agent_map)
-        print(f"      {len(bios)} bios resolved", flush=True)
+        print("[4/6] Biographies -> bio text + estStart/estEnd ...", flush=True)
+        bios, bio_dates = pass_bios(zf, agent_map)
+        print(f"      {len(bios)} bios resolved, {len(bio_dates)} with structured dates",
+              flush=True)
 
         print("[5/6] Terms -> names ...", flush=True)
         names = pass_names(zf, persons)
@@ -340,15 +376,17 @@ def build(zip_path, db_path, limit=None):
         pref = next((t for t, is_pref in pname_list if is_pref), None)
         if pref is None and pname_list:
             pref = pname_list[0][0]
+        est_start, est_end = bio_dates.get(pid, (None, None))
         person_rows.append((
             pid, pref, json.dumps(entry["types"]), entry["preferred"],
-            bios.get(pid), wikidata.get(pid), is_artist, is_printmaker,
+            bios.get(pid), est_start, est_end, wikidata.get(pid),
+            is_artist, is_printmaker,
         ))
         for text, _ in pname_list:
             name_rows.append((pid, text))
 
     conn.executemany(
-        "INSERT INTO ulan_person VALUES (?,?,?,?,?,?,?,?)", person_rows
+        "INSERT INTO ulan_person VALUES (?,?,?,?,?,?,?,?,?,?)", person_rows
     )
     conn.executemany(
         "INSERT INTO ulan_name (ulan_id, name) VALUES (?,?)", name_rows
@@ -357,9 +395,17 @@ def build(zip_path, db_path, limit=None):
     conn.commit()
 
     print(f"\nDone in {time.time()-t0:.0f}s -> {db_path}", flush=True)
-    print(f"  {len(person_rows)} persons, {len(name_rows)} names, "
-          f"{sum(1 for r in person_rows if r[6])} artists, "
-          f"{sum(1 for r in person_rows if r[7])} printmakers", flush=True)
+    # Counted back out of SQLite by column NAME, not by tuple position. The positional
+    # version (r[6]/r[7]) silently reported wikidata-link counts as printmakers the moment
+    # est_start/est_end were inserted ahead of them — the data was right and the summary
+    # was wrong, which is the worse way round to get it.
+    summary = conn.execute(
+        "SELECT count(*), sum(is_artist), sum(is_printmaker), "
+        "       sum(est_start IS NOT NULL), sum(wikidata_qid IS NOT NULL) "
+        "FROM ulan_person").fetchone()
+    print(f"  {summary[0]} persons, {len(name_rows)} names, {summary[1]} artists, "
+          f"{summary[2]} printmakers, {summary[3]} with structured dates, "
+          f"{summary[4]} wikidata links", flush=True)
     conn.close()
 
 

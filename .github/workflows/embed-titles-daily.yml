@@ -1,0 +1,94 @@
+name: Title Embeddings — Daily Batch
+
+# Incrementally embeds gemini-embedding-001 title vectors onto ConceptualWork nodes that
+# are in the ACKG but not yet embedded (src/appraisal/knowledge_graph/backfill_title_embeddings.ts).
+#
+# WHY THIS EXISTS. Title embeddings are what query_ackg_work ranks candidate works by
+# (ADR-0010 Decision 9.1 Part B). A work with no titleEmbedding falls back to a token
+# overlap score, which loses to any embedded rival — so an unembedded work is effectively
+# invisible to the matcher. That is not hypothetical: on 2026-09-09 all three
+# ConceptualWork rows for Hockney's "Cold Water about to Hit the Prince" were unembedded
+# while two unrelated Hockney works were, and the pipeline resolved lot A0793/148 to the
+# wrong work across several runs. Coverage had drifted to 43.8% (39,785 of 90,928 works)
+# because the graph more than doubled after the one-off 2026-08-31 backfill and nothing
+# re-ran it.
+#
+# Every ingest (bonhams/roseberys/forum/met/tate/bm_ingest.py) creates ConceptualWork nodes
+# with no embedding, so without a standing job this gap reopens after each one. Rather than
+# bolting an npm call onto six Python ingest scripts, this mirrors the sibling
+# bonhams-embed-daily.yml pattern: a scheduled, idempotent, self-healing pass that also
+# covers ingests run ad hoc from a laptop.
+#
+# Requires repo secrets: NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, NEO4J_DATABASE (as the
+# sibling workflow) PLUS GEMINI_API_KEY — this job calls the Gemini embedding API, which
+# the image-embedding job does not.
+#
+# Default is "every work still missing an embedding", not a fixed quota: the backfill is
+# fast (~21-37 titles/s, the full 51k backlog ran in ~40 min) and steady-state is only
+# whatever the last ingest added. Set the `limit` input to cap a run.
+
+on:
+  schedule:
+    - cron: "40 4 * * *" # daily, 04:40 UTC — after bonhams-embed-daily (03:20) so the two don't contend
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max titles to embed this run (blank = all missing)"
+        required: false
+        default: ""
+      force:
+        description: "Re-embed ALL works, not just missing ones (use after a model or normalisation change)"
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: embed-titles
+  cancel-in-progress: false
+
+jobs:
+  embed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      # tsx is a devDependency, so dev deps are required — but puppeteer's bundled
+      # Chromium download (~150MB) is dead weight for this job.
+      - name: Install dependencies
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+        run: npm ci
+
+      - name: Embed missing titles
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          NEO4J_DATABASE: ${{ secrets.NEO4J_DATABASE }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.limit }}" ]; then
+            ARGS="$ARGS --limit ${{ github.event.inputs.limit }}"
+          fi
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            ARGS="$ARGS --force"
+          fi
+          npx tsx src/appraisal/knowledge_graph/backfill_title_embeddings.ts $ARGS
+
+      # Coverage after the run, so a drift like the 43.8% above is visible in the log
+      # rather than needing someone to think to check.
+      - name: Report coverage
+        if: always()
+        env:
+          NEO4J_URI: ${{ secrets.NEO4J_URI }}
+          NEO4J_USER: ${{ secrets.NEO4J_USER }}
+          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+          NEO4J_DATABASE: ${{ secrets.NEO4J_DATABASE }}
+        run: npx tsx src/appraisal/knowledge_graph/title_embedding_coverage.ts

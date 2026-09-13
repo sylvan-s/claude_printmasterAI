@@ -1,7 +1,7 @@
 # ADR-0012: Local ULAN mirror, with an occupation filter and scheduled refresh
 
 **Date:** 2026-08-31
-**Status:** Proposed — not started.
+**Status:** Partly implemented — see *Implementation status* at the foot of this file (2026-09-11). Steps 1–3 of the suggested order are done and in use; step 4 (swapping the live resolver's internals) and step 5 (scheduled refresh) are not.
 
 ---
 
@@ -221,3 +221,45 @@ predicate list this session) hasn't advanced since the last build.
    source; re-run a small sample through the full `resolve_artist()` pipeline to confirm
    no behavior change beyond the intended occupation filtering.
 5. **Set up the scheduled refresh.**
+
+---
+
+## Implementation status — 2026-09-11
+
+**Built and in use.**
+
+- `knowledge_graph/build_ulan_index.py` produces `ulan_local.sqlite`: 353,510 persons,
+  1,110,528 names, 234,577 flagged `is_artist`, 21,414 `is_printmaker`, FTS5 name index.
+  Streams from the zip via `zipfile.open`, so peak disk is the 395 MB download, not the
+  8.8 GB uncompressed.
+- **Extended 2026-09-11 to carry ULAN's structured life dates** (`gvp:estStart` /
+  `gvp:estEnd`). They sit on the same biography node the build already resolved for
+  `schema:description`, so this reads three predicates off one line stream rather than
+  adding a pass. Coverage is **98% of artists (232,195 of 234,577)**, against 41%
+  recoverable by parsing the biography text — "German painter, author, 1802-1867" parses,
+  "painter, active before 1801" is a floruit and "Unknown artist" is nothing.
+- `knowledge_graph/resolve_artist_ulan_local.py` is the first consumer: exact normalised
+  name match, `is_artist` filter, and a date check, writing `Artist.ulanUrl`. First run
+  resolved **361 artists**; the Navigart population went from 7% to 64% ULAN-linked.
+
+**What the occupation filter was worth, measured.** §Context predicted the collisions it
+would prevent. Observed on the first real run: 23 names had two or more ULAN *artist*
+candidates and were refused outright (Charles Martin has five), and the date check caught
+six more where a unique name match was the wrong person — "Suzanne Humbert" resolving to
+ULAN's *Brooks, Marjorie*, "Louis Dauphin" to a 1607 namesake, "Anton Albers" to a 1765
+one.
+
+**One design correction, worth recording because it inverts the obvious approach.** The
+date check first compared ULAN against the year already on the `Artist` node, and refused
+17 matches. Four were refusals of the *correct* ULAN record because the node's own year was
+wrong — the graph held Toulouse-Lautrec at b.1894 where ULAN and the Musée d'arts de Nantes
+both say 1864, Laboureur at 1887 where both say 1877, Guillaumin at 1891 where both say
+1841. A veto that trusts one possibly-wrong number to judge another is not a check. The
+rule is now **agreement with at least one independent record** of that artist — the node's
+year or the source institution's — and refusal only when it contradicts both. Refusals
+dropped to 6, all of them cases where two independent records agree against ULAN.
+
+**Still not done:** step 4 (repointing `resolve_artist_identity._search_ulan()` /
+`_fetch_bio()` at the mirror, so the live path gets the occupation filter too) and step 5
+(scheduled refresh). The `explicit.zip` release is dated 2026-01-04; a refresh is a
+re-download and a 132-second rebuild.

@@ -8,6 +8,14 @@ import type {
   ImpressionEvidence,
   TwoPassInput,
 } from "../../src/appraisal/two_pass_attribution";
+import { KOEUVRE_DISCRIMINATING_MIN } from "../../src/appraisal/two_pass_attribution";
+
+// These fixtures care whether the œuvre count CLEARS the corroboration threshold, not what
+// the threshold happens to be. Writing them against the constant keeps them meaningful when
+// it is refitted — it moved 3 -> 10 on 2026-09-11 and every literal chosen for "clears"
+// silently became a "does not".
+const KOEUVRE_CLEARS = KOEUVRE_DISCRIMINATING_MIN;
+const KOEUVRE_BELOW = KOEUVRE_DISCRIMINATING_MIN - 1;
 
 // ── builders ──────────────────────────────────────────────────────────────────
 export function artistEv(o: Partial<ArtistEvidence> = {}): ArtistEvidence {
@@ -32,6 +40,7 @@ export function workEv(o: Partial<WorkEvidence> = {}): WorkEvidence {
     titleVea: { kind: "silent" },
     titleReverseImageSearch: { kind: "silent" },
     titleAppraiser: { kind: "silent" },
+    titleEmbeddingMatch: { kind: "silent" },
     kWork: null,
     ...o,
   };
@@ -90,20 +99,20 @@ export const a2_twoAgreeAckgSupport = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.8,
   kId: "true",
-  kOeuvreMatchCount: 6,
-  kSubject: "OCCASIONAL",
+  kOeuvreMatchCount: KOEUVRE_CLEARS,
+  kSubject: "TYPICAL", // 2026-09-09: A2 now means the ACKG corroborates on technique AND subject
 });
 
 // A3 — n=2, K_oeuvre=0, but artist is a real authority record
 export const a3_recognisedNoOeuvre = artistEv({
   vea: { kind: "names", raw: "Henry Moore" },
-  reverseImageSearch: { kind: "names", raw: "Henry Moore", sim: 0.8 },
+  reverseImageSearch: { kind: "names", raw: "Henry Moore", sim: 0.9 },
   stage1bConsistentWithVea: true,
   veaAuthorshipSignalLegible: true,
-  veaSignatureConfidence: 0.75,
+  veaSignatureConfidence: 0.85, // comfortably above CONFIDENCE_MEAN_FLOOR — this fixture is about corroboration
   kId: "true",
-  kOeuvreMatchCount: 0,
-  kSubject: "UNASSESSABLE",
+  kOeuvreMatchCount: KOEUVRE_CLEARS, // catalogued in this technique/period...
+  kSubject: "OCCASIONAL", // ...but the subject does not corroborate -> weak -> A3
 });
 
 // A4 — n=2, artist not in ACKG at all
@@ -112,7 +121,7 @@ export const a4_notInAckg = artistEv({
   appraiser: { kind: "names", raw: "Obscure Printmaker", trust: "documented_fact" },
   stage1bConsistentWithVea: null,
   veaAuthorshipSignalLegible: true,
-  veaSignatureConfidence: 0.7,
+  veaSignatureConfidence: 0.85, // comfortably above CONFIDENCE_MEAN_FLOOR — this fixture is about corroboration
   kId: "false",
   kOeuvreMatchCount: 0,
   kSubject: "UNASSESSABLE",
@@ -179,7 +188,7 @@ export const a10_conflict = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.7,
   kId: "true",
-  kOeuvreMatchCount: 5,
+  kOeuvreMatchCount: KOEUVRE_CLEARS,
   kSubject: "OCCASIONAL",
 });
 
@@ -190,7 +199,7 @@ export const a10_documentedFactVsSignature = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.85,
   kId: "true",
-  kOeuvreMatchCount: 3,
+  kOeuvreMatchCount: KOEUVRE_CLEARS,
   kSubject: "OCCASIONAL",
 });
 
@@ -204,7 +213,7 @@ export const hypothesisVsVeaNotConflict = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.8,
   kId: "true",
-  kOeuvreMatchCount: 4,
+  kOeuvreMatchCount: KOEUVRE_CLEARS,
   kSubject: "OCCASIONAL",
 });
 
@@ -240,8 +249,8 @@ export const subjectAtypicalFlag = artistEv({
   veaAuthorshipSignalLegible: true,
   veaSignatureConfidence: 0.8,
   kId: "true",
-  kOeuvreMatchCount: 3,
-  kSubject: "ATYPICAL",
+  kOeuvreMatchCount: KOEUVRE_CLEARS, // technique corroborates...
+  kSubject: "ATYPICAL",              // ...the subject does not, so only one dimension holds
   kSubjectNote: "figurative subject; Riley's catalogued output is entirely abstract",
 });
 
@@ -296,6 +305,83 @@ export const t8k_kworkAnchorNoConsensus = workEv({
   kWork: { titleSim: 0.94, matchedWorkTitle: "H10-1 Wu Zetian, from The Empresses", backPropArtist: "Damien Hirst" },
 });
 
+// ── K_work corroboration must be to the SAME work (2026-09-08 amendment) ────────
+
+// Two sources agree on one work; K_work scored a perfect match to a DIFFERENT one.
+// The old code read titleSim alone and returned T2/HIGH off that mismatch.
+export const t4_kworkMatchedADifferentWork = workEv({
+  titleVea: { kind: "names", raw: "Cold Water about to Hit the Prince" },
+  titleAppraiser: { kind: "names", raw: "Cold water about to hit the Prince" },
+  kWork: { titleSim: 1.0, matchedWorkTitle: "Reclining Figure", backPropArtist: "David Hockney" },
+});
+
+// Same mismatch with a single source: the band must fall back to LOW, not MEDIUM.
+export const t5_kworkMatchedADifferentWork = workEv({
+  titleAppraiser: { kind: "names", raw: "Cold water about to hit the Prince" },
+  kWork: { titleSim: 1.0, matchedWorkTitle: "Reclining Figure", backPropArtist: "David Hockney" },
+});
+
+// A strong hit whose matched title was never recorded cannot be verified either way.
+export const t4_kworkUnverifiable = workEv({
+  titleVea: { kind: "names", raw: "Station Approach" },
+  titleAppraiser: { kind: "names", raw: "Station Approach" },
+  kWork: { titleSim: 0.97, matchedWorkTitle: null },
+});
+
+// The corroborating case still works when the catalogued title merely carries a series
+// suffix — TAU_TITLE_AGREE is a token measure, not string equality.
+export const t2_kworkSeriesSuffixStillAgrees = workEv({
+  titleVea: { kind: "names", raw: "Cold Water about to Hit the Prince" },
+  titleAppraiser: { kind: "names", raw: "Cold water about to hit the Prince" },
+  kWork: {
+    titleSim: 0.93,
+    matchedWorkTitle: "Cold Water about to Hit the Prince, from 'Illustrations for Six Fairy Tales from the Brothers Grimm'",
+  },
+});
+
+// A lone sub-HIGH D_t that K_work AGREES with — without the cap this would read MEDIUM,
+// i.e. as a corroborated identification, off a weak visual guess.
+export const dt_mediumButKworkAgrees = workEv({
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "MEDIUM", embeddingConfidence: 0.894, dinoSimilarity: 0.851 },
+  kWork: { titleSim: 0.93, matchedWorkTitle: "Cold Water about to Hit the Prince" },
+});
+
+// ── D_t (Stage 1d catalogued title, 2026-09-08 amendment) ───────────────────────
+
+// The A0793/148 shape: no title source of any kind, but Stage 1d matched the work at
+// HIGH. Before D_t this fell through to T8K and resolved to whatever K_work matched.
+export const dt_embeddingTitleOnly_high = workEv({
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "HIGH", embeddingConfidence: 0.974, dinoSimilarity: 0.974 },
+  kWork: { titleSim: 1.0, matchedWorkTitle: "Reclining Figure", backPropArtist: "David Hockney" },
+});
+
+// Same, but Stage 1d is not confident — D_t must NOT vote, and T8K takes over again.
+export const dt_embeddingTitleOnly_medium = workEv({
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "MEDIUM", embeddingConfidence: 0.894, dinoSimilarity: 0.851 },
+  kWork: { titleSim: 1.0, matchedWorkTitle: "Reclining Figure", backPropArtist: "David Hockney" },
+});
+
+// D_t agreeing with the appraiser: two sources -> T2/T4 rather than a lone candidate.
+export const dt_agreesWithAppraiser = workEv({
+  titleAppraiser: { kind: "names", raw: "Cold water about to hit the Prince" },
+  titleEmbeddingMatch: { kind: "names", raw: "Cold Water about to Hit the Prince", matchConfidence: "HIGH", embeddingConfidence: 0.974, dinoSimilarity: 0.974 },
+  kWork: { titleSim: 0.93, matchedWorkTitle: "Cold Water about to Hit the Prince" },
+});
+
+// D_t as the fourth agreeing source — T1 must still fire at n >= 3.
+export const dt_fourSourcesAgree = workEv({
+  titleVea: { kind: "names", raw: "The Great Wave off Kanagawa" },
+  titleReverseImageSearch: { kind: "names", raw: "Great Wave off Kanagawa", sim: 0.97 },
+  titleAppraiser: { kind: "names", raw: "The Great Wave, Kanagawa" },
+  titleEmbeddingMatch: { kind: "names", raw: "The Great Wave off Kanagawa", matchConfidence: "HIGH", embeddingConfidence: 0.974, dinoSimilarity: 0.974 },
+});
+
+// D_t contradicting the only other source, with no K_work anchor -> a real conflict.
+export const dt_contradictsAppraiser = workEv({
+  titleAppraiser: { kind: "names", raw: "The Bathers" },
+  titleEmbeddingMatch: { kind: "names", raw: "Station Approach", matchConfidence: "HIGH", embeddingConfidence: 0.974, dinoSimilarity: 0.974 },
+});
+
 export const t6_titlesConflict = workEv({
   titleVea: { kind: "names", raw: "The Bathers" },
   titleAppraiser: { kind: "names", raw: "The Cardplayers" },
@@ -328,6 +414,11 @@ export const backProp_workIdentifiesArtist = twoPass({
 // ── IMPRESSION DIVERGENCE (5b) ────────────────────────────────────────────────
 
 export const imp_none = impressionEv();
+
+// Used by Pass 2 (not just the impression layer) as of 2026-09-09: the catalogued record of
+// the candidate work either matches the object or contradicts it.
+export const imp_cleanMatch = impressionEv(); // Etching/Etching, plate 320x240 both sides
+export const imp_techniqueContradicts = impressionEv({ observedTechniques: ["Screenprint"] });
 
 export const imp_laterEdition = impressionEv({
   dimensions: {

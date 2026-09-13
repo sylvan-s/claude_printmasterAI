@@ -1,0 +1,307 @@
+{
+  "fetchedAt": "2026-09-09T08:38:34.020884+00:00",
+  "sales": {
+    "A0207": {
+      "auctionId": 128,
+      "confirmedBy": "title+prose",
+      "lots": 300,
+      "saleDate": "2014-10-04",
+      "slug": "A0207-modern-contemporary-prints-128"
+    },
+    "A0213": {
+      "auctionId": 133,
+      "confirmedBy": "title+prose",
+      "lots": 301,
+      "saleDate": "2015-04-25",
+      "slug": "A0213-modern-contemporary-prints-multiples-133"
+    },
+    "A0228": {
+      "auctionId": 145,
+      "confirmedBy": "title+prose",
+      "lots": 350,
+      "saleDate": "2015-11-21",
+      "slug": "A0228-modern-contemporary-prints-145"
+    },
+    "A0250": {
+      "auctionId": 165,
+      "confirmedBy": "title+prose",
+      "lots": 286,
+      "saleDate": "2016-03-05",
+      "slug": "A0250-modern-contemporary-prints-165"
+    },
+    "A0261": {
+      "auctionId": 176,
+      "confirmedBy": "title+prose",
+      "lots": 351,
+      "saleDate": "2016-06-11",
+      "slug": "A0261-modern-contemporary-prints-176"
+    },
+    "A0290": {
+      "auctionId": 201,
+      "confirmedBy": "title+prose",
+      "lots": 300,
+      "saleDate": "2016-11-19",
+      "slug": "A0290-modern-contemporary-prints-201"
+    },
+    "A0305": {
+      "auctionId": 212,
+      "confirmedBy": "title+prose",
+      "lots": 308,
+      "saleDate": "2017-05-06",
+      "slug": "A0305-modern-contemporary-prints-212"
+    },
+    "A0324": {
+      "auctionId": 229,
+      "confirmedBy": "title+prose",
+      "lots": 312,
+      "saleDate": "2017-11-18",
+      "slug": "A0324-modern-contemporary-prints-multiples-229"
+    },
+    "A0345": {
+      "auctionId": 244,
+      "confirmedBy": "title+prose",
+      "lots": 114,
+      "saleDate": "2018-01-31",
+      "slug": "A0345-online-modern-contemporary-prints-244"
+    },
+    "A0356": {
+      "auctionId": 255,
+      "confirmedBy": "title+prose",
+      "lots": 284,
+      "saleDate": "2018-05-01",
+      "slug": "A0356-modern-contemporary-prints-multiples-255"
+    },
+    "A0359": {
+      "auctionId": 258,
+      "confirmedBy": "title+prose",
+      "lots": 125,
+      "saleDate": "2018-06-08",
+      "slug": "A0359-online-modern-contemporary-prints-258"
+    },
+    "A0368": {
+      "auctionId": 267,
+      "confirmedBy": "title+prose",
+      "lots": 391,
+      "saleDate": "2018-10-09",
+      "slug": "A0368-modern-contemporary-prints-multiples-267"
+    },
+    "A0378": {
+      "auctionId": 276,
+      "confirmedBy": "title+prose",
+      "lots": 229,
+      "saleDate": "2019-02-07",
+      "slug": "A0378-online-modern-contemporary-prints-276"
+    },
+    "A0379": {
+      "auctionId": 277,
+      "confirmedBy": "title+prose",
+      "lots": 59,
+      "saleDate": "2018-02-15",
+      "slug": "A0379-artsy-prints-multiples-277"
+    },
+    "A0395": {
+      "auctionId": 285,
+      "confirmedBy": "title+prose",
+      "lots": 364,
+      "saleDate": "2019-04-08",
+      "slug": "A0395-prints-multiples-285"
+    },
+    "A0414": {
+      "auctionId": 301,
+      "confirmedBy": "title+prose",
+      "lots": 134,
+      "saleDate": "2019-07-08",
+      "slug": "A0414-online-modern-contemporary-prints-301"
+    },
+    "A0427": {
+      "auctionId": 312,
+      "confirmedBy": "title+prose",
+      "lots": 387,
+      "saleDate": "2019-10-14",
+      "slug": "A0427-prints-multiples-312"
+    },
+    "A0445": {
+      "auctionId": 328,
+      "confirmedBy": "title+prose",
+      "lots": 448,
+      "saleDate": "2020-07-07",
+      "slug": "A0445-prints-multiples-328"
+    },
+    "A0467": {
+      "auctionId": 350,
+      "confirmedBy": "title+prose",
+      "lots": 413,
+      "saleDate": "2020-10-06",
+      "slug": "A0467-prints-multiples-350"
+    },
+    "A0469": {
+      "auctionId": 352,
+      "confirmedBy": "title+prose",
+      "lots": 376,
+      "saleDate": "2021-03-09",
+      "slug": "A0469-prints-multiples-352"
+    },
+    "A0494": {
+      "auctionId": 376,
+      "confirmedBy": "title+prose",
+      "lots": 423,
+      "saleDate": "2021-07-07",
+      "slug": "A0494-prints-multiples-376"
+    },
+    "A0503": {
+      "auctionId": 385,
+      "confirmedBy": "title+prose",
+      "lots": 412,
+      "saleDate": "2021-11-02",
+      "slug": "A0503-prints-multiples-385"
+    },
+    "A0529": {
+      "auctionId": 409,
+      "confirmedBy": "title+prose",
+      "lots": 468,
+      "saleDate": "2022-03-08",
+      "slug": "A0529-prints-multiples-part-1-409"
+    },
+    "A0547": {
+      "auctionId": 426,
+      "confirmedBy": "title+prose",
+      "lots": 241,
+      "saleDate": "2022-03-09",
+      "slug": "A0547-prints-multiples-part-2-prints-from-the-426"
+    },
+    "A0550": {
+      "auctionId": 429,
+      "confirmedBy": "title+prose",
+      "lots": 736,
+      "saleDate": "2022-07-05",
+      "slug": "A0550-prints-multiples-429"
+    },
+    "A0571": {
+      "auctionId": 450,
+      "confirmedBy": "title+prose",
+      "lots": 584,
+      "saleDate": "2022-11-30",
+      "slug": "A0571-prints-multiples-450"
+    },
+    "A0583": {
+      "auctionId": 459,
+      "confirmedBy": "title+prose",
+      "lots": 535,
+      "saleDate": "2023-06-15",
+      "slug": "A0583-prints-multiples-459"
+    },
+    "A0587": {
+      "auctionId": 463,
+      "confirmedBy": "title+prose",
+      "lots": 487,
+      "saleDate": "2023-03-07",
+      "slug": "A0587-prints-multiples-463"
+    },
+    "A0592": {
+      "auctionId": 468,
+      "confirmedBy": "title+prose",
+      "lots": 589,
+      "saleDate": "2023-09-05",
+      "slug": "A0592-prints-multiples-468"
+    },
+    "A0612": {
+      "auctionId": 488,
+      "confirmedBy": "title+prose",
+      "lots": 587,
+      "saleDate": "2023-11-23",
+      "slug": "A0612-prints-multiples-488"
+    },
+    "A0642": {
+      "auctionId": 519,
+      "confirmedBy": "title+prose",
+      "lots": 494,
+      "saleDate": "2024-03-05",
+      "slug": "A0642-prints-multiples-519"
+    },
+    "A0650": {
+      "auctionId": 527,
+      "confirmedBy": "title+prose",
+      "lots": 401,
+      "saleDate": "2024-06-18",
+      "slug": "A0650-prints-multiples-527"
+    },
+    "A0662": {
+      "auctionId": 539,
+      "confirmedBy": "title+prose",
+      "lots": 522,
+      "saleDate": "2024-09-04",
+      "slug": "A0662-prints-multiples-539"
+    },
+    "A0673": {
+      "auctionId": 550,
+      "confirmedBy": "title+prose",
+      "lots": 637,
+      "saleDate": "2024-11-21",
+      "slug": "A0673-prints-multiples-550"
+    },
+    "A0680": {
+      "auctionId": 557,
+      "confirmedBy": "title+prose",
+      "lots": 278,
+      "saleDate": "2024-04-23",
+      "slug": "A0680-prints-multiples-live-online-only-557"
+    },
+    "A0702": {
+      "auctionId": 581,
+      "confirmedBy": "title+prose",
+      "lots": 423,
+      "saleDate": "2025-02-19",
+      "slug": "A0702-prints-multiples-581"
+    },
+    "A0710": {
+      "auctionId": 590,
+      "confirmedBy": "title+prose",
+      "lots": 404,
+      "saleDate": "2025-04-09",
+      "slug": "A0710-prints-multiples-590"
+    },
+    "A0724": {
+      "auctionId": 604,
+      "confirmedBy": "title+prose",
+      "lots": 465,
+      "saleDate": "2025-06-25",
+      "slug": "A0724-prints-multiples-604"
+    },
+    "A0731": {
+      "auctionId": 611,
+      "confirmedBy": "title+prose",
+      "lots": 337,
+      "saleDate": "2025-09-17",
+      "slug": "A0731-prints-multiples-611"
+    },
+    "A0743": {
+      "auctionId": 623,
+      "confirmedBy": "title+prose",
+      "lots": 387,
+      "saleDate": "2025-11-25",
+      "slug": "A0743-prints-multiples-623"
+    },
+    "A0766": {
+      "auctionId": 646,
+      "confirmedBy": "title+prose",
+      "lots": 376,
+      "saleDate": "2026-02-18",
+      "slug": "A0766-prints-multiples-646"
+    },
+    "A0777": {
+      "auctionId": 657,
+      "confirmedBy": "title+prose",
+      "lots": 412,
+      "saleDate": "2026-04-16",
+      "slug": "A0777-prints-multiples-657"
+    },
+    "A0785": {
+      "auctionId": 665,
+      "confirmedBy": "title+prose",
+      "lots": 506,
+      "saleDate": "2026-07-01",
+      "slug": "A0785-prints-multiples-665"
+    }
+  },
+  "source": "https://www.roseberys.co.uk/bidding"
+}

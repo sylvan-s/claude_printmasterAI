@@ -13,6 +13,12 @@
  *   npm run test:pool:triage -- --two-pass         # also run classifyTwoPass (coarse fixture adapter), for comparison
  *   npm run test:pool:triage -- --model claude-haiku-4-5
  *   npm run test:pool:triage -- --resume
+ *   npm run test:pool:triage -- --tool-loop        # ADR-0018: restore the pre-plan
+ *                                                  # behaviour, where the model drives the
+ *                                                  # query_ackg loop itself
+ *   npm run test:pool:triage -- --dir tests/backtest/pool_output_angle   # degraded-pool fixture
+ *   npm run test:pool:triage -- --dir tests/backtest/fixtures --model claude-haiku-4-5
+ *                                                  # committed reproduction fixtures (A0793_303)
  *
  * Writes tests/backtest/pool_output/<id>/triage.json  (gitignored).
  *
@@ -22,12 +28,13 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { GoogleGenAI } from "@google/genai";
-import { FourStageAppraiser, appraiserConfigs } from "../../src/appraisal/appraiser";
+import { FourStageAppraiser, appraiserConfigs, printUsageSummary, UNVERIFIED_PRICE_MODELS } from "../../src/appraisal/appraiser";
 import type { VisualExtractionResult, AppraiserInputResult, TriageResult } from "../../src/types";
 import { SCENARIO_NAMES, Scenario } from "../../src/appraisal/routing";
+import { closeDriver } from "../../src/appraisal/knowledge_graph/index";
 import {
   classifyTwoPass,
   nameSimilarity,
@@ -38,8 +45,6 @@ import {
   type NamingSource,
 } from "../../src/appraisal/two_pass_attribution";
 
-const DIR = join(process.cwd(), "tests/backtest/pool_output");
-
 function intArg(n: string, d: number) {
   const i = process.argv.indexOf(`--${n}`);
   return i >= 0 ? Number(process.argv[i + 1]) : d;
@@ -48,16 +53,29 @@ function strArg(n: string, d: string) {
   const i = process.argv.indexOf(`--${n}`);
   return i >= 0 ? process.argv[i + 1] : d;
 }
+
+// --dir points triage at a different fixture set — e.g. the one run_pool.ts wrote for a
+// degraded copy of the pool (--out tests/backtest/pool_output_angle).
+const DIR = resolve(strArg("dir", join(process.cwd(), "tests/backtest/pool_output")));
 const LIMIT = intArg("limit", 999);
 const CONCURRENCY = intArg("concurrency", 2);
 const MODEL = strArg("model", "claude-sonnet-4-6");
 const TWO_PASS = process.argv.includes("--two-pass");
 const RESUME = process.argv.includes("--resume");
+// Stage 2a resolves the ACKG in code and hands the model the answers (ADR-0018) — the
+// default, matching production since 2026-09-11. --tool-loop restores the old behaviour so
+// the two modes can still be compared over the same pool; --deterministic-queries is kept
+// as an explicit no-op so invocations written while it was opt-in keep working.
+const TOOL_LOOP = process.argv.includes("--tool-loop");
 
 // ── expose the protected triage method ───────────────────────────────────────
 class TriageRunner extends FourStageAppraiser {
-  runTriage(vea: VisualExtractionResult, appraiserInput?: AppraiserInputResult, visualSearch?: any) {
-    return (this as any).runStage2aTriage(vea, MODEL, undefined, appraiserInput, visualSearch) as Promise<TriageResult>;
+  // stage1d is optional so the existing pool fixtures (built before Stage 1d existed) keep
+  // working untouched, while a fixture captured from an isolation run can replay the D/D_t
+  // evidence it actually had. Without it a 1c+1d isolation lot cannot be reproduced here at
+  // all — D is the only voter those runs have.
+  runTriage(vea: VisualExtractionResult, appraiserInput?: AppraiserInputResult, visualSearch?: any, stage1d?: any, excludeSaleId?: string | null) {
+    return (this as any).runStage2aTriage(vea, MODEL, undefined, appraiserInput, visualSearch, stage1d, excludeSaleId) as Promise<TriageResult>;
   }
 }
 
@@ -127,6 +145,8 @@ function toTwoPassInput(vea: any, vs: any, aia: any, triage: TriageResult): { in
         ? { kind: "names", raw: vs.bestMatchTitle, sim: typeof vs.visualSimilarityScore === "number" ? vs.visualSimilarityScore : 0 }
         : { kind: "silent" },
       titleAppraiser: claimed.title ? { kind: "names", raw: claimed.title } : { kind: "silent" },
+      // This adapter models no Stage 1d (see embeddingMatch above) — D_t stays silent.
+      titleEmbeddingMatch: { kind: "silent" },
       kWork: null,
     },
     impressionEvidence: null,
@@ -142,7 +162,10 @@ function toTwoPassInput(vea: any, vs: any, aia: any, triage: TriageResult): { in
 }
 
 // ── run ──────────────────────────────────────────────────────────────────────
-const config = { ...appraiserConfigs.find((c) => c.id === "claude-4stage")! };
+const config = {
+  ...appraiserConfigs.find((c) => c.id === "claude-4stage")!,
+  deterministicStage2aQueries: !TOOL_LOOP,
+};
 const geminiKey = process.env.GEMINI_API_KEY;
 const runner = new TriageRunner(config, geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined);
 
@@ -152,7 +175,17 @@ let ids = readdirSync(DIR)
   .slice(0, LIMIT);
 if (RESUME) {
   const before = ids.length;
-  ids = ids.filter((d) => !existsSync(join(DIR, d, "triage.json")));
+  // A failure record counts as not-done: resuming exists to finish the run, and a lot that
+  // died on a transient provider 400 is exactly what most needs retrying.
+  ids = ids.filter((d) => {
+    const p = join(DIR, d, "triage.json");
+    if (!existsSync(p)) return true;
+    try {
+      return JSON.parse(readFileSync(p, "utf8"))?.failed === true;
+    } catch {
+      return true; // unparseable = not a usable result
+    }
+  });
   console.log(`--resume: ${before - ids.length} already done, ${ids.length} to run`);
 }
 
@@ -167,12 +200,29 @@ const started = Date.now();
 async function runOne(id: string) {
   const f = JSON.parse(readFileSync(join(DIR, id, "stage1.json"), "utf8"));
   const gtArtist: string = f.groundTruth?.poolArtistName ?? "?";
+  // Clear the previous result FIRST. A lot that throws used to leave the prior run's
+  // triage.json untouched, so a results directory silently mixed this run with the last
+  // one — and nothing downstream could tell. That corrupted a real comparison: a provider
+  // 400 on qwen3.7-plus/A0793_113 was counted as that lot's earlier, successful result.
+  const outPath = join(DIR, id, "triage.json");
+  if (existsSync(outPath)) unlinkSync(outPath);
   try {
     const t0 = Date.now();
-    const triage = await runner.runTriage(f.stage1a_vea, f.stage1c_appraiserInput, f.stage1b_visualSearch);
+    // A0793 is now ingested, so without this the fixture lot retrieves its OWN catalogue
+    // row and corroborates itself — the replay would measure the graph, not the model.
+    const triage = await runner.runTriage(f.stage1a_vea, f.stage1c_appraiserInput, f.stage1b_visualSearch, f.stage1d_embeddingMatch, f.lot?.saleId ?? null);
     const ms = Date.now() - t0;
 
     const rd = triage.routingDecision ?? ({} as any);
+    // Both Stage 2a degradation paths — output blocked twice by content filtering, and a
+    // report tool call that omitted its required evidence blocks — return an empty evidence
+    // set that the tree still routes off Stage 1c/1d alone. The lot then prints as a normal
+    // "ok ... MATCH" while the agent contributed nothing, which is exactly how two of five
+    // qwen3.8-max lots nearly went unnoticed. Name it on the line.
+    const degradedReason: string | null =
+      typeof rd.humanEscalationReason === "string" && /needs manual triage/i.test(rd.humanEscalationReason)
+        ? rd.humanEscalationReason
+        : null;
     const top: any = (triage.candidateArtists ?? [])[0] ?? {};
     const artistHit = top.artistName && gtArtist !== "?" ? nameSimilarity(top.artistName, gtArtist) >= TAU_NAME : false;
 
@@ -251,17 +301,30 @@ async function runOne(id: string) {
     );
 
     done++;
-    rows.push({ id, gtArtist, ms, scenario: rd.scenario, artistHit, twoPass: twoPassAdapterComparison });
+    rows.push({ id, gtArtist, ms, scenario: rd.scenario, artistHit, degraded: !!degradedReason, twoPass: twoPassAdapterComparison });
     console.log(
-      `  ok  ${id.padEnd(13)} ${gtArtist.slice(0, 20).padEnd(21)} ${(ms / 1000).toFixed(0)}s  ` +
+      `  ${degradedReason ? "DEGR" : "ok  "}${id.padEnd(13)} ${gtArtist.slice(0, 20).padEnd(21)} ${(ms / 1000).toFixed(0)}s  ` +
         `Sc.${rd.scenario} ${(rd.scenarioName ?? "").slice(0, 22).padEnd(23)} ` +
         `top="${(top.artistName ?? "-").slice(0, 20)}" ${artistHit ? "MATCH" : ""}` +
+        (degradedReason ? `  | AGENT PRODUCED NO EVIDENCE — routed off Stage 1c/1d alone` : "") +
         (twoPassAdapterComparison ? `  | 2pass Sc.${twoPassAdapterComparison.scenario}${twoPassAdapterComparison.agreesWithRouter ? "=" : "≠"}` : "") +
         `  (${done + failed}/${ids.length})`,
     );
   } catch (err: any) {
     failed++;
-    console.error(`  FAIL ${id.padEnd(13)} ${String(err?.message ?? err).slice(0, 160)}`);
+    // Record the failure rather than leaving a hole: absence cannot be told apart from
+    // "never run", and a reader counting files would quietly compute over 4 lots believing
+    // it had 5. `failed: true` is the marker every consumer should check for.
+    writeFileSync(
+      outPath,
+      JSON.stringify(
+        { lot: f.lot, groundTruthArtist: gtArtist, model: MODEL, failed: true,
+          error: String(err?.message ?? err).slice(0, 1000), generatedAt: new Date().toISOString() },
+        null,
+        2,
+      ),
+    );
+    console.error(`  FAIL ${id.padEnd(13)} ${String(err?.message ?? err).slice(0, 500)}`);
   }
 }
 
@@ -282,11 +345,16 @@ if (ok) {
   const scDist: Record<number, number> = {};
   for (const r of rows) scDist[r.scenario] = (scDist[r.scenario] ?? 0) + 1;
   const hits = rows.filter((r) => r.artistHit).length;
+  const degraded = rows.filter((r) => r.degraded).length;
 
   console.log(`\n${"─".repeat(70)}`);
   console.log(`${ok} ok, ${failed} failed  —  ${((Date.now() - started) / 60000).toFixed(1)} min`);
   console.log(`Stage 2a mean duration: ${(meanMs / 1000).toFixed(0)}s   (min ${(Math.min(...rows.map((r) => r.ms)) / 1000).toFixed(0)}s, max ${(Math.max(...rows.map((r) => r.ms)) / 1000).toFixed(0)}s)`);
   console.log(`artist matches ground truth: ${hits}/${ok}`);
+  // Counted separately from `failed`: a degraded lot did not throw, so it is not a failure
+  // in the harness's sense — but the stage under test contributed nothing to it, so it is
+  // not a success either, and averaging it in with the rest would flatter the model.
+  console.log(`lots where the agent produced no evidence: ${degraded}/${ok}`);
   console.log(
     `router scenario distribution: ${Object.entries(scDist)
       .map(([s, n]) => `Sc.${s} ${SCENARIO_NAMES[Number(s) as Scenario]}=${n}`)
@@ -296,6 +364,16 @@ if (ok) {
     const agree = rows.filter((r) => r.twoPass?.agreesWithRouter).length;
     console.log(`two-pass scenario == router scenario: ${agree}/${ok}   (thresholds: SIM_ARTIST_VOTE=${SIM_ARTIST_VOTE}, SIM_WORK_VOTE=${SIM_WORK_VOTE})`);
   }
-  console.log(`written to tests/backtest/pool_output/<id>/triage.json`);
+  console.log(`written to ${DIR}/<id>/triage.json`);
+  // Comparing models at this stage is as much a cost question as an accuracy one, and the
+  // triage runner was the one harness that gathered usage and then threw it away.
+  printUsageSummary();
+  if (UNVERIFIED_PRICE_MODELS.has(MODEL)) {
+    console.log(`[Cost] NOTE: ${MODEL} has no verified price — the USD column above is indicative only.`);
+  }
 }
+// The Neo4j driver holds an open connection pool, so without this the process finishes its
+// work and then hangs forever — which silently blocks any shell loop running several
+// invocations in sequence, and leaves a node process per run.
+await closeDriver();
 if (failed) process.exitCode = 1;

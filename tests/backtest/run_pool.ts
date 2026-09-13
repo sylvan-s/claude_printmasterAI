@@ -12,13 +12,18 @@
  *   npm run test:pool -- --resume                   # skip lots already done
  *   npm run test:pool -- --method gemini-3stage     # Gemini VEA instead of Opus
  *
- * Output: tests/backtest/pool_output/<saleId>_<lot>/stage1.json  (gitignored)
+ *   # a degraded copy of the pool (built by knowledge_graph/build_noisy_pool.py),
+ *   # into its own output dir so the clean baseline is preserved:
+ *   npm run test:pool -- --pool tests/backtest/noisy_pool/pools/test_pool_100_angle.json \
+ *                        --out tests/backtest/pool_output_angle --limit 99
+ *
+ * Output: <--out>/<saleId>_<lot>/stage1.json  (default tests/backtest/pool_output/, gitignored)
  */
 import dotenv from "dotenv";
 dotenv.config();
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { GoogleGenAI } from "@google/genai";
 import {
@@ -35,8 +40,6 @@ import { fetchAuctionLots as forumFetchAuction, imageUrl as forumImageUrl, lotUr
 import { parseDescription as forumParse } from "../../benchmark/src/forum/parse";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const POOL_PATH = join(__dirname, "test_pool_100.json");
-const OUT_ROOT = join(__dirname, "pool_output");
 
 // ── args ─────────────────────────────────────────────────────────────────────
 function intArg(name: string, def: number): number {
@@ -47,6 +50,12 @@ function strArg(name: string, def: string): string {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : def;
 }
+
+// --pool/--out let a degraded copy of the pool (knowledge_graph/build_noisy_pool.py) run
+// against its own output dir, so the clean baseline in pool_output/ stays intact and the
+// two are diffable lot-for-lot.
+const POOL_PATH = resolve(strArg("pool", join(__dirname, "test_pool_100.json")));
+const OUT_ROOT = resolve(strArg("out", join(__dirname, "pool_output")));
 const LIMIT = intArg("limit", 10);
 const OFFSET = intArg("offset", 0);
 const CONCURRENCY = intArg("concurrency", 3);
@@ -140,6 +149,8 @@ function mimeFromUrl(url: string): string {
 }
 
 async function fetchImageOnce(url: string): Promise<Buffer> {
+  // node's fetch() has no file: handler — degraded pools point at local files.
+  if (url.startsWith("file://")) return readFileSync(fileURLToPath(url));
   const res = await fetch(url);
   if (!res.ok) throw new Error(`image fetch ${url}: HTTP ${res.status}`);
   return Buffer.from(await res.arrayBuffer());
@@ -441,6 +452,6 @@ await Promise.all(
 );
 
 console.log(
-  `\n${done} ok, ${failed} failed  —  ${((Date.now() - started) / 60000).toFixed(1)} min  —  written to tests/backtest/pool_output/\n`,
+  `\n${done} ok, ${failed} failed  —  ${((Date.now() - started) / 60000).toFixed(1)} min  —  written to ${OUT_ROOT}\n`,
 );
 if (failed > 0) process.exitCode = 1;

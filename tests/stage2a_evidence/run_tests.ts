@@ -10,6 +10,7 @@ import {
   assembleTriageResult,
   runEvidenceTree,
   emptyEvidenceOutput,
+  normalizeEvidenceBlocks,
 } from "../../src/appraisal/stage2a_evidence";
 import { Scenario } from "../../src/appraisal/routing";
 import {
@@ -46,11 +47,17 @@ async function atest(name: string, fn: () => Promise<void>) {
 
 // ── evidenceToTwoPassInput ───────────────────────────────────────────────────
 
-test("R that names the dominant candidate inherits its ULAN identity key", () => {
+test("sources naming the dominant candidate share one identity key", () => {
+  // The key is a shared TOKEN, not a URI — sameIdentity() only ever compares two keys for
+  // equality. It used to be the model-supplied ULAN cell; that is gone, so this asserts the
+  // property the tree actually depends on (V and R agree) rather than a literal string.
   const inp = evidenceToTwoPassInput(f.confirmedClean, false);
   assert.equal(inp.artistEvidence.vea.kind, "names");
-  assert.equal((inp.artistEvidence.vea as any).identityKey, "http://vocab.getty.edu/ulan/500009666");
-  assert.equal((inp.artistEvidence.reverseImageSearch as any).identityKey, "http://vocab.getty.edu/ulan/500009666");
+  const vKey = (inp.artistEvidence.vea as any).identityKey;
+  const rKey = (inp.artistEvidence.reverseImageSearch as any).identityKey;
+  assert.ok(vKey, "V should carry an identity key when it names the dominant candidate");
+  assert.equal(rKey, vKey);
+  assert.ok(!String(vKey).includes("ulan"), "the key must no longer be a transcribed authority URI");
 });
 
 test("Stage 1b consistency flag passes through; inconsistent hit is not marked consistent", () => {
@@ -94,13 +101,22 @@ test("-1 numeric sentinels become null / 0 as appropriate", () => {
 // ── D — Stage 1d embedding match, 2026-09-06 amendment to ADR-0013 ──────────
 // (built directly from the optional stage1d arg, not from the LLM's evidence cells)
 
-const stage1d = (matchConfidence: "HIGH" | "MEDIUM" | "LOW" | null, bestMatchArtist = "Henry Moore") => ({
+const stage1d = (
+  matchConfidence: "HIGH" | "MEDIUM" | "LOW" | null,
+  bestMatchArtist = "Henry Moore",
+  bestMatchConceptualWorkTitle: string | null = null,
+) => ({
   schemaVersion: "IES-1.0" as const,
   embeddingModelsUsed: { dinov2: "dinov2-large" as const, clip: "clip-vit-b32" as const },
   indexCoverageNote: "",
   candidateMatches: [],
   bestMatchArtist,
+  bestMatchConceptualWorkTitle,
   matchConfidence,
+  // Production always supplies these; the cell builder derives its measured confidence
+  // from them, and both D floors are read off that measurement.
+  dinov2SimilarityScore: matchConfidence === "HIGH" ? 0.974 : matchConfidence === "MEDIUM" ? 0.86 : 0.6,
+  clipSimilarityScore: matchConfidence === "HIGH" ? 0.974 : matchConfidence === "MEDIUM" ? 0.86 : 0.6,
   attributionCaveat: "",
   hypothesisWarning: "",
 });
@@ -122,6 +138,70 @@ test("stage1d HIGH confidence -> embeddingMatch carries the name + matchConfiden
   assert.equal((inp.artistEvidence.embeddingMatch as any).matchConfidence, "HIGH");
 });
 
+// ── A_t comes from Stage 1c, never from the agent's inference ───────────────────
+
+/** A minimal AppraiserInputResult carrying just the title claim under test. */
+const stage1c = (title: string | null) => ({
+  schemaVersion: "AIA-1.0" as const,
+  inputReceived: { inscribedMarksNotes: true, provenanceNotes: false, conditionNotes: false, catalogueNotes: true },
+  claimedAttribution: { artist: null, title, period: null, technique: null, status: (title ? "hypothesis" : "absent") as any, sourceField: null, sourceExcerpt: null },
+  inscriptionClaims: { signatureClaim: null, editionClaim: null, editionSizeClaim: null, monogramOrStampClaim: null, status: "absent" as any },
+  provenanceChain: [], conditionClaims: [], catalogueReferences: [], literatureOrExhibitionClaims: [],
+  dimensionsClaim: null, paperOrSupport: null,
+  rawNotes: { inscribedMarksNotes: null, provenanceNotes: null, conditionNotes: null, catalogueNotes: null },
+  overallExtractionConfidence: 0.8, lowConfidenceFlags: [],
+});
+
+test("REGRESSION A0793/148: Stage 1c claims no title -> A_t is silent even when the agent inferred one", () => {
+  // The agent read the edition inscription "Grimm edition B 35/100" as a title.
+  const ev = f.evOut({ workEvidence: { ...f.evOut({}).workEvidence, appraiserTitle: "Grimm edition B 35/100" } });
+  const inp = evidenceToTwoPassInput(ev as any, false, null, stage1c(null) as any);
+  assert.equal(inp.workEvidence.titleAppraiser.kind, "silent");
+});
+
+test("Stage 1c's title is used verbatim, not the agent's differing version", () => {
+  const ev = f.evOut({ workEvidence: { ...f.evOut({}).workEvidence, appraiserTitle: "Grimm edition B 35/100" } });
+  const inp = evidenceToTwoPassInput(ev as any, false, null, stage1c("Cold water about to hit the Prince") as any);
+  assert.equal(inp.workEvidence.titleAppraiser.kind, "names");
+  assert.equal((inp.workEvidence.titleAppraiser as any).raw, "Cold water about to hit the Prince");
+});
+
+test("with Stage 1c silent and Stage 1d HIGH, the work pass resolves on D_t instead of conflicting", () => {
+  const ev = f.evOut({ workEvidence: { ...f.evOut({}).workEvidence, appraiserTitle: "Grimm edition B 35/100" } });
+  const inp = evidenceToTwoPassInput(
+    ev as any, false,
+    stage1d("HIGH", "David Hockney", "Cold Water about to Hit the Prince"),
+    stage1c(null) as any,
+  );
+  const { twoPass } = runEvidenceTree(ev as any, false, stage1d("HIGH", "David Hockney", "Cold Water about to Hit the Prince"), stage1c(null) as any);
+  assert.equal(inp.workEvidence.titleAppraiser.kind, "silent");
+  assert.equal(twoPass.workIdentification?.conceptualWorkTitle, "Cold Water about to Hit the Prince");
+  assert.notEqual(twoPass.workIdentification?.verdict, "conflict");
+});
+
+test("no Stage 1c result supplied at all -> falls back to the agent cell (fixture path)", () => {
+  const ev = f.evOut({ workEvidence: { ...f.evOut({}).workEvidence, appraiserTitle: "Le Taureau" } });
+  const inp = evidenceToTwoPassInput(ev as any, false);
+  assert.equal((inp.workEvidence.titleAppraiser as any).raw, "Le Taureau");
+});
+
+test("no stage1d work title -> titleEmbeddingMatch is silent (D_t never votes)", () => {
+  const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false, stage1d("HIGH"));
+  assert.equal(inp.workEvidence.titleEmbeddingMatch.kind, "silent");
+});
+
+test("stage1d work title -> titleEmbeddingMatch carries the title + matchConfidence", () => {
+  const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false, stage1d("HIGH", "David Hockney", "Cold Water about to Hit the Prince"));
+  assert.equal(inp.workEvidence.titleEmbeddingMatch.kind, "names");
+  assert.equal((inp.workEvidence.titleEmbeddingMatch as any).raw, "Cold Water about to Hit the Prince");
+  assert.equal((inp.workEvidence.titleEmbeddingMatch as any).matchConfidence, "HIGH");
+});
+
+test("a MEDIUM stage1d work title is carried but gated out of the vote by the classifier", () => {
+  const inp = evidenceToTwoPassInput(f.recognisedNoOeuvre, false, stage1d("MEDIUM", "David Hockney", "Cold Water about to Hit the Prince"));
+  assert.equal((inp.workEvidence.titleEmbeddingMatch as any).matchConfidence, "MEDIUM");
+});
+
 test("end-to-end: a lone HIGH-confidence Stage 1d match (no other evidence) -> A6D candidate, Scenario 3", () => {
   const { twoPass } = runEvidenceTree(f.evOut({}), false, stage1d("HIGH", "Barbara Hepworth"));
   assert.equal(twoPass.artistAttribution.evidenceBasis, "A6D");
@@ -130,14 +210,17 @@ test("end-to-end: a lone HIGH-confidence Stage 1d match (no other evidence) -> A
   assert.equal(twoPass.scenario, Scenario.ArtistConfirmedWorkUnresolved);
 });
 
-test("end-to-end: a lone MEDIUM-confidence Stage 1d match does NOT vote -> not attributed, Scenario 6", () => {
+test("end-to-end: a lone MEDIUM-confidence Stage 1d match now votes, weakly", () => {
   const { twoPass } = runEvidenceTree(
     f.evOut({ traditionIdentification: { traditionConfidence: 0.2 } }),
     false,
     stage1d("MEDIUM", "Barbara Hepworth"),
   );
-  assert.equal(twoPass.artistAttribution.verdict, "not_attributed");
-  assert.equal(twoPass.scenario, Scenario.LowSignalEverywhere);
+  assert.equal(twoPass.artistAttribution.verdict, "candidate");
+  assert.equal(twoPass.artistAttribution.evidenceBasis, "A6D");
+  assert.equal(twoPass.artistAttribution.artistName, "Barbara Hepworth");
+  // measured 0.86 clears both the 0.7 vote floor and the 0.8 confidence floor
+  assert.equal(twoPass.artistAttribution.confidence, "MEDIUM");
 });
 
 // ── end-to-end: runEvidenceTree ──────────────────────────────────────────────
@@ -153,10 +236,15 @@ test("confirmed-clean evidence → artist attributed HIGH, work identified, Scen
   assert.ok(triage.candidateArtists[0].candidateProbability >= 0.85);
 });
 
-test("recognised artist, zero oeuvre, kId true → A3 + Scenario 3", () => {
+test("recognised artist the ACKG corroborates on nothing → A4 + Scenario 3", () => {
+  // Was A3 on kId alone. kId no longer scores — only 27% of ACKG artists carry a ULAN or
+  // Wikidata record, so a missing one is a coverage gap, not a finding. With zero oeuvre and
+  // an unassessable subject this is now "uncorroborated" (A4), one band below a corroborated
+  // pair, with the verdict and the named artist untouched.
   const { triage, twoPass } = runEvidenceTree(f.recognisedNoOeuvre, false);
-  assert.equal(twoPass.artistAttribution.evidenceBasis, "A3");
-  assert.ok(twoPass.artistAttribution.flags.includes("recognisedArtist_noMatchingOeuvre"));
+  assert.equal(twoPass.artistAttribution.evidenceBasis, "A4");
+  assert.equal(twoPass.artistAttribution.verdict, "attributed");
+  assert.ok(twoPass.artistAttribution.flags.includes("corroboration:none:ackgSilent"), twoPass.artistAttribution.flags.join(","));
   assert.equal(triage.routingDecision.scenario, Scenario.ArtistConfirmedWorkUnresolved);
 });
 
@@ -181,15 +269,16 @@ test("giclée observed AND giclée catalogued (Hirst Empresses) → NOT a reprod
   assert.equal(twoPass.artistAttribution.artistName, "Damien Hirst");
 });
 
-test("ACKG work-level artist+title match promotes an otherwise-unattributed lot → candidate (A8K)", () => {
+test("an ACKG work-level match no longer promotes a lot no source named", () => {
+  // Was A8K candidate. The anchor is still built and still carries its identity key — it is
+  // read as corroboration now, not as a witness, so with no naming source it names nobody.
   const inp = evidenceToTwoPassInput(f.ackgWorkAnchorPromotes, false);
   assert.equal(inp.artistEvidence.ackgWorkAnchor?.artist, "Rembrandt van Rijn");
-  assert.equal(inp.artistEvidence.ackgWorkAnchor?.identityKey, "http://vocab.getty.edu/ulan/500011051");
+  assert.ok(inp.artistEvidence.ackgWorkAnchor?.identityKey, "anchor still carries a key; it is read as corroboration, not as a witness");
   const { twoPass } = runEvidenceTree(f.ackgWorkAnchorPromotes, false);
-  assert.equal(twoPass.artistAttribution.verdict, "candidate");
-  assert.equal(twoPass.artistAttribution.evidenceBasis, "A8K");
-  assert.equal(twoPass.artistAttribution.artistName, "Rembrandt van Rijn");
-  assert.equal(twoPass.pass2Ran, true);
+  assert.equal(twoPass.artistAttribution.verdict, "not_attributed");
+  assert.equal(twoPass.artistAttribution.evidenceBasis, "A11");
+  assert.equal(twoPass.artistAttribution.artistName, null);
 });
 
 test("inconsistent Stage 1b hit does not become a vote → not attributed", () => {
@@ -323,5 +412,162 @@ await atest("a plain 400 throws a generic error, not the content-filter type", a
 });
 
 // ── summary ──────────────────────────────────────────────────────────────────
+// ── evidence capture for test runs (tests/backtest/evidence_capture.ts) ─────────
+
+test("buildEvidenceRecord replays the tree and records what code overrode", async () => {
+  const { buildEvidenceRecord } = await import("../backtest/evidence_capture");
+
+  // The A0793/148 shape: the agent invented a title from an inscription, Stage 1c claimed
+  // none, and Stage 1d matched the work at HIGH.
+  const ev = f.evOut({ workEvidence: { ...f.evOut({}).workEvidence, appraiserTitle: "Grimm edition B 35/100" } });
+  const rec = buildEvidenceRecord(
+    ev as any,
+    stage1d("HIGH", "David Hockney", "Cold Water about to Hit the Prince") as any,
+    stage1c(null) as any,
+  );
+
+  // the agent's own cells are preserved verbatim
+  assert.equal((rec.agentCells as any).workEvidence.appraiserTitle, "Grimm edition B 35/100");
+  // ...and the tree is shown reading something different
+  assert.equal(rec.treeInput!.workEvidence.titleAppraiser.kind, "silent");
+  assert.equal((rec.treeInput!.workEvidence.titleEmbeddingMatch as any).raw, "Cold Water about to Hit the Prince");
+  // the override is named, not left to be inferred
+  assert.equal(rec.overriddenByCode.titleAppraiser.agentSaid, "Grimm edition B 35/100");
+  assert.equal(rec.overriddenByCode.titleAppraiser.codeUsed, null);
+  assert.ok(rec.overriddenByCode.embeddingSources, "D/D_t provenance should be recorded");
+  // the replayed verdict carries the full trace, including the pass-2 vote line
+  assert.equal(rec.treeResult!.workIdentification?.conceptualWorkTitle, "Cold Water about to Hit the Prince");
+  assert.ok(rec.treeResult!.ruleTrace.some((t) => t.includes("pass2:")), rec.treeResult!.ruleTrace.join(" | "));
+});
+
+test("buildEvidenceRecord with no agent output degrades instead of throwing", async () => {
+  const { buildEvidenceRecord } = await import("../backtest/evidence_capture");
+  const rec = buildEvidenceRecord(null);
+  assert.equal(rec.agentCells, null);
+  assert.equal(rec.treeResult, null);
+  assert.deepEqual(rec.overriddenByCode, {});
+});
+
+// ── ACKG loop hook: same log output, now recordable ────────────────────────────
+
+function captureLog(fn: () => void): string[] {
+  const out: string[] = [];
+  const real = console.log;
+  console.log = (...a: any[]) => { out.push(a.join(" ")); };
+  try { fn(); } finally { console.log = real; }
+  return out;
+}
+
+test("onAckgLoopEvent's default output is byte-identical to the strings the loop used to print", async () => {
+  const { FourStageAppraiser, appraiserConfigs } = await import("../../src/appraisal/appraiser");
+  const a = new FourStageAppraiser(appraiserConfigs.find((c) => c.id === "claude-4stage")!) as any;
+
+  const lines = captureLog(() => {
+    a.onAckgLoopEvent({ round: 3, kind: "stop", roundsUsed: 2 });
+    a.onAckgLoopEvent({ round: 1, kind: "reasoning", reasoning: "short reasoning" });
+    a.onAckgLoopEvent({ round: 1, kind: "call", toolName: "query_ackg", input: { technique: "Etching" } });
+    a.onAckgLoopEvent({ round: 2, kind: "result", toolName: "query_ackg", count: 10, summary: "10 candidate(s) — top: David Hockney (support=144)" });
+    a.onAckgLoopEvent({ round: 2, kind: "result", toolName: "query_ackg", error: "boom" });
+    a.onAckgLoopEvent({ round: 5, kind: "max_rounds", maxRounds: 5 });
+  });
+
+  assert.deepEqual(lines, [
+    "[Stage 2a ACKG loop] round 3: no graph query — stopping loop (2 round(s) used)",
+    "[Stage 2a ACKG loop] round 1 reasoning: short reasoning",
+    '[Stage 2a ACKG loop] round 1 query_ackg call: {"technique":"Etching"}',
+    "[Stage 2a ACKG loop] round 2 result: 10 candidate(s) — top: David Hockney (support=144)",
+    "[Stage 2a ACKG loop] round 2 result: ERROR — boom",
+    "[Stage 2a ACKG loop] hit MAX_ROUNDS=5 — finalizing with whatever evidence was gathered",
+  ]);
+});
+
+test("long reasoning is truncated in the log but kept whole in the event", async () => {
+  const { FourStageAppraiser, appraiserConfigs } = await import("../../src/appraisal/appraiser");
+  const a = new FourStageAppraiser(appraiserConfigs.find((c) => c.id === "claude-4stage")!) as any;
+  const long = "x".repeat(500);
+  const [line] = captureLog(() => a.onAckgLoopEvent({ round: 1, kind: "reasoning", reasoning: long }));
+  assert.ok(line.endsWith("…"), "log should be truncated");
+  assert.equal(line.length, "[Stage 2a ACKG loop] round 1 reasoning: ".length + 401);
+});
+
+test("a recording subclass captures rounds AND still logs", async () => {
+  const { appraiserWithEvidenceCapture } = await import("../backtest/evidence_capture");
+  const { appraiserConfigs } = await import("../../src/appraisal/appraiser");
+  const { appraiser, getAckgRounds } = appraiserWithEvidenceCapture(
+    appraiserConfigs.find((c) => c.id === "claude-4stage")!,
+  );
+  const lines = captureLog(() => {
+    (appraiser as any).onAckgLoopEvent({ round: 1, kind: "call", toolName: "query_ackg_work", input: { artist: "Hockney" } });
+  });
+  assert.equal(lines.length, 1, "the live log must not be swallowed by the recorder");
+  assert.deepEqual(getAckgRounds().map((r) => [r.round, r.kind, r.toolName]), [[1, "call", "query_ackg_work"]]);
+});
+
+test("a non-4-stage config still runs, capturing nothing", async () => {
+  const { appraiserWithEvidenceCapture } = await import("../backtest/evidence_capture");
+  const { appraiserConfigs } = await import("../../src/appraisal/appraiser");
+  const three = appraiserConfigs.find((c) => !c.stage2aModel)!;
+  const { getAgentCells, getAckgRounds } = appraiserWithEvidenceCapture(three);
+  assert.equal(getAgentCells(), null);
+  assert.deepEqual(getAckgRounds(), []);
+});
+
+
+// ---- malformed agent report --------------------------------------------------------
+// A model can return a report tool call omitting a required block. qwen-plus did on
+// A0793/122, and the unguarded read downstream took the lot down with a TypeError.
+
+test("evidenceToTwoPassInput survives a report with no artistEvidence", () => {
+  const ev: any = { workEvidence: {} };
+  const out = evidenceToTwoPassInput(ev, false);
+  assert.ok(out, "should return an input, not throw");
+});
+
+test("evidenceToTwoPassInput survives a report with no workEvidence", () => {
+  const ev: any = { artistEvidence: {} };
+  const out = evidenceToTwoPassInput(ev, false);
+  assert.ok(out, "should return an input, not throw");
+});
+
+test("evidenceToTwoPassInput survives an entirely empty report", () => {
+  const out = evidenceToTwoPassInput({} as any, false);
+  assert.ok(out);
+});
+
+// ── stringified evidence blocks ──────────────────────────────────────────────
+console.log("\nEvidence blocks returned as JSON strings");
+
+test("a block returned as a JSON string is parsed back, and the recovery is reported", () => {
+  // Haiku 4.5 did exactly this to impressionEvidence on A0793/122.
+  const ev: any = {
+    artistEvidence: { kId: "true" },
+    impressionEvidence: JSON.stringify({ assessable: true, catalogueTechniques: ["Etching"] }),
+  };
+  const recovered = normalizeEvidenceBlocks(ev);
+  assert.deepEqual(recovered, ["impressionEvidence"]);
+  assert.equal(typeof ev.impressionEvidence, "object");
+  assert.deepEqual(ev.impressionEvidence.catalogueTechniques, ["Etching"]);
+  // Untouched blocks stay untouched and are not reported as recovered.
+  assert.deepEqual(ev.artistEvidence, { kId: "true" });
+});
+
+test("a string that is not JSON is left alone for the caller's structural check to degrade on", () => {
+  const ev: any = { artistEvidence: "not evidence at all" };
+  assert.deepEqual(normalizeEvidenceBlocks(ev), []);
+  assert.equal(ev.artistEvidence, "not evidence at all");
+});
+
+test("a JSON string holding an array or a scalar is not accepted as a block", () => {
+  const ev: any = { workEvidence: "[1,2,3]", riskFlags: "42" };
+  assert.deepEqual(normalizeEvidenceBlocks(ev), []);
+  assert.equal(ev.workEvidence, "[1,2,3]");
+});
+
+test("a null or non-object report never throws", () => {
+  assert.deepEqual(normalizeEvidenceBlocks(null), []);
+  assert.deepEqual(normalizeEvidenceBlocks("a string"), []);
+  assert.deepEqual(normalizeEvidenceBlocks(undefined), []);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

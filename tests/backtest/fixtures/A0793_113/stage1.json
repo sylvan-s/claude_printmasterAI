@@ -1,0 +1,203 @@
+{
+  "lot": {
+    "house": "Roseberys London",
+    "saleId": "A0793",
+    "lotNumber": "113",
+    "listingUrl": "https://www.roseberys.co.uk/bidding/A0793-prints-multiples-673/113-dame-elisabeth-frink-ch-dbe-rabritish-1930-1993spinning-man-623387",
+    "lotUrl": "https://www.roseberys.co.uk/bidding/A0793-prints-multiples-673/113-dame-elisabeth-frink-ch-dbe-rabritish-1930-1993spinning-man-623387",
+    "estimateLow": 800,
+    "estimateHigh": 1200
+  },
+  "groundTruth": {
+    "poolArtistName": "Dame Elisabeth Frink",
+    "artist": "Dame Elisabeth Frink",
+    "title": "Spinning man",
+    "medium": "lithograph in colours, signed in pencil, numbered 31/50 and dated, sheet 60 x 83 cm (framed) (ARR)",
+    "editionSize": 50
+  },
+  "resolvedFrom": "a0793-isolation-capture",
+  "method": "claude-4stage-1c1d",
+  "note": "Captured from the A0793 1c+1d isolation run so Stage 2a can be replayed alone. VEA did not run and Stage 1b was disabled, so Stage 1d plus Stage 1c's documented claims are the only evidence \u2014 the configuration the Sonnet/Haiku/Qwen comparison uses.",
+  "imageUrl": null,
+  "appraiserInputNotes": {
+    "inscribedMarksNotes": "lithograph in colours, signed in pencil, numbered 31/50 and dated, sheet 60 x 83 cm (framed) (ARR)",
+    "provenanceNotes": null,
+    "conditionNotes": null,
+    "catalogueNotes": "Dame Elisabeth Frink,\nSpinning man, 1965;\n\nlithograph in colours, signed in pencil, numbered 31/50 and dated, sheet 60 x 83 cm (framed) (ARR)"
+  },
+  "stage1a_vea": {
+    "schemaVersion": "VEA-1.1",
+    "inspectionTimestamp": "2026-09-09T16:54:07.157Z",
+    "imagesReceived": {
+      "primaryScan": false,
+      "supplementaryScanCount": 0
+    },
+    "imageAuthenticity": {
+      "haltRecommended": false
+    },
+    "titleInscriptions": [],
+    "signatures": [],
+    "editionInfo": [],
+    "editionInfoAbsent": true,
+    "printingTechniques": [],
+    "plateMark": {},
+    "dimensions": {},
+    "paper": {},
+    "condition": {},
+    "inkAndColour": {},
+    "stampsAndLabels": [],
+    "composition": {},
+    "photographicQuality": {},
+    "visualEvidenceHighlights": [],
+    "overallExtractionConfidence": 0,
+    "lowConfidenceFlags": [
+      "Stage 1a (Visual Extraction Agent) WAS NOT RUN in this appraisal \u2014 no image was examined and no physical observation exists. Every field below is empty because nothing was looked at, NOT because the work lacks those features. Draw no inference from the absence of signatures, inscriptions, technique or condition data."
+    ],
+    "provisionalOutput": true
+  },
+  "stage1b_visualSearch": null,
+  "stage1c_appraiserInput": {
+    "schemaVersion": "AIA-1.0",
+    "inputReceived": {
+      "inscribedMarksNotes": true,
+      "provenanceNotes": false,
+      "conditionNotes": false,
+      "catalogueNotes": true
+    },
+    "claimedAttribution": {
+      "artist": "Elisabeth Frink",
+      "title": "Spinning man",
+      "period": "1965",
+      "technique": "lithograph in colours",
+      "status": "documented_fact",
+      "sourceField": "catalogueNotes",
+      "sourceExcerpt": "Dame Elisabeth Frink, Spinning man, 1965; lithograph in colours, signed in pencil, numbered 31/50 and dated, sheet 60 x 83 cm (framed) (ARR)"
+    },
+    "inscriptionClaims": {
+      "signatureClaim": "signed in pencil",
+      "editionClaim": "31/50",
+      "editionSizeClaim": 50,
+      "monogramOrStampClaim": null,
+      "status": "documented_fact"
+    },
+    "provenanceChain": [],
+    "conditionClaims": [],
+    "catalogueReferences": [],
+    "literatureOrExhibitionClaims": [],
+    "dimensionsClaim": {
+      "widthCm": 60,
+      "heightCm": 83,
+      "kind": "sheet",
+      "source": "both"
+    },
+    "paperOrSupport": "null",
+    "rawNotes": {
+      "inscribedMarksNotes": "lithograph in colours, signed in pencil, numbered 31/50 and dated, sheet 60 x 83 cm (framed) (ARR)",
+      "provenanceNotes": null,
+      "conditionNotes": null,
+      "catalogueNotes": "Dame Elisabeth Frink, Spinning man, 1965; lithograph in colours, signed in pencil, numbered 31/50 and dated, sheet 60 x 83 cm (framed) (ARR)"
+    },
+    "overallExtractionConfidence": 0.95,
+    "lowConfidenceFlags": [
+      "ARR notation present but not interpreted as a specific claim; framing status noted but not extracted as separate condition claim since no condition detail provided"
+    ]
+  },
+  "stage1d_embeddingMatch": {
+    "schemaVersion": "IES-1.0",
+    "embeddingModelsUsed": {
+      "dinov2": "facebook/dinov2-large",
+      "clip": "openai/clip-vit-base-patch32"
+    },
+    "indexCoverageNote": "ACKG image index currently covers Bonhams (40,224), Tate (10,208) and the British Museum (2,507) \u2014 52,939 images on DINOv2-Large/CLIP, verified 2026-09-07. Roseberys and Forum Auctions are not yet embedded \u2014 a weak or absent match reflects this coverage gap, not evidence against attribution.",
+    "candidateMatches": [
+      {
+        "artistName": "Elisabeth Frink",
+        "conceptualWorkTitle": "Spinnng Man 1",
+        "impressionId": "bonhams-10248-294",
+        "dinov2Similarity": 0.9742374420166016,
+        "clipSimilarity": 0.9740028381347656,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Elisabeth Frink",
+        "conceptualWorkTitle": "Spinning Man I",
+        "impressionId": "tate-P06142",
+        "dinov2Similarity": 0.9728972911834717,
+        "clipSimilarity": 0.9673004150390625,
+        "provenanceLayer": "institutional"
+      },
+      {
+        "artistName": "Elisabeth Frink",
+        "conceptualWorkTitle": "Spinning Man VII",
+        "impressionId": "bonhams-17833-150",
+        "dinov2Similarity": 0.8515031337738037,
+        "clipSimilarity": 0.9499130249023438,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Elisabeth Frink",
+        "conceptualWorkTitle": "Spinning Man VIII",
+        "impressionId": "bonhams-27494-25",
+        "dinov2Similarity": 0.8322060108184814,
+        "clipSimilarity": 0.948516845703125,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Elisabeth Frink",
+        "conceptualWorkTitle": "Spinning Man VII",
+        "impressionId": "bonhams-20738-113",
+        "dinov2Similarity": 0.8716349601745605,
+        "clipSimilarity": 0.9480819702148438,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Elisabeth Frink",
+        "conceptualWorkTitle": "Spinning Man VII",
+        "impressionId": "bonhams-18606-269",
+        "dinov2Similarity": 0.8684589862823486,
+        "clipSimilarity": 0.9399147033691406,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Shmuel Shapiro",
+        "conceptualWorkTitle": "Woman Shielding her Child",
+        "impressionId": "tate-P06558",
+        "dinov2Similarity": 0.8346490859985352,
+        "clipSimilarity": 0.9388694763183594,
+        "provenanceLayer": "institutional"
+      },
+      {
+        "artistName": "Elisabeth Frink",
+        "conceptualWorkTitle": "Spinning man VI",
+        "impressionId": "bonhams-22574-26",
+        "dinov2Similarity": 0.8537678718566895,
+        "clipSimilarity": 0.9376487731933594,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Willem de Kooning",
+        "conceptualWorkTitle": "Clam Digger, from Portfolio 9",
+        "impressionId": "bonhams-21628-247",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9473609924316406,
+        "provenanceLayer": "auction_history"
+      },
+      {
+        "artistName": "Jules Pascin",
+        "conceptualWorkTitle": "Les Amies",
+        "impressionId": "bonhams-20091-8125",
+        "dinov2Similarity": null,
+        "clipSimilarity": 0.9423103332519531,
+        "provenanceLayer": "auction_history"
+      }
+    ],
+    "bestMatchArtist": "Elisabeth Frink",
+    "bestMatchConceptualWorkTitle": "Spinnng Man 1",
+    "dinov2SimilarityScore": 0.9742374420166016,
+    "clipSimilarityScore": 0.9740028381347656,
+    "matchConfidence": "HIGH",
+    "attributionCaveat": "DINOv2/CLIP similarity reflects visual/stylistic closeness, not verified authorship \u2014 one corroborating evidence point, never a standalone attribution (see ADR-0002, ADR-0013).",
+    "hypothesisWarning": "\u26a0\ufe0f HYPOTHESIS ONLY \u2014 Stage 1d image-embedding match. Shadow-run: not yet used in attribution. DINOv2/CLIP visual similarity, not verified authorship. Do not treat as confirmed attribution."
+  },
+  "generatedAt": "2026-09-10T00:00:00.000Z"
+}

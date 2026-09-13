@@ -136,3 +136,98 @@ defaults to.
   catalogue prose rarely states condition explicitly.
 - No automated pass/fail threshold across a batch of lots — each run is
   read individually via the HTML report.
+
+## Degraded copies of the pool (robustness runs)
+
+The pool's images are the auction house's studio shots — square-on, evenly lit, sharp.
+Real appraiser input is not. `knowledge_graph/build_noisy_pool.py` makes degraded copies of
+every pool image and writes one pool JSON per degradation, identical to
+`test_pool_100.json` except that `imageUrl` points at the local degraded file. Same lots,
+same ground truth, same Stage 1c notes — so anything that moves between the clean run and
+a degraded run is attributable to the image alone.
+
+```bash
+# all 8 recipes over the whole pool (downloads each source image once, into _source/)
+knowledge_graph/venv-embeddings/bin/python knowledge_graph/build_noisy_pool.py
+
+knowledge_graph/venv-embeddings/bin/python knowledge_graph/build_noisy_pool.py --list
+knowledge_graph/venv-embeddings/bin/python knowledge_graph/build_noisy_pool.py \
+    --recipes angle,glare --limit 10 --contact-sheet
+```
+
+| recipe | what it simulates |
+| --- | --- |
+| `pristine` | control — same decode/re-encode path, no degradation |
+| `lowres` | a small image: 340-430px long edge, JPEG q58-72 |
+| `defocus` | out of focus — Gaussian blur at 0.35-0.75% of the long edge |
+| `glare` | specular hot spots + a light streak, geometry untouched |
+| `angle` | shot off-axis — yaw ±26°, pitch ±13°, roll ±5°, keystoned onto a surface |
+| `framed` | mount board + moulding around the print, straight on |
+| `framed_glass` | framed on a wall, tilted, behind glass with a window reflection |
+| `phone_snap` | the composite worst case — tilt, uneven light, colour cast, mild defocus, glare, downscale, sensor noise, q40-55 |
+| `mixed` | a random *combination* per lot rather than one named effect — see below |
+
+`mixed` is the one to use for a robustness run. Every lot draws its own subset of the
+primitives and its own severity (0-1, scaling every magnitude), so the 99 images span the
+space of real-world bad photography instead of testing one axis at a time: 1-9 filters per
+image, median 5. Across the built pool that came out as tilt 78%, JPEG 69%, glare 62%,
+uneven light 58%, defocus 45%, downscale 44%, sensor noise 39%, frame 36%, colour cast
+35%, window reflection 26%. `MANIFEST.json` records the exact draw per lot (`severity`,
+`applied`), so any result can be regressed against what was actually done to the image.
+
+Each lot's degradation is seeded from `(saleId_lot, recipe)`: random across the pool,
+identical on every re-run. `--contact-sheet` writes `contact_sheets/<id>.jpg`, the source
+next to every variant, for eyeballing what the model is being given.
+
+Output (all gitignored — regenerate, don't commit):
+
+```
+tests/backtest/noisy_pool/
+  _source/<id>.<ext>                    downloaded originals, reused across recipes
+  images/<recipe>/<id>.jpg              the degraded copies
+  pools/test_pool_100_<recipe>.json     drop-in replacement pool JSON
+  contact_sheets/<id>.jpg               --contact-sheet only
+  MANIFEST.json                         per-variant seed, size, quality, dimensions
+```
+
+Run one through the pipeline with `--pool`, and `--out` so the clean baseline in
+`pool_output/` survives:
+
+```bash
+npm run test:pool -- --pool tests/backtest/noisy_pool/pools/test_pool_100_angle.json \
+                     --out tests/backtest/pool_output_angle --limit 99
+npm run test:pool:triage -- --dir tests/backtest/pool_output_angle
+```
+
+`run_pool.ts` reads `file://` image URLs directly, so a degraded run needs no network
+beyond the model calls.
+
+## Measuring Stage 1b / 1d against the degraded pool
+
+`run_noise_robustness.ts` runs Stage 1b (Gemini reverse image search) and Stage 1d
+(DINOv2/CLIP embedding match) **twice per lot** — once on the auction house's original
+studio shot, once on the degraded copy — from the same pool JSON, which carries both.
+Pairing is the point: an absolute hit rate on degraded images means nothing without the
+clean number from the identical lot on the identical day.
+
+```bash
+npx tsx tests/backtest/run_noise_robustness.ts \
+    --pool tests/backtest/noisy_pool/pools/test_pool_100_mixed.json --concurrency 5
+npx tsx tests/backtest/run_noise_robustness.ts --limit 10 --skip-1b   # 1d only, no Gemini spend
+```
+
+Needs the embedding service (`knowledge_graph/embedding_service.py` on :8008), Neo4j, and
+`GEMINI_API_KEY` unless `--skip-1b`. Writes `output/noise_robustness{.json,.md}`.
+
+**Reading the two stages differently.** Stage 1b searches the open web, so the pool's
+ground-truth artist/title is genuinely findable and clean-vs-degraded artist hit rate is a
+real accuracy measurement. Stage 1d searches the ACKG image-embedding index, which covers
+Bonhams + Tate + British Museum (52,939 images) and **no Roseberys or Forum** — the two
+houses the pool is drawn from. The lot's own image file is never in the index, so there is
+no self-match — but the exact *work* is still often reachable, because prints are editions
+and Bonhams/Tate/BM frequently hold another impression of the same `ConceptualWork`
+(measured: correct work in the top 3 for 24.2% of lots). Artist hits can also come from
+that artist's other prints (3,717 artists, 35,972 works in the Bonhams corpus). The
+coverage-independent signal is **retrieval stability** — how much of the clean top-3 the
+degraded image still returns — which separates the lots that had a real match to lose from
+the ones merely ranking stylistic neighbours.

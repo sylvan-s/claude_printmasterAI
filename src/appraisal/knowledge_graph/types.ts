@@ -3,7 +3,8 @@
  * knowledge_graph/08_ackg_schema_definition.md (repo root) for the full graph
  * schema and docs/adr/0003-knowledge-graph-grounded-triage.md for why this
  * exists: candidate-artist probabilities grounded in real ingested records
- * (Met, Roseberys, Forum Auctions) rather than an LLM's unexaminable prior.
+ * (Bonhams, Roseberys, Forum Auctions, Skinner, Tate, the Met, the British Museum)
+ * rather than an LLM's unexaminable prior.
  */
 import type { DimMm } from "./dimension_parse.js";
 
@@ -25,6 +26,15 @@ export interface AckgQueryParams {
    *  ONLY each artist's works whose title matches — this is the ADR-0010 Decision 4a K_work
    *  probe: "does the ACKG catalogue a work by this title, and to whom?" */
   workTitle?: string;
+  /** Suppress every impression documented by this sale. Once an upcoming catalogue is
+   *  ingested, a lot's own record is in the graph and the lot corroborates ITSELF: the
+   *  catalogued dimensions "match" because they were copied from the same catalogue entry
+   *  the object is being compared against. Measured on A0793/303 — an ingested
+   *  "37.0x46.0cm" row turned Sonnet's CONTRADICTED into STRONG for one model and flipped
+   *  the routing from Scenario 2 (authentication risk) to Scenario 3. Same circularity
+   *  queryImageEmbeddingMatches and queryAuctionComparables already guard, on the price
+   *  and image sides. */
+  excludeSaleId?: string | null;
   /** Max candidates returned, ranked by supportCount descending. Defaults to 10. */
   limit?: number;
 }
@@ -45,6 +55,11 @@ export interface AckgWorkQueryParams {
   technique?: string;
   periodStartYear?: number;
   periodEndYear?: number;
+  /** Suppress every impression documented by this sale — see AckgQueryParams.excludeSaleId.
+   *  This is the query where it matters most: a work whose ONLY impressions come from the
+   *  sale under appraisal drops out entirely, which is correct — there is no independent
+   *  record of it. */
+  excludeSaleId?: string | null;
   /** Max works returned, ranked by impression count descending. Default 8. */
   limit?: number;
 }
@@ -86,7 +101,8 @@ export interface AckgCandidate {
    *  in query.ts for known coverage gaps). */
   supportCount: number;
   /** Support broken down by source layer, per ADR-0003's two-layer design:
-   *  institutional (Met, V&A) vs. auction-history (Roseberys, Forum Auctions). */
+   *  institutional (Tate, Met, British Museum) vs. auction-history (Bonhams, Roseberys,
+   *  Forum Auctions, Skinner). */
   institutionalSupportCount: number;
   auctionSupportCount: number;
   /** Up to 3 sample work titles, for the calling agent to sanity-check the match. */

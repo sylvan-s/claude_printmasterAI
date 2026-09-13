@@ -110,7 +110,8 @@ rather than re-derived at every node:
 | `Publisher` | Identity | name — covers original publishers, print workshops, *and* historical restrike/estate publishers (Basan, Mariette) under one type |
 | `ConceptualWork` | Work | `dateCreated` (fuzzy date shape) |
 | `Matrix` | Work | material (copper/zinc/stone/block) |
-| `State` | Work | `traditionType` — tradition-agnostic: covers both Western plate-states and ukiyo-e printing generations |
+| `MergeEvent` | Provenance | `mergedFromId`, `rule`, `ruleVersion`, `decidedBy`, `evidence`, `confidence`, `at` (§ 11) |
+| `State` | Work | `traditionType` — tradition-agnostic: covers both Western plate-states and ukiyo-e printing generations; `stateNumber`, `displayLabel` (§ 10) |
 | `EditionRun` | Work | `declaredSize`, `dateRange` (fuzzy date shape) |
 | `Impression` | Instance | `editionNumber`, `copyType` (numbered / AP / HC / PP / BAT / TP — local enum, no AAT equivalent per doc 06 §2.6), sheet/image dimensions, `signed` (bool), `provenanceNote` (free text, deferred — § 5) |
 | `Technique` | Controlled vocab | AAT URI |
@@ -414,6 +415,214 @@ established, not a forced pick-one. Nothing else is silently dropped: an unrecog
 still becomes its own `Region` node — this is a documented judgment call, not a verified
 crosswalk in the § 1 principle-6 sense, since nationality has no equivalent live-checkable
 authority list the way AAT does for technique/paper terms.
+
+## 9. Schema addition: `Portfolio`
+
+**Added 2026-09-11**, from the Navigart network load. The one structure doc 08 never had:
+the published set a print belongs to.
+
+Prints are very often issued as a set — a suite, an opus, an illustrated book's plates —
+and until now nothing in this graph could say so. `EditionRun` covers "how many
+impressions of THIS work were pulled"; it has nothing to say about "this work is plate 24
+of 46". Auction data rarely carries the set as a field, which is why this never came up:
+Navigart carries it structurally, on 1,355 records across 150 sets in the public-domain
+tier alone.
+
+```
+(:Portfolio {id, name, nature, sourceNumber, institutionName,
+             memberCount, sourceMemberCount, complete})
+(:Portfolio)-[:COMPRISES {plateNumber}]->(:ConceptualWork)
+```
+
+`Portfolio` is a Work-layer node alongside `EditionRun`, so it carries **no AAT id** — the
+controlled-vocabulary labels (`Technique`, `Paper`, `Subject`) are the ones that do, per
+§1's layering.
+
+**`COMPRISES`, not `INCLUDES`.** `EditionRun -[:INCLUDES]-> Impression` already means "this
+edition run contains this physical sheet". A portfolio containing a *work* is a different
+relation between different layers, and reusing the verb would make
+`MATCH ()-[:INCLUDES]->()` mean two things.
+
+**`nature` is carried verbatim, not normalised.** Observed values: `Ensemble` (124),
+`Portfolio` (19), `Série` (3), `Album factice` (1), `Recueil` (1), `Album collectif` (1),
+`Diptyque` (1). An *album factice* is a collector's made-up album — sheets bound together
+after the fact by an owner — and flattening it into "Portfolio" would assert a publication
+event that never happened. The Piranesi set in this load (124 sheets from the Cacault
+collection) is exactly that case.
+
+**`memberCount` vs `sourceMemberCount` is load-bearing.** `memberCount` is what this graph
+holds; `sourceMemberCount` is the set's real size, taken from the source's own sibling
+list. **78 of the 150 portfolios in the first load are partial**, because the tier loaded
+was public-domain-with-an-image and the rest of those sets did not qualify. `complete`
+records whether they match. Reading `memberCount` as the size of a suite is wrong for half
+of them, and the schema is shaped so that mistake is not available.
+
+`plateNumber` on the edge is the sheet's position in the set where the source states it
+(`"Bedingung (planche 38)"`) — 147 of 1,354 edges. Absent rather than inferred elsewhere.
+
+Written by `knowledge_graph/navigart_ingest_ensembles.py`. Keyed on (vault, ensemble_id):
+the source's ensemble ids collide across institutions, and titles are not unique either —
+vault 15 holds two different sets both called *Poèmes du Pont des Faisans*.
+
+---
+
+## 10. Schema addition: `State.stateNumber` and `State.displayLabel`
+
+**Added 2026-09-11**, recording what the Musée Picasso-Paris load already wrote. `State` was
+defined as a node type in § 2 from the start but sat at **zero instances** until that load, so
+its property list was never filled in. It now holds **905 nodes**, reachable from **431**
+`ConceptualWork`s, with **1,131** impressions carrying a `stateLabel`.
+
+```
+State {
+  id,                 # "<conceptualWorkId>-state-<n>"
+  traditionType,      # § 2, unchanged
+  stateNumber,        # int — 'IIème état' -> 2
+  displayLabel        # the source's own wording, verbatim
+}
+```
+
+`displayLabel` follows the same observe-don't-fabricate discipline as `dateCreated_displayLabel`:
+`picasso_paris_ingest.extract_state()` normalises Roman (`IIème état`), French ordinal (`Second
+état`) and digit (`7ème état`) forms to an integer while keeping the string the museum actually
+wrote. Written with `coalesce`, so a second source never overwrites the first source's wording.
+
+**`Matrix -[:HAS_STATE]-> State` is unpopulated.** All 905 attach through
+`State -[:PRINTED_AS]-> EditionRun`, the "or Matrix/ConceptualWork directly — principle 3" branch
+of § 2's edge list. That is the correct shape for a source recording *which state* without
+recording *which physical plate*; the absence is not a load defect.
+
+This addition is what
+[ADR-0017 *Amendment 2*](../docs/adr/0017-work-title-identity-principal-name-and-aliases.md)
+defers to when it withdraws that ADR's proposed flat `ConceptualWork.state` property. Plate and
+state are orthogonal: of the 31 works carrying both a trailing Roman numeral in the title and a
+`State` node, 14 carry two to five distinct states behind that one numeral, so the numeral is a
+plate designation and belongs on `ConceptualWork`, while state belongs here.
+
+## 11. Schema addition: `MergeEvent`
+
+**Added 2026-09-12.** Until now a merge left no trace of itself. `MERGE_QUERY` re-points the
+duplicate's relationships onto the survivor and then `DETACH DELETE`s it, so the duplicate's id
+goes with it. The graph could not answer *what was folded into this work*, *by what reasoning*,
+or *when* — only a gitignored backup JSON could, and only when `--backup` was passed.
+
+That made a bad RULE unreversible at scale. There was no way to ask "show me everything merged by
+the year+technique corroborator" after that corroborator turned out to carry 1,055 of 1,221
+promotions at a median similarity of 0.796.
+
+```
+MergeEvent {
+  id,               # "<survivorId> <- <deletedId>"
+  mergedFromId,     # the deleted node's id
+  mergedFromName,   # its title at the moment of folding
+  rule,             # controlled vocabulary, below
+  ruleVersion,      # the generator's own Version: string
+  decidedBy,        # rule | model | human
+  evidence,         # WHY, assembled by cluster_evidence() from whatever the generator wrote
+  confidence,       # present when a model decided it — the adjudicator's own 0-1 score
+  repointedFrom,    # intermediate ids, present only when the survivor was itself folded later
+  at                # datetime()
+}
+
+MergeEvent -[:MERGED_INTO]-> ConceptualWork
+```
+
+**The rule vocabulary is the set of paths that actually exist**, each tied to its generator in
+`knowledge_graph/`, not an invented taxonomy:
+
+| `rule` | `ruleVersion` | what decided it |
+|---|---|---|
+| `exactTitleYear` | `DUPWORK-SCAN-1.0` | artist + normalized title + year |
+| `catalogueAnchor` | `MUSEUM-ANCHOR-1.0` | shared `CatalogueEntry`, institutional arbiter |
+| `imageCorroborated` | `IMAGE-CANDIDATES-1.0` | DINOv2 retrieval plus an **exact** corroborator |
+| `splinkStateFamily` | `SPLINK-CANDIDATES-1.0` | same catalogue base, differing state designation |
+| `visualAdjudication` | `VISUAL-ADJUDICATOR-1.0` | a vision model's cited verdict |
+| `plateImpressionJoin` | `PLATE-JOIN-1.0` | a `Matrix` record joined to its impressions |
+| `exactCatalogueTitle` | `EXACT-CAT-MERGE-1.0` | same artist node, folded title and catalogue base |
+| `editionSiblings` | `EDITION-SIBLINGS-1.0` | one numbered edition held as many nodes |
+| `titleCollisionBand` | `COLLISION-RANK-1.0` | splink weight >= 15, catalogue agree or none |
+| `noCatalogueBand` | `COLLISION-RANK-1.0` | no catalogue at all, splink weight 10-15 |
+| `auctionPlainTitle` | `COLLISION-RANK-1.1` | auction sources only, no series marker in the title |
+| `humanTriage` | `human` | a person read the evidence and decided |
+
+**Written before the delete and in the same transaction**, so a fold either leaves a record of
+itself or does not happen.
+
+**`evidence` is assembled, not demanded.** Each generator names its evidence differently — the
+anchored and exact-catalogue rules write `corroborator`, the image generator adds `similarity`,
+the edition rule adds `editionNumbers` and `declaredSize`, a human triage row writes `note` — so
+`merge_duplicate_work_clusters.cluster_evidence()` reads whatever is present and composes one
+line. A new generator needs no change to the merger.
+
+```
+exactCatalogueTitle   same artist node, folded title and catalogue base Levinson 391;
+                      best image cosine 0.9597; year gap 0
+editionSiblings       one numbered edition at Musée Zadkine: 8 distinct impressions 1-8 of 25
+auctionPlainTitle     title collision, no catalogue citation on either side; auction sources
+                      only, no series/portfolio marker in the title; splink weight 7.2
+visualAdjudication    claude-haiku-4-5 adjudicated the two images SAME_WORK at confidence 0.92:
+                      Identical composition: surrealist intaglio with stacked heads...
+```
+
+**`evidence` must describe the rule that was used, not the rule the generator was written for.**
+`band_pairs_to_clusters.py` hard-coded `"splink band: weight >= 15"` into every cluster it
+emitted. That was true of `COLLISION-RANK-1.0` and of nothing since: 4,099 events carried it over
+merges made at weight 10-15 and at 3.06-8.97, each asserting a threshold it did not meet and
+contradicted by the `splink weight` the same line appends. `rule` stayed correct, so the merges
+remained attributable and reversible — but the human-readable WHY was false on 76% of the merge
+history. The band is now passed per run as `--label` and the events were backfilled on
+2026-09-12. A generator that describes its own band in a literal will do this again.
+
+The first 773 events were written with this field empty — `run()` read `corroborator` off the
+PLAN and the plan never carried it — and were backfilled on 2026-09-12 by matching the
+regenerated cluster JSON against the `"<survivor> <- <dup>"` id.
+
+**`mergedFromId` is what makes a stale external reference resolvable.** A saved comparable in
+Stage 3, another session's CSV, or the `workIds` column of a collision report can be looked up
+after the node it names has gone:
+
+```cypher
+MATCH (e:MergeEvent {mergedFromId: $goneId})-[:MERGED_INTO]->(w:ConceptualWork) RETURN w
+```
+
+**Chained folds are carried forward.** A survivor can itself be folded later, and `DETACH DELETE`
+takes the inbound `MERGED_INTO` edge with it — which silently orphaned 34 events before
+2026-09-12 and broke the lookup above for exactly the ids most likely to be stale. The merge
+query now re-points any inbound `MERGED_INTO` onto the new survivor and appends the hop to
+
+```
+repointedFrom     # [] of intermediate ids, in order, present only on a chained event
+```
+
+`id` is deliberately NOT rewritten: it records the fold that actually happened, and the middle
+node's id is the only surviving trace of it. So `id = "<survivor> <- <mergedFromId>"` holds for
+every event EXCEPT one carrying `repointedFrom`, where the survivor named in `id` is the first
+hop rather than the current target.
+
+**EVERY INGEST MUST RESOLVE THROUGH THIS BEFORE CREATING A `ConceptualWork`.** A merge
+`DETACH DELETE`s the folded node, so an ingest that `MERGE`s on its own object id puts that id
+straight back into the graph as a fresh work and the merge is undone — silently, with a clean
+exit. All eight ingests did exactly this until 2026-09-13, and one re-run of any of them would
+have reversed part of the 4,226 merges made over the preceding two days.
+
+The contract is `catalogue_matching.resolve_merged_work_cypher(candidate, carry)`, spliced in
+place of the `MERGE`. It binds `cw` to the work the id belongs to NOW, creating a node only when
+nothing has been merged onto it. This is an **exact id lookup**, not similarity matching: it
+re-uses a decision already recorded, so it does not weaken § 4.1's prohibition in any way. Chains
+resolve for free, because the merger re-points a chained event's `MERGED_INTO` onto the final
+survivor.
+
+`check_merges_not_undone.py` is the regression guard: it fails if any script `MERGE`s a
+`ConceptualWork` without the resolver, if a live node sits at an id a `MergeEvent` says was
+folded away, or if the `mergeevent_mergedfromid` index the resolver depends on is missing —
+without it the lookup degrades to a full label scan on every ingest row.
+
+**What this does NOT provide.** It is a record, not an undo — the duplicate's own relationships
+are gone and only the `--backup` JSON can rebuild them.
+
+This complements [ADR-0017](../docs/adr/0017-work-title-identity-principal-name-and-aliases.md)
+Decision 4 rather than duplicating it. That decision puts provenance of the **wording** on the
+assertion (`Impression.sourceTitle`); this records provenance of the **identity decision**.
 
 ## Next steps
 

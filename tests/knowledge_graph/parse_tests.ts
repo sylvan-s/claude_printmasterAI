@@ -7,6 +7,11 @@ import assert from "node:assert/strict";
 import { parseAckgDimMm } from "../../src/appraisal/knowledge_graph/dimension_parse";
 import { normalizeTitleForEmbedding, isLowInformationTitle } from "../../src/appraisal/knowledge_graph/title_normalize";
 import { titleSimFromCosine, COSINE_FLOOR, COSINE_CEIL } from "../../src/appraisal/knowledge_graph/embed_text";
+import { parseExcludedListing } from "../../src/appraisal/knowledge_graph/query_comparables";
+import { formatCatalogueRaisonneBlock, MIN_WORKS_FOR_DERIVED_CR, type ArtistCatalogueRaisonne } from "../../src/appraisal/knowledge_graph/catalogue_raisonne";
+import { formatEditionRunsForClaude, type EditionQueryResult, type EditionWorkFact } from "../../src/appraisal/knowledge_graph/edition_runs";
+import { foldAccents, cypherFold, normalizeTitleKey, cypherNormalizeTitle } from "../../src/appraisal/knowledge_graph/unaccent";
+import { catalogueMergeKey } from "../../src/appraisal/knowledge_graph/catalogue_raisonne";
 
 let passed = 0;
 let failed = 0;
@@ -115,6 +120,288 @@ test("titleSimFromCosine maps the empirical band to 0..1", () => {
   assert.ok(titleSimFromCosine(0.99) === 1); // clamped
   const mid = titleSimFromCosine((COSINE_FLOOR + COSINE_CEIL) / 2);
   assert.ok(Math.abs(mid - 0.5) < 1e-9);
+});
+
+// ── backtest self-match guard (ADR-0016) ────────────────────────────────────
+// testingExcludeSourceListing is PROSE, not a URL. The first cut of the comps guard
+// passed it straight into an exact URL comparison, so it silently matched nothing — a
+// hole that only became load-bearing once Roseberys sale dates were backfilled and
+// Roseberys lots (which ARE the backtest pool) entered the comps corpus.
+
+test("parseExcludedListing pulls both keys out of the harness's prose string", () => {
+  const prose =
+    "Roseberys, sale A0777, lot 42 (https://www.roseberys.co.uk/bidding/A0777-prints-multiples-657/42-julian-trevelyan-tower-oxen-613230)";
+  const p = parseExcludedListing(prose);
+  assert.equal(
+    p.listingUrl,
+    "https://www.roseberys.co.uk/bidding/A0777-prints-multiples-657/42-julian-trevelyan-tower-oxen-613230",
+  );
+  assert.deepEqual(p.saleLot, { saleId: "A0777", lotNumber: 42 });
+});
+
+test("parseExcludedListing does not swallow the closing paren into the URL", () => {
+  const p = parseExcludedListing("sale A1, lot 7 (https://example.com/a/b)");
+  assert.equal(p.listingUrl, "https://example.com/a/b");
+});
+
+test("parseExcludedListing degrades to nulls rather than throwing", () => {
+  assert.deepEqual(parseExcludedListing(null), { listingUrl: null, saleLot: null });
+  assert.deepEqual(parseExcludedListing(""), { listingUrl: null, saleLot: null });
+  assert.deepEqual(parseExcludedListing("no keys in here"), { listingUrl: null, saleLot: null });
+});
+
+test("parseExcludedListing finds a bare URL with no sale/lot phrasing", () => {
+  const p = parseExcludedListing("https://www.roseberys.co.uk/bidding/x/1-y-2");
+  assert.equal(p.listingUrl, "https://www.roseberys.co.uk/bidding/x/1-y-2");
+  assert.equal(p.saleLot, null);
+});
+
+
+// ---- Stage 2b catalogue raisonné index block ---------------------------------------
+
+function cr(over: Partial<ArtistCatalogueRaisonne> = {}): ArtistCatalogueRaisonne {
+  return {
+    artistName: "Elisabeth Frink", queriedAs: "Elisabeth Frink",
+    references: [], unconfirmedCitations: [], unconfirmedCount: 0,
+    noneKnown: false, noneKnownCheckedAt: null, totalWorks: 342, ...over,
+  };
+}
+
+test("CR block: no lookups renders nothing at all (no wasted tokens)", () => {
+  assert.equal(formatCatalogueRaisonneBlock([]), "");
+  assert.equal(formatCatalogueRaisonneBlock([null, null]), "");
+});
+
+test("CR block: an established reference is named with its citation count", () => {
+  const out = formatCatalogueRaisonneBlock([cr({
+    references: [{ numberingPrefix: "Wiseman", title: null, works: 175, basis: "derived" }],
+  })]);
+  assert.match(out, /"Wiseman" \| cited by 175 catalogued work\(s\)/);
+  assert.match(out, /do not spend a web search asking which catalogue raisonné exists/);
+});
+
+test("CR block: an artist with citations but none above threshold is not given a reference", () => {
+  const out = formatCatalogueRaisonneBlock([cr({
+    artistName: "Banksy", queriedAs: "Banksy", totalWorks: 788,
+    unconfirmedCitations: [{ numberingPrefix: "V.", title: null, works: 1, basis: "derived" }],
+    unconfirmedCount: 1,
+  })]);
+  assert.match(out, /No catalogue raisonné citations ingested for this artist/);
+  assert.match(out, /Do not cite these without verifying/);
+});
+
+test("CR block: the unconfirmed tail is summarised by count, never listed in full", () => {
+  // Picasso really does have 295 of these; listing them cost more context than the block saves.
+  const out = formatCatalogueRaisonneBlock([cr({
+    references: [{ numberingPrefix: "Bloch", title: null, works: 520, basis: "derived" }],
+    unconfirmedCitations: [
+      { numberingPrefix: "M.A.", title: null, works: 1, basis: "derived" },
+      { numberingPrefix: "Czw", title: null, works: 2, basis: "derived" },
+    ],
+    unconfirmedCount: 295,
+  })]);
+  assert.match(out, /Plus 295 thinly-cited citation\(s\)/);
+  assert.ok(out.length < 1200, `block should stay compact, was ${out.length} chars`);
+});
+
+test("CR block: a recorded none-known result tells the specialist not to re-search", () => {
+  const out = formatCatalogueRaisonneBlock([cr({
+    artistName: "Banksy", queriedAs: "Banksy", noneKnown: true,
+    noneKnownCheckedAt: "2026-09-09T10:00:00.000Z",
+  })]);
+  assert.match(out, /NO CATALOGUE RAISONNÉ KNOWN/);
+  assert.match(out, /checked 2026-09-09/);
+  assert.match(out, /Do not spend searches re-establishing this/);
+});
+
+test("CR block: a written-back reference carries its research provenance", () => {
+  const out = formatCatalogueRaisonneBlock([cr({
+    references: [{
+      numberingPrefix: "Wiseman", title: "The Prints of Elisabeth Frink", works: 0,
+      basis: "recorded", sourceUrl: "https://example.org/frink",
+    }],
+  })]);
+  assert.match(out, /recorded by earlier Stage 2b research — https:\/\/example\.org\/frink/);
+  assert.match(out, /The Prints of Elisabeth Frink/);
+});
+
+test("CR block: the graph's canonical spelling is shown when it differs from the query", () => {
+  const out = formatCatalogueRaisonneBlock([cr({ artistName: "Pablo Picasso", queriedAs: "Picasso" })]);
+  assert.match(out, /Pablo Picasso \(queried as "Picasso"\)/);
+});
+
+test("MIN_WORKS_FOR_DERIVED_CR is above 1 — a single citation is the documented noise case", () => {
+  assert.ok(MIN_WORKS_FOR_DERIVED_CR > 1);
+});
+
+
+// ---- Stage 2b edition tool result -------------------------------------------------
+
+function work(over: Partial<EditionWorkFact> = {}): EditionWorkFact {
+  return { workTitle: "The Beach Boys", matchType: "exact", declaredSizes: [50], runCount: 1,
+           years: [1964], impressions: 3, copyTypes: { numbered: 3 }, ...over };
+}
+function ed(over: Partial<EditionQueryResult> = {}): EditionQueryResult {
+  const works = over.works ?? [work()];
+  return {
+    artistName: "Peter Blake", queriedAs: "Peter Blake", workTitle: "The Beach Boys",
+    works, multiEditionWorks: works.filter(w => w.declaredSizes.length > 1).map(w => w.workTitle),
+    copyTypeTotals: { numbered: 3 }, coverageNote: "partial coverage", ...over,
+  };
+}
+
+test("editions: a null result reads as missing coverage, not as a finding", () => {
+  const out = formatEditionRunsForClaude(null);
+  assert.match(out, /Absence of coverage, not evidence about the edition/);
+});
+
+test("editions: one size on one work raises no multi-edition warning", () => {
+  const out = formatEditionRunsForClaude(ed());
+  assert.doesNotMatch(out, /SEVERAL DECLARED SIZES/);
+  assert.match(out, /declaredSize: 50/);
+});
+
+test("editions: two sizes on ONE work is the signal, and says do not average", () => {
+  const out = formatEditionRunsForClaude(ed({ works: [work({ declaredSizes: [100, 400] })] }));
+  assert.match(out, /SEVERAL DECLARED SIZES ON ONE WORK/);
+  assert.match(out, /Do not average them or pick one/);
+  assert.match(out, /lettered editions/);
+  assert.match(out, /declaredSize: 100 \/ 400/);
+});
+
+test("editions: differing sizes across DIFFERENT works raise no warning", () => {
+  // The bug this guards: an artist-wide sample of Banksy returned 150 and 750 for two
+  // unrelated prints and reported it as competing editions of one image.
+  const out = formatEditionRunsForClaude(ed({
+    workTitle: null,
+    works: [work({ workTitle: "Laugh Now", declaredSizes: [150] }),
+            work({ workTitle: "Weston Super Mare", declaredSizes: [750] })],
+  }));
+  assert.doesNotMatch(out, /SEVERAL DECLARED SIZES/);
+  assert.match(out, /DIFFERENT works, so their sizes are not comparable/);
+});
+
+test("editions: proofs are flagged as outside the numbered edition", () => {
+  const out = formatEditionRunsForClaude(ed({ copyTypeTotals: { numbered: 20, AP: 4, BAT: 1 } }));
+  assert.match(out, /AP=4/);
+  assert.match(out, /sit OUTSIDE the numbered edition/);
+});
+
+test("editions: a provenance note ingested as a title is truncated, not dumped", () => {
+  const long = "Note: " + "x".repeat(500);
+  const out = formatEditionRunsForClaude(ed({ works: [work({ workTitle: long })] }));
+  assert.ok(out.length < 900, `expected a compact block, got ${out.length} chars`);
+  assert.match(out, /…/);
+});
+
+
+// ---- accent folding ---------------------------------------------------------------
+
+test("foldAccents fixes the measured miss: Peintre et Modele == Peintre et Modèle", () => {
+  assert.equal(foldAccents("Peintre et Modèle"), foldAccents("Peintre et Modele"));
+  assert.equal(foldAccents("Peintre et Modèle"), "peintre et modele");
+});
+
+test("foldAccents handles codepoints NFD cannot decompose", () => {
+  // ø, æ, œ, ß, ð, đ, ł are single indivisible codepoints — NFD alone leaves them intact.
+  assert.equal(foldAccents("Munch Løten"), "munch loten");
+  assert.equal(foldAccents("Æsop"), "aesop");
+  assert.equal(foldAccents("Œuvre"), "oeuvre");
+  assert.equal(foldAccents("Straße"), "strasse");
+  assert.equal(foldAccents("Łódź"), "lodz");
+});
+
+test("foldAccents covers the artist names this graph actually holds", () => {
+  assert.equal(foldAccents("Joan Miró"), "joan miro");
+  assert.equal(foldAccents("Käthe Kollwitz"), "kathe kollwitz");
+  assert.equal(foldAccents("Édouard Manet"), "edouard manet");
+});
+
+test("foldAccents leaves plain ASCII untouched apart from case", () => {
+  assert.equal(foldAccents("The Beach Boys"), "the beach boys");
+});
+
+test("cypherFold folds the stored side to match the folded parameter", () => {
+  const expr = cypherFold("cw.name");
+  assert.ok(expr.startsWith("replace("), "should be a replace() chain");
+  assert.ok(expr.includes("toLower(cw.name)"), "should lowercase the property first");
+  assert.ok(expr.includes("'è','e'"), "should fold e-grave");
+  assert.ok(expr.includes("'ß','ss'"), "should carry multi-char expansions");
+});
+
+test("the TS and Cypher sides fold the SAME table, so they cannot drift", () => {
+  // Every mapping foldAccents applies must also appear in the generated Cypher.
+  const expr = cypherFold("x");
+  for (const ch of ["à", "é", "ï", "ô", "ü", "ñ", "ç", "ø", "æ", "œ", "ß", "ł"]) {
+    assert.ok(expr.includes(`'${ch}',`), `Cypher chain missing ${ch}`);
+    assert.notEqual(foldAccents(ch), ch, `TS fold missing ${ch}`);
+  }
+});
+
+// ---- catalogue merge key ----------------------------------------------------------
+
+test("catalogueMergeKey folds a trailing year: Wiseman 1998 -> Wiseman", () => {
+  // The observed fork: the graph held "Wiseman" (106 entries), Stage 2b wrote "Wiseman 1998".
+  assert.equal(catalogueMergeKey("Wiseman 1998"), catalogueMergeKey("Wiseman"));
+  assert.equal(catalogueMergeKey("Bloch 1899"), catalogueMergeKey("Bloch"));
+  assert.equal(catalogueMergeKey("Physick, 1963"), catalogueMergeKey("Physick"));
+});
+
+test("catalogueMergeKey does NOT merge catalogues differing by a word", () => {
+  // "Cramer" and "Cramer Books" are genuinely different catalogues.
+  assert.notEqual(catalogueMergeKey("Cramer"), catalogueMergeKey("Cramer Books"));
+  assert.notEqual(catalogueMergeKey("Wiseman"), catalogueMergeKey("Wiseman Supplement"));
+});
+
+test("catalogueMergeKey strips only ONE trailing year, never an interior number", () => {
+  assert.equal(catalogueMergeKey("Bloch 1899"), "bloch");
+  // An entry number that is not year-shaped is left alone.
+  assert.equal(catalogueMergeKey("Delteil 42"), "delteil 42");
+  // A catalogue whose name genuinely ends in a non-year number keeps it.
+  assert.equal(catalogueMergeKey("Kelpra Prints"), "kelpra prints");
+});
+
+test("catalogueMergeKey is accent- and case-insensitive", () => {
+  assert.equal(catalogueMergeKey("Ginestet & Pouillon"), catalogueMergeKey("ginestet & pouillon"));
+  assert.equal(catalogueMergeKey("Reuße 2001"), catalogueMergeKey("Reusse"));
+});
+
+
+// ---- title identity normalisation ---------------------------------------------------
+// 29.9% of ConceptualWork nodes are variant-titled duplicates of another work by the same
+// artist. Folding at query time recovers a work's own sales at the same_work comp tier.
+
+test("normalizeTitleKey collapses the observed duplicate variants", () => {
+  const same = (a: string, b: string) => normalizeTitleKey(a) === normalizeTitleKey(b);
+  assert.ok(same("'Durham Wharf'", "Durham Wharf"));
+  assert.ok(same("The Lock-Keeper's Cottage", "The Lock Keeper\u2019s Cottage"), "ASCII vs curly apostrophe");
+  assert.ok(same("Blue Brown Interweave", "Blue & Brown Interweave"));
+  assert.ok(same("Rythmes Couleurs", "Rythmes-couleurs"));
+  assert.ok(same("Peintre et Mod\u00e8le", "peintre et modele"), "accents too");
+  assert.ok(same("Untitled (Composition)", "Untitled Composition"));
+});
+
+test("normalizeTitleKey does NOT collapse genuinely different works", () => {
+  const same = (a: string, b: string) => normalizeTitleKey(a) === normalizeTitleKey(b);
+  // Series plates differ by a real token, not punctuation — merging them would attribute
+  // one plate's sales to another.
+  assert.ok(!same("Spinning Man I", "Spinning Man II"));
+  assert.ok(!same("Plate 4", "Plate 5"));
+  assert.ok(!same("Flag (Silver)", "Flag (Gold)"));
+});
+
+test("normalizeTitleKey collapses whitespace rather than leaving gaps", () => {
+  assert.equal(normalizeTitleKey("  A -- B  "), "a b");
+  assert.equal(normalizeTitleKey("A&B"), "a b");
+});
+
+test("cypherNormalizeTitle escapes quote and backslash for a Cypher literal", () => {
+  // An unescaped backslash ends the string literal early and corrupts the rest of the
+  // query — it surfaces as a syntax error pointing at an unrelated line, so it is worth
+  // pinning rather than discovering again.
+  const c = cypherNormalizeTitle("cw.name");
+  assert.ok(c.includes("\\'"), "apostrophe must be backslash-escaped");
+  assert.ok(c.startsWith("trim(") && c.includes("toLower(trim(cw.name))"));
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -14,6 +14,7 @@ import {
   resolveCustomPrompt,
   VISUAL_EXTRACTION_SYSTEM_PROMPT,
   ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT,
+  ATTRIBUTION_EVIDENCE_PRERESOLVED_SUFFIX,
   ATTRIBUTION_RESEARCH_SYSTEM_PROMPT,
   VALUATION_REPORT_SYSTEM_PROMPT,
   APPRAISER_INPUT_SYSTEM_PROMPT,
@@ -21,7 +22,19 @@ import {
   injectTaskProfile,
 } from "./prompts";
 import { Scenario } from "./routing";
-import { runEvidenceTree, emptyEvidenceOutput, type EvidenceAgentOutput } from "./stage2a_evidence";
+import { runEvidenceTree, emptyEvidenceOutput, normalizeEvidenceBlocks, type EvidenceAgentOutput } from "./stage2a_evidence";
+import {
+  buildStage2aQueryPlan,
+  executeStage2aQueryPlan,
+  renderStage2aGraphFacts,
+  applyCandidateFacts,
+  clearGraphCells,
+  applyObservedDims,
+  factsForName,
+  lookupLateCandidate,
+  titlePreFilter,
+  type Stage2aGraphFacts,
+} from "./stage2a_query_plan.js";
 import {
   translateSchemaToStandardJsonSchema,
   VISUAL_EXTRACTION_SCHEMA,
@@ -36,8 +49,11 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryImageEmbeddingMatches } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery, queryArtistDinoFloor } from "./knowledge_graph/index.js";
+import { assessComps, formatCompStorability, type CompStorabilityReport } from "./comp_storability.js";
+import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
+import type { StyleConsistencyEvidence } from "./two_pass_attribution";
 import { getImageEmbeddings } from "./embedding_client.js";
 import { techniqueFamily } from "./two_pass_attribution";
 import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../shared/text_extraction";
@@ -127,6 +143,33 @@ export interface AppraisalMethod {
   appraise(input: AppraisalInput): Promise<PrintAnalysisReport>;
 }
 
+/**
+ * One observable step of the Stage 2a ACKG tool loop.
+ *
+ * The loop used to write these straight to console.log, which made the queries the agent
+ * actually ran visible while a run was in flight and unavailable afterwards — the stored
+ * result recorded the verdict but not the questions that produced it. Routing them through
+ * an overridable hook lets a test harness record them (tests/backtest/evidence_capture.ts)
+ * without changing what production prints: `onAckgLoopEvent`'s default emits exactly the
+ * strings it always did.
+ */
+export interface AckgLoopEvent {
+  round: number;
+  kind: "reasoning" | "call" | "result" | "stop" | "max_rounds";
+  toolName?: string;
+  /** The tool-call arguments the model chose. */
+  input?: unknown;
+  /** Full reasoning text — the default handler truncates for the log, the event does not. */
+  reasoning?: string;
+  /** Pre-formatted result summary, so the logged line stays identical to before. */
+  summary?: string;
+  /** Rows/candidates returned. */
+  count?: number;
+  error?: string;
+  roundsUsed?: number;
+  maxRounds?: number;
+}
+
 export interface AppraisalMethodConfig {
   id: string;
   name: string;
@@ -145,6 +188,15 @@ export interface AppraisalMethodConfig {
    *  Shadow-run only — its result is attached to the report but never read by Stage 2a/2b/3. */
   enableEmbeddingMatch?: boolean;
   stage2aModel?: string;
+  /** Stage 2a resolves its ACKG queries in code (src/appraisal/stage2a_query_plan.ts) and
+   *  hands the model the answers, instead of offering it the query_ackg tool loop.
+   *
+   *  DEFAULT ON as of 2026-09-11 (ADR-0018). Set explicitly false to fall back to the tool
+   *  loop. The stability protocol decided it: Haiku 4.5 on the plan agrees with its own
+   *  majority 95% of the time over 5 lots x 4 reps with 0 degraded runs, against Sonnet 4.6
+   *  on the loop at 80% — and does it for $0.0122 a lot against $0.0728. Leaving the loop as
+   *  the default would mean shipping the less stable and more expensive of the two. */
+  deterministicStage2aQueries?: boolean;
   stage2bModel?: string;
   stage2Model?: string;
   stage3Model?: string;
@@ -157,6 +209,30 @@ export interface AppraisalMethodConfig {
 function isClaude(model: string): boolean {
   return model.toLowerCase().startsWith("claude");
 }
+
+/**
+ * Alibaba/QwenCloud expose an ANTHROPIC-compatible Messages API at /apps/anthropic, not just
+ * an OpenAI-compatible one. That is the better target: the Stage 2a loop's control flow —
+ * three exits, refusal budget, constraint gate — was derived empirically against the
+ * Anthropic wire format, so pointing it at a different base URL reuses all of it instead of
+ * re-deriving it in a second dialect.
+ *
+ * Verified live 2026-09-10: 200 OK for qwen-plus, native Messages response shape, and usage
+ * carrying cache_creation_input_tokens / cache_read_input_tokens, so recordUsage needs no
+ * change. Both x-api-key and Authorization: Bearer are accepted; x-api-key matches what
+ * postAnthropicMessages already sends.
+ *
+ * The base URL deliberately has no trailing /v1 — the caller appends /v1/messages. Alibaba's
+ * own docs flag this: a base ending in /v1 yields /v1/v1/messages and a 404.
+ */
+const DASHSCOPE_ANTHROPIC_BASE_URL =
+  process.env.DASHSCOPE_ANTHROPIC_BASE_URL || "https://dashscope-intl.aliyuncs.com/apps/anthropic";
+
+/** Bare Qwen model IDs run on DashScope's Anthropic-compatible endpoint. */
+export function anthropicCompatBaseUrl(model: string): string | null {
+  return /^qwen[0-9._-]*(-|$)/.test(model.toLowerCase()) ? DASHSCOPE_ANTHROPIC_BASE_URL : null;
+}
+
 
 function getCurrencySymbol(code: string): string {
   if (code === "USD") return "$";
@@ -239,12 +315,127 @@ const sleepMs = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const anthropicBackoffMs = (attempt: number) =>
   Math.min(30_000, 1000 * 2 ** attempt) + Math.floor(Math.random() * 500);
 
+/**
+ * Per-run token accounting. The pipeline previously recorded nothing about what it spent, so
+ * "which stage is expensive" could only be guessed at. Every Anthropic call reports usage;
+ * this just keeps the tally and prints it, per label, at the end of a run.
+ *
+ * Prices are per million tokens, Sonnet 4.6 / Haiku 4.5 list at 2026-09. Cache writes cost
+ * 1.25x input, cache reads 0.1x — which is the whole point of the cache_control breakpoints.
+ */
+const TOKEN_PRICES: Record<string, { in: number; out: number }> = {
+  "claude-opus-4-8": { in: 15, out: 75 },
+  "claude-sonnet-4-6": { in: 3, out: 15 },
+  "claude-haiku-4-5": { in: 0.8, out: 4 },
+  // UNVERIFIED — Groq does not publish per-model pricing on any page reachable without a
+  // console login, so these are placeholders and every Qwen cost figure derived from them
+  // is an estimate, not a measurement. Set them from console.groq.com/settings/billing
+  // before quoting a Qwen-vs-Haiku cost comparison.
+  // DashScope (Alibaba Model Studio), pay-as-you-go. Also unverified: Alibaba publishes
+  // rates in the Model Studio console per region and per model snapshot, not on a page
+  // reachable without a login. qwen-plus is an alias, so its rate can move under you without
+  // the ID changing — but NOT, as previously recorded here, an alias onto the current -plus
+  // model. DashScope's /models listing (2026-09-11) shows the qwen-plus alias with its own
+  // dated snapshots ending at qwen-plus-2025-12-01, while qwen3.5/3.6/3.7-plus are
+  // separately named. A "qwen-plus" result is therefore a reading of a ~9-month-old
+  // snapshot, not of the current generation; use an explicit qwen3.N-plus ID to test that.
+  "qwen-plus": { in: 0.4, out: 1.2 },
+  // qwen3.8-max — the current head of the -max line (snapshot qwen3.8-max-0902, listed by
+  // DashScope's /models on 2026-09-10). The rate below is the widely-quoted qwen3-max
+  // first-tier international figure carried forward, NOT a reading of the billing console:
+  // it is here so a max-line run is not silently priced at Sonnet's DEFAULT_PRICE, which
+  // would overstate it several-fold. Treat every USD figure for this model as indicative.
+  "qwen3.8-max": { in: 1.2, out: 6 },
+  // qwen3-14b — open-weight dense 14B, the smallest class DashScope still serves through
+  // this endpoint (2.5-generation IDs return AccessDenied). Rate is indicative, same
+  // caveat as every other entry below the Anthropic ones.
+  "qwen3-14b": { in: 0.35, out: 1.4 },
+  // qwen3.7-plus — the current mid-tier, and the one the bare "qwen-plus" alias does NOT
+  // reach (see above). Indicative rate, same caveat.
+  "qwen3.7-plus": { in: 0.4, out: 1.2 },
+};
+/** Model IDs whose TOKEN_PRICES entry is a guess — cost columns for these are estimates,
+ *  not measurements, and must not be quoted in a cost comparison until set from the
+ *  provider's billing console. */
+export const UNVERIFIED_PRICE_MODELS = new Set([
+  "qwen-plus",
+  "qwen3.8-max",
+  "qwen3-14b",
+  "qwen3.7-plus",
+]);
+const DEFAULT_PRICE = { in: 3, out: 15 };
+
+export interface CallUsage {
+  label: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheWriteTokens: number;
+  cacheReadTokens: number;
+  costUsd: number;
+}
+
+const usageLog: CallUsage[] = [];
+
+export function recordUsage(label: string, model: string, usage: any): void {
+  if (!usage) return;
+  const price = TOKEN_PRICES[model] ?? DEFAULT_PRICE;
+  const inputTokens = usage.input_tokens ?? 0;
+  const outputTokens = usage.output_tokens ?? 0;
+  const cacheWriteTokens = usage.cache_creation_input_tokens ?? 0;
+  const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
+  const costUsd =
+    (inputTokens * price.in + cacheWriteTokens * price.in * 1.25 + cacheReadTokens * price.in * 0.1 + outputTokens * price.out) /
+    1_000_000;
+  usageLog.push({ label, model, inputTokens, outputTokens, cacheWriteTokens, cacheReadTokens, costUsd });
+}
+
+export function resetUsage(): void {
+  usageLog.length = 0;
+}
+
+/** Group by label so the answer is "which STAGE costs", not "which call". */
+export function usageSummary(): { rows: CallUsage[]; byLabel: Record<string, CallUsage & { calls: number }>; totalUsd: number } {
+  const byLabel: Record<string, CallUsage & { calls: number }> = {};
+  for (const u of usageLog) {
+    const b = (byLabel[u.label] ??= { ...u, inputTokens: 0, outputTokens: 0, cacheWriteTokens: 0, cacheReadTokens: 0, costUsd: 0, calls: 0 });
+    b.calls++;
+    b.inputTokens += u.inputTokens;
+    b.outputTokens += u.outputTokens;
+    b.cacheWriteTokens += u.cacheWriteTokens;
+    b.cacheReadTokens += u.cacheReadTokens;
+    b.costUsd += u.costUsd;
+  }
+  return { rows: [...usageLog], byLabel, totalUsd: usageLog.reduce((t, u) => t + u.costUsd, 0) };
+}
+
+export function printUsageSummary(): void {
+  const { byLabel, totalUsd } = usageSummary();
+  const entries = Object.values(byLabel).sort((a, b) => b.costUsd - a.costUsd);
+  if (!entries.length) return;
+  console.log(`\n[Cost] per-stage token usage (cache reads billed at 0.1x, writes at 1.25x)`);
+  console.log(`[Cost] ${"stage".padEnd(26)} ${"calls".padStart(5)} ${"in".padStart(9)} ${"cacheW".padStart(8)} ${"cacheR".padStart(8)} ${"out".padStart(8)} ${"USD".padStart(8)}  share`);
+  for (const e of entries) {
+    const share = totalUsd > 0 ? `${((100 * e.costUsd) / totalUsd).toFixed(0)}%` : "-";
+    console.log(
+      `[Cost] ${e.label.slice(0, 26).padEnd(26)} ${String(e.calls).padStart(5)} ${e.inputTokens.toLocaleString().padStart(9)} ` +
+        `${e.cacheWriteTokens.toLocaleString().padStart(8)} ${e.cacheReadTokens.toLocaleString().padStart(8)} ` +
+        `${e.outputTokens.toLocaleString().padStart(8)} ${e.costUsd.toFixed(4).padStart(8)}  ${share.padStart(5)}`,
+    );
+  }
+  console.log(`[Cost] TOTAL $${totalUsd.toFixed(4)}\n`);
+}
+
 export async function postAnthropicMessages(
   apiKey: string,
   body: Record<string, unknown>,
-  opts: { betaHeader?: string; label?: string; maxAttempts?: number } = {},
+  opts: { betaHeader?: string; label?: string; maxAttempts?: number; baseUrl?: string } = {},
 ): Promise<any> {
   const { betaHeader, label = "Anthropic", maxAttempts = 4 } = opts;
+  // Anthropic-compatible providers (Alibaba/QwenCloud at /apps/anthropic) speak the same
+  // wire format, so only the origin changes. Everything below — retry/backoff, the
+  // content-filter classifier, usage recording — applies unchanged.
+  const endpoint = `${opts.baseUrl ?? "https://api.anthropic.com"}/v1/messages`;
   const headers: Record<string, string> = {
     "x-api-key": apiKey,
     "anthropic-version": "2023-06-01",
@@ -257,7 +448,7 @@ export async function postAnthropicMessages(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let response: Response;
     try {
-      response = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers, body: payload });
+      response = await fetch(endpoint, { method: "POST", headers, body: payload });
     } catch (err: any) {
       lastNetworkErr = err;
       if (attempt >= maxAttempts) break;
@@ -267,12 +458,41 @@ export async function postAnthropicMessages(
       continue;
     }
 
-    if (response.ok) return response.json();
+    if (response.ok) {
+      const json = await response.json();
+      recordUsage(label, String((body as any).model ?? "unknown"), (json as any)?.usage);
+      return json;
+    }
 
     const errorText = await response.text();
 
     if (response.status === 400 && /content[ _-]?filter|content policy|blocked by .*polic/i.test(errorText)) {
       throw new AnthropicContentFilterError(`${label}: output blocked by content filtering — ${errorText.slice(0, 300)}`);
+    }
+
+    // Anthropic has begun rejecting `temperature` on some models ("`temperature` is
+    // deprecated for this model" — observed on claude-opus-4-8, 2026-09-10, which took down
+    // Stage 1a and with it every full-pipeline run). Detected from the response rather than
+    // gated on a hardcoded model list, so the next model to drop it needs no code change.
+    // Retried once, in place, because the request is otherwise valid.
+    if (response.status === 400 && /temperature.*(deprecated|not supported|unsupported)/i.test(errorText)
+        && "temperature" in body) {
+      console.warn(`[${label}] model rejects \`temperature\` — retrying without it`);
+      const { temperature, ...withoutTemp } = body as Record<string, unknown>;
+      return postAnthropicMessages(apiKey, withoutTemp, { ...opts, maxAttempts: 1 });
+    }
+
+    // DashScope's smaller hybrid-reasoning models (qwen3-14b, -8b, -32b, the 30b-a3b MoEs)
+    // reject every non-streaming call unless thinking is explicitly switched off. Their own
+    // parameter name is `enable_thinking`, but the Anthropic-compatible endpoint does not
+    // read it at the top level — it wants Anthropic's native `thinking` block, so the error
+    // text names a parameter that does not work and the fix is a differently-spelled one.
+    // Detected from the response rather than gated on a model list, same as the temperature
+    // case above.
+    if (response.status === 400 && /enable_thinking must be set to false/i.test(errorText)
+        && !("thinking" in body)) {
+      console.warn(`[${label}] model requires thinking disabled for non-streaming — retrying with thinking.type=disabled`);
+      return postAnthropicMessages(apiKey, { ...body, thinking: { type: "disabled" } }, { ...opts, maxAttempts: 1 });
     }
 
     const retryable = response.status === 429 || response.status === 529 || response.status >= 500;
@@ -533,14 +753,165 @@ const HYPOTHESIS_WARNING =
   "⚠️ HYPOTHESIS ONLY — Stage 1b reverse image search result. Must be verified against VEA visual evidence (signatures, inscriptions, technique) before use in attribution. Do not treat as confirmed attribution.";
 const STAGE1C_MODEL = "claude-haiku-4-5";
 
+// Stage 3 ACKG comparables window (ADR-0016). Print prices move enough that a 2003 sale is
+// a poor guide to today's hammer; 2015 keeps ~a decade of history without letting the
+// pre-2010 tail dominate an artist whose market has since re-rated.
+const STAGE3_COMPS_SINCE = "2015-01-01";
+/**
+ * The physical facts Stage 1c extracted from the appraiser's notes, formatted for the
+ * later stages.
+ *
+ * Stage 2a has read these since ADR-0004, but Stage 2b and Stage 3 never received the Stage
+ * 1c result at all — both took only `vea`. With Stage 1a skipped that means they were handed
+ * an empty object under a heading reading "STAGE 1 VISUAL EXTRACTION (condition, technique,
+ * dimensions, paper)", and behaved accordingly: Stage 2b reported "no physical observation
+ * of any kind exists" and refused to attribute a lot Stage 2a had named on strong evidence,
+ * and Stage 3 priced with no technique, dimensions or condition to work from.
+ *
+ * These are CLAIMS from a catalogue description, not observations of the object, and are
+ * labelled as such — an auction house stating "etching, 60 x 83cm" is reliable about the
+ * medium and size but is not the same as having examined the print.
+ */
+function buildAppraiserPhysicalBlock(appraiserInput?: AppraiserInputResult, veaRan = true): string {
+  if (!appraiserInput) return "";
+  const a = appraiserInput;
+  const d = a.dimensionsClaim;
+  const lines = [
+    a.claimedAttribution?.technique ? `Technique / medium : ${a.claimedAttribution.technique}` : null,
+    d && (d.widthCm || d.heightCm)
+      ? `Dimensions         : ${d.widthCm ?? "?"} x ${d.heightCm ?? "?"} cm (${d.kind ?? "unspecified"})`
+      : null,
+    a.paperOrSupport ? `Paper / support    : ${a.paperOrSupport}` : null,
+    a.inscriptionClaims?.status !== "absent"
+      ? `Inscriptions       : ${[
+          a.inscriptionClaims?.signatureClaim,
+          a.inscriptionClaims?.editionClaim,
+          a.inscriptionClaims?.editionSizeClaim != null ? `edition of ${a.inscriptionClaims.editionSizeClaim}` : null,
+          a.inscriptionClaims?.monogramOrStampClaim,
+        ]
+          .filter(Boolean)
+          .join("; ") || "stated but unspecific"}`
+      : null,
+    a.conditionClaims?.length ? `Condition          : ${a.conditionClaims.map((c) => c.claim).join("; ")}` : null,
+    a.catalogueReferences?.length ? `Catalogue refs     : ${a.catalogueReferences.map((c: any) => c.ref).join(", ")}` : null,
+  ].filter(Boolean);
+  if (!lines.length) return "";
+
+  return (
+    `\n\nSTAGE 1c APPRAISER-STATED PHYSICAL FACTS (extracted from the catalogue/appraiser notes).\n` +
+    `These are CLAIMS about the object, not observations of it — reliable about medium, size and ` +
+    `edition markings, but not a substitute for physical examination.\n` +
+    lines.map((l) => `  ${l}`).join("\n") +
+    (veaRan
+      ? `\nWhere these conflict with VEA's observations, say so explicitly rather than silently preferring one.`
+      : `\n⚠️ Stage 1a (VEA) did not run, so these are the ONLY physical facts available. Treat them as the ` +
+        `technique/dimension/condition evidence for this lot — do not report that no physical information exists.`) +
+    `\n`
+  );
+}
+
+/**
+ * Does a query_ackg call actually narrow anything?
+ *
+ * Requiring "at least one graph round" before an early report was discharged with
+ * `{periodStartYear: 1880, periodEndYear: 2025}` — an unfiltered date sweep returning the
+ * graph's most prolific artists (Picasso 1601, Miro 1035, Warhol 1033) regardless of the
+ * lot. The agent said so itself: "the most constrained meaningful call possible... then
+ * report honestly that the result is uninformative." That fills kOeuvre with a number that
+ * has nothing to do with the print, which is worse than leaving it null — absence of data
+ * is the honest answer, manufactured data is not.
+ */
+/**
+ * Does a query_ackg call narrow anything? Exported for test: this predicate is now a GATE
+ * (an unconstrained call is refused rather than executed), so its boundaries decide what
+ * reaches the evidence agent's context.
+ */
+export function isConstrainedAckgQuery(input: any): boolean {
+  if (!input || typeof input !== "object") return false;
+  return ["technique", "region", "subject", "paper", "workTitle"].some(
+    (k) => typeof input[k] === "string" && input[k].trim().length > 0,
+  );
+}
+
+/** Graph rounds Stage 2a must run before an unforced report is accepted. */
+const MIN_ACKG_ROUNDS_BEFORE_REPORT = 1;
+/**
+ * How many times an early report is pushed back before the escape hatch opens.
+ *
+ * Was effectively 1. The refusal text deliberately offers a way out — "if you genuinely
+ * have nothing to filter on, report as-is and leave the cells empty" — because forcing a
+ * junk query is worse than honest absence. But a single refusal makes that hatch trivially
+ * cheap: on A0793/303 (Picasso) a weaker model reported, was refused, and reported again
+ * unchanged with ZERO graph rounds, landing A4/MEDIUM where the same lot reaches A2/HIGH
+ * with corroboration — and dropping out of the Scenario 2 authentication-risk profile that
+ * a Picasso print most needs. It had technique, region and a candidate title available; it
+ * simply declined to use them.
+ *
+ * Two refusals keeps the hatch for the genuinely evidence-free lot it was written for while
+ * making it something the agent has to insist on rather than fall through.
+ */
+const MAX_REPORT_REFUSALS = 2;
+
+/**
+ * How many times a structurally incomplete final report is handed back before the stage
+ * degrades. Two, for the same reason MAX_REPORT_REFUSALS is two: one retry covers the
+ * ordinary lapse, a second covers a model that needed the instruction repeated, and beyond
+ * that it is not a lapse — it is a model that cannot fill this schema, and looping only
+ * spends tokens confirming it.
+ */
+const MAX_INCOMPLETE_REPORT_RETRIES = 2;
+
+/** Hard cap on Stage 2b's web searches, matching the number its prompt asks for. */
+const STAGE2B_MAX_WEB_SEARCHES = 5;
+
+const STAGE3_COMPS_LIMIT = 40;
+/** Stage 2b reads comps to reason about, not to compute a median over, so it gets a
+ *  tighter set than Stage 3's 40 — the rows ride along in every later turn of its loop. */
+const STAGE2B_COMPS_LIMIT = 12;
+
+/**
+ * Stage 3's input is dominated by the comparables block: 40 rows x 15 fields, pretty-printed
+ * at indent 2, measured at ~18,200 input tokens on A0793/113 ($0.095, 23% of that lot's whole
+ * cost). Compacting the JSON and dropping fields a valuation judgement never reads —
+ * FX-rate plumbing, native-currency duplicates, internal sale ids — cuts that without
+ * removing a single comparable. `listingUrl` stays: the source-listing exclusion needs it.
+ */
+function compactComparableForValuation(c: any) {
+  return {
+    tier: c.tier,
+    house: c.institutionName ?? undefined,
+    date: c.saleDate ?? undefined,
+    lot: c.lotNumber ?? undefined,
+    title: c.workTitle ?? undefined,
+    techniques: c.techniques?.length ? c.techniques : undefined,
+    editionSize: c.editionSize ?? undefined,
+    realisedGBP: c.priceRealisedGBP,
+    estGBP:
+      c.estimateLowGBP != null || c.estimateHighGBP != null
+        ? [c.estimateLowGBP ?? null, c.estimateHighGBP ?? null]
+        : undefined,
+    url: c.listingUrl ?? undefined,
+  };
+}
+
+
+// Anthropic's Messages API defaults temperature to 1.0 when the key is absent. Every
+// Claude call site here used to omit it, so `AppraisalMethodConfig.temperature` was
+// honoured on the Gemini path and silently ignored on the Claude path — the 4-stage
+// configs declared 0.1 and ran at 1.0. That was the dominant source of run-to-run
+// variance in Stage 2a: three runs of the same lot chose three different ACKG queries
+// and produced three different work matches. Fallback is `??`, not `||`, so an explicit
+// temperature of 0 survives.
+const DEFAULT_CLAUDE_TEMPERATURE = 0.1;
+
 // ---------------------------------------------------------------------------
 // Stage 1d — image-embedding match (ADR-0013). Shadow-run only: computed and
 // attached to the report for visibility, never read by Stage 2a/2b/3 this pass.
 // ---------------------------------------------------------------------------
 
 const STAGE1D_INDEX_COVERAGE_NOTE =
-  "ACKG image index currently covers British Museum + Tate only (~12k images, DINOv2-Large/CLIP). " +
-  "Forum Auctions and Roseberys are not yet embedded — a weak or absent match reflects this coverage gap, not evidence against attribution.";
+  "ACKG image index currently covers Bonhams (40,224), Tate (10,208) and the British Museum (2,507) — 52,939 images on DINOv2-Large/CLIP, verified 2026-09-07. " +
+  "Roseberys and Forum Auctions are not yet embedded — a weak or absent match reflects this coverage gap, not evidence against attribution.";
 const STAGE1D_ATTRIBUTION_CAVEAT =
   "DINOv2/CLIP similarity reflects visual/stylistic closeness, not verified authorship — one corroborating " +
   "evidence point, never a standalone attribution (see ADR-0002, ADR-0013).";
@@ -621,8 +992,24 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     toolDescription: string,
     inputSchema: any
   ): Promise<any> {
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
-    if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
+    // Same Anthropic-compatible routing the Stage 2a loop uses: a bare Qwen ID runs against
+    // DashScope's /apps/anthropic endpoint with the DashScope key. Safe ONLY for stages that
+    // do not need Anthropic's server-side web_search — DashScope accepts that tool
+    // declaration with a 200 and then silently does not search, leaving the model to
+    // confabulate (measured 2026-09-10: it invented a GBP 3,486,000 Sotheby's sale for a
+    // Banksy edition print that actually trades at GBP 800-1,430). Stage 3 is pure
+    // reasoning, so it is fine; Stage 2b is not and must stay on Anthropic.
+    const compatBaseUrl = anthropicCompatBaseUrl(modelName);
+    const apiKey = compatBaseUrl
+      ? process.env.DASHSCOPE_API_KEY
+      : process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        compatBaseUrl
+          ? `DASHSCOPE_API_KEY is not set — needed to run "${modelName}" against ${compatBaseUrl}.`
+          : "Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.",
+      );
+    }
 
     // Prompt caching: `tools` and `system` render before `messages`, so a breakpoint on
     // the system block caches the (static) tool schema + system prompt together. Big win
@@ -635,12 +1022,13 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       {
         model: modelName,
         max_tokens: 4096,
+        temperature: this.config.temperature ?? DEFAULT_CLAUDE_TEMPERATURE,
         system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
         messages: [{ role: "user", content: contentBlocks }],
         tools: [{ name: toolName, description: toolDescription, input_schema: translateSchemaToStandardJsonSchema(inputSchema) }],
         tool_choice: { type: "tool", name: toolName },
       },
-      { label: `Claude ${toolName}` },
+      { label: `${compatBaseUrl ? "Qwen" : "Claude"} ${toolName}`, baseUrl: compatBaseUrl ?? undefined },
     );
 
     const toolUseBlock = data.content?.find((b: any) => b.type === "tool_use");
@@ -672,6 +1060,103 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         },
       },
       required: ["artist"],
+    },
+  };
+
+  // ---- ACKG tools for Stage 2b -------------------------------------------------
+  //
+  // Until 2026-09-09 Stage 2b's only tools were web_search and lookup_museum_collections:
+  // the one stage whose whole job is research had NO access to this project's own knowledge
+  // graph, while Stage 2a queried it freely and Stage 3 called queryAuctionComparables
+  // directly in code. So Stage 2b spent web searches rediscovering facts the graph held,
+  // and comps in particular were researched TWICE — 2b hunting them on the open web, then
+  // Stage 3 independently querying the graph and labelling 2b's findings "SECONDARY …
+  // unverified". Measured on A0793/122: 4 web comps found (3 with no price at all) for an
+  // artist with 310 dated, priced, GBP-normalised records already in the graph.
+  //
+  // Cost shape is the argument. A Stage 2a graph round reads ~8,600 cached tokens and costs
+  // cents; one web-search call on the same lot wrote 21,977 and read 46,122, because search
+  // results are bulk text that then rides along in every later turn. Per fact retrieved the
+  // graph is an order of magnitude cheaper. Adding tools does invalidate the cached prompt
+  // prefix, but that prefix is written once per lot and the searches it displaces are far
+  // larger.
+
+  /**
+   * CLIENT-side web search, as opposed to Anthropic's server-side web_search.
+   *
+   * Declared as an ordinary tool so any provider speaking the Messages API can drive it —
+   * which is the point. Anthropic's server-side tool is accepted by DashScope with a 200 and
+   * then silently not executed, so a Qwen-driven Stage 2b answers from training data: it
+   * invented a GBP 3,486,000 Sotheby's sale for a print trading at GBP 800-1,430. Supplying
+   * results as content leaves the model only the synthesis, which is the half it does well.
+   */
+  private static readonly WEB_SEARCH_TOOL = {
+    name: "web_search",
+    description:
+      "Search the web and get back extracted page content with URLs. Use it for what the " +
+      "knowledge graph does not cover: an artist or work with no ACKG records, a catalogue " +
+      "raisonné reference the ACKG index did not supply, or a recent sale too new to be " +
+      "ingested. PREFER query_ackg_comparables for prices where the graph has them — those " +
+      "records are structured, dated and premium-normalised, whereas these are page extracts " +
+      "you must read. Every figure you take from here must be attributable to one of the " +
+      "returned URLs; a price you cannot cite is not a comparable.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        query: {
+          type: "string" as const,
+          description: "Search query. Be specific — artist, title, technique, and the word " +
+            "'auction' or a house name where you want sale results.",
+        },
+      },
+      required: ["query"],
+    },
+  };
+
+  private static readonly COMPARABLES_TOOL = {
+    name: "query_ackg_comparables",
+    description:
+      "Realised auction prices from this project's own knowledge graph — 48,000+ dated, " +
+      "sold records from Bonhams (2003-2026), Roseberys London (2014-2026) and Skinner " +
+      "(2022-2026), premium-inclusive and converted to GBP at the sale-date ECB rate. " +
+      "PREFER THIS OVER web_search for comparables: these are structured verified records, " +
+      "not search snippets, and Stage 3 values the work from this same corpus. Results are " +
+      "tiered by exact match only, never similarity: same_work (the same print — strongest), " +
+      "same_artist_technique, same_artist. Coverage is uneven — 81% of artists in the graph " +
+      "have fewer than 3 priced records, and Forum Auctions is absent entirely — so an empty " +
+      "or thin result is a coverage fact and your cue to spend a web search, NOT evidence " +
+      "that the work is unsaleable or low-value.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        artistName: { type: "string" as const, description: "Candidate artist's full name, e.g. \"Peter Blake\"." },
+        workTitle: { type: "string" as const, description: "Identified work title, for the same_work tier. Omit if unknown; a generic title (\"Untitled\") is ignored." },
+        technique: { type: "string" as const, description: "Technique for the same_artist_technique tier, e.g. \"Screenprint\"." },
+        sinceDate: { type: "string" as const, description: "ISO lower bound on sale date, e.g. \"2015-01-01\". Defaults to 2015." },
+      },
+      required: ["artistName"],
+    },
+  };
+
+  private static readonly EDITION_TOOL = {
+    name: "query_ackg_editions",
+    description:
+      "Declared edition sizes and catalogued proof types (numbered/AP/PP/HC/BAT/TP) from " +
+      "this project's knowledge graph, for STEP 6. Use it before web-searching edition " +
+      "details. Returns EVERY declared size found for a work rather than one number: for " +
+      "prints, several sizes on one work usually means genuinely different editions of the " +
+      "same image — lettered editions (A/B/C/D, each its own edition of N), a later or " +
+      "posthumous edition, a restrike — which changes rarity and value substantially. " +
+      "Coverage is partial (size on 54% of runs, copyType on 79% of impressions), so an " +
+      "absent value is missing data, never evidence that no edition exists. Impression " +
+      "counts are what the graph holds — a floor on what exists, never an edition total.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        artistName: { type: "string" as const, description: "Candidate artist's full name." },
+        workTitle: { type: "string" as const, description: "Work title to narrow to. Omit for an artist-wide sample; note those are DIFFERENT works, so their sizes are not comparable to one another." },
+      },
+      required: ["artistName"],
     },
   };
 
@@ -708,12 +1193,65 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     modelName: string,
     systemInstruction: string,
     userText: string,
-    maxTokens: number = 8192
+    maxTokens: number = 8192,
+    /** Backtest circularity guard, threaded through so the graph comps Stage 2b now sees
+     *  are filtered the same way Stage 3's are — a pool lot must never be handed its own
+     *  sale record as a comparable. */
+    testingExcludeSourceListing?: string,
+    /** The artist identity Stage 2a resolved for THIS work. Its canonical name is what the
+     *  ACKG is indexed by, so it is used for any graph query about that same artist — see
+     *  canonicalArtistForQuery for why a query about a different candidate is left alone. */
+    stage2aIdentity?: { canonicalArtistName: string; alternateNames?: string[] } | null,
   ): Promise<any> {
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
-    if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
+    const compatBaseUrl = anthropicCompatBaseUrl(modelName);
+    const apiKey = compatBaseUrl
+      ? process.env.DASHSCOPE_API_KEY
+      : process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        compatBaseUrl
+          ? `DASHSCOPE_API_KEY is not set — needed to run "${modelName}" against ${compatBaseUrl}.`
+          : "Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.",
+      );
+    }
 
-    const tools = [{ type: "web_search_20250305", name: "web_search" }, MultiStageAppraiser.MUSEUM_LOOKUP_TOOL];
+    // max_uses ENFORCES the budget ATTRIBUTION_RESEARCH_SYSTEM_PROMPT already states ("at
+    // most 5 web searches total"). Without it that was a suggestion, and Stage 2b is the
+    // most expensive stage in the pipeline precisely because search results flow into the
+    // context and get cached and re-cached: measured at 23,745 cache-write + 45,814
+    // cache-read tokens on a single A0793 lot, 46% of its total cost. This changes nothing
+    // for a well-behaved run; it bounds a badly-behaved one.
+    // TESTED AND REJECTED FOR PRODUCTION 2b (qwen3-max, 2026-09-10). Giving Qwen a working
+    // client-side search removes the capability gap but not the behavioural one. Probed with
+    // a question it cannot answer from training data, it DID call the tool, Tavily returned
+    // five real sources — and it then dismissed them: "the search results appear to be
+    // fabricated or from fictional/future-dated sources (e.g. matches scheduled for 2026).
+    // In reality, as of 2024..." It reported searchedWeb: true and a probability of 0.
+    //
+    // Retrieved evidence losing to a stale parametric prior is worse for this stage than not
+    // searching at all, and it is specifically disqualifying here: the comps that matter are
+    // 2025-2026 sales, which is exactly the post-cutoff material it called fabricated.
+    // On A0793/210 it made ZERO searches and answered from graph comps alone.
+    //
+    // Anthropic's server-side web_search is used where it actually works. Everywhere else —
+    // and DashScope is the case in hand — it is accepted with a 200 and silently not run, so
+    // the client-side tool is substituted and the search happens here. Same tool NAME either
+    // way, so the prompt does not change and the two are directly comparable.
+    // FORCE_CLIENT_WEB_SEARCH=1 uses the client-side tool on Anthropic too, for A/B.
+    const useClientSearch = !!compatBaseUrl || process.env.FORCE_CLIENT_WEB_SEARCH === "1";
+    const tools = [
+      useClientSearch
+        ? MultiStageAppraiser.WEB_SEARCH_TOOL
+        : { type: "web_search_20250305", name: "web_search", max_uses: STAGE2B_MAX_WEB_SEARCHES },
+      MultiStageAppraiser.MUSEUM_LOOKUP_TOOL,
+      MultiStageAppraiser.COMPARABLES_TOOL,
+      MultiStageAppraiser.EDITION_TOOL,
+    ];
+    if (useClientSearch) {
+      resetWebSearchUsage();
+      console.log(`[4-Stage] Stage 2b using CLIENT-side web_search (${compatBaseUrl ? "compat endpoint" : "forced"})`);
+    }
+    const excludedListing = parseExcludedListing(testingExcludeSourceListing);
 
     const post = (messages: any[], forceFinal: boolean) =>
       postAnthropicMessages(
@@ -721,6 +1259,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         {
           model: modelName,
           max_tokens: maxTokens,
+          temperature: this.config.temperature ?? DEFAULT_CLAUDE_TEMPERATURE,
           // Cache the specialist system prompt (+ injected config). Reused verbatim for
           // every lot routed to the same specialist config; the web_search tool renders
           // before it and is cached alongside.
@@ -729,7 +1268,12 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           tools,
           ...(forceFinal ? { tool_choice: { type: "none" } } : {}),
         },
-        { label: "Claude web-search", betaHeader: "web-search-2025-03-05" },
+        {
+          label: compatBaseUrl ? "Qwen web-search" : "Claude web-search",
+          // The beta header is Anthropic's; a compat endpoint has no use for it.
+          betaHeader: compatBaseUrl ? undefined : "web-search-2025-03-05",
+          baseUrl: compatBaseUrl ?? undefined,
+        },
       );
 
     // Loop while Claude is still requesting client-executed tools (lookup_museum_collections).
@@ -765,6 +1309,61 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
               content = this.formatMuseumLookupForClaude(result);
             } catch (err: any) {
               content = `Museum lookup failed: ${err.message}`;
+            }
+            return { type: "tool_result", tool_use_id: b.id, content };
+          }
+          if (b.name === "web_search") {
+            const q = typeof b.input?.query === "string" ? b.input.query : "";
+            const r = await tavilySearch(q, { maxResults: SEARCH_MAX_RESULTS });
+            console.log(`[4-Stage] Stage 2b web_search "${q.slice(0, 70)}": ${r.results.length} result(s)${r.error ? ` — ${r.error.slice(0, 60)}` : ""}`);
+            return { type: "tool_result", tool_use_id: b.id, content: formatSearchForModel(r) };
+          }
+          if (b.name === "query_ackg_comparables") {
+            let content: string;
+            try {
+              const asked = String(b.input?.artistName ?? "");
+              const useName = await canonicalArtistForQuery(asked, stage2aIdentity);
+              if (useName.name !== asked) {
+                console.log(`[4-Stage] Stage 2b comparables: querying as "${useName.name}" (asked "${asked}", via ${useName.via})`);
+              }
+              const comps = await queryAuctionComparables({
+                artistName: useName.name,
+                workTitle: b.input?.workTitle ?? null,
+                technique: b.input?.technique ?? null,
+                sinceDate: b.input?.sinceDate ?? STAGE3_COMPS_SINCE,
+                limit: STAGE2B_COMPS_LIMIT,
+                excludeListingUrl: excludedListing.listingUrl,
+                excludeSaleLot: excludedListing.saleLot,
+              });
+              content =
+                `${comps.summary.count} comparable(s). Summary: ${JSON.stringify(comps.summary)}\n` +
+                `Coverage: ${comps.coverageNote}\n` +
+                JSON.stringify(comps.comparables.map(compactComparableForValuation));
+              console.log(`[4-Stage] Stage 2b query_ackg_comparables "${useName.name}": ${comps.summary.count} comp(s), median GBP ${comps.summary.medianGBP ?? "n/a"}`);
+            } catch (err: any) {
+              content = `ACKG comparables query failed: ${err.message}`;
+            }
+            return { type: "tool_result", tool_use_id: b.id, content };
+          }
+          if (b.name === "query_ackg_editions") {
+            let content: string;
+            try {
+              const askedEd = String(b.input?.artistName ?? "");
+              const useEdName = await canonicalArtistForQuery(askedEd, stage2aIdentity);
+              if (useEdName.name !== askedEd) {
+                console.log(`[4-Stage] Stage 2b editions: querying as "${useEdName.name}" (asked "${askedEd}", via ${useEdName.via})`);
+              }
+              const ed = await queryEditionRuns({
+                artistName: useEdName.name,
+                workTitle: b.input?.workTitle ?? null,
+                // Same sale the comparables query already excludes, so the edition size is
+                // not read back off the lot's own ingested catalogue entry.
+                excludeSaleId: excludedListing.saleLot?.saleId ?? null,
+              });
+              content = formatEditionRunsForClaude(ed);
+              console.log(`[4-Stage] Stage 2b query_ackg_editions "${useEdName.name}": ${ed ? `${ed.works.length} work(s), sizes ${ed.works.flatMap(w => w.declaredSizes).join("/") || "none"}` : "no match"}`);
+            } catch (err: any) {
+              content = `ACKG edition query failed: ${err.message}`;
             }
             return { type: "tool_result", tool_use_id: b.id, content };
           }
@@ -824,8 +1423,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     name: "query_ackg",
     description:
       "Query the Art Context Knowledge Graph — a Neo4j graph built from real ingested " +
-      "print records (Metropolitan Museum of Art, Roseberys, Forum Auctions; ~4,800 " +
-      "artists, ~33,700 works) — for artists whose actual catalogued output matches the " +
+      "print records (auction history: Bonhams, Roseberys, Forum Auctions, Skinner; " +
+      "institutional: Tate, Metropolitan Museum of Art, British Museum; ~97,000 records, " +
+      "~8,000 artists, ~90,900 works, verified 2026-09-08) — " +
+      "for artists whose actual catalogued output matches the " +
       "given technique/period/paper/region/subject combination. Returns candidates ranked " +
       "by supportCount (how many real matching works exist), split into institutional vs. " +
       "auction-history provenance. All parameters are optional — supply whichever you " +
@@ -833,15 +1434,21 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       "hypothesis sharpens. IMPORTANT: a zero or low supportCount is real absence-of-" +
       "population-data for that combination in this graph's current sources — it is NOT " +
       "evidence against a candidate. Coverage is strong for Western 19th-20th century " +
-      "prints and currently thin-to-absent for ukiyo-e specifically; treat a zero result " +
-      "for an East Asian candidate as a coverage gap, never as disqualifying.",
+      "prints. It is ABSENT for ukiyo-e specifically — as at 2026-09-08 the graph holds no " +
+      "Hokusai, Hiroshige, Utamaro, Kunisada or Yoshitoshi at all — so treat a zero result " +
+      "for an East Asian candidate as a coverage gap, never as disqualifying. " +
+      "THIS TOOL HAS NO artist PARAMETER and cannot be scoped to one artist — it answers " +
+      "\"which artists made work like this?\", not \"what did this artist make?\". Passing " +
+      "an artist name here is silently ignored and you will get the graph's GLOBAL top " +
+      "artists back, which reads as evidence for Picasso/Chagall/Miro on any lot. To ask " +
+      "about a NAMED artist, use query_ackg_work, which does take artist.",
     input_schema: {
       type: "object" as const,
       properties: {
-        technique: { type: "string" as const, description: "Printing technique, e.g. \"Etching\", \"Screenprint\"." },
+        technique: { type: "string" as const, description: "Printing technique. CONTROLLED VOCABULARY, matched as a case-insensitive SUBSTRING of the stored name — a synonym that is not a substring returns zero results with no error. Use one of: Lithograph, Etching, Screenprint (stored as \"Screenprint / Serigraphy\"), Aquatint, Offset lithograph, Drypoint, Woodcut, Engraving, Linocut, Wood engraving, Intaglio, Mezzotint, Photogravure, Monotype, Collage, Embossing, Giclee. In particular use \"Screenprint\", NOT \"Silkscreen\" or \"Serigraph\"; and \"Woodcut\", NOT \"Woodblock\"." },
         periodStartYear: { type: "integer" as const, description: "Inclusive lower bound on creation year." },
         periodEndYear: { type: "integer" as const, description: "Inclusive upper bound on creation year." },
-        paper: { type: "string" as const, description: "Paper type, e.g. \"wove\", \"laid\"." },
+        paper: { type: "string" as const, description: "Paper type. Controlled vocabulary, substring-matched: wove, laid, BFK, japanese, card, vellum, fabric. Anything else returns zero." },
         region: { type: "string" as const, description: "Artist nationality/region hint, e.g. \"British\", \"Japanese\"." },
         subject: { type: "string" as const, description: "Depicted subject, e.g. \"Portraits\", \"Horses\"." },
         workTitle: { type: "string" as const, description: "A specific work title to look for, e.g. \"Death of the Virgin\". Substring, case-insensitive, against catalogued work names. Use this to check whether a title from VEA text / Stage 1b / the appraiser is catalogued in the graph and to which artist — supportCount and sample works then reflect only that artist's title-matching works." },
@@ -861,7 +1468,11 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       "the physical object in hand can be checked against it (later edition, restrike, " +
       "photomechanical reproduction, medium variant). Pass `artist` AND `workTitle` (a short " +
       "distinctive fragment). Near-duplicate title rows are un-merged re-ingests — merge them. " +
-      "An empty result is absence-of-coverage, not evidence the work is fake.",
+      "An empty result is absence-of-coverage, not evidence the work is fake. " +
+      "THIS is the tool that takes an artist — query_ackg does not. When you want to know " +
+      "what a NAMED artist made, or to corroborate a named candidate against the graph, " +
+      "come here, not to query_ackg. `workTitle` may be omitted to see the artist's " +
+      "catalogued works generally.",
     input_schema: {
       type: "object" as const,
       properties: {
@@ -898,6 +1509,17 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
 
   /** Merge near-duplicate ConceptualWork rows (un-merged re-ingests) and render the
    *  catalogued technique + dimension facts the impression check needs. */
+  /**
+   * Catalogued work rows rendered into a Stage 2a tool_result. `queryAckgWorks` fetches up to
+   * 60 so `scoreWorkTitleMatches` ranks over a wide field, but every rendered row is ~6 lines
+   * of UNCACHED input that then rides along in every later round of the loop. Measured on the
+   * 2026-09-09 A0793 attributed run: Stage 2a spent 40,441 uncached input tokens across 5
+   * lots, and single calls returned all 60 rows. The rows are already sorted by computed
+   * title similarity and the agent is told to use the top match, so the tail is paid for and
+   * unread. Ranking still happens over the full set in code — only the presentation is cut.
+   */
+  private static readonly MAX_ACKG_WORK_ROWS_RENDERED = 15;
+
   private formatAckgWorksForClaude(works: AckgWorkMatch[]): string {
     if (works.length === 0) {
       return "No catalogued work matches this artist + title in the graph's current sources. " +
@@ -907,10 +1529,20 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const dl = (label: string, ds: { w: number; h: number }[]) =>
       ds.length ? `${label}=${[...new Set(ds.map((d) => `${d.w}x${d.h}mm`))].join(", ")}` : "";
     const scored = works.some((w) => w.titleSim != null);
+    const cap = MultiStageAppraiser.MAX_ACKG_WORK_ROWS_RENDERED;
+    const shown = works.slice(0, cap);
+    const suppressed = works.length - shown.length;
     const lines = [
       `${works.length} catalogued row(s)${scored ? ", ranked by computed title similarity (merge near-identical titles)" : " (merge near-identical titles)"}:`,
     ];
-    for (const w of works) {
+    if (suppressed > 0) {
+      lines.push(
+        scored
+          ? `Showing the ${shown.length} best-matching; ${suppressed} lower-similarity row(s) omitted. Re-query with a narrower workTitle or a technique/period filter if you need them.`
+          : `Showing ${shown.length} of them; ${suppressed} omitted and these are NOT ranked (no observed title was supplied to score against). Re-query with observedTitle set, or a narrower filter, if the answer is not here.`,
+      );
+    }
+    for (const w of shown) {
       const dims = [dl("plate", w.plateDimsMm), dl("image", w.imageDimsMm), dl("sheet", w.sheetDimsMm)].filter(Boolean).join("  ");
       lines.push(
         `\n"${w.workTitle}" — ${w.artistName}${w.dateLabel ? ` (${w.dateLabel})` : ""} [${w.impressionCount} impr., ${w.provenanceLayers.join("+") || "?"}]` +
@@ -922,6 +1554,82 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       );
     }
     return lines.join("\n");
+  }
+
+  /**
+   * Execute one ACKG graph tool call and render its result for the model.
+   *
+   * Provider-neutral on purpose: the Anthropic loop wraps this in tool_result content
+   * blocks and an OpenAI-shaped loop wraps it in {role:"tool"} messages, but the graph
+   * behaviour — the constraint gate, the title pre-filter, the embedding rerank, the
+   * absence-of-coverage wording — must be identical whichever model is driving. Two copies
+   * of this would drift, and the drift would be invisible: both would still return rows.
+   */
+  protected async executeGraphTool(
+    toolName: string,
+    input: any,
+    round: number,
+    /** Sale under appraisal. Its own ingested records are suppressed so the lot cannot
+     *  corroborate itself off the catalogue entry it was ingested from. */
+    excludeSaleId?: string | null,
+  ): Promise<{ content: string; isError: boolean }> {
+    this.onAckgLoopEvent({ round, kind: "call", toolName, input: input || {} });
+
+    // GATE, not just a counter. An unconstrained query_ackg — no technique, region,
+    // subject, paper or title — returns the graph's most prolific artists regardless of
+    // this lot, and that noise then sits in the agent's context looking like evidence.
+    // Observed: a Peter Blake lot received "Pablo Picasso (support=670), Marc Chagall
+    // (428), Joan Miro (417)" from a bare period sweep. Refusing costs one cheap
+    // round-trip and returns nothing misleading.
+    if (toolName === "query_ackg" && !isConstrainedAckgQuery(input)) {
+      this.onAckgLoopEvent({ round, kind: "result", toolName, count: 0, summary: "refused — unconstrained query" });
+      return {
+        isError: true,
+        content:
+          `Refused: this query carries no technique, region, subject, paper or workTitle, so it ` +
+          `would rank the graph's most prolific artists overall — Picasso, Chagall, Miro and so on ` +
+          `— with no relevance to this lot. A period range alone does not narrow anything. ` +
+          `Re-run with at least one real filter, or use query_ackg_work if you have a candidate ` +
+          `artist or title (query_ackg cannot be scoped to an artist). If you have nothing to ` +
+          `filter on at all, do not query — report with the ACKG cells honestly empty.`,
+      };
+    }
+
+    try {
+      if (toolName === "query_ackg_work") {
+        const inp = input || {};
+        const observed = inp.observedTitle || inp.workTitle || "";
+        // Derive a substring pre-filter from the observed title when the agent didn't
+        // supply one — a raw artist-only query is ORDER BY impressionCount and would drop
+        // a low-impression target work before scoring.
+        // Same rule the deterministic plan uses — one copy, so the loop and the plan
+        // cannot retrieve different rows for the same title.
+        const preFilter = inp.workTitle || titlePreFilter(observed);
+        let works = await queryAckgWorks({ ...inp, workTitle: preFilter, excludeSaleId });
+        if (works.length === 0 && preFilter) {
+          works = await queryAckgWorks({ ...inp, workTitle: undefined, excludeSaleId }); // last resort: artist only
+        }
+        if (observed && works.length) {
+          const obsFam = inp.observedTechnique ? techniqueFamily(inp.observedTechnique) : null;
+          works = await scoreWorkTitleMatches(observed, works, {
+            techniqueIncompatible: obsFam
+              ? (w) => w.techniques.length > 0 && !w.techniques.some((t) => techniqueFamily(t) === obsFam)
+              : undefined,
+          });
+        }
+        const best = works[0];
+        this.onAckgLoopEvent({ round, kind: "result", toolName, count: works.length,
+          summary: `${works.length} work row(s)${best ? ` — best: "${best.workTitle}" titleSim=${best.titleSim ?? "n/a"}` : ""}` });
+        return { content: this.formatAckgWorksForClaude(works), isError: false };
+      }
+      const result = await queryAckg({ ...(input || {}), excludeSaleId });
+      this.onAckgLoopEvent({ round, kind: "result", toolName, count: result.length,
+        summary: `${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}` });
+      return { content: this.formatAckgResultForClaude(result), isError: false };
+    } catch (err: any) {
+      this.onAckgLoopEvent({ round, kind: "result", toolName, error: err.message });
+      return { content: `ACKG query failed: ${err.message}`, isError: false };
+    }
   }
 
   /**
@@ -937,20 +1645,81 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
    * JSON-then-parse finalisation — more robust, and the full tool-call history
    * carries over into that final request at no extra cost.
    */
+  /**
+   * Default: log exactly what this loop has always logged. Override to also record.
+   * Deliberately never throws — an observability hook must not be able to fail a stage.
+   */
+  protected onAckgLoopEvent(e: AckgLoopEvent): void {
+    const p = `[Stage 2a ACKG loop] round ${e.round}`;
+    switch (e.kind) {
+      case "stop":
+        console.log(`${p}: no graph query — stopping loop (${e.roundsUsed} round(s) used)`);
+        break;
+      case "reasoning": {
+        const r = e.reasoning ?? "";
+        console.log(`${p} reasoning: ${r.slice(0, 400)}${r.length > 400 ? "…" : ""}`);
+        break;
+      }
+      case "call":
+        console.log(`${p} ${e.toolName} call: ${JSON.stringify(e.input || {})}`);
+        break;
+      case "result":
+        console.log(e.error ? `${p} result: ERROR — ${e.error}` : `${p} result: ${e.summary}`);
+        break;
+      case "max_rounds":
+        console.log(`[Stage 2a ACKG loop] hit MAX_ROUNDS=${e.maxRounds} — finalizing with whatever evidence was gathered`);
+        break;
+    }
+  }
+
   protected async callClaudeWithAckgTool(
     modelName: string,
     systemInstruction: string,
     userText: string,
     maxTokens: number = 8192,
     finalTool: { name: string; description: string; schema: any },
-    opts: { extraTools?: any[]; maxRounds?: number } = {}
+    opts: {
+      extraTools?: any[];
+      maxRounds?: number;
+      excludeSaleId?: string | null;
+      /** Run with NO graph tools at all — the caller has already resolved the graph facts
+       *  deterministically (stage2a_query_plan.ts) and put them in the prompt. The
+       *  query-before-you-report gate goes with them: there is nothing left to query, and
+       *  refusing a report for not querying would loop until the refusal budget ran out. */
+      graphToolsDisabled?: boolean;
+      /** Structural check on the final tool call. Return a complaint to push back and ask
+       *  for it again, or null to accept. Content is never judged here — only shape. */
+      validateFinal?: (input: any) => string | null;
+    } = {}
   ): Promise<any> {
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
-    if (!apiKey) throw new Error("Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.");
+    // Same wire format, different origin and key when the model is a DashScope Qwen.
+    const compatBaseUrl = anthropicCompatBaseUrl(modelName);
+    const apiKey = compatBaseUrl
+      ? process.env.DASHSCOPE_API_KEY
+      : process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        compatBaseUrl
+          ? `DASHSCOPE_API_KEY is not set — needed to run "${modelName}" against ${compatBaseUrl}.`
+          : "Neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY environment variable is defined.",
+      );
+    }
 
-    const tools = [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
-    const graphToolNames = new Set(tools.map((t: any) => t.name));
+    const graphTools = opts.graphToolsDisabled
+      ? []
+      : [MultiStageAppraiser.QUERY_ACKG_TOOL, ...(opts.extraTools ?? [])];
+    const minGraphRounds = opts.graphToolsDisabled ? 0 : MIN_ACKG_ROUNDS_BEFORE_REPORT;
+    const graphToolNames = new Set(graphTools.map((t: any) => t.name));
     const finalToolName = finalTool.name;
+    // The report tool is offered from the FIRST call, not only on a forced final one.
+    // Measured on A0793/113: withholding it cost 8,553 cache-write tokens ($0.064, half of
+    // Stage 2a's spend) because adding a tool changes the cached prefix and forces a
+    // rewrite — and it cost a whole discarded generation, since the round where the agent
+    // decides it is finished produced text that was never pushed into `messages`.
+    const tools = [
+      ...graphTools,
+      { name: finalToolName, description: finalTool.description, input_schema: translateSchemaToStandardJsonSchema(finalTool.schema) },
+    ];
 
     const post = (messages: any[], forceFinalTool: boolean) =>
       postAnthropicMessages(
@@ -958,6 +1727,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         {
           model: modelName,
           max_tokens: maxTokens,
+          temperature: this.config.temperature ?? DEFAULT_CLAUDE_TEMPERATURE,
           // Cache the triage system prompt (it is large and identical for every lot). Across
           // a pool run — and across repeated triage-version evaluations against that pool —
           // this is the single biggest input-token saving: only the first lot writes it,
@@ -967,12 +1737,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           // that one call rewrites — one rewrite per lot, still cheap.
           system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
           messages,
-          tools: forceFinalTool
-            ? [...tools, { name: finalToolName, description: finalTool.description, input_schema: translateSchemaToStandardJsonSchema(finalTool.schema) }]
-            : tools,
+          tools, // identical on every call, so the cached prefix stays valid
           ...(forceFinalTool ? { tool_choice: { type: "tool", name: finalToolName } } : {}),
         },
-        { label: "Stage 2a ACKG tool" },
+        { label: "Stage 2a ACKG tool", baseUrl: compatBaseUrl ?? undefined },
       );
 
     const messages: any[] = [{ role: "user", content: userText }];
@@ -980,76 +1748,178 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     let data: any = null;
 
     let roundsUsed = 0;
+    let constrainedRounds = 0;
+    let reportRefusals = 0;
+    let incompleteReports = 0;
+    const trace_unconstrained = (r: number) =>
+      console.log(`[Stage 2a ACKG loop] round ${r}: query carried no technique/region/subject/paper/title — not counted toward the minimum`);
     for (let round = 0; round < MAX_ROUNDS; round++) {
       data = await post(messages, false);
       if (data.stop_reason === "max_tokens") {
         throw new Error("Claude (ACKG tool) hit max_tokens limit — response was truncated.");
       }
+      // Finished early? Take the report and skip the extra round-trip — but only once the
+      // graph has actually been consulted.
+      //
+      // Offering the report tool from call 1 removed a wasted generation and an 8,553-token
+      // cache rewrite, and then removed the incentive to research: on A0793/113 the agent
+      // reported immediately with ZERO query rounds, leaving kId "unknown", kOeuvre null and
+      // kSubject unassessable — the corroboration cascade had nothing to evaluate. The
+      // verdict survived only because Stage 1d's match happened to be strong.
+      //
+      // So the tool stays available (cheap, stable prefix) but an early report is refused
+      // until at least one graph round has run. The refusal is pushed back as a normal user
+      // turn, so the agent keeps its context and simply queries first.
+      const reported = (data.content || []).find((b: any) => b.type === "tool_use" && b.name === finalToolName);
+      if (reported?.input && (constrainedRounds >= minGraphRounds || reportRefusals >= MAX_REPORT_REFUSALS)) {
+        // A report can satisfy the rounds gate and still be structurally unusable: the
+        // schema marks artistEvidence/workEvidence required, and models omit them anyway.
+        // Measured at Stage 2a — qwen3.7-plus on 5 of 20 lot-runs, qwen3.8-max on 2 of 5.
+        // Degrading on the first such report throws away a fully-researched context over a
+        // shape error, so ask once more before giving up. Budgeted separately from
+        // reportRefusals: that budget is for "query before you report", which is a different
+        // failure and should not be consumed by this one.
+        const complaint = opts.validateFinal?.(reported.input) ?? null;
+        if (complaint && incompleteReports < MAX_INCOMPLETE_REPORT_RETRIES) {
+          incompleteReports++;
+          console.log(
+            `[Stage 2a ACKG loop] round ${round + 1}: report incomplete (${incompleteReports}/${MAX_INCOMPLETE_REPORT_RETRIES}) — ${complaint}`,
+          );
+          messages.push({ role: "assistant", content: data.content });
+          messages.push({
+            role: "user",
+            content: [
+              {
+                type: "tool_result",
+                tool_use_id: reported.id,
+                is_error: true,
+                content:
+                  `Not accepted: ${complaint}\n\n` +
+                  `Do NOT query again — the research is done and nothing about it is in question. ` +
+                  `Call ${finalToolName} once more with the SAME findings, this time including every ` +
+                  `required block. If you could not determine something, fill the cell with its ` +
+                  `honest empty value rather than omitting the block: an absent block is not the ` +
+                  `same as an unknown value, and it discards the work you have already done.`,
+              },
+            ],
+          });
+          continue;
+        }
+        if (complaint) {
+          console.warn(`[Stage 2a ACKG loop] report still incomplete after ${incompleteReports} retry(ies) — ${complaint}`);
+        }
+        this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
+        console.log(`[Stage 2a ACKG loop] round ${round + 1}: reported without a forced call — ${roundsUsed} query round(s) used`);
+        return reported.input;
+      }
+      if (reported?.input) {
+        // Refuse up to MAX_REPORT_REFUSALS times. After that the report is taken with the
+        // cells honestly empty rather than forcing a junk query — see that constant.
+        reportRefusals++;
+        console.log(
+          `[Stage 2a ACKG loop] round ${round + 1}: report refused (${reportRefusals}/${MAX_REPORT_REFUSALS}) — ${constrainedRounds} constrained ` +
+            `graph round(s), ${minGraphRounds} required. Asking for a narrowed query.`,
+        );
+        // The refusal must come back as a tool_result for THIS tool_use id — the API rejects
+        // an assistant turn containing a tool_use that the next message does not answer.
+        messages.push({ role: "assistant", content: data.content });
+        messages.push({
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: reported.id,
+              is_error: true,
+              content:
+                `Not accepted yet: the ACKG has not been consulted with a query that narrows anything. ` +
+                `Run a query_ackg carrying at least one of technique / region / subject / paper / workTitle ` +
+                `(and query_ackg_work if you have a candidate title), then call ${finalToolName} again ` +
+                `with what the graph returned. A bare period range is not a constrained query — it returns ` +
+                `the graph's most prolific artists regardless of this lot.\n\n` +
+                `If you genuinely have nothing to filter on, DO NOT invent a filter and DO NOT run an ` +
+                `unconstrained query: call ${finalToolName} again as-is and leave kId "unknown", ` +
+                `kOeuvreMatchCount -1 and kSubject UNASSESSABLE. Empty cells are the honest answer; ` +
+                `numbers from a query unrelated to this lot are not.`,
+            },
+          ],
+        });
+        continue;
+      }
+
       const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use" && graphToolNames.has(b.name));
       if (clientToolUses.length === 0) {
-        console.log(`[Stage 2a ACKG loop] round ${round + 1}: no graph query — stopping loop (${roundsUsed} round(s) used)`);
+        // THIRD EXIT, and the one that actually leaked. Reaching here means the agent
+        // emitted no tool call at all — no graph query AND no report (an early report is
+        // caught above). Breaking drops straight into the forced finalise below, which
+        // extracts a report without ever passing the minimum-rounds check, so the whole
+        // requirement is bypassed by simply saying nothing.
+        //
+        // Measured on tests/backtest/fixtures/A0793_303 (Picasso, 1c+1d isolation, Haiku):
+        // "round 1: no graph query — stopping loop (0 round(s) used)", then A4/MEDIUM and
+        // Scenario 3 off empty corroboration cells — where the same lot reaches A2/HIGH and
+        // Scenario 2 with the graph consulted. Losing Scenario 2 on a Picasso print means
+        // losing the adversarial authentication pass on the lot most likely to need it.
+        //
+        // Shares the refusal budget with the early-report path, so an agent that genuinely
+        // has nothing to filter on still terminates rather than looping.
+        if (constrainedRounds < minGraphRounds && reportRefusals < MAX_REPORT_REFUSALS) {
+          reportRefusals++;
+          console.log(
+            `[Stage 2a ACKG loop] round ${round + 1}: no tool call and no constrained graph round ` +
+              `(refusal ${reportRefusals}/${MAX_REPORT_REFUSALS}) — asking for a query before the report.`,
+          );
+          // No tool_use in this turn, so no tool_result is owed; a plain user turn is the
+          // correct pushback. Guard the empty-content case — the API rejects an assistant
+          // message with no content blocks.
+          if (Array.isArray(data.content) && data.content.length > 0) {
+            messages.push({ role: "assistant", content: data.content });
+          }
+          messages.push({
+            role: "user",
+            content:
+              `You have not consulted the ACKG. Do not report yet.\n\n` +
+              `Being handed a candidate artist or title by Stage 1c is NOT corroboration — it is the ` +
+              `claim under test, and the graph is what tests it. Run query_ackg with at least one of ` +
+              `technique / region / subject / paper / workTitle, and query_ackg_work with the artist ` +
+              `and title if you have them, then report with what the graph returned.\n\n` +
+              `If you truly have nothing to filter on, say so in one line and report with the ACKG ` +
+              `cells honestly empty — kId "unknown", kOeuvreMatchCount -1, kSubject UNASSESSABLE. ` +
+              `Empty cells are an acceptable answer; skipping the check silently is not.`,
+          });
+          continue;
+        }
+        this.onAckgLoopEvent({ round: round + 1, kind: "stop", roundsUsed });
         break;
       }
+      // Only a query that narrows something counts toward the minimum — a bare date sweep
+      // discharges the requirement without producing usable corroboration.
+      const anyConstrained = clientToolUses.some(
+        (b: any) => b.name !== "query_ackg" || isConstrainedAckgQuery(b.input),
+      );
+      if (anyConstrained) constrainedRounds++;
+      else trace_unconstrained(round + 1);
       roundsUsed = round + 1;
 
       // Log any reasoning text Claude produced alongside the tool call(s) this round —
       // the closest thing to "why" it's querying, since the API doesn't otherwise expose it.
       const reasoningText = (data.content || []).filter((b: any) => b.type === "text").map((b: any) => b.text).join(" ").trim();
       if (reasoningText) {
-        console.log(`[Stage 2a ACKG loop] round ${round + 1} reasoning: ${reasoningText.slice(0, 400)}${reasoningText.length > 400 ? "…" : ""}`);
+        this.onAckgLoopEvent({ round: round + 1, kind: "reasoning", reasoning: reasoningText });
       }
 
       messages.push({ role: "assistant", content: data.content });
       const toolResults = await Promise.all(
         clientToolUses.map(async (b: any) => {
-          console.log(`[Stage 2a ACKG loop] round ${round + 1} ${b.name} call: ${JSON.stringify(b.input || {})}`);
-          let content: string;
-          try {
-            if (b.name === "query_ackg_work") {
-              const inp = b.input || {};
-              const observed = inp.observedTitle || inp.workTitle || "";
-              // Derive a substring pre-filter from the observed title when the agent
-              // didn't supply one — a raw artist-only query is ORDER BY impressionCount
-              // and would drop a low-impression target work before scoring.
-              const preFilter =
-                inp.workTitle ||
-                (observed
-                  .toLowerCase()
-                  .replace(/[^a-z0-9\s]/g, " ")
-                  .split(/\s+/)
-                  .filter((w: string) => w.length >= 4)
-                  .sort((a: string, b: string) => b.length - a.length)[0] || undefined);
-              let works = await queryAckgWorks({ ...inp, workTitle: preFilter });
-              if (works.length === 0 && preFilter) {
-                works = await queryAckgWorks({ ...inp, workTitle: undefined }); // last resort: artist only
-              }
-              if (observed && works.length) {
-                const obsFam = inp.observedTechnique ? techniqueFamily(inp.observedTechnique) : null;
-                works = await scoreWorkTitleMatches(observed, works, {
-                  techniqueIncompatible: obsFam
-                    ? (w) => w.techniques.length > 0 && !w.techniques.some((t) => techniqueFamily(t) === obsFam)
-                    : undefined,
-                });
-              }
-              content = this.formatAckgWorksForClaude(works);
-              const best = works[0];
-              console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${works.length} work row(s)${best ? ` — best: "${best.workTitle}" titleSim=${best.titleSim ?? "n/a"}` : ""}`);
-            } else {
-              const result = await queryAckg(b.input || {});
-              content = this.formatAckgResultForClaude(result);
-              console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ${result.length} candidate(s)${result.length ? ` — top: ${result.slice(0, 3).map(c => `${c.artistName} (support=${c.supportCount})`).join(", ")}` : ""}`);
-            }
-          } catch (err: any) {
-            content = `ACKG query failed: ${err.message}`;
-            console.log(`[Stage 2a ACKG loop] round ${round + 1} result: ERROR — ${err.message}`);
-          }
-          return { type: "tool_result", tool_use_id: b.id, content };
+          const r = await this.executeGraphTool(b.name, b.input, round + 1, opts.excludeSaleId ?? null);
+          return r.isError
+            ? { type: "tool_result", tool_use_id: b.id, is_error: true, content: r.content }
+            : { type: "tool_result", tool_use_id: b.id, content: r.content };
         }),
       );
       messages.push({ role: "user", content: toolResults });
 
       if (round === MAX_ROUNDS - 1) {
-        console.log(`[Stage 2a ACKG loop] hit MAX_ROUNDS=${MAX_ROUNDS} — finalizing with whatever evidence was gathered`);
+        this.onAckgLoopEvent({ round: round + 1, kind: "max_rounds", maxRounds: MAX_ROUNDS });
       }
     }
 
@@ -1454,7 +2324,14 @@ Return a single JSON object:
   // throw" discipline as Stage 1b — a down/slow embedding service or a Neo4j
   // query failure must never fail the appraisal.
 
-  protected async runStage1dEmbeddingMatch(imageBase64: string, mimeType: string = "image/jpeg"): Promise<Stage1dResult> {
+  /**
+   * `excludeSaleId` suppresses matches from one sale. Once a catalogue is ingested AND
+   * embedded, its own lots are in the vector index, so a lot matches ITSELF at dino ~1.0 and
+   * "confirms" its own identity — the image-side twin of the comp circularity
+   * parseExcludedListing guards. Measured on A0793: 334 of 534 lots self-match above 0.999
+   * unguarded. Stage 3's testingExcludeSourceListing only ever covered the price side.
+   */
+  protected async runStage1dEmbeddingMatch(imageBase64: string, mimeType: string = "image/jpeg", excludeSaleId?: string | null): Promise<Stage1dResult> {
     const EMPTY: Stage1dResult = {
       schemaVersion: "IES-1.0",
       embeddingModelsUsed: { dinov2: null, clip: null },
@@ -1473,7 +2350,7 @@ Return a single JSON object:
       const candidates: EmbeddingMatchCandidate[] = await queryImageEmbeddingMatches(
         vectors.dinov2?.vector ?? null,
         vectors.clip?.vector ?? null,
-        { limit: 10 },
+        { limit: 10, excludeSaleId: excludeSaleId ?? null },
       );
       const best = candidates[0];
       // Provisional threshold, NOT calibrated against a backtest set — ADR-0013's "Not
@@ -1503,6 +2380,7 @@ Return a single JSON object:
         matchConfidence,
         attributionCaveat: STAGE1D_ATTRIBUTION_CAVEAT,
         hypothesisWarning: STAGE1D_HYPOTHESIS_WARNING,
+        dinov2QueryVector: vectors.dinov2?.vector ?? null,
       };
     } catch (err: any) {
       console.warn(`[Stage 1d] Neo4j vector query failed — skipping: ${err.message}`);
@@ -1655,7 +2533,24 @@ CATALOGUE_NOTES: ${catalogueNotes?.trim() || "(not provided)"}`;
       includeAux ? (input.supplementaryImages || []).map((i) => i.caption) : []
     );
 
-    if (isClaude(stage1Model)) {
+    // A bare Qwen ID routes to DashScope's Anthropic-compatible endpoint via callClaude.
+    // The transport works: WebP accepted, forced tool_choice honoured, structured tool_use
+    // returned, and vision has no search dependency so it cannot hit what rules Qwen out of
+    // Stage 2b.
+    //
+    // TESTED AND REJECTED FOR PRODUCTION VEA (qwen3.6-plus, A0793/494, 2026-09-10). It read
+    // the printing technique as RELIEF where every catalogued source says screenprint, and
+    // reported overallExtractionConfidence 0.90 on that reading — against Opus's 0.55 on a
+    // correct one. The two-pass tree did its job and caught the contradiction, raising
+    // impression=medium_divergence and escalating the lot to Scenario 2, but the divergence
+    // was the model's error: it bought a needless adversarial pass and widened the estimate
+    // from GBP 550-900 to GBP 400-1,200. Overconfidence on a physical observation is the
+    // worst failure mode here, because Stage 2a weighs veaSignatureConfidence when deciding
+    // how far to trust the observation.
+    //
+    // The routing stays because it is the same mechanism Stage 3 uses and costs nothing
+    // while unused — a future vision model can be tried by changing stage1Model alone.
+    if (isClaude(stage1Model) || anthropicCompatBaseUrl(stage1Model)) {
       const blocks = buildClaudeImageBlocks(input, includeAux);
       blocks.push({ type: "text", text: textPrompt });
       return this.callClaude(stage1Model, systemPrompt, blocks, "report_visual_extraction", "Report the structured visual extraction findings.", VISUAL_EXTRACTION_SCHEMA);
@@ -1788,13 +2683,16 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     userNotes?: string,
     appraiserInput?: AppraiserInputResult,
     visualSearch?: VisualSearchResult,
-    stage1d?: Stage1dResult
+    stage1d?: Stage1dResult,
+    /** Sale under appraisal — see executeGraphTool. Omitted for a lot that is not itself
+     *  in the graph; supplying it for one that is, is not optional. */
+    excludeSaleId?: string | null
   ): Promise<TriageResult> {
     if (vea.imageAuthenticity?.haltRecommended) {
       // VEA already halted — no original work to attribute. Skip the call; run the tree
       // on an empty evidence set (classifyTwoPass short-circuits on veaHaltRecommended).
       const empty = emptyEvidenceOutput(vea.overallExtractionConfidence ?? 0);
-      const { triage, twoPass } = runEvidenceTree(empty, true, stage1d);
+      const { triage, twoPass } = runEvidenceTree(empty, true, stage1d, appraiserInput);
       console.log(`[Stage 2a evidence] VEA haltRecommended — tree not run; Scenario ${twoPass.scenario} (${twoPass.scenarioName})`);
       return triage;
     }
@@ -1807,14 +2705,57 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       schema: ATTRIBUTION_EVIDENCE_SCHEMA,
     };
     const buildUserText = (slim: unknown) =>
-      `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(slim, null, 2)}${appraiserInputBlock}${visualSearchBlock}`;
-    const evidenceOpts = { extraTools: [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL], maxRounds: 5 };
+      `${notesBlock}Here is the structured Visual Extraction output from Stage 1. Observe the evidence and fill the report_attribution_evidence cells — do not adjudicate.\n\n${JSON.stringify(slim, null, 2)}${appraiserInputBlock}${visualSearchBlock}${factsBlock}`;
+    // Shape only — whether the two required blocks are present at all. Their contents are
+    // the tree's business, not the loop's; the loop must never be in the position of judging
+    // evidence, only of noticing that none was handed over.
+    const validateFinal = (input: any): string | null => {
+      const missing = [!input?.artistEvidence && "artistEvidence", !input?.workEvidence && "workEvidence"].filter(Boolean);
+      return missing.length ? `the report omitted ${missing.join(" and ")}, which the schema marks required` : null;
+    };
+    // ADR-0018: resolve the graph in code, or let the model drive the tool loop.
+    //
+    // In deterministic mode the plan is built from the structured Stage 1 outputs, every
+    // query is run before the model is called, and the answers go into the prompt. The
+    // model then gets no graph tools — not as a restriction on what it may know, but
+    // because there is nothing left for it to ask. Which query to run, with what technique
+    // string, and whether to run one at all stop being per-run choices.
+    let graphFacts: Stage2aGraphFacts | null = null;
+    let factsBlock = "";
+    // Opt-OUT, not opt-in: an absent flag gets the plan. See the field's doc comment.
+    if (this.config.deterministicStage2aQueries !== false) {
+      const plan = buildStage2aQueryPlan({ vea, visualSearch, appraiserInput, stage1d });
+      try {
+        graphFacts = await executeStage2aQueryPlan(plan, excludeSaleId ?? null);
+        factsBlock = renderStage2aGraphFacts(graphFacts);
+        for (const line of graphFacts.trace) console.log(`[Stage 2a plan] ${line}`);
+        if (graphFacts.errors.length) console.warn(`[Stage 2a plan] ${graphFacts.errors.join("; ")}`);
+      } catch (err: any) {
+        // A graph outage must not take the lot down. The model runs with the tool loop it
+        // has always had, and the cells stay the model's — degraded, and said so.
+        console.warn(`[Stage 2a plan] query plan failed (${err?.message ?? err}) — falling back to the tool loop`);
+        graphFacts = null;
+      }
+    }
+
+    const evidenceSystemPrompt = graphFacts
+      ? ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT + ATTRIBUTION_EVIDENCE_PRERESOLVED_SUFFIX
+      : ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT;
+    const evidenceOpts = {
+      extraTools: graphFacts ? [] : [MultiStageAppraiser.QUERY_ACKG_WORK_TOOL],
+      graphToolsDisabled: !!graphFacts,
+      maxRounds: graphFacts ? 2 : 5,
+      excludeSaleId: excludeSaleId ?? null,
+      validateFinal,
+    };
+    // One dispatch point for both wire formats. The two loops keep identical control flow
+    // (see callGroqWithAckgTool) — only the transport differs.
+    const runEvidenceAgent = (prompt: string, text: string) =>
+      this.callClaudeWithAckgTool(stage2aModel, prompt, text, 8192, evidenceTool, evidenceOpts);
 
     let ev: EvidenceAgentOutput;
     try {
-      ev = (await this.callClaudeWithAckgTool(
-        stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(veaSlim), 8192, evidenceTool, evidenceOpts,
-      )) as EvidenceAgentOutput;
+      ev = (await runEvidenceAgent(evidenceSystemPrompt, buildUserText(veaSlim))) as EvidenceAgentOutput;
     } catch (err) {
       if (!(err instanceof AnthropicContentFilterError)) throw err;
       // Content filter tripped — most often on lurid free-text prose the model echoes back
@@ -1823,9 +2764,7 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       // crash the lot.
       console.warn(`[Stage 2a evidence] content-filtered — retrying with VEA prose trimmed`);
       try {
-        ev = (await this.callClaudeWithAckgTool(
-          stage2aModel, ATTRIBUTION_EVIDENCE_SYSTEM_PROMPT, buildUserText(trimVeaProse(veaSlim)), 8192, evidenceTool, evidenceOpts,
-        )) as EvidenceAgentOutput;
+        ev = (await runEvidenceAgent(evidenceSystemPrompt, buildUserText(trimVeaProse(veaSlim)))) as EvidenceAgentOutput;
       } catch (err2) {
         if (!(err2 instanceof AnthropicContentFilterError)) throw err2;
         console.warn(`[Stage 2a evidence] still content-filtered — emitting escalate-only result`);
@@ -1833,11 +2772,119 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
           reason: "Stage 2a evidence agent output blocked by content filtering on both attempts — needs manual triage.",
           narrative: "The evidence agent could not complete: its output was blocked by content-filtering policy twice. No automated attribution was produced; route to a human.",
         });
-        return runEvidenceTree(degraded, false, stage1d).triage;
+        return runEvidenceTree(degraded, false, stage1d, appraiserInput).triage;
       }
     }
 
-    const { triage, twoPass } = runEvidenceTree(ev, false, stage1d);
+    // Envelope before contents: a block returned as a JSON string is present evidence in the
+    // wrong wrapper, and unwrapping it has to happen before anything reads or writes a cell.
+    const recovered = normalizeEvidenceBlocks(ev);
+    if (recovered.length) {
+      console.warn(`[Stage 2a evidence] ${recovered.join(", ")} arrived as JSON string(s) — parsed back to objects`);
+    }
+
+    // A structurally incomplete report is not a verdict. The tool schema marks
+    // artistEvidence/workEvidence required, but a model can still return a tool call
+    // omitting them — qwen-plus did exactly that on A0793/122, and the unguarded
+    // `a.dominantCandidateName` downstream took the whole lot down with a TypeError rather
+    // than degrading. Escalating is the honest outcome: the alternative is manufacturing a
+    // verdict out of empty cells, which reads downstream as a confident "not attributed".
+    if (!ev?.artistEvidence || !ev?.workEvidence) {
+      const missing = [!ev?.artistEvidence && "artistEvidence", !ev?.workEvidence && "workEvidence"]
+        .filter(Boolean).join(" and ");
+      console.warn(`[Stage 2a evidence] report omitted ${missing} — emitting escalate-only result`);
+      const degraded = emptyEvidenceOutput(vea.overallExtractionConfidence ?? 0, {
+        reason: `Stage 2a evidence agent returned a report with no ${missing} — needs manual triage.`,
+        narrative: `The evidence agent's structured report omitted ${missing}, so no evidence cells were produced. No automated attribution was made; route to a human.`,
+      });
+      return runEvidenceTree(degraded, false, stage1d, appraiserInput).triage;
+    }
+
+    // The graph cells belong to the graph. The model read the facts block; here the values
+    // are written from the rows themselves, so a mis-transcribed similarity or a remembered
+    // support count cannot reach the tree wearing the graph's authority. The overrides are
+    // logged rather than silently applied — they are the measurement of how faithfully a
+    // given model transcribes, which was previously unobservable.
+    if (graphFacts) {
+      const named = ev.artistEvidence?.dominantCandidateName?.trim() || "";
+      let cf = factsForName(graphFacts, named);
+      if (!cf && named) {
+        console.log(`[Stage 2a plan] "${named}" was not in the plan — running the same queries for it`);
+        cf = await lookupLateCandidate(named, graphFacts, excludeSaleId ?? null);
+        if (cf) factsBlock = renderStage2aGraphFacts(graphFacts);
+      }
+      // Both sides of the dimension comparison, or neither. classifyDimensionMatch is
+      // axis-strict, so writing the catalogue side from the graph while the observed side
+      // stays the model's turns a consistent pair of transposed values into a false
+      // divergence — measured on A0793/2, 36.2% "material" on an exact match.
+      const overrides = [
+        ...(cf ? applyCandidateFacts(ev, cf) : clearGraphCells(ev)),
+        ...applyObservedDims(ev, graphFacts.plan),
+      ];
+      if (!cf) console.log(`[Stage 2a plan] no dominant candidate named — graph cells cleared to their not-assessed sentinels`);
+      for (const o of overrides) {
+        console.log(`[Stage 2a plan] ${o.cell}: model reported ${JSON.stringify(o.reported)}, graph says ${JSON.stringify(o.authoritative)}`);
+      }
+      if (cf && overrides.length === 0) console.log(`[Stage 2a plan] all graph cells transcribed faithfully`);
+    }
+
+    // Scoped style check for whichever candidate the agent settled on. Run here rather than
+    // inside the tree because the tree is pure and synchronous, and offered to the tree as an
+    // EXCLUSION signal only (see queryArtistStyleConsistency for why it cannot discriminate).
+    const dominant = ev.artistEvidence?.dominantCandidateName?.trim();
+    let styleConsistency: StyleConsistencyEvidence | null = null;
+    if (dominant && stage1d?.dinov2QueryVector?.length) {
+      const sc = await queryArtistStyleConsistency(dominant, stage1d.dinov2QueryVector);
+      if (sc) {
+        styleConsistency = {
+          artistName: sc.artistName,
+          comparedWorks: sc.comparedWorks,
+          meanTopSimilarity: sc.meanTopSimilarity,
+          supportingText: sc.supportingText,
+        };
+        console.log(
+          `[Stage 2a style] "${dominant}": ${sc.comparedWorks} catalogued work(s) compared ` +
+            `(${sc.identityMatchesExcluded} identity match(es) excluded), mean-top ${sc.meanTopSimilarity.toFixed(3)}` +
+            (sc.supportingText.length ? `, ${sc.supportingText.length} catalogue description(s) carried through` : ""),
+        );
+      }
+    }
+
+    // This artist's own DINOv2 work-identity floor, fetched alongside the style check and for
+    // the same reason: the tree is pure and synchronous, so anything the graph knows has to be
+    // resolved before it runs. Null for most artists, and the global floor then applies.
+    const artistFloor = dominant ? await queryArtistDinoFloor(dominant) : null;
+    if (artistFloor) {
+      console.log(
+        `[Stage 2a] D_t floor for "${artistFloor.canonicalName}": ${artistFloor.floor.toFixed(3)} ` +
+          `(their own p99 over ${artistFloor.pairs} pairs; global is 0.880)`,
+      );
+    }
+    const { triage, twoPass } = runEvidenceTree(ev, false, stage1d, appraiserInput, styleConsistency, artistFloor?.floor ?? null);
+
+    // Resolve the artist's ACKG identity ONCE, here, deterministically — after the tree has
+    // settled WHO, and before anything downstream asks the graph about them. Previously
+    // every later ACKG read (catalogue raisonné, Stage 3 comparables, Stage 2b's comparables
+    // and edition tools) re-queried using the model's SPELLING of the name, so the same
+    // artist was looked up several times from a string that varied by run. The lookup is
+    // exact-match and never throws; a miss leaves artistIdentity null and changes nothing.
+    const settledArtist = triage.artistAttribution?.artistName ?? null;
+    if (settledArtist && triage.artistAttribution) {
+      const identity = await resolveArtistIdentity(settledArtist);
+      triage.artistAttribution.artistIdentity = identity
+        ? {
+            canonicalArtistName: identity.canonicalName,
+            ulanUrl: identity.ulanUrl,
+            wikidataUrl: identity.wikidataUrl,
+            matchedOn: identity.matchedOn,
+            workCount: identity.workCount,
+            alternateNames: identity.alternateNames,
+            ambiguousMatchCount: identity.ambiguousMatchCount,
+          }
+        : null;
+      console.log(`[Stage 2a identity] ${formatArtistIdentity(identity, settledArtist)}`);
+    }
+
     const rd = triage.routingDecision;
     console.log(
       `[Stage 2a evidence] artist=${twoPass.artistAttribution.evidenceBasis} ${twoPass.artistAttribution.verdict}/${twoPass.artistAttribution.confidence ?? "-"} "${twoPass.artistAttribution.artistName ?? "-"}"` +
@@ -1855,7 +2902,11 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     stage2bModel: string,
     ai: GoogleGenAI,
     userNotes?: string,
-    visualSearch?: VisualSearchResult
+    visualSearch?: VisualSearchResult,
+    appraiserInput?: AppraiserInputResult,
+    /** Backtest-only; forwarded to the ACKG comparables tool so Stage 2b cannot be handed
+     *  the very listing this input came from as a comparable. */
+    testingExcludeSourceListing?: string
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
@@ -1863,9 +2914,15 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     // runStage2aTriage — default to LowSignalEverywhere only for pre-ADR-0006 stored
     // triage results that predate the scenario field existing.
     const scenario = (triage.routingDecision?.scenario ?? Scenario.LowSignalEverywhere) as Scenario;
+    // A real VEA run always examined a primary scan; the "not run" stub sets it false. When
+    // Stage 1a is absent the profile gains a clause telling the specialist not to read the
+    // missing observations as evidence against the attribution (see NO_VEA_CLAUSE).
+    const veaRan = !!vea.imagesReceived?.primaryScan;
+    if (!veaRan) console.log(`[4-Stage] Stage 2b: VEA did not run — task profile extended with the no-observation clause`);
     const asaSystemPrompt = injectTaskProfile(
       injectSpecialistConfig(ATTRIBUTION_RESEARCH_SYSTEM_PROMPT, specialistConfig),
-      scenario
+      scenario,
+      veaRan,
     );
     const notesBlock = userNotes?.trim()
       ? `APPRAISER NOTES (provided by submitting user — treat as high-priority evidence for attribution and title identification):\n"${userNotes.trim()}"\n\n`
@@ -1891,13 +2948,91 @@ STAGE 1b VISUAL SEARCH RESULT (Gemini ${this.config.stage1bModel || DEFAULT_STAG
 INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against VEA signatures, title inscriptions, and technique before accepting. If the visual similarity score is below 0.6, confidence is LOW, or evidence basis is "textual" or "none" (i.e. not genuinely confirmed against a reference image), treat with high scepticism — a "textual" basis means this is someone else's unverified written claim, not an independent visual match.\n`
       : "";
 
-    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage, null, 2)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(veaSlim, null, 2)}${visualSearchBlock}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
+    const appraiserPhysicalBlock = buildAppraiserPhysicalBlock(appraiserInput, veaRan);
+    const crBlock = formatCatalogueRaisonneBlock(await this.lookupCatalogueRaisonne(triage));
+    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(veaSlim)}${appraiserPhysicalBlock}${crBlock}${visualSearchBlock}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
-    if (isClaude(stage2bModel)) {
-      return this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192);
-    } else {
-      return this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
+    const result: AttributionResearchResult = isClaude(stage2bModel) || anthropicCompatBaseUrl(stage2bModel)
+      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing, triage.artistAttribution?.artistIdentity ?? null)
+      : await this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
+    await this.persistCatalogueRaisonneFinding(result);
+    // Phase 0 of the comps write-back is a measurement, not a feature: nothing is written,
+    // but every run now reports how many of Stage 2b's comps carry a key, a real number and
+    // an explicit price basis. Aggregated over a pool run, that ratio decides whether the
+    // rest of the write-back is worth building at all.
+    const compReport = assessComps((result as any)?.auctionComps);
+    (result as any).compStorability = compReport;
+    this.onCompStorability(compReport);
+    return result;
+  }
+
+  /**
+   * Emitted once per Stage 2b run. Overridable so a harness can capture the report and
+   * aggregate it across a pool — the per-lot number means little, the pool-wide ratio is
+   * the whole Phase 0 measurement. Same hook idiom as `onAckgLoopEvent`; the default keeps
+   * the live log unchanged.
+   */
+  protected onCompStorability(report: CompStorabilityReport): void {
+    if (report.total > 0) {
+      console.log(`[4-Stage] Stage 2b comp storability: ${formatCompStorability(report)}`);
+    }
+  }
+
+  /**
+   * Look up the catalogues raisonnés the ACKG already associates with whichever artist(s)
+   * Stage 2a named, so Stage 2b can skip the "which catalogue raisonné exists for this
+   * artist?" search entirely. Runs in code rather than as a Stage 2b tool for the same
+   * reason ADR-0015 §6 runs the style query in code: the candidate names are already known,
+   * so a tool call would buy nothing but a round-trip and agent variance.
+   *
+   * Both the two-pass artist verdict and the rank-1 candidate are looked up — on a Scenario 5
+   * lot these differ, and the specialist is explicitly told to research every named candidate.
+   */
+  private async lookupCatalogueRaisonne(triage: TriageResult) {
+    // The canonical name first when Stage 2a resolved one — queryCatalogueRaisonneForArtist
+    // MATCHes on name, so the graph's spelling is the one that finds the index.
+    const names = [
+      triage.artistAttribution?.artistIdentity?.canonicalArtistName ?? triage.artistAttribution?.artistName,
+      triage.candidateArtists?.[0]?.artistName,
+    ].filter((n): n is string => !!n?.trim());
+    const unique = [...new Map(names.map((n) => [n.trim().toLowerCase(), n.trim()])).values()];
+    if (unique.length === 0) return [];
+    const results = await Promise.all(unique.map((n) => queryCatalogueRaisonneForArtist(n)));
+    for (const r of results) {
+      if (!r) continue;
+      console.log(`[4-Stage] Stage 2b CR index: ${r.artistName} — ${r.references.length} reference(s)${r.noneKnown ? ", none-known recorded" : ""}${r.unconfirmedCitations.length ? `, ${r.unconfirmedCitations.length} unconfirmed` : ""}`);
+    }
+    return results;
+  }
+
+  /**
+   * Persist a catalogue raisonné Stage 2b had to go and find, so the next lot by the same
+   * artist reads it instead of searching for it (ADR-0007's learning loop, narrowed to the
+   * one finding that is reliably structured and reliably reusable).
+   *
+   * Deterministic code reads already-structured ASA cells; the model is never asked whether
+   * something is worth writing. Gated on a confident attribution — a catalogue raisonné
+   * attached to a name the specialist itself only rates "possible" is not a fact about the
+   * artist, and writing it would let a weak attribution seed the graph other appraisals read.
+   */
+  private async persistCatalogueRaisonneFinding(result: AttributionResearchResult): Promise<void> {
+    const cr: any = (result as any)?.catalogueRaisonne;
+    const conclusion: any = (result as any)?.attributionConclusion;
+    const artistName: string | undefined = conclusion?.attributedArtist;
+    const level: string | undefined = conclusion?.attributionLevel;
+    if (!artistName || (level !== "definitive" && level !== "probable")) return;
+
+    // referenceFound false is the honest "no catalogue raisonné exists" answer only when the
+    // specialist did not simultaneously name one; a named catalogue always wins.
+    const catalogueName: string | undefined = cr?.catalogueName?.trim?.();
+    const outcome = await recordCatalogueRaisonneFinding(
+      catalogueName
+        ? { artistName, catalogueName, title: cr?.catalogueTitle ?? null, sourceUrl: cr?.sourceUrl ?? null }
+        : { artistName, foundNone: cr?.noCatalogueRaisonneExists === true },
+    );
+    if (outcome === "written" || outcome === "recorded_none") {
+      console.log(`[4-Stage] Stage 2b CR write-back: ${outcome} for "${artistName}"${catalogueName ? ` (${catalogueName})` : ""}`);
     }
   }
 
@@ -1930,25 +3065,99 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     ai: GoogleGenAI,
     currency: string,
     userNotes?: string,
-    testingExcludeSourceListing?: string
+    testingExcludeSourceListing?: string,
+    appraiserInput?: AppraiserInputResult,
+    /** The graph's own name for the artist, resolved once in Stage 2a. Used ONLY to query
+     *  the ACKG — the valuation still reports whatever Stage 2b attributed. */
+    canonicalArtistName?: string | null
   ): Promise<Partial<PrintAnalysisReport>> {
     const systemInstruction = resolveCustomPrompt(VALUATION_REPORT_SYSTEM_PROMPT, currency, userNotes);
-    const auctionComps = (attr as any).auctionComps;
-    const compsNote = Array.isArray(auctionComps) && auctionComps.length > 0
-      ? `\n\nAUCTION COMPS (collected during Stage 2b research — use these for valuation):\n${JSON.stringify(auctionComps, null, 2)}`
-      : "\n\nAUCTION COMPS: None found during Stage 2b research — base valuation on condition and rarity factors alone.";
+
+    // ADR-0016 — ACKG realised prices are the PRIMARY comparables source; Stage 2b's
+    // free-text web findings are the fallback for artists the graph does not cover.
+    // The graph's prices are structured, dated, premium-inclusive and GBP-normalised at
+    // the sale date; Stage 2b's are prose, and frequently carry no usable number at all
+    // (a real backtest artifact records hammerPrice as "Estimate £3,000–£3,500 (hammer
+    // price not publicly disclosed)"). Failure here must never take a valuation down —
+    // the graph is an enrichment, so a Neo4j outage degrades to the old web-only path.
+    const conclusion = (attr as any)?.attributionConclusion ?? {};
+    // Query the graph under the graph's own spelling when Stage 2a resolved one. Stage 2b's
+    // free text is what the model wrote; the canonical name is what the ACKG is indexed by,
+    // and queryAuctionComparables matches on name.
+    const reportedArtist: string | null =
+      conclusion.attributedArtist ?? (attr as any)?.artistAttribution?.artistName ?? null;
+    const ackgArtist: string | null = canonicalArtistName?.trim() || reportedArtist;
+    if (canonicalArtistName && reportedArtist && canonicalArtistName !== reportedArtist) {
+      console.log(`[Stage 3 comps] querying ACKG as "${canonicalArtistName}" (Stage 2b reported "${reportedArtist}")`);
+    }
+    const excludedListing = parseExcludedListing(testingExcludeSourceListing);
+    let ackgComps: Awaited<ReturnType<typeof queryAuctionComparables>> | null = null;
+    if (ackgArtist) {
+      try {
+        ackgComps = await queryAuctionComparables({
+          artistName: ackgArtist,
+          workTitle: conclusion.workTitle ?? null,
+          technique: conclusion.technique ?? vea?.printingTechniques?.[0]?.technique ?? null,
+          sinceDate: STAGE3_COMPS_SINCE,
+          limit: STAGE3_COMPS_LIMIT,
+          // Same circularity guard as the free-text path below, but enforced in Cypher
+          // rather than asked of the model: Roseberys lots are both in the graph and in
+          // the backtest pool, so a pool lot can otherwise match its own SourceRecord and
+          // value itself from its own realised price. testingExcludeSourceListing is
+          // PROSE, so both keys have to be parsed out of it — see parseExcludedListing.
+          excludeListingUrl: excludedListing.listingUrl,
+          excludeSaleLot: excludedListing.saleLot,
+        });
+        console.log(
+          `[Stage 3 comps] ACKG "${ackgArtist}": ${ackgComps.summary.count} comparable(s) ` +
+            `(same-work ${ackgComps.summary.tierCounts.same_work}, ` +
+            `same-artist+technique ${ackgComps.summary.tierCounts.same_artist_technique}, ` +
+            `same-artist ${ackgComps.summary.tierCounts.same_artist})` +
+            (ackgComps.summary.medianGBP != null
+              ? `, median GBP ${ackgComps.summary.medianGBP.toFixed(0)}`
+              : ""),
+        );
+      } catch (err) {
+        console.warn(`[Stage 3 comps] ACKG comparables query failed, falling back to Stage 2b web comps: ${err}`);
+        ackgComps = null;
+      }
+    }
+
+    const webComps = (attr as any).auctionComps;
+    const hasWebComps = Array.isArray(webComps) && webComps.length > 0;
+    const webCompsBlock = hasWebComps
+      ? `\n\nSECONDARY — STAGE 2b WEB-RESEARCH COMPS (free-text findings, unverified; use only to corroborate or to fill gaps the ACKG set leaves):\n${JSON.stringify(webComps)}`
+      : "\n\nSECONDARY — STAGE 2b WEB-RESEARCH COMPS: none found.";
+
+    const compsNote = ackgComps && ackgComps.summary.count > 0
+      ? `\n\nPRIMARY — ACKG REALISED AUCTION COMPARABLES (structured records from this project's own knowledge graph; ` +
+        `premium-inclusive realised prices, converted to GBP at the sale-date ECB rate). ` +
+        `These are the primary basis for your valuation.\n` +
+        `Summary: ${JSON.stringify(ackgComps.summary)}\n` +
+        `Coverage caveat: ${ackgComps.coverageNote}\n` +
+        `Tiers: "same_work" = the SAME print (strongest evidence — weight these highest); ` +
+        `"same_artist_technique" = same artist and technique; "same_artist" = same artist only.\n` +
+        `${JSON.stringify(ackgComps.comparables.map(compactComparableForValuation))}${webCompsBlock}`
+      : `\n\nPRIMARY — ACKG REALISED AUCTION COMPARABLES: none. ` +
+        `${ackgArtist ? `No dated, sold records for "${ackgArtist}" in the graph.` : "No artist was attributed, so the graph could not be queried."} ` +
+        `The ACKG's dated auction coverage is Bonhams (2003-2026), Roseberys London (2014-2026) ` +
+        `and Skinner (2022-2026); Forum Auctions is absent entirely. So an ` +
+        `absent comp set reflects that coverage gap — it is NOT evidence that the work is unsaleable ` +
+        `or low-value. Fall back to the Stage 2b findings below.${webCompsBlock}`;
     // Backtest/eval-harness only — see AppraisalInput.testingExcludeSourceListing.
     // Stage 2b's web search can surface the exact listing this input's image/
     // description came from; using its own estimate or hammer price as a "comp"
     // would make the valuation circular, not independent, so this asks Stage 3 to
     // actively recognise and discard it rather than filtering comps mechanically
     // (Stage 2b's auctionComps are free-text research findings, not a structured
-    // field reliably matchable by URL/id).
+    // field reliably matchable by URL/id). The ACKG comps above do NOT need this
+    // treatment — they are filtered structurally by listingUrl in Cypher — but the
+    // note still has to cover the free-text set below it.
     const excludeSourceNote = testingExcludeSourceListing
       ? `\n\n⚠️ TESTING MODE — SOURCE LISTING EXCLUDED: This artwork's image and description were sourced directly from this auction listing: ${testingExcludeSourceListing}. If any entry in AUCTION COMPS above is that same listing (same auction house, matching sale/lot, or described as "the subject work" / "the identical work" / "the present lot"), you MUST exclude its estimate and price data from your valuation entirely — do not anchor on it, average it in, or cite it as a reason for your number. Value this work using only genuinely independent comps and evidence. If excluding it leaves no usable comps, say so explicitly in valuationContext and value from first principles as you would with zero comps.`
       : "";
-    const userText = `Synthesise a valuation for the following print from Stage 1 and Stage 2b findings.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea, null, 2)}\n\nSTAGE 2b ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity/discount factors, forgery risk):\n${JSON.stringify(attr, null, 2)}${compsNote}${excludeSourceNote}\n\n⚠️ CRITICAL: Output ONLY the valuation fields — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT search the web. Do NOT re-describe the artwork. Start your response with { and end with }.`;
-    if (isClaude(stage3Model)) {
+    const userText = `Synthesise a valuation for the following print from Stage 1 and Stage 2b findings.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea)}\n\nSTAGE 2b ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity/discount factors, forgery risk):\n${JSON.stringify(attr)}${buildAppraiserPhysicalBlock(appraiserInput, !!vea.imagesReceived?.primaryScan)}${compsNote}${excludeSourceNote}\n\n⚠️ CRITICAL: Output ONLY the valuation fields — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT search the web. Do NOT re-describe the artwork. Start your response with { and end with }.`;
+    if (isClaude(stage3Model) || anthropicCompatBaseUrl(stage3Model)) {
       console.log(`[4-Stage] Stage 3 pure reasoning (no web search) — model: ${stage3Model}`);
       return this.callClaude(stage3Model, systemInstruction, [{ type: "text", text: userText }], "report_valuation", "Report the structured print valuation synthesised from Stage 1 condition and Stage 2b findings.", STAGE3_VALUATION_ONLY_SCHEMA);
     } else {
@@ -2164,7 +3373,11 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     // never passed into runStage2bSpecialist — the specialist prompt is unchanged.
     emit({ stage: "stage1d", status: "start", message: "Matching image embeddings against internal art graph…", percent: 5 });
     const embeddingMatchPromise = runEmbeddingMatch
-      ? this.runStage1dEmbeddingMatch(input.imageBase64, input.mimeType)
+      ? this.runStage1dEmbeddingMatch(
+          input.imageBase64,
+          input.mimeType,
+          parseExcludedListing(input.testingExcludeSourceListing).saleLot?.saleId ?? null,
+        )
       : Promise.resolve(undefined);
 
     emit({ stage: "stage1c", status: "start", message: "Extracting structured claims from appraiser notes…", percent: 5 });
@@ -2207,7 +3420,12 @@ export class FourStageAppraiser extends MultiStageAppraiser {
         ]);
         const t2a = Date.now();
         console.log(`[Timing] Stage 2a (Triage) starting — model: ${stage2aModel}`);
-        const r = await this.runStage2aTriage(vea, stage2aModel, input.userNotes, appraiserInputResult, visualSearchResult, stage1dResult);
+        const r = await this.runStage2aTriage(
+          vea, stage2aModel, input.userNotes, appraiserInputResult, visualSearchResult, stage1dResult,
+          // Same source Stage 1d's guard reads from, so the image side and the graph side
+          // exclude the same sale rather than drifting apart.
+          parseExcludedListing(input.testingExcludeSourceListing).saleLot?.saleId ?? null,
+        );
         console.log(`[Timing] Stage 2a (Triage) done — ${((Date.now() - t2a) / 1000).toFixed(1)}s`);
         emit({ stage: "stage2a", status: "done", message: "Triage complete — specialist routing confirmed", percent: 40 });
         return r;
@@ -2222,14 +3440,17 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const t2b = Date.now();
     emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
     console.log(`[Timing] Stage 2b (Specialist) starting — model: ${stage2bModel}`);
-    const attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined);
+    const attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing);
     console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
     emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
 
     const t3 = Date.now();
     emit({ stage: "stage3", status: "start", message: "Synthesising auction estimate and appraisal statement…", percent: 82 });
     console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
-    const valuation = await this.runStage3Valuation(vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing);
+    const valuation = await this.runStage3Valuation(
+      vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput,
+      triageResult?.artistAttribution?.artistIdentity?.canonicalArtistName ?? null,
+    );
     console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });
@@ -2237,7 +3458,8 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const report = this.assembleReport(vea, attr, valuation, currency);
     report.stage1Result = vea;
     report.stage1cResult = appraiserInput;
-    report.stage1dResult = stage1d;
+    // Drop the transient query vector — it exists to reach Stage 2a, not to be stored.
+    report.stage1dResult = stage1d ? { ...stage1d, dinov2QueryVector: undefined } : stage1d;
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
@@ -2413,6 +3635,46 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     provider: "anthropic",
     stage1Model: "claude-opus-4-8",
     stage2aModel: "claude-sonnet-4-6",
+    stage2bModel: "claude-sonnet-4-6",
+    stage3Model: "claude-sonnet-4-6",
+    enableVisualSearch: true,
+  },
+  {
+    id: "claude-4stage-qwen3",
+    name: "Claude 4-Stage, Qwen-Plus Valuation (DashScope)",
+    description:
+      "Sonnet everywhere except Stage 3 valuation, which runs on qwen-plus. Stage 3 is pure " +
+      "reasoning over comps already gathered, so it cannot hit the failure that rules Qwen out " +
+      "for Stage 2b: DashScope accepts Anthropic's server-side web_search with a 200 and then " +
+      "silently does not search, leaving the model to confabulate. Stage 3 is ~21% of pipeline cost.",
+    modelName: "claude-opus-4-8",
+    temperature: 0.1,
+    promptKey: "standard",
+    imageQuality: "original",
+    includeAuxiliaryScans: true,
+    provider: "anthropic",
+    stage1Model: "claude-opus-4-8",
+    stage2aModel: "claude-sonnet-4-6",
+    stage2bModel: "claude-sonnet-4-6",
+    stage3Model: "qwen-plus",
+    enableVisualSearch: true,
+  },
+  {
+    id: "claude-4stage-qwenplus2a",
+    name: "Claude 4-Stage, Qwen-Plus Evidence Agent (DashScope)",
+    description:
+      "Opus for vision (S1), Alibaba qwen-plus for the Stage 2a Evidence Agent, Sonnet for " +
+      "specialist search (S2b) and valuation (S3). Only S2a changes, so a run is directly " +
+      "comparable to claude-4stage. Needs DASHSCOPE_API_KEY, and DASHSCOPE_BASE_URL if the " +
+      "key was issued outside the international region.",
+    modelName: "claude-opus-4-8",
+    temperature: 0.1,
+    promptKey: "standard",
+    imageQuality: "original",
+    includeAuxiliaryScans: true,
+    provider: "anthropic",
+    stage1Model: "claude-opus-4-8",
+    stage2aModel: "qwen-plus",
     stage2bModel: "claude-sonnet-4-6",
     stage3Model: "claude-sonnet-4-6",
     enableVisualSearch: true,
