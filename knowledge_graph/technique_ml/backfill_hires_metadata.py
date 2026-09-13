@@ -29,7 +29,9 @@ Usage (from repo root, .env sourced):
 import argparse
 import os
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 import requests
@@ -67,6 +69,23 @@ SET img.hiresUrl = r.hiresUrl,
     img.hiresCheckedAt = r.at,
     img.hiresFailed = r.failed, img.hiresFailedReason = r.reason
 """
+
+
+class HostRateLimiter:
+    """At most one request per `spacing` seconds per host, across all worker threads."""
+
+    def __init__(self, spacing):
+        self.spacing = spacing
+        self.lock = threading.Lock()
+        self.next_ok = {}
+
+    def wait(self, host):
+        with self.lock:
+            now = time.time()
+            t = max(now, self.next_ok.get(host, 0.0))
+            self.next_ok[host] = t + self.spacing
+        if t > now:
+            time.sleep(t - now)
 
 
 def now_iso():
@@ -109,6 +128,7 @@ def main():
     ap.add_argument("--retry-failures", action="store_true", help="also re-check nodes marked hiresFailed")
     ap.add_argument("--dry-run", action="store_true", help="fetch and print, write nothing")
     ap.add_argument("--batch", type=int, default=50)
+    ap.add_argument("--workers", type=int, default=6, help="concurrent fetchers; the per-host limiter still caps the rate")
     args = ap.parse_args()
     if not args.all:
         ap.error("pass --all (optionally with --labelled-only/--host/--limit/--dry-run/--force)")
@@ -122,35 +142,41 @@ def main():
         rows = rows[:args.limit]
     print(f"{len(rows)} image(s) to check (host={args.host or 'all'}, labelled_only={args.labelled_only}, force={args.force})", flush=True)
 
-    http = requests.Session()
-    last_hit = {}
+    # Concurrency: an uncached Bonhams lot takes ~2.5 s because the origin renders
+    # `image?src=` on a Cloudflare MISS (measured 2026-09-13; cache HITs take 0.14 s). The
+    # wait is server latency, not bandwidth, so a few workers recover the throughput while
+    # the per-host limiter keeps the request rate at the ~4 req/s the sequential run used.
+    limiter = HostRateLimiter(PER_HOST_SPACING_S)
+    local = threading.local()
+
+    def work(row):
+        if not hasattr(local, "http"):
+            local.http = requests.Session()
+        limiter.wait(host_of(hires_url(row["sourceUrl"])) or "?")
+        return process(row, local.http)
+
     pending, done, failed, t0 = [], 0, 0, time.time()
     tiers = {}
-    for i, row in enumerate(rows):
-        host = host_of(hires_url(row["sourceUrl"])) or "?"
-        wait = PER_HOST_SPACING_S - (time.time() - last_hit.get(host, 0))
-        if wait > 0:
-            time.sleep(wait)
-        out = process(row, http)
-        last_hit[host] = time.time()
-        if out["failed"]:
-            failed += 1
-        else:
-            tiers[out["tier"]] = tiers.get(out["tier"], 0) + 1
-        if args.dry_run:
-            print(f"  {out['w']}x{out['h']} {out['pxPerMm']} px/mm ({out['basis']}) tier={out['tier']} "
-                  f"{out['reason'] or ''} {out['hiresUrl'][:90]}")
-        else:
-            pending.append(out)
-        if not args.dry_run and (len(pending) >= args.batch or i == len(rows) - 1):
-            with driver.session(database=db) as s:
-                s.run(WRITE_QUERY, rows=pending)
-            done += len(pending)
-            pending = []
-        if (i + 1) % 200 == 0:
-            rate = (i + 1) / (time.time() - t0)
-            print(f"  {i + 1}/{len(rows)}  failed={failed}  tiers={tiers}  {rate:.1f} img/s  "
-                  f"eta {((len(rows) - i - 1) / max(rate, 1e-6)) / 60:.0f} min", flush=True)
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        for i, out in enumerate(pool.map(work, rows, chunksize=1)):
+            if out["failed"]:
+                failed += 1
+            else:
+                tiers[out["tier"]] = tiers.get(out["tier"], 0) + 1
+            if args.dry_run:
+                print(f"  {out['w']}x{out['h']} {out['pxPerMm']} px/mm ({out['basis']}) tier={out['tier']} "
+                      f"{out['reason'] or ''} {out['hiresUrl'][:90]}")
+            else:
+                pending.append(out)
+            if not args.dry_run and (len(pending) >= args.batch or i == len(rows) - 1):
+                with driver.session(database=db) as s:
+                    s.run(WRITE_QUERY, rows=pending)
+                done += len(pending)
+                pending = []
+            if (i + 1) % 200 == 0:
+                rate = (i + 1) / (time.time() - t0)
+                print(f"  {i + 1}/{len(rows)}  failed={failed}  tiers={tiers}  {rate:.1f} img/s  "
+                      f"eta {((len(rows) - i - 1) / max(rate, 1e-6)) / 60:.0f} min", flush=True)
     driver.close()
     print(f"done: {done} written, {failed} failed, tiers={tiers}, {time.time() - t0:.0f}s")
 

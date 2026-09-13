@@ -253,6 +253,45 @@ Decisions taken from it:
   source-institution probe — with one photographer style per source, an adapter can learn the
   camera.
 
+#### Where it runs, and how (added 2026-09-13)
+
+The extraction is latency- and download-bound, not a local job: ~5k pilot images × 16–32
+tiles is ~7 h on the M1, ~10 min on a rented A10/A100. It runs on a rented GPU box with
+**no graph credentials on the box** — the graph is read and written from the local machine:
+
+```
+local:  export_phase2_manifest.py  → phase2_<name>.jsonl    (what to fetch, dims, labels)
+box:    extract_tile_embeddings.py → tiles_NNNN.npz shards  (needs only the manifest + HF_TOKEN)
+local:  rsync shards back; load_tile_embeddings.py           (pooled vectors onto DigitalImage)
+```
+
+Box requirements: any CUDA image with PyTorch ≥ 2.4 (RunPod / Lambda "PyTorch" templates),
+1 GPU with ≥ 16 GB (A10G / L4 / A100 all fine — ViT-L fp16 at batch 32 needs ~6 GB), ~20 GB
+disk (the model is 1.2 GB, shards are ~64 KB per image), outbound HTTPS to the image hosts
+and Hugging Face. Setup and launch, verified 2026-09-13 on MPS with the same scripts:
+
+```bash
+# on the box
+mkdir -p ~/phase2 && cd ~/phase2
+tar xzf phase2_bundle.tar.gz && cd phase2_bundle          # scp'd from local: 4 scripts + manifest
+pip install -r requirements-gpu.txt
+export HF_TOKEN=hf_...                                    # gated DINOv3 checkpoint
+nohup python technique_ml/extract_tile_embeddings.py \
+    --manifest phase2_pilot_intaglio.jsonl --out-dir tiles --fetch-threads 8 \
+    > extract.log 2>&1 &
+tail -f extract.log                                       # ~100-image progress lines, ETA
+```
+
+```bash
+# back on local, when extract.log says done
+rsync -av --progress <box>:~/phase2/phase2_bundle/tiles/ knowledge_graph/technique_ml/data/tiles_pilot/
+```
+
+The run is resumable (image ids already in shards are skipped), so a box that dies mid-run
+costs at most one 500-image shard. `failures.jsonl` records anything skipped and why.
+Per-tile vectors stay in the shards for the Phase 4 attention-MIL head; only the pooled
+vectors go into the graph.
+
 ### Phase 3 — label repair
 
 - Collapse naming-only distinctions: Giclée / Inkjet / Pigment / Digital print → one inkjet
