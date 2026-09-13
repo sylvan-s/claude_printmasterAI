@@ -226,7 +226,7 @@ interface Row extends Lot {
 const SELL_THROUGH = `
 MATCH (a:Artist)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(:EditionRun)
       -[:INCLUDES]->(i:Impression)<-[:DOCUMENTS]-(s:SourceRecord)
-WHERE toLower(a.name) = toLower($artist) AND s.sourceType = 'auction'
+WHERE a.name = $artist AND s.sourceType = 'auction'
   AND s.saleDate IS NOT NULL AND substring(s.saleDate, 0, 10) < $untilDate
   AND ($sinceDate IS NULL OR s.saleDate >= $sinceDate)
   AND NOT (s.saleId = $saleId AND s.lotNumber = $lotNumber)

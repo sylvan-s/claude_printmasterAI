@@ -121,9 +121,21 @@ export interface ComparablesParams {
   limit?: number;
 }
 
+/**
+ * Which Artist node(s) carry this name — resolved BEFORE the comps traversal so the main
+ * query can start from the \`artist_name\` index. Matching the folded name inline
+ * (\`cypherFold(a.name) = $x\`) is not indexable, and with the traversal attached the planner
+ * starts from SourceRecord instead: measured 2026-09-13 at 3.3-4.6 s per call against
+ * 24-80 ms from the index, for a 1-work artist and a 422-comp artist alike. The exact name
+ * is tried first (callers pass the graph's own spelling from resolveArtistIdentity); the
+ * folded scan runs only when it misses, and on its own it costs ~250 ms, not seconds.
+ */
+const ARTIST_EXACT = `MATCH (a:Artist {name: $exact}) RETURN a.name AS name`;
+const ARTIST_FOLDED = `MATCH (a:Artist) WHERE ${cypherFold("a.name")} = $folded RETURN a.name AS name`;
+
 const QUERY = `
 MATCH (a:Artist)
-WHERE ${cypherFold("a.name")} = $artistName
+WHERE a.name IN $artistNames
 MATCH (a)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)-[:INCLUDES]->(imp:Impression)
 MATCH (src:SourceRecord)-[:DOCUMENTS]->(imp)
 WHERE src.sourceType = 'auction'
@@ -231,10 +243,12 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
   const rawTitle = params.workTitle?.trim() || null;
   const titleForExactMatch = rawTitle && !isLowInformationTitle(rawTitle) ? rawTitle : null;
   try {
+    let artistNames = (await session.run(ARTIST_EXACT, { exact: params.artistName.trim() })).records.map((r) => String(r.get("name")));
+    if (!artistNames.length) {
+      artistNames = (await session.run(ARTIST_FOLDED, { folded: foldAccents(params.artistName) })).records.map((r) => String(r.get("name")));
+    }
     const res = await session.run(QUERY, {
-      // Accent-folded to match the folded properties in QUERY — an unfolded "Peintre et
-      // Modele" never reached tier 0 against the graph's "Peintre et Modèle". See unaccent.ts.
-      artistName: foldAccents(params.artistName),
+      artistNames,
       conceptualWorkId: params.conceptualWorkId ?? null,
       conceptualWorkIds: params.conceptualWorkIds ?? [],
       // Normalised, not merely accent-folded: 29.9% of works are variant-titled duplicates
