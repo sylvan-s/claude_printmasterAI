@@ -6,8 +6,9 @@ physical scale is worth +0.09 / +0.15 artist-balanced F1 on aquatint / drypoint 
 encoder at 518px, and resolution alone is worth nothing. **Amended 2026-09-13** after the
 physical-cue research in [`docs/research/intaglio-technique-visual-cues-2026-09-13.md`](../research/intaglio-technique-visual-cues-2026-09-13.md):
 a Phase 0b (encoder head-to-head and a finer tile scale, in the existing harness) is inserted
-before Phase 1, and Phases 1–4 are revised as marked. Phase 0b is next; nothing after it is
-started.
+before Phase 1, and Phases 1–4 are revised as marked. **Phase 0b done 2026-09-13**: DINOv3
+ViT-L/16 selected, CLS pooling kept, fine scale kept via a per-scale head (results below).
+Phase 1 is next; nothing after 0b is started.
 
 The printmaking-technique classifier ([`knowledge_graph/technique_ml/`](../../knowledge_graph/technique_ml/README.md))
 is rebuilt on features extracted from the images at the resolution the sources actually
@@ -176,6 +177,46 @@ Phase 2 forward passes are spent on the winner:
 
 Go/no-go for Phase 2's encoder choice: the best configuration on artist-balanced F1 and AP,
 with the same 5-fold artist split as Phase 0.
+
+#### Phase 0b result (2026-09-13)
+
+`technique_ml/phase0b_encoder_scale_probe.py`, 896 images / 347 artists (three of Phase 0's
+899 fail the stricter tile-fit check), 195 with a native ≥ 11.2 px/mm fine scale; native
+px/mm buckets 2–4 / 4–7 / 7–11 / >11 hold 137 / 274 / 263 / 203 images.
+`artifacts/phase0b_results.json`. Artist-balanced F1 / AP:
+
+| Feature set | DINOv2-L | DINOv2-L + registers | DINOv3 ViT-L/16 |
+|---|---|---|---|
+| CLS, mean ⊕ max (= Phase 0 F2) — aquatint | 0.630 / 0.692 | **0.680** / 0.643 | 0.653 / 0.667 |
+| CLS, mean ⊕ max — drypoint | 0.736 / 0.747 | 0.704 / 0.701 | **0.762 / 0.835** |
+| PATCH (orderless patch-token pooling) — aquatint / drypoint | 0.646 / 0.623 · 0.658 / 0.666 | 0.667 / 0.644 · 0.724 / 0.711 | 0.634 / 0.664 · 0.767 / 0.773 |
+| CLS+PATCH — aquatint / drypoint | 0.665 / 0.662 · 0.722 / 0.708 | 0.686 / 0.657 · 0.721 / 0.699 | 0.636 / 0.670 · 0.772 / 0.818 |
+| CLS+FINE concat — aquatint / drypoint | 0.666 / 0.691 · 0.727 / 0.737 | 0.650 / 0.659 · 0.711 / 0.733 | 0.640 / 0.694 · 0.745 / 0.803 |
+| FINE alone, 195-image subset — drypoint | 0.774 / **0.814** | 0.778 / **0.861** | 0.795 / **0.838** |
+| CLS alone, same subset — drypoint | 0.703 / 0.678 | 0.746 / 0.715 | 0.771 / 0.772 |
+
+Decisions taken from it:
+
+1. **Encoder: DINOv3 ViT-L/16 for Phase 2.** Best drypoint by a clear margin (AP 0.835 vs
+   0.747 for DINOv2-L, +0.09) and level on aquatint; the gram-anchored dense features do
+   carry more of the surface signal. Registers on DINOv2 are a wash at CLS level (aquatint
+   F1 up, everything else down) and are not adopted on their own — DINOv3 has them anyway.
+   Gated checkpoint; `HF_TOKEN` is required wherever Phase 2 runs.
+2. **Pooling: CLS per tile.** Orderless patch-token pooling adds nothing on any encoder,
+   alone or concatenated. The CLS token is not discarding texture; the question is closed.
+3. **The finer scale carries drypoint signal the 40 mm tile lacks.** On the controlled
+   195-image subset (same images, same folds), 20 mm tiles beat 40 mm tiles on drypoint AP for
+   all three encoders: +0.14, +0.15, +0.07. Aquatint on that subset is noise — small sheets
+   are rarely aquatints. **Concatenating the two scales does not capture it** (CLS+FINE is flat
+   on the full set) because the fine block is zero for 78% of images and the head learns to
+   ignore it. So the fine scale is kept, and Phase 4's head must treat scales separately — a
+   fine-scale specialist gated on px/mm, or MIL over tiles tagged with their scale — rather
+   than widening the input vector.
+4. **The per-bucket curves are descriptive only.** Drypoint F1 rises with native px/mm
+   (DINOv3 CLS: 0.54 → 0.61 → 0.85 → 0.82) and aquatint falls (0.70 → 0.71 → 0.58 → 0.44),
+   identically across encoders and feature sets — but px/mm is confounded with sheet size and
+   source (small plates and Roseberys `xlarge` fill the top buckets), so the curves are not
+   evidence of resolution on their own. The subset comparison in (3) is the controlled test.
 
 ### Phase 1 — high-resolution acquisition layer (revised 2026-09-13)
 
