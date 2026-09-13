@@ -885,6 +885,7 @@ function compactComparableForValuation(c: any) {
     title: c.workTitle ?? undefined,
     techniques: c.techniques?.length ? c.techniques : undefined,
     editionSize: c.editionSize ?? undefined,
+    hammerGBP: c.hammerPriceGBP ?? undefined,
     realisedGBP: c.priceRealisedGBP,
     estGBP:
       c.estimateLowGBP != null || c.estimateHighGBP != null
@@ -1339,7 +1340,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
                 `${comps.summary.count} comparable(s). Summary: ${JSON.stringify(comps.summary)}\n` +
                 `Coverage: ${comps.coverageNote}\n` +
                 JSON.stringify(comps.comparables.map(compactComparableForValuation));
-              console.log(`[4-Stage] Stage 2b query_ackg_comparables "${useName.name}": ${comps.summary.count} comp(s), median GBP ${comps.summary.medianGBP ?? "n/a"}`);
+              console.log(`[4-Stage] Stage 2b query_ackg_comparables "${useName.name}": ${comps.summary.count} comp(s), median hammer GBP ${comps.summary.medianHammerGBP ?? "n/a"}`);
             } catch (err: any) {
               content = `ACKG comparables query failed: ${err.message}`;
             }
@@ -3113,8 +3114,8 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
             `(same-work ${ackgComps.summary.tierCounts.same_work}, ` +
             `same-artist+technique ${ackgComps.summary.tierCounts.same_artist_technique}, ` +
             `same-artist ${ackgComps.summary.tierCounts.same_artist})` +
-            (ackgComps.summary.medianGBP != null
-              ? `, median GBP ${ackgComps.summary.medianGBP.toFixed(0)}`
+            (ackgComps.summary.medianHammerGBP != null
+              ? `, median hammer GBP ${ackgComps.summary.medianHammerGBP.toFixed(0)} (realised ${ackgComps.summary.medianGBP?.toFixed(0)})`
               : ""),
         );
       } catch (err) {
@@ -3131,8 +3132,9 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
 
     const compsNote = ackgComps && ackgComps.summary.count > 0
       ? `\n\nPRIMARY — ACKG REALISED AUCTION COMPARABLES (structured records from this project's own knowledge graph; ` +
-        `premium-inclusive realised prices, converted to GBP at the sale-date ECB rate). ` +
-        `These are the primary basis for your valuation.\n` +
+        `GBP at the sale-date ECB rate). Each comp carries hammerGBP (fall of the hammer — the basis your auctionEstimate is on) ` +
+        `and realisedGBP (hammer + buyer's premium, ~1.25-1.30x). ANCHOR THE ESTIMATE ON hammerGBP; ` +
+        `an estimate set from realisedGBP reads ~1.3x high. These are the primary basis for your valuation.\n` +
         `Summary: ${JSON.stringify(ackgComps.summary)}\n` +
         `Coverage caveat: ${ackgComps.coverageNote}\n` +
         `Tiers: "same_work" = the SAME print (strongest evidence — weight these highest); ` +

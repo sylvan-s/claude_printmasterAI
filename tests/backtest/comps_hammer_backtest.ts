@@ -197,7 +197,7 @@ function loadForum(): Lot[] {
 }
 
 // ── per-lot result ────────────────────────────────────────────────────────────
-interface TierStat { n: number; median: number | null; latest: string | null }
+interface TierStat { n: number; median: number | null; medianHammer: number | null; latest: string | null }
 interface Row extends Lot {
   key: string;
   canonicalArtist: string | null;
@@ -239,8 +239,10 @@ function tierStat(c: ComparablesResult, tier: Row["bestTier"]): TierStat {
   const xs = c.comparables.filter((x) => x.tier === tier);
   const p = xs.map((x) => x.priceRealisedGBP).sort((a, b) => a - b);
   const med = p.length ? (p.length % 2 ? p[(p.length - 1) / 2] : (p[p.length / 2 - 1] + p[p.length / 2]) / 2) : null;
+  const h = xs.map((x) => x.hammerPriceGBP).filter((v): v is number => v != null && v > 0).sort((a, b) => a - b);
+  const medH = h.length ? (h.length % 2 ? h[(h.length - 1) / 2] : (h[h.length / 2 - 1] + h[h.length / 2]) / 2) : null;
   const latest = xs.map((x) => x.saleDate?.slice(0, 10) ?? "").filter(Boolean).sort().pop() ?? null;
-  return { n: xs.length, median: med, latest };
+  return { n: xs.length, median: med, medianHammer: medH, latest };
 }
 
 const identityCache = new Map<string, { canonical: string | null; ambiguous: number }>();
@@ -259,7 +261,7 @@ async function processLot(lot: Lot): Promise<Row> {
     ...lot, key: `${lot.source}:${lot.saleId}:${lot.lotNumber}`,
     canonicalArtist: null, resolved: false, ambiguous: 0,
     titleUsable: !titleIsUnusable(lot.title), technique: mapTechniqueToAckgVocabulary(lot.medium), sinceDate,
-    tiers: { same_work: { n: 0, median: null, latest: null }, same_artist_technique: { n: 0, median: null, latest: null }, same_artist: { n: 0, median: null, latest: null } },
+    tiers: { same_work: { n: 0, median: null, medianHammer: null, latest: null }, same_artist_technique: { n: 0, median: null, medianHammer: null, latest: null }, same_artist: { n: 0, median: null, medianHammer: null, latest: null } },
     bestTier: "none", bestMedian: null, sellThrough: null,
   };
   try {
@@ -419,11 +421,14 @@ function summarize(rows: Row[]) {
     const g = withEst.filter((r) => r.tiers[tier].n >= minN);
     if (g.length < 5) { console.log(`  ${label}: n=${g.length} (too few)`); continue; }
     const mid = (r: Row) => (r.lowEst + r.highEst) / 2;
-    const comp = (r: Row) => r.tiers[tier].median! / r.premiumRatio; // back to hammer basis
+    // Comp on the HAMMER basis: the graph's own hammerPriceGBP when the run recorded it,
+    // else realised / premium ratio (runs made before medianHammer existed).
+    const comp = (r: Row) => r.tiers[tier].medianHammer ?? r.tiers[tier].median! / r.premiumRatio;
+    const hammerBased = g.filter((r) => r.tiers[tier].medianHammer != null).length;
     const preds: Array<[string, (r: Row) => number]> = [
       ["catalogue midpoint", mid],
       [`catalogue midpoint x ${DRIFT}`, (r) => mid(r) * DRIFT],
-      ["comp median / premium", comp],
+      [`comp hammer median${hammerBased < g.length ? " (realised/premium where no hammer)" : ""}`, comp],
       ["geo blend (mid x drift, comp / 1.1)", (r) => Math.sqrt(mid(r) * DRIFT * (comp(r) / 1.1))],
     ];
     console.log(`  ${label} (n=${g.length})`);

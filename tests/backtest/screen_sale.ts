@@ -193,7 +193,9 @@ async function main() {
         const c = await queryAuctionComparables({
           artistName: artist, workTitle, sinceDate: "2015-01-01", limit: 40,
         });
-        const sw = c.comparables.filter(x => x.tier === "same_work").map(x => x.priceRealisedGBP).sort((a, b) => a - b);
+        // HAMMER basis: the ratio below is against the catalogue LOW ESTIMATE, which is
+        // hammer-basis; realised (premium-inclusive) prices would inflate it ~1.3x.
+        const sw = c.comparables.filter(x => x.tier === "same_work").map(x => x.hammerPriceGBP ?? x.priceRealisedGBP / 1.3).sort((a, b) => a - b);
         nComps = sw.length;
         if (sw.length) median = Math.round(sw[Math.floor(sw.length / 2)]);
       } catch { /* graph hiccup — lot simply gets no price signal */ }

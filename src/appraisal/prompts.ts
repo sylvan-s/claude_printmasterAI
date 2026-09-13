@@ -1214,7 +1214,7 @@ PROOFS SIT OUTSIDE THE NUMBERED EDITION. "Edition of 75" routinely means 75 numb
 Then identify edition type (first | later | reprint | posthumous | unknown) and valuation-relevant findings (impression period, rarity factors, discount factors).
 
 STEP 7 — AUCTION COMP COLLECTION
-CALL query_ackg_comparables FIRST, with the attributed artist plus the work title and technique when you have them. It returns dated, sold, premium-inclusive, GBP-normalised records tiered same_work / same_artist_technique / same_artist. These are the strongest comps available to you and are the same corpus Stage 3 values from — prefer them over anything you find on the open web, and record them in auctionComps like any other comp (listingUrl, priceAmount, priceCurrency "GBP" and priceBasis "premium_inclusive" all come straight off the record).
+CALL query_ackg_comparables FIRST, with the attributed artist plus the work title and technique when you have them. It returns dated, sold, GBP-normalised records tiered same_work / same_artist_technique / same_artist, each with hammerGBP (hammer basis — what estimates are quoted against) and realisedGBP (premium-inclusive). These are the strongest comps available to you and are the same corpus Stage 3 values from — prefer them over anything you find on the open web, and record them in auctionComps like any other comp (listingUrl, priceAmount, priceCurrency "GBP" and priceBasis "premium_inclusive" all come straight off the record).
 THEN use web search only for what the graph did not cover: no same_work tier, too few comps to reason from, or an empty result because the artist is thin in the graph (81% of its artists have fewer than 3 priced records, and Forum Auctions is absent entirely). A thin graph result is a coverage fact — never treat it as evidence the work is unsaleable or low-value.
 Use 1–2 web searches to find recent verifiable auction sales of identical or highly similar prints. Prioritise: Roseberys London, Sotheby's, Christie's, Phillips, Bonhams, Artnet. Aim for 2–3 comps. For each comp found:
 - Record: artworkTitle, artist, technique, hammerPrice (human-readable, in "{currency}"), saleDate, auctionHouse, conditionState.
@@ -1514,8 +1514,12 @@ DO NOT re-describe the artwork or repeat attribution findings. Output ONLY the s
 VALUATION PROCESS:
 1. Read the comparables. Two sources may be supplied, and they are NOT equal in weight (ADR-0016):
    - PRIMARY — ACKG REALISED AUCTION COMPARABLES: structured records from this project's own
-     knowledge graph. Every one is a real, dated, SOLD lot with a premium-inclusive realised
-     price already converted to GBP at that sale date's ECB rate. Anchor your valuation on
+     knowledge graph. Every one is a real, dated, SOLD lot carrying TWO prices, both GBP at
+     that sale date's ECB rate: hammerGBP (the fall of the hammer) and realisedGBP (hammer
+     plus buyer's premium, ~1.25-1.30x). Your auctionEstimate is a PRE-SALE ESTIMATE ON THE
+     HAMMER BASIS — the same basis every auction house prints — so anchor low/high on the
+     hammerGBP figures and NEVER on realisedGBP; a range built from realised prices reads
+     ~1.3x high against the catalogue and the eventual hammer. Anchor your valuation on
      these whenever they are present. Weight them by tier: "same_work" (the SAME print —
      strongest evidence available, and a run of same_work sales is close to a direct market
      price) > "same_artist_technique" > "same_artist". Prefer recent sales within a tier.
@@ -1536,7 +1540,8 @@ VALUATION PROCESS:
 5. Set lowEstimate at the protective floor of the adjusted comp range. Set highEstimate at the top of the adjusted range, only if condition and attribution evidence clearly support it.
 6. Keep lowEstimate conservative — err toward caution given current macroeconomic softness and high buy-in rates.
 7. Check Stage 2b's attributionChallengeAssessment.verdict (ADR-0006). If CHALLENGED, widen your estimate range (lower lowEstimate, raise highEstimate, or both) to reflect the unresolved authentication/attribution risk that survived adversarial review — do not report a normal-width range as if no real counter-evidence had surfaced. If UNCERTAIN, apply a smaller widening. CONFIRMED or NOT_APPLICABLE requires no adjustment beyond the condition/rarity factors above.
-8. Populate recentAuctionSales from the comparables you actually used, ACKG comps first. For an ACKG comp, priceRealized is its priceRealisedGBP and auctionHouse its institutionName; for a Stage 2b comp, convert the hammerPrice string to priceRealized.
+8. Populate recentAuctionSales from the comparables you actually used, ACKG comps first. For an ACKG comp, priceRealized is its realisedGBP (premium-inclusive — that field IS the realised price) and auctionHouse its house; for a Stage 2b comp, convert the hammerPrice string to priceRealized. recentAuctionSales reports what buyers paid; auctionEstimate is on the hammer basis. Do not mix the two.
+9. Market reality check (measured on 2016-2026 Roseberys and Forum sales, 5,000 lots): the hammer lands at ~0.8x the printed estimate midpoint, four in ten SOLD lots go below the low estimate, and a third of lots do not sell. A defensible lowEstimate is therefore at or below the level the same_work hammer prices actually cleared at, not above it.
 
 CURRENCY: All prices must be in "{currency}" (e.g. GBP → £, USD → $, EUR → €).
 

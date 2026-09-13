@@ -49,7 +49,17 @@ export interface AuctionComparable {
   workTitle: string | null;
   techniques: string[];
   editionSize: number | null;
+  /** Premium-inclusive realised price, GBP at the sale-date rate. What the buyer paid. */
   priceRealisedGBP: number;
+  /**
+   * HAMMER price, GBP at the sale-date rate — the figure auction estimates are quoted
+   * against. Present on every dated Bonhams / Roseberys / Skinner record (measured 2026-09-13:
+   * 48,078 of 48,078). Valuations that are compared to a catalogue estimate must anchor on
+   * this, not on priceRealisedGBP: the premium ratio is ~1.25 (Bonhams), ~1.30 (Roseberys),
+   * ~1.28 (Skinner), so anchoring an estimate on realised prices reads ~1.3x high by
+   * construction — the confound the hammer backtest surfaced.
+   */
+  hammerPriceGBP: number | null;
   priceCurrency: string | null;
   priceRealisedNative: number | null;
   fxRateDate: string | null;
@@ -61,7 +71,12 @@ export interface AuctionComparable {
 export interface ComparablesSummary {
   count: number;
   tierCounts: Record<ComparableTier, number>;
+  /** Median premium-inclusive realised price. Kept under its historical name. */
   medianGBP: number | null;
+  /** Median HAMMER price — the basis an auction estimate is quoted on. Anchor here. */
+  medianHammerGBP: number | null;
+  /** Median hammer of the same_work tier alone, when any exist — the direct market price. */
+  medianSameWorkHammerGBP: number | null;
   minGBP: number | null;
   maxGBP: number | null;
   earliestSale: string | null;
@@ -151,6 +166,7 @@ RETURN best.tierRank AS tierRank,
        src.saleId AS saleId,
        src.lotNumber AS lotNumber,
        src.priceRealisedGBP AS priceRealisedGBP,
+       src.hammerPriceGBP AS hammerPriceGBP,
        src.priceCurrency AS priceCurrency,
        src.priceRealised AS priceRealisedNative,
        src.fxRateDate AS fxRateDate,
@@ -243,6 +259,7 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
         techniques,
         editionSize: num(r.get("editionSize")),
         priceRealisedGBP: num(r.get("priceRealisedGBP")) as number,
+        hammerPriceGBP: num(r.get("hammerPriceGBP")),
         priceCurrency: r.get("priceCurrency") ?? null,
         priceRealisedNative: num(r.get("priceRealisedNative")),
         fxRateDate: r.get("fxRateDate") ?? null,
@@ -253,6 +270,8 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
     });
 
     const prices = comparables.map((c) => c.priceRealisedGBP);
+    const hammers = comparables.map((c) => c.hammerPriceGBP).filter((h): h is number => h != null && h > 0);
+    const sameWorkHammers = comparables.filter((c) => c.tier === "same_work").map((c) => c.hammerPriceGBP).filter((h): h is number => h != null && h > 0);
     const dates = comparables.map((c) => c.saleDate).filter(Boolean) as string[];
     const tierCounts: Record<ComparableTier, number> = {
       same_work: 0, same_artist_technique: 0, same_artist: 0,
@@ -265,6 +284,8 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
         count: comparables.length,
         tierCounts,
         medianGBP: median(prices),
+        medianHammerGBP: median(hammers),
+        medianSameWorkHammerGBP: median(sameWorkHammers),
         minGBP: prices.length ? Math.min(...prices) : null,
         maxGBP: prices.length ? Math.max(...prices) : null,
         earliestSale: dates.length ? dates.reduce((a, b) => (a < b ? a : b)) : null,
@@ -275,8 +296,10 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
         "(2014-2026, 8,164) and Skinner (2022-2026, 1,251). Forum Auctions is excluded: its " +
         "records carry neither a saleDate nor a realised price. An absent or thin comp set " +
         "reflects that coverage gap, not evidence that the artist's work is unsaleable or " +
-        "worthless. All prices are premium-inclusive realised prices converted to GBP at the " +
-        "sale-date ECB rate.",
+        "worthless. Every record carries two prices, both GBP at the sale-date ECB rate: " +
+        "hammerPriceGBP (the fall of the hammer — the basis auction ESTIMATES are quoted on) and " +
+        "priceRealisedGBP (hammer plus buyer's premium, ~1.25-1.30x). An estimate must be set " +
+        "against hammer prices; a range set from realised prices reads ~1.3x high.",
     };
   } finally {
     await session.close();
