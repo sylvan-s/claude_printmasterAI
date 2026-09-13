@@ -89,6 +89,37 @@ of better lots, not a condition effect.
   lots, which is better than tier-2 comps (61–66%) and close to same-work comps.
 - **Not** a replacement for the estimate where one exists.
 
+## Transfer test: do the multipliers move from artist to artist? (2026-09-13)
+
+`transfer_test.py` fits the same log-linear model on ten high-volume artists (Picasso,
+Chagall, Miró, Hockney, Warhol, Lowry, Banksy, Hirst, Rembrandt, Lichtenstein; 7,522 sales),
+prints their multipliers side by side, and scores each artist's post-2024-07 sales under an
+own-artist model, a pooled model (artist intercepts, shared slopes), and Picasso's slopes
+with the target's own level ("from Picasso").
+
+Mean MAE(log) over the ten artists: artist median 1.09 · **own 0.69** · pooled 0.76 · from
+Picasso 0.84 · house estimate 0.34. Own beats pooled beats transfer for eight of ten; adding
+artist-specific slopes for signature/edition/area to the pooled model recovers part of the
+gap (Banksy −0.12, Lowry −0.07, Hirst −0.05). Rembrandt gains almost nothing from any
+attribute model (0.78 vs 0.81 median): what prices an old-master impression — state, quality,
+watermark, provenance — is not in these features.
+
+Where the elasticities differ, read off the table:
+- **Edition size inverts by market.** Editions over 300 vs 76–150: Chagall ×0.14, Lichtenstein
+  ×0.38, Warhol ×0.47, Picasso ×0.50 — but Banksy ×1.21, Hockney ×1.20, Hirst ×1.09. For the
+  modern masters a large edition is a book plate or a poster; for the contemporary names it
+  IS the market.
+- **Signature** is the most stable (×2.2–2.8 for the modern names), but ×3.4 for Hirst and
+  ×1.5 for Rembrandt, where "signed" means in the plate.
+- **Screenprint vs lithograph**: Banksy ×5.8, Hirst ×3.3, Picasso ×2.2, ~×1 elsewhere.
+- **House**: like-for-like, Roseberys hammers at ×0.36 (Warhol) to ×0.95 (Picasso) of Bonhams,
+  pooled ×0.51. Part of this is selection (what each house is consigned, including
+  after-Warhol Sunday B. Morning sheets under Warhol's name) and part is the buyer pool.
+
+So: per-artist models where an artist has a few hundred sales; segment-pooled models
+(modern-master editions / contemporary editions / old master) as the fallback for thin
+artists — a follow-up test; and never a single donor's slopes.
+
 ## Next
 
 Rarity/state words (rare, unique, one of N, state, proof aside from the edition) as features;

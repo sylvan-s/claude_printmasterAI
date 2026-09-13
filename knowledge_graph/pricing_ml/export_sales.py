@@ -42,17 +42,18 @@ def load_env():
 
 
 QUERY = """
-MATCH (a:Artist {name: $artist})-[:CREATED]->(cw:ConceptualWork)
+MATCH (a:Artist)-[:CREATED]->(cw:ConceptualWork)
       -[:PRINTED_AS]->(er:EditionRun)-[:INCLUDES]->(i:Impression)<-[:DOCUMENTS]-(s:SourceRecord)
-WHERE s.sourceType = 'auction' AND s.sold = true AND s.hammerPriceGBP > 0 AND s.saleDate IS NOT NULL
+WHERE ($artist IS NULL OR a.name = $artist)
+  AND s.sourceType = 'auction' AND s.sold = true AND s.hammerPriceGBP > 0 AND s.saleDate IS NOT NULL
 OPTIONAL MATCH (i)-[:USES_TECHNIQUE]->(t:Technique)
 OPTIONAL MATCH (i)-[:PRINTED_ON]->(p:Paper)
 OPTIONAL MATCH (cw)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
-WITH s, i, er, cw,
+WITH a, s, i, er, cw,
      collect(DISTINCT t.name) AS techniques,
      collect(DISTINCT p.name) AS papers,
      collect(DISTINCT CASE WHEN ce IS NULL THEN null ELSE cr.numberingPrefix + ' ' + ce.number END) AS citations
-RETURN s.id AS sourceId, s.institutionName AS house, s.saleId AS saleId, s.lotNumber AS lotNumber,
+RETURN a.name AS artist, a.ulanUrl AS artistUlan, s.id AS sourceId, s.institutionName AS house, s.saleId AS saleId, s.lotNumber AS lotNumber,
        substring(s.saleDate, 0, 10) AS saleDate, s.listingUrl AS listingUrl,
        s.hammerPriceGBP AS hammerGBP, s.priceRealisedGBP AS realisedGBP,
        s.estimateLow AS estimateLow, s.estimateHigh AS estimateHigh, s.fxRateToGBP AS fxRateToGBP,
@@ -68,7 +69,7 @@ ORDER BY saleDate
 """
 
 FIELDS = [
-    "sourceId", "house", "saleId", "lotNumber", "saleDate", "listingUrl", "hammerGBP", "realisedGBP",
+    "artist", "artistUlan", "sourceId", "house", "saleId", "lotNumber", "saleDate", "listingUrl", "hammerGBP", "realisedGBP",
     "estimateLow", "estimateHigh", "fxRateToGBP", "estimateLowGBP", "estimateHighGBP", "currency", "workId", "workName", "workYear", "impressionId",
     "sourceTitle", "rawMedium", "signed", "copyType", "editionSize", "plateDims", "imageDims", "sheetDims",
     "techniques", "papers", "citations",
@@ -77,7 +78,7 @@ FIELDS = [
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--artist", required=True)
+    ap.add_argument("--artist", default=None, help="one artist; omit for every artist in the graph")
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
     load_env()
@@ -94,7 +95,8 @@ def main():
             w.writerow(row)
             n += 1
     driver.close()
-    print(f"{n} sold records for {args.artist!r} -> {args.out}")
+    who = repr(args.artist) if args.artist else "all artists"
+    print(f"{n} sold records for {who} -> {args.out}")
 
 
 if __name__ == "__main__":
