@@ -404,6 +404,43 @@ matches their own fit and the blend beats own, prior and pooled in every sales b
 0.679 vs 0.707 own vs 0.689 pooled at 15–40); the estimate stays ~0.3 log better. This is the
 adjustment table for same-work comps, per artist, with a fallback for thin artists.
 
+## Follow-on work logged (2026-09-13)
+
+### 6. Integrate the elasticity priors into the graph
+
+Decision (2026-09-13): the priors are a derived layer IN the graph, not a second database.
+The committed JSON stays as the build artefact and `build_priors.py` stays the only writer;
+the pipeline never writes them.
+
+Schema to add:
+- `Artist.priceLevelLog`, `Artist.priceElasticities` (flat float list), `Artist.priceEarlierSales`,
+  `Artist.priceElasticitiesRun` — for every artist with >=5 sales, plus segment defaults keyed
+  on nationality/period for artists with none.
+- One `PricingModelRun` node per build: version, cut, κ, column list, reference levels, year
+  effects, continuous medians, row count — so a run is reversible by id (MergeEvent pattern).
+- `(:Artist)-[:PRICE_NEIGHBOUR {weight, run}]->(:Artist)` for the neighbours that formed each
+  prior (explanation material for the report).
+
+Write discipline as for every other backfill: dry run, pre-snapshot of touched properties,
+batched writes, verification query, and a check script that fails when any artist's run tag
+predates the latest ingest or merge (the priors go stale on exactly those events).
+
+Read side: `queryArtistPriceProfile(canonicalName)` in `src/appraisal/knowledge_graph/`,
+returning elasticities + neighbours; Stage 3's comps block then carries, in code, the
+multiplier between the lot and each same-work comp over the attributes that differ (signature,
+edition band, size, process). That replaces the guessed "60-70% unsigned discount".
+
+Gate: on the hammer backtest, same-work comps adjusted by the artist's multipliers vs raw
+same-work medians, MAE(log) and within-2x on the same lots. Rebuild cadence: after each bulk
+ingest or artist-merge pass.
+
+### 7. Cross-house repeat-sale test
+
+Same work, attribute-matched, sold at one house and later at another: the realised spread net
+of each house's drift. Tests whether the like-for-like house effect (Roseberys ×0.36-0.95 of
+Bonhams) is an arbitrage or a selection artefact. Needed before the house effect is used in a
+verdict.
+
 ## Housekeeping done 2026-09-13
 
 - The checkout was on `technique-classifier-deepdive`, 127 commits behind main, which is why
