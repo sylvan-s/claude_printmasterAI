@@ -14,10 +14,14 @@
  * yields an UNAMBIGUOUS answer wins, and an ambiguous level refuses rather than falling
  * through to a weaker one:
  *
- *   exact_title      — the lot's folded title equals a work's name, alias or source title
- *   citation         — the lot cites "Bloch 1244" and exactly one work-name cluster carries it
- *   stripped_title   — equal after removing embedded citations, trailing years, leading
- *                      catalogue numbers
+ *   exact_title        — the lot's folded title equals a work's name, alias or source title
+ *   citation           — the lot cites "Bloch 1244" and exactly one work-name cluster carries it
+ *   citation_and_title — the citation covers several works (a series entry) but the stripped
+ *                        title picks exactly one of them
+ *   stripped_title     — equal after removing embedded citations, trailing years, leading
+ *                        catalogue numbers — and the residual must still be an identifying
+ *                        title: "Untitled (SF 314, Lembark 270)" strips to "Untitled", which
+ *                        names nothing and must not meet the artist's generic "Untitled" node
  *   stripped_no_series — additionally ignoring a ", from <series>" suffix
  *
  * WHAT IS DELIBERATELY NOT STRIPPED, and why. `title_normalize.ts` exists for the title
@@ -46,7 +50,7 @@ import { getDriver, getDatabase } from "./client.js";
 import { foldAccents, normalizeTitleKey } from "./unaccent.js";
 import { isLowInformationTitle } from "./title_normalize.js";
 
-export type WorkIdentityBasis = "exact_title" | "citation" | "stripped_title" | "stripped_no_series";
+export type WorkIdentityBasis = "exact_title" | "citation" | "citation_and_title" | "stripped_title" | "stripped_no_series";
 
 export interface WorkIdentity {
   workIds: string[];
@@ -175,22 +179,25 @@ export function isIdentifyingTitle(title: string): boolean {
 
 // ── resolution ────────────────────────────────────────────────────────────────
 
-interface WorkRow {
+export interface WorkRow {
   id: string;
   name: string;
   aliases: string[];
-  sourceTitles: string[];
+  /** One entry per documenting record: which sale/lot asserted which title. */
+  docs: Array<{ saleId: string | null; lotNumber: number | null; title: string | null }>;
   citations: Citation[];
 }
 
 const WORKS_QUERY = `
 MATCH (a:Artist) WHERE a.name = $artistName
 MATCH (a)-[:CREATED]->(cw:ConceptualWork)
-OPTIONAL MATCH (cw)-[:PRINTED_AS]->(:EditionRun)-[:INCLUDES]->(i:Impression)
-OPTIONAL MATCH (cw)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
-WITH cw, collect(DISTINCT i.sourceTitle) AS sourceTitles,
-     collect(DISTINCT CASE WHEN ce IS NULL THEN null ELSE [cr.numberingPrefix, ce.number] END) AS cits
-RETURN cw.id AS id, cw.name AS name, coalesce(cw.alternateTitles, []) AS aliases, sourceTitles, cits
+CALL { WITH cw
+  OPTIONAL MATCH (cw)-[:PRINTED_AS]->(:EditionRun)-[:INCLUDES]->(i:Impression)<-[:DOCUMENTS]-(s:SourceRecord)
+  RETURN collect(DISTINCT {saleId: s.saleId, lotNumber: s.lotNumber, title: i.sourceTitle}) AS docs }
+CALL { WITH cw
+  OPTIONAL MATCH (cw)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
+  RETURN collect(DISTINCT CASE WHEN ce IS NULL THEN null ELSE [cr.numberingPrefix, ce.number] END) AS cits }
+RETURN cw.id AS id, cw.name AS name, coalesce(cw.alternateTitles, []) AS aliases, docs, cits
 `;
 
 export async function fetchArtistWorks(canonicalArtistName: string): Promise<WorkRow[]> {
@@ -201,7 +208,13 @@ export async function fetchArtistWorks(canonicalArtistName: string): Promise<Wor
       id: String(r.get("id")),
       name: String(r.get("name") ?? ""),
       aliases: ((r.get("aliases") as unknown[]) ?? []).filter((x): x is string => typeof x === "string"),
-      sourceTitles: ((r.get("sourceTitles") as unknown[]) ?? []).filter((x): x is string => typeof x === "string"),
+      docs: ((r.get("docs") as any[]) ?? [])
+        .filter((d) => d && (d.saleId != null || d.lotNumber != null || d.title != null))
+        .map((d) => ({
+          saleId: d.saleId == null ? null : String(d.saleId),
+          lotNumber: d.lotNumber == null ? null : Number(d.lotNumber?.toNumber?.() ?? d.lotNumber),
+          title: typeof d.title === "string" ? d.title : null,
+        })),
       citations: ((r.get("cits") as unknown[]) ?? [])
         .filter((c): c is [string, string] => Array.isArray(c) && typeof c[0] === "string" && c[1] != null)
         .map(([p, n]) => ({ prefix: foldPrefix(p), number: String(n).toLowerCase(), raw: `${p} ${n}` })),
@@ -234,6 +247,14 @@ export async function resolveWorkIdentity(input: {
   title: string;
   catalogueRefs?: string | null;
   works?: WorkRow[];
+  /**
+   * Backtest only: the lot being valued is itself already in the graph, so its own node
+   * would match itself at exact_title and the weaker levels would never be exercised. A
+   * work documented ONLY by this sale/lot is dropped, and this lot's own source title is
+   * not used as a name. A production lot is not in the graph yet; this makes the backtest
+   * see what production sees.
+   */
+  excludeSaleLot?: { saleId: string; lotNumber: number } | null;
 }): Promise<WorkIdentity> {
   const title = (input.title ?? "").trim();
   const citations = [...citationsInRefs(input.catalogueRefs), ...citationsInTitle(title)];
@@ -245,12 +266,27 @@ export async function resolveWorkIdentity(input: {
     candidatesConsidered: 0, queriedTitle: title, identityKey: key, citations,
   };
   if (!input.artistName?.trim()) return base;
-  const works = input.works ?? (await fetchArtistWorks(input.artistName));
+  const ex = input.excludeSaleLot ?? null;
+  const isOwn = (d: WorkRow["docs"][number]) => !!ex && d.saleId === ex.saleId && d.lotNumber === ex.lotNumber;
+  const allWorks = input.works ?? (await fetchArtistWorks(input.artistName));
+  // Drop a work documented only by the excluded lot; keep the rest with that lot's title removed.
+  const works = ex ? allWorks.filter((w) => !w.docs.length || w.docs.some((d) => !isOwn(d))) : allWorks;
   base.candidatesConsidered = works.length;
   if (!works.length) return base;
 
   const identifying = isIdentifyingTitle(title);
-  const namesOf = (w: WorkRow) => [w.name, ...w.aliases, ...w.sourceTitles].filter(Boolean);
+  const keyIdentifying = key.length >= 3 && isIdentifyingTitle(key);
+  const sourceTitlesOf = (w: WorkRow) => w.docs.filter((d) => !isOwn(d)).map((d) => d.title).filter((t): t is string => !!t);
+  // The principal name may itself be the excluded lot's own wording (a node made from this
+  // lot and later merged); if no OTHER record asserted that name, it is not evidence.
+  const nameOf = (w: WorkRow): string | null => {
+    if (!ex) return w.name;
+    const ownTitles = w.docs.filter(isOwn).map((d) => d.title).filter(Boolean);
+    if (!ownTitles.length) return w.name;
+    const others = sourceTitlesOf(w);
+    return ownTitles.some((t) => normalizeTitleKey(t!) === normalizeTitleKey(w.name)) && !others.some((t) => normalizeTitleKey(t) === normalizeTitleKey(w.name)) ? null : w.name;
+  };
+  const namesOf = (w: WorkRow) => [nameOf(w), ...w.aliases, ...sourceTitlesOf(w)].filter((t): t is string => !!t);
   const finish = (level: WorkIdentityBasis, d: ReturnType<typeof decide>): WorkIdentity | null => {
     if (!d) return null;
     if (d.ok) return { ...base, workIds: d.ids, basis: level, matchedNames: d.names };
@@ -262,15 +298,22 @@ export async function resolveWorkIdentity(input: {
     const r = finish("exact_title", decide("exact_title", works.filter((w) => namesOf(w).some((t) => normalizeTitleKey(t) === exactKey)), (w) => titleIdentityKey(w.name)));
     if (r) return r;
   }
-  // 2. catalogue citation — one work-name cluster only
+  // 2. catalogue citation — one work-name cluster only; if the citation spans several works
+  //    (a series entry), the stripped title may still single one out.
+  const strippedHit = (ws: WorkRow[]) => (keyIdentifying ? ws.filter((w) => namesOf(w).some((t) => titleIdentityKey(t) === key)) : []);
   if (citations.length) {
     const hit = works.filter((w) => w.citations.some((c) => citations.some((x) => x.prefix === c.prefix && x.number === c.number)));
-    const r = finish("citation", decide("citation", hit, (w) => titleIdentityKey(w.name)));
-    if (r) return r;
+    const d = decide("citation", hit, (w) => titleIdentityKey(w.name));
+    if (d?.ok) return finish("citation", d)!;
+    if (d && !d.ok) {
+      const narrowed = decide("citation_and_title", strippedHit(hit), (w) => titleIdentityKey(w.name));
+      if (narrowed?.ok) return finish("citation_and_title", narrowed)!;
+      return finish("citation", d)!;
+    }
   }
-  // 3. stripped key equality
-  if (identifying && key.length >= 3) {
-    const r = finish("stripped_title", decide("stripped_title", works.filter((w) => namesOf(w).some((t) => titleIdentityKey(t) === key)), (w) => titleIdentityKey(w.name)));
+  // 3. stripped key equality — the RESIDUAL must be identifying, not just the raw title
+  if (keyIdentifying) {
+    const r = finish("stripped_title", decide("stripped_title", strippedHit(works), (w) => titleIdentityKey(w.name)));
     if (r) return r;
   }
   // 4. stripped key with the series suffix ignored, on either side

@@ -272,6 +272,62 @@ geo 1.15 Forum, 1.26 Roseberys). Head to head on same_work n>=2 lots, MAE(log): 
 stale window is not why the comps lose; the blend at best ties the estimate. Ten years stays
 the default because it reaches more lots for the liquidity and divergence signals.
 
+## Stage 3 price basis fixed (2026-09-13)
+
+Every dated auction record carries `hammerPriceGBP` (48,078 of 48,078). `queryAuctionComparables`
+now returns it per comp plus `medianHammerGBP` / `medianSameWorkHammerGBP`; Stage 3's comps block
+and prompt anchor `auctionEstimate` on hammer, never on realised; `recentAuctionSales` keeps the
+realised figure (that field is what buyers paid). The prompt also says tier 2/3 comps are a
+plausibility band, not a price (measured within-2x 60% / 50%), and carries the market-reality
+line (hammer ~0.8x midpoint, 40% of sold lots below low, a third unsold). A sold record with a
+hammer but no realised price is now a comparable (643 Roseberys records were excluded).
+
+One live run after the fix (A0785/1, Picasso etching, hammer 420, catalogue 300-500) still said
+1,200-2,500: no same-work comp, and the model centred on 40 same-artist-technique comps. That is
+the tier-2 problem the prompt line now addresses; one lot is not a measurement.
+
+**Performance defect found on the way, fixed for the comps query only:** matching the artist as
+`cypherFold(a.name) = $x` is not indexable and with the traversal attached the planner walks the
+graph from SourceRecord — 3.3-4.6 s per call against 24-80 ms from the `artist_name` index. The
+comps query now resolves the exact stored name first. Eight other queries (artist_dino_floor,
+artist_identity, catalogue_raisonne x4, edition_runs, query.ts x2) carry the same pattern — a
+spawned follow-up task.
+
+## Step 3, first slice (2026-09-13) — lot -> work identity in code
+
+`src/appraisal/knowledge_graph/work_identity.ts` (`resolveWorkIdentity`, 44 unit tests on real
+strings). Five levels, first UNAMBIGUOUS level wins, an ambiguous level refuses: exact title
+(name / alias / source title) → citation → citation narrowed by title → stripped title
+(citations, years, leading catalogue numbers removed; residual must still be identifying) →
+stripped title ignoring a `, from <series>` suffix. Plate, state, series and colourway
+designators are never stripped. Wired into Stage 3 and the Stage 2b comps tool; the basis is
+reported to the model. The backtest resolves with the lot's OWN record excluded, since a
+production lot is not in the graph yet.
+
+Same 2x2,500 lots as step 1 (`--resolve-work`):
+
+| | Forum baseline → now | Roseberys baseline → now |
+|---|---|---|
+| lots reaching same_work | 315 (13%) → **403 (16%)** | 378 (15%) → **478 (19%)** |
+| same_work with >=3 prior comps | 128 → 139 | 125 → 133 |
+| same_work >=3 comps, within 2x of realised | 75% → 76% | 89% → 88% |
+| resolved by citation / citation+title | 66 + 16 lots | 38 + 3 lots |
+| resolved by stripped title / no-series | 120 + 24 lots | 54 + 20 lots |
+| refused as ambiguous | 23 lots | 4 lots |
+| no resolution at all | 849 (35%) | 1,264 (51%) |
+
+About a quarter more lots reach the same-work tier and overall accuracy does not move. Per
+basis, citation matches are as accurate as exact ones (within 2x 87%). Stripped-title matches
+are weaker on Forum (within 2x 57%, n=28; p10 0.31) and fine on Roseberys (82%, n=17) — small
+n, but a sibling-work risk worth an adjudication step. The head-to-head predictor result is
+unchanged: estimate × 0.82 still wins.
+
+**What is left on the table is not wording.** 35-51% of lots resolve to nothing: the work is not
+in the graph under any spelling, or it is there under a name no exact rule reaches. That is the
+second slice — the Splink work-identity comparison vector (title similarity, citation, technique
+family, dimensions, edition, DINOv2) as a scored, tiered candidate ranker, with the
+stripped-title matches adjudicated by dimensions and image the same way.
+
 ## Housekeeping done 2026-09-13
 
 - The checkout was on `technique-classifier-deepdive`, 127 commits behind main, which is why

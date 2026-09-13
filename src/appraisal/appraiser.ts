@@ -49,7 +49,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery, queryArtistDinoFloor } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery, queryArtistDinoFloor, resolveWorkIdentity } from "./knowledge_graph/index.js";
 import { assessComps, formatCompStorability, type CompStorabilityReport } from "./comp_storability.js";
 import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
@@ -876,6 +876,39 @@ const STAGE2B_COMPS_LIMIT = 12;
  * FX-rate plumbing, native-currency duplicates, internal sale ids — cuts that without
  * removing a single comparable. `listingUrl` stays: the source-listing exclusion needs it.
  */
+/**
+ * Resolve THIS lot to the graph's ConceptualWork ids before asking for comparables, so tier 1
+ * is "the same print" by identity rather than by an exact-title accident (work_identity.ts,
+ * plan step 3). Enrichment only: a miss or a graph error leaves the title-based tier-1 rule
+ * in place. The returned note tells the model what was resolved and on what basis, so an
+ * ambiguous or stripped-title resolution is visibly weaker than an exact one.
+ */
+async function resolveLotWorkIds(
+  artistName: string | null | undefined,
+  workTitle: string | null | undefined,
+  appraiserInput?: AppraiserInputResult | null,
+): Promise<{ ids: string[]; note: string }> {
+  if (!artistName?.trim() || !workTitle?.trim()) return { ids: [], note: "" };
+  try {
+    const refs = (appraiserInput?.catalogueReferences ?? []).map((r) => r.ref).filter(Boolean).join("; ") || null;
+    const wi = await resolveWorkIdentity({ artistName, title: workTitle, catalogueRefs: refs });
+    if (wi.basis) {
+      const note = `Work identity: "${workTitle}" resolved to catalogued work "${wi.matchedNames[0]}" via ${wi.basis}${wi.workIds.length > 1 ? ` (${wi.workIds.length} nodes)` : ""}; same_work comps below are that work's sales.`;
+      console.log(`[work identity] ${note}`);
+      return { ids: wi.workIds, note };
+    }
+    if (wi.ambiguousAt) {
+      const note = `Work identity: "${workTitle}" is AMBIGUOUS at ${wi.ambiguousAt} — it could be ${wi.ambiguousNames.slice(0, 4).map((n) => `"${n}"`).join(" or ")}; no same_work comps were taken on that basis.`;
+      console.log(`[work identity] ${note}`);
+      return { ids: [], note };
+    }
+    return { ids: [], note: "" };
+  } catch (err: any) {
+    console.warn(`[work identity] resolution failed: ${err?.message ?? err}`);
+    return { ids: [], note: "" };
+  }
+}
+
 function compactComparableForValuation(c: any) {
   return {
     tier: c.tier,
@@ -1327,8 +1360,12 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
               if (useName.name !== asked) {
                 console.log(`[4-Stage] Stage 2b comparables: querying as "${useName.name}" (asked "${asked}", via ${useName.via})`);
               }
+              // Stage 2b's loop does not carry the Stage 1c record; citations here come from the
+              // title the specialist asked with. Stage 3 resolves again with the refs column.
+              const lotWork = await resolveLotWorkIds(useName.name, b.input?.workTitle ?? null, null);
               const comps = await queryAuctionComparables({
                 artistName: useName.name,
+                conceptualWorkIds: lotWork.ids,
                 workTitle: b.input?.workTitle ?? null,
                 technique: b.input?.technique ?? null,
                 sinceDate: b.input?.sinceDate ?? STAGE3_COMPS_SINCE,
@@ -1338,6 +1375,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
               });
               content =
                 `${comps.summary.count} comparable(s). Summary: ${JSON.stringify(comps.summary)}\n` +
+                (lotWork.note ? `${lotWork.note}\n` : "") +
                 `Coverage: ${comps.coverageNote}\n` +
                 JSON.stringify(comps.comparables.map(compactComparableForValuation));
               console.log(`[4-Stage] Stage 2b query_ackg_comparables "${useName.name}": ${comps.summary.count} comp(s), median hammer GBP ${comps.summary.medianHammerGBP ?? "n/a"}`);
@@ -3093,10 +3131,14 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     }
     const excludedListing = parseExcludedListing(testingExcludeSourceListing);
     let ackgComps: Awaited<ReturnType<typeof queryAuctionComparables>> | null = null;
+    let lotWorkNote = "";
     if (ackgArtist) {
       try {
+        const lotWork = await resolveLotWorkIds(ackgArtist, conclusion.workTitle ?? null, appraiserInput);
+        lotWorkNote = lotWork.note;
         ackgComps = await queryAuctionComparables({
           artistName: ackgArtist,
+          conceptualWorkIds: lotWork.ids,
           workTitle: conclusion.workTitle ?? null,
           technique: conclusion.technique ?? vea?.printingTechniques?.[0]?.technique ?? null,
           sinceDate: STAGE3_COMPS_SINCE,
@@ -3136,6 +3178,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
         `and realisedGBP (hammer + buyer's premium, ~1.25-1.30x). ANCHOR THE ESTIMATE ON hammerGBP; ` +
         `an estimate set from realisedGBP reads ~1.3x high. These are the primary basis for your valuation.\n` +
         `Summary: ${JSON.stringify(ackgComps.summary)}\n` +
+        (lotWorkNote ? `${lotWorkNote}\n` : "") +
         `Coverage caveat: ${ackgComps.coverageNote}\n` +
         `Tiers: "same_work" = the SAME print (strongest evidence — weight these highest); ` +
         `"same_artist_technique" = same artist and technique; "same_artist" = same artist only.\n` +

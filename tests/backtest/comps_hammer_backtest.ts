@@ -247,7 +247,7 @@ async function sellThrough(artist: string, titleKey: string, lot: Lot, sinceDate
 
 function tierStat(c: ComparablesResult, tier: Row["bestTier"]): TierStat {
   const xs = c.comparables.filter((x) => x.tier === tier);
-  const p = xs.map((x) => x.priceRealisedGBP).sort((a, b) => a - b);
+  const p = xs.map((x) => x.priceRealisedGBP).filter((v): v is number => v != null && v > 0).sort((a, b) => a - b);
   const med = p.length ? (p.length % 2 ? p[(p.length - 1) / 2] : (p[p.length / 2 - 1] + p[p.length / 2]) / 2) : null;
   const h = xs.map((x) => x.hammerPriceGBP).filter((v): v is number => v != null && v > 0).sort((a, b) => a - b);
   const medH = h.length ? (h.length % 2 ? h[(h.length - 1) / 2] : (h[h.length / 2 - 1] + h[h.length / 2]) / 2) : null;
@@ -286,7 +286,7 @@ async function processLot(lot: Lot): Promise<Row> {
     if (!id.canonical) return base;
     let workIds: string[] = [];
     if (RESOLVE_WORK) {
-      const wi = await resolveWorkIdentity({ artistName: id.canonical, title: lot.title, catalogueRefs: lot.catalogueRefs, works: await artistWorks(id.canonical) });
+      const wi = await resolveWorkIdentity({ artistName: id.canonical, title: lot.title, catalogueRefs: lot.catalogueRefs, works: await artistWorks(id.canonical), excludeSaleLot: { saleId: lot.saleId, lotNumber: lot.lotNumber } });
       workIds = wi.workIds;
       base.workIdentity = { basis: wi.basis, ids: wi.workIds.length, ambiguousAt: wi.ambiguousAt, matchedName: wi.matchedNames[0] ?? null };
     }
@@ -306,7 +306,7 @@ async function processLot(lot: Lot): Promise<Row> {
       same_artist: tierStat(c, "same_artist"),
     };
     for (const t of ["same_work", "same_artist_technique", "same_artist"] as const) {
-      if (base.tiers[t].n > 0) { base.bestTier = t; base.bestMedian = base.tiers[t].median; break; }
+      if (base.tiers[t].n > 0) { base.bestTier = t; base.bestMedian = base.tiers[t].median ?? (base.tiers[t].medianHammer != null ? base.tiers[t].medianHammer! * lot.premiumRatio : null); break; }
     }
     if (base.titleUsable) {
       const key = normalizeTitleKey(lot.title).slice(0, 24);
@@ -390,15 +390,15 @@ function summarize(rows: Row[]) {
   console.log(`\n── Accuracy: comp median / realised price (sold lots; both premium-inclusive) ──`);
   for (const t of ["same_work", "same_artist_technique", "same_artist"] as const) {
     for (const minN of t === "same_work" ? [1, 3] : [3]) {
-      const xs = sold.filter((r) => r.tiers[t].n >= minN && realisedOf(r)).map((r) => ln(r.tiers[t].median! / realisedOf(r)!));
+      const xs = sold.filter((r) => r.tiers[t].n >= minN && r.tiers[t].median != null && realisedOf(r)).map((r) => ln(r.tiers[t].median! / realisedOf(r)!));
       logRatioBlock(`${t} (n>=${minN})`, xs);
     }
   }
-  logRatioBlock("best available tier", sold.filter((r) => r.bestMedian && realisedOf(r)).map((r) => ln(r.bestMedian! / realisedOf(r)!)));
+  logRatioBlock("best available tier", sold.filter((r) => r.bestMedian != null && r.bestMedian > 0 && realisedOf(r)).map((r) => ln(r.bestMedian! / realisedOf(r)!)));
   if (wi.length) {
     console.log(`  — same_work (n>=1) split by identity basis —`);
     for (const basis of ["exact_title", "citation", "stripped_title", "stripped_no_series"]) {
-      logRatioBlock(`  via ${basis}`, sold.filter((r) => r.workIdentity?.basis === basis && r.tiers.same_work.n >= 1 && realisedOf(r)).map((r) => ln(r.tiers.same_work.median! / realisedOf(r)!)));
+      logRatioBlock(`  via ${basis}`, sold.filter((r) => r.workIdentity?.basis === basis && r.tiers.same_work.n >= 1 && r.tiers.same_work.median != null && realisedOf(r)).map((r) => ln(r.tiers.same_work.median! / realisedOf(r)!)));
     }
   }
 

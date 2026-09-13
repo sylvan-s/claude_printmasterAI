@@ -58,6 +58,9 @@ eq("Sans titre (x) is", isIdentifyingTitle("Sans titre (Bleu)"), true);
 eq("plate 4 is not", isIdentifyingTitle("Plate 4"), false);
 eq("ordinary title is", isIdentifyingTitle("Mona Lisa"), true);
 eq("symbol is not", isIdentifyingTitle("§"), false);
+eq("citation-only Untitled strips to a non-identifying residual", isIdentifyingTitle(titleIdentityKey("Untitled (SF 314, Lembark 270)")), false);
+eq("Untitled (Bronze) with citation keeps its qualifier", titleIdentityKey("Untitled (Bronze) (Tommasini 27)"), "untitled bronze");
+eq("…and that residual is identifying", isIdentifyingTitle(titleIdentityKey("Untitled (Bronze) (Tommasini 27)")), true);
 
 // ── citation parsing ─────────────────────────────────────────────────────────
 eq("refs column", citationsInRefs("Kemp 158").map((c) => [c.prefix, c.number]), [["kemp", "158"]]);
