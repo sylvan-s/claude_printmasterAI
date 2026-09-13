@@ -97,7 +97,7 @@ import time
 from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques
-from catalogue_matching import build_conceptual_work_id
+from catalogue_matching import build_conceptual_work_id, resolve_merged_work_cypher
 from picasso_paris_ingest import (
     _clean, _fr_normalize, _FR_TECHNIQUES, _LITHO_MARKS, _LITHO_MATRICES, _PRINTER_RE,
     _SIGNATURE_RE, extract_edition, extract_matrix_material, extract_printer,
@@ -400,7 +400,7 @@ SET artist.ulanUrl = coalesce(artist.ulanUrl, row.artistUlanUrl),
         ELSE artist.alternateNames
     END
 
-MERGE (cw:ConceptualWork {id: row.conceptualWorkId})
+""" + resolve_merged_work_cypher("row.conceptualWorkId", ["row", "artist"]) + """
 SET cw.name = coalesce(cw.name, row.title),
     cw.dateCreated_year = coalesce(cw.dateCreated_year, row.dateYear),
     cw.dateCreated_endYear = coalesce(cw.dateCreated_endYear, row.dateEndYear),
@@ -470,7 +470,7 @@ SET artist.ulanUrl = coalesce(artist.ulanUrl, row.artistUlanUrl),
     artist.identityConfidence = coalesce(artist.identityConfidence,
         CASE WHEN row.artistUlanUrl IS NOT NULL THEN "institutional" ELSE "unresolved" END)
 
-MERGE (cw:ConceptualWork {id: row.conceptualWorkId})
+""" + resolve_merged_work_cypher("row.conceptualWorkId", ["row", "artist"]) + """
 SET cw.name = coalesce(cw.name, row.title),
     cw.dateCreated_year = coalesce(cw.dateCreated_year, row.dateYear),
     cw.dateCreated_precision = coalesce(cw.dateCreated_precision, row.datePrecision),

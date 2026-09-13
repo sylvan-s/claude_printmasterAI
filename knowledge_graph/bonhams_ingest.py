@@ -128,7 +128,7 @@ from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
 from resolve_artist_identity import strip_honorifics
-from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, sanitize_id_part
+from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, sanitize_id_part, resolve_merged_work_cypher
 from bonhams_parsing import (
     strip_tags, extract_lot_heading, extract_lot_name_html, extract_lot_desc_html,
     strip_qualifier_prefix, clean_artist_name, normalize_all_caps_name, parse_lot_name,
@@ -353,7 +353,7 @@ SET artist.nationality = coalesce(row.artistNationality, artist.nationality),
         ELSE artist.alternateNames
     END
 
-MERGE (cw:ConceptualWork {id: row.conceptualWorkId})
+""" + resolve_merged_work_cypher('row.conceptualWorkId', ['row', 'artist']) + """
 SET cw.name = coalesce(cw.name, row.title),
     cw.dateCreated_year = coalesce(cw.dateCreated_year, row.dateYear),
     cw.dateCreated_precision = coalesce(cw.dateCreated_precision, "exact")

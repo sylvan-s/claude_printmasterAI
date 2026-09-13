@@ -66,6 +66,7 @@ import time
 import pandas as pd
 from neo4j import GraphDatabase
 
+from catalogue_matching import resolve_merged_work_cypher
 from crosswalk_matching import extract_techniques, extract_papers
 from embed_titles_hook import embed_new_titles
 
@@ -248,7 +249,7 @@ CALL {
   RETURN count(*) AS artistWritten
 }
 
-MERGE (cw:ConceptualWork {id: row.objectId})
+""" + resolve_merged_work_cypher("row.objectId", ["row"]) + """
 SET cw.name = row.title,
     cw.dateCreated_year = row.dateYear,
     cw.dateCreated_precision = "exact"

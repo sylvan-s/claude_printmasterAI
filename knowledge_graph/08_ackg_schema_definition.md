@@ -599,6 +599,24 @@ node's id is the only surviving trace of it. So `id = "<survivor> <- <mergedFrom
 every event EXCEPT one carrying `repointedFrom`, where the survivor named in `id` is the first
 hop rather than the current target.
 
+**EVERY INGEST MUST RESOLVE THROUGH THIS BEFORE CREATING A `ConceptualWork`.** A merge
+`DETACH DELETE`s the folded node, so an ingest that `MERGE`s on its own object id puts that id
+straight back into the graph as a fresh work and the merge is undone — silently, with a clean
+exit. All eight ingests did exactly this until 2026-09-13, and one re-run of any of them would
+have reversed part of the 4,226 merges made over the preceding two days.
+
+The contract is `catalogue_matching.resolve_merged_work_cypher(candidate, carry)`, spliced in
+place of the `MERGE`. It binds `cw` to the work the id belongs to NOW, creating a node only when
+nothing has been merged onto it. This is an **exact id lookup**, not similarity matching: it
+re-uses a decision already recorded, so it does not weaken § 4.1's prohibition in any way. Chains
+resolve for free, because the merger re-points a chained event's `MERGED_INTO` onto the final
+survivor.
+
+`check_merges_not_undone.py` is the regression guard: it fails if any script `MERGE`s a
+`ConceptualWork` without the resolver, if a live node sits at an id a `MergeEvent` says was
+folded away, or if the `mergeevent_mergedfromid` index the resolver depends on is missing —
+without it the lookup degrades to a full label scan on every ingest row.
+
 **What this does NOT provide.** It is a record, not an undo — the duplicate's own relationships
 are gone and only the `--backup` JSON can rebuild them.
 

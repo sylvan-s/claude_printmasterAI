@@ -64,6 +64,8 @@ import time
 import pandas as pd
 from neo4j import GraphDatabase
 
+from catalogue_matching import resolve_merged_work_cypher
+
 def _require_env(name):
     value = os.environ.get(name)
     if not value:
@@ -282,7 +284,7 @@ def map_record(r):
 LOAD_QUERY = """
 UNWIND $rows AS row
 
-MERGE (cw:ConceptualWork {id: "met-" + row.objectId})
+""" + resolve_merged_work_cypher('"met-" + row.objectId', ['row']) + """
 SET cw.name = row.title,
     cw.dateCreated_year = row.dateYear,
     cw.dateCreated_endYear = row.dateEndYear,

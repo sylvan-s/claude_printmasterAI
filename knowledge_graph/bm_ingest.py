@@ -184,7 +184,7 @@ import requests
 from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques
-from catalogue_matching import build_conceptual_work_id
+from catalogue_matching import build_conceptual_work_id, resolve_merged_work_cypher
 from embed_titles_hook import embed_new_titles
 from ulan_url import canonical_ulan_url
 
@@ -683,7 +683,7 @@ UNWIND $rows AS row
 // catalogue-raisonné entry (module docstring point 4) — coalesce() on every SET so the
 // second record merging into an already-created node doesn't clobber it with its own
 // (equivalent, but not necessarily identically-worded) title/date.
-MERGE (cw:ConceptualWork {id: row.conceptualWorkId})
+""" + resolve_merged_work_cypher('row.conceptualWorkId', ['row']) + """
 SET cw.name = coalesce(cw.name, row.title),
     cw.seriesTitle = coalesce(cw.seriesTitle, row.seriesTitle),
     cw.dateCreated_year = coalesce(cw.dateCreated_year, row.dateYear),

@@ -173,3 +173,37 @@ def build_conceptual_work_id(source_prefix, artist_name, title, catalogue_refs, 
         f"-{sanitize_id_part(first['catalogueName'])}-{sanitize_id_part(first['entryNumber'])}"
         f"-{sanitize_id_part(normalize_title(title))}"
     )
+
+
+def resolve_merged_work_cypher(candidate, carry):
+    """Cypher that binds `cw` to the ConceptualWork this id belongs to NOW — following any
+    recorded merge — creating the node only if nothing has been merged onto it.
+
+    WHY THIS EXISTS. A source with no catalogue citation keys its ConceptualWork on its own
+    object id (see build_conceptual_work_id's fallback), so each accession is its own work. That
+    is deliberate and stays: there is nothing exact to join impressions on, and joining them on
+    title alone is the fuzzy identity matching this module exists to forbid.
+
+    The defect was never the KEY. It was that re-ingest ignored decisions already taken. A merge
+    DETACH DELETEs the folded node, so the next load MERGEs its id back into existence as a fresh
+    ConceptualWork and the work is split again — 4,226 merges made on 2026-09-12/13 would have
+    been undone by one re-run of navigart or tate.
+
+    This is not similarity matching and does not weaken the prohibition. It is an EXACT id
+    lookup against MergeEvent.mergedFromId — a decision some rule, model or person already made
+    and recorded — and it resolves chains for free, because merge_duplicate_work_clusters.py
+    re-points a chained event's MERGED_INTO onto the final survivor.
+
+    `candidate` is the Cypher expression holding the proposed id (e.g. `row.conceptualWorkId`).
+    `carry` names the variables that must stay in scope across the WITHs."""
+    keep = ", ".join(carry)
+    # The leading WITH is not decoration: Cypher requires one between a SET and a MATCH, and
+    # this fragment is spliced in directly after the artist SET in navigart_ingest.
+    return f"""
+WITH {keep}
+OPTIONAL MATCH (:MergeEvent {{mergedFromId: {candidate}}})-[:MERGED_INTO]->(merged:ConceptualWork)
+WITH {keep}, collect(DISTINCT merged)[0] AS survivor
+FOREACH (_ IN CASE WHEN survivor IS NULL THEN [1] ELSE [] END |
+         MERGE (:ConceptualWork {{id: {candidate}}}))
+WITH {keep}, coalesce(survivor.id, {candidate}) AS resolvedWorkId
+MATCH (cw:ConceptualWork {{id: resolvedWorkId}})"""
