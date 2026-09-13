@@ -1,0 +1,4 @@
+canon,dup,keepName,evidence,addedOn
+James McNeill Whistler PRBA HRSA RSW,James Abbott McNeill Whistler,,"one person held as four nodes; b.1834 d.1903 American on both; canon carries ULAN 500012432 and Wikidata Q203643, dup carries none. Found by DINOv2 cross-attribution scan: the same Billingsgate etching under three artist names at cosine 0.93-0.97",2026-09-13
+James McNeill Whistler PRBA HRSA RSW,James Abbott McNeil Whistler,,"same person, 'McNeil' misspelt; titles are unmistakable Whistler etchings (La Vieille aux Loques, The Menpes Children, Swan and Iris); no ULAN so no ULAN pass could link it",2026-09-13
+James McNeill Whistler PRBA HRSA RSW,James A McNeil Whistler,James Abbott McNeill Whistler,"same person, initial-and-misspelling form; holds four Billingsgate/Fulham etchings. Survivor renamed to the full form, which 209 of the 257 works already used and which the ULAN node itself lists in alternateNames",2026-09-13

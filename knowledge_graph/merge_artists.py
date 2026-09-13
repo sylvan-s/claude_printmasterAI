@@ -93,6 +93,7 @@ reason is in `merge_pair`'s docstring. A run reporting skipped-as-cluster is unf
 failed.
 """
 import argparse
+import csv
 import json
 import os
 import re
@@ -495,13 +496,70 @@ def cmd_band_b(a):
         sys.exit(1)
 
 
+# =============================================================================
+# SECTION 4 — `pairs`: fold a named list of duplicates, from a tracked CSV
+# =============================================================================
+#
+# `ulan-canon` finds duplicates through Getty, `band-b` through name similarity plus DINOv2.
+# Neither can see a duplicate that has NO ULAN and whose name is misspelt: measured 2026-09-13,
+# James Abbott McNeill Whistler is held as FOUR nodes (209, 44, 4 and 4 works) and only one
+# carries a ULAN, so no ULAN pass can link them and `James A McNeil Whistler` is a spelling the
+# name passes gate on.
+#
+# What did find them was IMAGE SIMILARITY — a cross-attribution scan over DINOv2 neighbours at
+# cosine >= 0.90, where the same Billingsgate etching appeared under three artist names. That is
+# a different detector from either existing pass and it needs somewhere to put its answers, so
+# this takes a reviewed CSV of `canon,dup,keepName` and folds them through the one primitive.
+#
+# The list is TRACKED and human-checked. Nothing here infers identity: a person read the
+# evidence and wrote the row.
+
+
+def cmd_pairs(a):
+    now = datetime.now(timezone.utc).isoformat()
+    with open(a.pairs, encoding="utf-8") as fh:
+        rows = [r for r in csv.DictReader(fh) if r.get("canon") and r.get("dup")]
+    print(f"{len(rows)} pair(s) from {a.pairs}")
+    drv = connect()
+    with session(drv) as s:
+        names = sorted({n for r in rows for n in (r["canon"], r["dup"])})
+        snap = [dict(r) for r in s.run(
+            "MATCH (a:Artist) WHERE a.name IN $names "
+            "RETURN a.name AS name, properties(a) AS props, "
+            "count { (a)-[:CREATED]->(:ConceptualWork) } AS works", names=names)]
+        for r in snap:
+            print(f"   {r['name'][:46]:46s} works={r['works']:<5d} "
+                  f"ulan={'y' if r['props'].get('ulanUrl') else '-'}")
+        if not a.execute:
+            for r in rows:
+                print(f"   would fold {r['dup']!r} -> {r['canon']!r}"
+                      + (f", renaming survivor to {r['keepName']!r}" if r.get("keepName") else ""))
+            return
+        path = os.path.join(a.snapshot_dir, f"artist_pairs_presnapshot_{stamp(now)}.json")
+        with open(path, "w") as fh:
+            json.dump({"takenAt": now, "artists": snap, "pairs": rows}, fh, indent=2)
+        print(f"pre-snapshot -> {path}\n")
+        merged = unmatched = 0
+        for r in rows:
+            got = merge_pair(s, r["canon"], r["dup"], r.get("keepName") or None)
+            if got is None:
+                unmatched += 1
+                print(f"   no-op: {r['dup']!r} -> {r['canon']!r} (a side was already absorbed)")
+            else:
+                merged += 1
+                print(f"   folded {r['dup']!r} -> {got!r}")
+        print(f"\n{merged} merged, {unmatched} no-op. "
+              f"Duplicates arrive in CLUSTERS — re-run to convergence.")
+
+
 # =============================================================================== entry point
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    for name, fn in (("ulan-canon", cmd_ulan_canon), ("band-b", cmd_band_b)):
+    for name, fn in (("ulan-canon", cmd_ulan_canon), ("band-b", cmd_band_b),
+                     ("pairs", cmd_pairs)):
         p = sub.add_parser(name)
         g = p.add_mutually_exclusive_group(required=True)
         g.add_argument("--dry-run", action="store_true")
@@ -510,6 +568,9 @@ def main():
         p.set_defaults(fn=fn)
         if name == "ulan-canon":
             p.add_argument("--phase", type=int, choices=[1, 2, 3], action="append")
+        elif name == "pairs":
+            p.add_argument("--pairs", required=True,
+                           help="CSV with canon,dup[,keepName] — reviewed by a person")
         else:
             p.add_argument("--triage", required=True)
             p.add_argument("--records", required=True)
