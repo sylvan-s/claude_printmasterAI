@@ -390,6 +390,13 @@ under `estimate*GBPBeforeRepair`. `bonhams_ingest.py` no longer writes the API f
 remain: 5,132 of the 39,851 sold Bonhams+Skinner rows, down from every one of the 15,386
 GBP-native rows.
 
+**Transfer test, ten artists (7,522 sales):** multipliers do NOT transfer cleanly. Mean MAE(log):
+own-artist model 0.69, pooled shared slopes 0.76, Picasso's slopes + own level 0.84, artist
+median 1.09, house estimate 0.34. Editions over 300 are ×0.14–0.50 for Chagall/Lichtenstein/
+Warhol/Picasso but ×1.1–1.2 for Banksy/Hockney/Hirst; screenprint ×5.8 for Banksy; signature
+×1.5 Rembrandt vs ×3.4 Hirst. Like-for-like house effect: Roseberys ×0.36–0.95 of Bonhams
+(pooled ×0.51), partly selection. Details in `knowledge_graph/pricing_ml/README.md`.
+
 ## Housekeeping done 2026-09-13
 
 - The checkout was on `technique-classifier-deepdive`, 127 commits behind main, which is why
