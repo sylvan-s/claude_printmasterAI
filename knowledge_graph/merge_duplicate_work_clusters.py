@@ -117,6 +117,12 @@ MERGE_RULES = {
     # repeating a title are the same lot catalogued twice, museum records repeating one are
     # usually a series whose plates share it. 32/32 on this cell, 15/26 on museum-only.
     "auctionPlainTitle":   "COLLISION-RANK-1.1",     # auction sources only, no series marker
+    # One side cited, the other not: the citation is an ANCHOR, not a join key, so nothing
+    # exact links the pair — the scored evidence has to carry it. Restricted to mixed
+    # auction/museum sources with technique AGREEING, weight >= 15 or 9-13. The 13-15 band
+    # is deliberately excluded: it measured 8/10 while this cell measured 15/15 (lb 82%),
+    # and technique conflict is excluded outright at 1/8.
+    "oneSidedCatalogue":   "COLLISION-RANK-1.1",     # one side cited, scored evidence agrees
     "humanTriage":         "human",                   # a person read the evidence and decided
 }
 
