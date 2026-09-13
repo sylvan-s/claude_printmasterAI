@@ -137,6 +137,40 @@ defaults to.
 - No automated pass/fail threshold across a batch of lots — each run is
   read individually via the HTML report.
 
+## Scoring against hammer prices
+
+The catalogue estimate is the house's pre-sale opinion, not ground truth (on the
+2016-2026 Roseberys corpus the hammer lands inside the printed range on only ~38% of
+sold lots). Two scripts score against what lots actually made — step 1 of
+`docs/plans/2026-09-13-attributed-lot-valuation.md`.
+
+```bash
+# Stored pipeline results (tests/backtest/output/*/result.json) vs hammer + realised.
+# Joins on sale code + lot number to the benchmark catalogue CSVs; falls back to the
+# run's own rawLot. Shows mid/hammer AND mid/realised because the pipeline's number is
+# hammer-basis by prompt but anchors on premium-inclusive comps since ADR-0016.
+npm run report:hammer -- [--dir tests/backtest/output] [--suffix _attr]
+
+# Zero-LLM: what the graph's realised comps would have said about a lot BEFORE it
+# sold, scored against the outcome. Comps are cut to sales strictly before the lot's
+# own sale date (`untilDate`), inside a rolling window, own SourceRecord excluded.
+# Forum lots are the cleaner test (Forum has no realised prices in the graph, so the
+# comps come from other houses); Roseberys lots can see earlier Roseberys results.
+npm run backtest:comps-hammer -- --source forum --limit 2500 --seed 11
+npm run backtest:comps-hammer -- --source roseberys --sales A0777,A0785
+npm run backtest:comps-hammer -- --summary-only tests/backtest/comps_hammer/forum_n2500.jsonl
+```
+
+`comps_hammer_backtest.ts` writes one JSON line per lot to
+`tests/backtest/comps_hammer/` (gitignored; `--resume` continues a run) and prints:
+coverage by comp tier; comp-median / realised per tier (both premium-inclusive —
+never comps vs hammer, which reads ~1.3x high by construction); the house's own hit
+rate on the same lots; and a screen-decision table bucketing lots by comp median vs
+estimate, with unsold / below-low / above-high shares against the base rate and a
+Spearman correlation of the signal with the outcome. Forum's premium ratio is
+ASSUMED (`--forum-premium`, default 1.30) and labelled as such; Roseberys' is the
+measured median realised/hammer per sale.
+
 ## Degraded copies of the pool (robustness runs)
 
 The pool's images are the auction house's studio shots — square-on, evenly lit, sharp.

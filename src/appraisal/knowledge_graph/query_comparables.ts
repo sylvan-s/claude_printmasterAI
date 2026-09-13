@@ -89,6 +89,13 @@ export interface ComparablesParams {
   technique?: string | null;
   /** ISO date lower bound, e.g. "2015-01-01". Older sales are poor comps for print prices. */
   sinceDate?: string | null;
+  /**
+   * ISO date upper bound, EXCLUSIVE — only sales strictly before this date. For a backtest
+   * this is the subject lot's own sale date: a valuation made before the sale could not
+   * have seen that day's results or anything later. Compared on the date part only, since
+   * Bonhams/Skinner store a datetime and Roseberys a bare date.
+   */
+  untilDate?: string | null;
   /** Backtest circularity guard — drop the listing this input came from. */
   excludeListingUrl?: string | null;
   /** Backtest circularity guard — drop a specific sale/lot pair. */
@@ -107,6 +114,7 @@ WHERE src.sourceType = 'auction'
   AND src.priceRealisedGBP > 0
   AND src.saleDate IS NOT NULL
   AND ($sinceDate IS NULL OR src.saleDate >= $sinceDate)
+  AND ($untilDate IS NULL OR substring(src.saleDate, 0, 10) < $untilDate)
   AND ($excludeListingUrl IS NULL OR src.listingUrl IS NULL OR src.listingUrl <> $excludeListingUrl)
   AND ($excludeSaleId IS NULL OR NOT (src.saleId = $excludeSaleId AND src.lotNumber = $excludeLotNumber))
 OPTIONAL MATCH (imp)-[:USES_TECHNIQUE]->(t:Technique)
@@ -213,6 +221,7 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
       workTitle: titleForExactMatch ? normalizeTitleKey(titleForExactMatch) : null,
       technique: params.technique?.trim() ? foldAccents(params.technique.trim()) : null,
       sinceDate: params.sinceDate ?? null,
+      untilDate: params.untilDate ?? null,
       excludeListingUrl: params.excludeListingUrl ?? null,
       excludeSaleId: params.excludeSaleLot?.saleId ?? null,
       excludeLotNumber: params.excludeSaleLot ? neo4j.int(params.excludeSaleLot.lotNumber) : null,

@@ -24,6 +24,8 @@
     "test:leak-detection": "tsx tests/benchmark_parse/leak_detection_tests.ts",
     "test:comp-storability": "tsx tests/comp_storability/run_tests.ts",
     "report:valuation": "tsx tests/backtest/valuation_report.ts",
+    "report:hammer": "tsx tests/backtest/hammer_report.ts",
+    "backtest:comps-hammer": "tsx tests/backtest/comps_hammer_backtest.ts",
     "kg:embed-titles": "tsx src/appraisal/knowledge_graph/backfill_title_embeddings.ts",
     "kg:title-coverage": "tsx src/appraisal/knowledge_graph/title_embedding_coverage.ts",
     "test:pool": "tsx tests/backtest/run_pool.ts",
