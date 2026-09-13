@@ -50,7 +50,7 @@ def create(args):
         "containerDiskInGb": args.disk,
         "volumeInGb": 0,
         "ports": ["22/tcp"],
-        "env": {"SSH_PUBLIC_KEY": pubkey},
+        "env": {"SSH_PUBLIC_KEY": pubkey, "PUBLIC_KEY": pubkey},
     }
     r = requests.post(f"{BASE}/pods", headers=_headers(), json=body, timeout=60)
     if r.status_code not in (200, 201):

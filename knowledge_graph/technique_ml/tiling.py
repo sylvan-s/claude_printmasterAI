@@ -1,6 +1,6 @@
 """
 PrintMasterAI — ADR-0019 Phase 1: print-area localisation and content-stratified tiles.
-Version: TECHML-TILING-1.0
+Version: TECHML-TILING-1.1
 
 Phase 0 took a 4x4 grid from the central 60% of the photograph with no localiser, so mat,
 frame and backdrop tiles entered as noise and tiles landed on tone regions by chance. The
@@ -138,27 +138,49 @@ def _iou(a, b):
     return inter / (2 * area - inter)
 
 
+def _integral(a):
+    """2-D integral image with a leading zero row/col, float64."""
+    ii = np.zeros((a.shape[0] + 1, a.shape[1] + 1), np.float64)
+    ii[1:, 1:] = np.cumsum(np.cumsum(a, 0), 1)
+    return ii
+
+
+def _window_sums(ii, ys, xs, size):
+    """Sum over [y, y+size) x [x, x+size) for every (y, x) in the grid, via the integral image."""
+    ys, xs = np.asarray(ys)[:, None], np.asarray(xs)[None, :]
+    return ii[ys + size, xs + size] - ii[ys, xs + size] - ii[ys + size, xs] + ii[ys, xs]
+
+
 def stratified_tiles(im, box, native_px_per_mm, target_px_per_mm, tile_px=TILE_PX,
                      n_per_stratum=N_PER_STRATUM, white_frac_max=0.85, seed=0):
     """-> list of dicts {tile: HxWx3 uint8, stratum, x, y, px_per_mm}; the coordinates are in
     the resampled crop. Never upsamples: if the native scale is coarser than the target the
     crop is used at native scale and px_per_mm reports what was actually used. Returns []
-    when the localised area is smaller than one tile."""
+    when the localised area is smaller than one tile.
+
+    Cost matters: this runs once per image per scale on the extraction box. The candidate
+    statistics (mean, edge density, paper-white fraction over every 224 px window at stride
+    112) come from three integral images, not from per-window slices, and the edge map is
+    computed on a half-size copy — the ranking does not need full resolution, the tiles do.
+    """
     rng = np.random.default_rng(seed)
     x0, y0, x1, y1 = box
     crop = im.crop((x0, y0, x1, y1)).convert("RGB")
     used = min(native_px_per_mm, target_px_per_mm) if native_px_per_mm else target_px_per_mm
     scale = used / native_px_per_mm if native_px_per_mm else 1.0
     if scale < 1.0:
-        crop = crop.resize((max(1, int(crop.width * scale)), max(1, int(crop.height * scale))), Image.LANCZOS)
+        # BOX (area average) is the right filter for downsampling and ~5x cheaper than LANCZOS
+        crop = crop.resize((max(1, int(crop.width * scale)), max(1, int(crop.height * scale))), Image.BOX)
     W, H = crop.size
     if W < tile_px or H < tile_px:
         return []
     arr = np.asarray(crop)
-    gray = arr.mean(-1) / 255.0
-    paper_white = float(np.percentile(gray, 95))
-    gy, gx = np.gradient(gray)
-    edge = np.sqrt(gx ** 2 + gy ** 2)
+    gray = arr.mean(-1, dtype=np.float32) / 255.0
+    paper_white = float(np.percentile(gray[::4, ::4], 95))
+    # edge density on a half-size copy, upsampled back by index arithmetic in the sums
+    g2 = gray[:H // 2 * 2, :W // 2 * 2].reshape(H // 2, 2, W // 2, 2).mean((1, 3))
+    gy, gx = np.gradient(g2)
+    edge2 = np.sqrt(gx ** 2 + gy ** 2)
 
     stride = tile_px // 2
     xs = list(range(0, W - tile_px + 1, stride))
@@ -167,17 +189,20 @@ def stratified_tiles(im, box, native_px_per_mm, target_px_per_mm, tile_px=TILE_P
         xs.append(W - tile_px)
     if ys[-1] != H - tile_px:
         ys.append(H - tile_px)
+    area = float(tile_px * tile_px)
+    mean = _window_sums(_integral(gray), ys, xs, tile_px) / area
+    white = _window_sums(_integral(gray > paper_white * 0.92), ys, xs, tile_px) / area
+    half = tile_px // 2
+    edge = _window_sums(_integral(edge2), [y // 2 for y in ys], [x // 2 for x in xs], half) / float(half * half)
+
     cands = []
-    for y in ys:
-        for x in xs:
-            g = gray[y:y + tile_px, x:x + tile_px]
-            white = float((g > paper_white * 0.92).mean())
-            if white > white_frac_max:
+    for iy, y in enumerate(ys):
+        for ix, x in enumerate(xs):
+            if white[iy, ix] > white_frac_max:
                 continue
             cands.append({
-                "x": x, "y": y, "mean": float(g.mean()),
-                "edge": float(edge[y:y + tile_px, x:x + tile_px].mean()),
-                "white": white,
+                "x": x, "y": y, "mean": float(mean[iy, ix]), "edge": float(edge[iy, ix]),
+                "white": float(white[iy, ix]),
                 "border": x == xs[0] or y == ys[0] or x == xs[-1] or y == ys[-1],
             })
     if not cands:
