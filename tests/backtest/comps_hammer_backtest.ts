@@ -59,7 +59,10 @@ import {
   closeDriver,
   normalizeTitleKey,
   isLowInformationTitle,
+  resolveWorkIdentity,
+  fetchArtistWorks,
   type ComparablesResult,
+  type WorkIdentityBasis,
 } from "../../src/appraisal/knowledge_graph/index";
 import { getDriver, getDatabase } from "../../src/appraisal/knowledge_graph/client";
 import { mapTechniqueToAckgVocabulary } from "../../src/appraisal/stage2a_query_plan";
@@ -83,6 +86,9 @@ const RESUME = has("resume");
  *  is a prior, not fitted per run — the in-sample figure is printed alongside for reference. */
 const DRIFT = Number(arg("drift", "0.82"));
 const SUMMARY_ONLY = arg("summary-only");
+/** Resolve the lot to ConceptualWork ids with work_identity.ts before querying comps (step 3).
+ *  Off by default so a run without it is the step-1 baseline. */
+const RESOLVE_WORK = has("resolve-work");
 const OUT_DIR = join(process.cwd(), "tests/backtest/comps_hammer");
 const OUT = arg("out", join(OUT_DIR, `${SOURCE}${SALES ? "_" + SALES.join("-") : ""}${LIMIT ? "_n" + LIMIT : ""}.jsonl`));
 
@@ -145,6 +151,8 @@ interface Lot {
   premiumRatio: number;
   premiumBasis: "measured" | "assumed";
   listingUrl: string | null;
+  /** The house's own catalogue-raisonné refs column, when it has one. */
+  catalogueRefs: string | null;
 }
 
 function loadRoseberys(): Lot[] {
@@ -170,7 +178,7 @@ function loadRoseberys(): Lot[] {
       title: unesc(r.title).trim(), medium: r.medium, lowEst: Number(r.low_estimate || 0), highEst: Number(r.high_estimate || 0),
       sold: r.sold === "sold", hammer: h > 0 ? h : null, realised: p > 0 ? p : null,
       premiumRatio: premium[r.sale_code] ?? 1.3, premiumBasis: premium[r.sale_code] ? "measured" : "assumed",
-      listingUrl: r.lot_url || null,
+      listingUrl: r.lot_url || null, catalogueRefs: r.catalogue_refs?.trim() || null,
     });
   }
   return out;
@@ -190,7 +198,7 @@ function loadForum(): Lot[] {
       title: unesc(r.title).trim(), medium: r.medium, lowEst: Number(r.low_estimate || 0), highEst: Number(r.high_estimate || 0),
       sold: r.sold === "sold", hammer: h > 0 ? h : null, realised: null,
       premiumRatio: FORUM_PREMIUM, premiumBasis: "assumed",
-      listingUrl: r.lot_url || null,
+      listingUrl: r.lot_url || null, catalogueRefs: r.catalogue_refs?.trim() || null,
     });
   }
   return out;
@@ -210,6 +218,8 @@ interface Row extends Lot {
   bestTier: "same_work" | "same_artist_technique" | "same_artist" | "none";
   bestMedian: number | null;
   sellThrough: { sold: number; unsold: number } | null;
+  /** How the lot was resolved to a work (only when --resolve-work). */
+  workIdentity?: { basis: WorkIdentityBasis | null; ids: number; ambiguousAt: WorkIdentityBasis | null; matchedName: string | null };
   error?: string;
 }
 
@@ -246,6 +256,11 @@ function tierStat(c: ComparablesResult, tier: Row["bestTier"]): TierStat {
 }
 
 const identityCache = new Map<string, { canonical: string | null; ambiguous: number }>();
+const worksCache = new Map<string, Awaited<ReturnType<typeof fetchArtistWorks>>>();
+async function artistWorks(canonical: string) {
+  if (!worksCache.has(canonical)) worksCache.set(canonical, await fetchArtistWorks(canonical));
+  return worksCache.get(canonical)!;
+}
 async function resolve(name: string) {
   if (identityCache.has(name)) return identityCache.get(name)!;
   const id = await resolveArtistIdentity(name);
@@ -269,8 +284,15 @@ async function processLot(lot: Lot): Promise<Row> {
     if (!id.canonical && lot.artist !== unesc(lot.artistRaw).trim()) id = await resolve(unesc(lot.artistRaw).trim());
     base.canonicalArtist = id.canonical; base.resolved = !!id.canonical; base.ambiguous = id.ambiguous;
     if (!id.canonical) return base;
+    let workIds: string[] = [];
+    if (RESOLVE_WORK) {
+      const wi = await resolveWorkIdentity({ artistName: id.canonical, title: lot.title, catalogueRefs: lot.catalogueRefs, works: await artistWorks(id.canonical) });
+      workIds = wi.workIds;
+      base.workIdentity = { basis: wi.basis, ids: wi.workIds.length, ambiguousAt: wi.ambiguousAt, matchedName: wi.matchedNames[0] ?? null };
+    }
     const c = await queryAuctionComparables({
       artistName: id.canonical,
+      conceptualWorkIds: workIds,
       workTitle: base.titleUsable ? lot.title : null,
       technique: base.technique,
       sinceDate, untilDate: lot.saleDate,
@@ -356,6 +378,12 @@ function summarize(rows: Row[]) {
   const b = byBest(resolved);
   console.log(`  best tier reached (resolved lots) : same_work ${b.same_work} (${pct(b.same_work, resolved.length)})  same_artist_technique ${b.sat} (${pct(b.sat, resolved.length)})  same_artist ${b.sa} (${pct(b.sa, resolved.length)})  none ${b.none} (${pct(b.none, resolved.length)})`);
   console.log(`  same_work with >=3 pre-sale comps : ${resolved.filter((r) => r.tiers.same_work.n >= 3).length}`);
+  const wi = resolved.filter((r) => r.workIdentity);
+  if (wi.length) {
+    const byBasis: Record<string, { lots: number; withComps: number }> = {};
+    for (const r of wi) { const k = r.workIdentity!.basis ?? (r.workIdentity!.ambiguousAt ? `AMBIGUOUS@${r.workIdentity!.ambiguousAt}` : "none"); const b = (byBasis[k] ??= { lots: 0, withComps: 0 }); b.lots++; if (r.tiers.same_work.n > 0) b.withComps++; }
+    console.log(`  work identity (--resolve-work)    : ${Object.entries(byBasis).map(([k, v]) => `${k} ${v.lots} (same_work comps on ${v.withComps})`).join("  |  ")}`);
+  }
 
   // accuracy: comp median vs realised (premium basis on both sides)
   const realisedOf = (r: Row) => r.realised ?? (r.hammer ? r.hammer * r.premiumRatio : null);
@@ -367,6 +395,12 @@ function summarize(rows: Row[]) {
     }
   }
   logRatioBlock("best available tier", sold.filter((r) => r.bestMedian && realisedOf(r)).map((r) => ln(r.bestMedian! / realisedOf(r)!)));
+  if (wi.length) {
+    console.log(`  — same_work (n>=1) split by identity basis —`);
+    for (const basis of ["exact_title", "citation", "stripped_title", "stripped_no_series"]) {
+      logRatioBlock(`  via ${basis}`, sold.filter((r) => r.workIdentity?.basis === basis && r.tiers.same_work.n >= 1 && realisedOf(r)).map((r) => ln(r.tiers.same_work.median! / realisedOf(r)!)));
+    }
+  }
 
   // house baseline
   console.log(`\n── House baseline on the same sold lots: hammer vs catalogue estimate ──`);

@@ -1520,7 +1520,13 @@ VALUATION PROCESS:
      HAMMER BASIS — the same basis every auction house prints — so anchor low/high on the
      hammerGBP figures and NEVER on realisedGBP; a range built from realised prices reads
      ~1.3x high against the catalogue and the eventual hammer. Anchor your valuation on
-     these whenever they are present. Weight them by tier: "same_work" (the SAME print —
+     these whenever they are present — but ONLY the same_work tier is a price. Measured against
+     5,000 later hammers (2026-09-13): same_work medians land within 2x of the outcome ~80% of
+     the time; same_artist_technique only ~60%, same_artist ~50%, and both run 25-70% HIGH.
+     With no same_work comps, treat tier 2/3 as a wide plausibility band (their 10th-90th
+     percentile spans 10x) and set the estimate from the Stage 2b evidence on THIS print —
+     edition size, signature, size, date, condition — placing it where a print of that
+     standing sits WITHIN the band, never centred on the band's median. Weight them by tier: "same_work" (the SAME print —
      strongest evidence available, and a run of same_work sales is close to a direct market
      price) > "same_artist_technique" > "same_artist". Prefer recent sales within a tier.
      If several same_work comps exist, your estimate range should sit close to their spread

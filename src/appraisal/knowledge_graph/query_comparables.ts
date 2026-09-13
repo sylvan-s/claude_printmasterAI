@@ -49,8 +49,9 @@ export interface AuctionComparable {
   workTitle: string | null;
   techniques: string[];
   editionSize: number | null;
-  /** Premium-inclusive realised price, GBP at the sale-date rate. What the buyer paid. */
-  priceRealisedGBP: number;
+  /** Premium-inclusive realised price, GBP at the sale-date rate. What the buyer paid.
+   *  Null on the few records that carry only a hammer. */
+  priceRealisedGBP: number | null;
   /**
    * HAMMER price, GBP at the sale-date rate — the figure auction estimates are quoted
    * against. Present on every dated Bonhams / Roseberys / Skinner record (measured 2026-09-13:
@@ -93,6 +94,8 @@ export interface ComparablesParams {
   artistName: string;
   /** ACKG ConceptualWork id, when the caller resolved one. Strongest tier-1 signal. */
   conceptualWorkId?: string | null;
+  /** Several ids for one work (unmerged duplicates, or resolveWorkIdentity's answer). Tier 1. */
+  conceptualWorkIds?: string[] | null;
   /**
    * Identified work title. Falls back to tier 1 by EXACT (case/whitespace-insensitive)
    * title match within the same artist when no conceptualWorkId is available. Ignored when
@@ -125,8 +128,9 @@ MATCH (a)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)-[:INCLU
 MATCH (src:SourceRecord)-[:DOCUMENTS]->(imp)
 WHERE src.sourceType = 'auction'
   AND src.sold = true
-  AND src.priceRealisedGBP IS NOT NULL
-  AND src.priceRealisedGBP > 0
+  // A sold record is a comparable if it carries EITHER price. 643 sold Roseberys records have
+  // a hammer and no realised price (measured 2026-09-13) and were silently excluded.
+  AND ((src.priceRealisedGBP IS NOT NULL AND src.priceRealisedGBP > 0) OR (src.hammerPriceGBP IS NOT NULL AND src.hammerPriceGBP > 0))
   AND src.saleDate IS NOT NULL
   AND ($sinceDate IS NULL OR src.saleDate >= $sinceDate)
   AND ($untilDate IS NULL OR substring(src.saleDate, 0, 10) < $untilDate)
@@ -140,6 +144,7 @@ WITH cw, src, er, collect(DISTINCT t.name) AS techniques
 WITH cw, src, er, techniques,
      CASE
        WHEN $conceptualWorkId IS NOT NULL AND cw.id = $conceptualWorkId THEN 0
+       WHEN size($conceptualWorkIds) > 0 AND cw.id IN $conceptualWorkIds THEN 0
        WHEN $workTitle IS NOT NULL
             AND ${cypherNormalizeTitle("cw.name")} = $workTitle THEN 0
        WHEN $technique IS NOT NULL
@@ -231,6 +236,7 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
       // Modele" never reached tier 0 against the graph's "Peintre et Modèle". See unaccent.ts.
       artistName: foldAccents(params.artistName),
       conceptualWorkId: params.conceptualWorkId ?? null,
+      conceptualWorkIds: params.conceptualWorkIds ?? [],
       // Normalised, not merely accent-folded: 29.9% of works are variant-titled duplicates
       // of another work by the same artist, so an accent-only fold still misses most of a
       // work's own sales at tier 1. See TITLE_PUNCTUATION.
@@ -258,7 +264,7 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
         workTitle: r.get("workTitle") ?? null,
         techniques,
         editionSize: num(r.get("editionSize")),
-        priceRealisedGBP: num(r.get("priceRealisedGBP")) as number,
+        priceRealisedGBP: num(r.get("priceRealisedGBP")),
         hammerPriceGBP: num(r.get("hammerPriceGBP")),
         priceCurrency: r.get("priceCurrency") ?? null,
         priceRealisedNative: num(r.get("priceRealisedNative")),
@@ -269,7 +275,7 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
       };
     });
 
-    const prices = comparables.map((c) => c.priceRealisedGBP);
+    const prices = comparables.map((c) => c.priceRealisedGBP).filter((p): p is number => p != null && p > 0);
     const hammers = comparables.map((c) => c.hammerPriceGBP).filter((h): h is number => h != null && h > 0);
     const sameWorkHammers = comparables.filter((c) => c.tier === "same_work").map((c) => c.hammerPriceGBP).filter((h): h is number => h != null && h > 0);
     const dates = comparables.map((c) => c.saleDate).filter(Boolean) as string[];

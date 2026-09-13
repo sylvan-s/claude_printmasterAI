@@ -2,6 +2,8 @@ export { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsi
 export type { ArtistStyleConsistency } from "./query.js";
 export { queryImageEmbeddingMatches, getStoredImageVectors } from "./query_image_similarity.js";
 export { queryAuctionComparables, parseExcludedListing } from "./query_comparables.js";
+export { resolveWorkIdentity, fetchArtistWorks, titleIdentityKey, titleIdentityKeyNoSeries, isIdentifyingTitle, citationsInTitle, citationsInRefs, foldPrefix } from "./work_identity.js";
+export type { WorkIdentity, WorkIdentityBasis, Citation } from "./work_identity.js";
 export { queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, MIN_WORKS_FOR_DERIVED_CR } from "./catalogue_raisonne.js";
 export { queryEditionRuns, formatEditionRunsForClaude, EDITION_DEFAULT_LIMIT } from "./edition_runs.js";
 export { resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery } from "./artist_identity.js";
