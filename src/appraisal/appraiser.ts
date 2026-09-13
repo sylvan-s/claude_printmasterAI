@@ -918,6 +918,7 @@ function compactComparableForValuation(c: any) {
     title: c.workTitle ?? undefined,
     techniques: c.techniques?.length ? c.techniques : undefined,
     editionSize: c.editionSize ?? undefined,
+    signed: c.signed ?? undefined,
     hammerGBP: c.hammerPriceGBP ?? undefined,
     realisedGBP: c.priceRealisedGBP,
     estGBP:

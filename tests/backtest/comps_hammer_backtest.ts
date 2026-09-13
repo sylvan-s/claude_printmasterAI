@@ -89,6 +89,13 @@ const SUMMARY_ONLY = arg("summary-only");
 /** Resolve the lot to ConceptualWork ids with work_identity.ts before querying comps (step 3).
  *  Off by default so a run without it is the step-1 baseline. */
 const RESOLVE_WORK = has("resolve-work");
+/** Stratify tier 2 on the lot's signed status and edition band (client-side, from a wider
+ *  comp window) and report it beside plain tier 2. The question: does matching the market
+ *  segment beat discounting a mixed population by judgement? */
+const STRATIFY = has("stratify");
+/** Edition bands: unsigned book plates and portfolio sheets sit in the hundreds; signed
+ *  editions in the tens. Boundaries chosen on the Picasso etching split (2026-09-13). */
+const editionBand = (n: number | null | undefined): string => (n == null || n <= 0 ? "unknown" : n <= 50 ? "<=50" : n <= 150 ? "51-150" : ">150");
 const OUT_DIR = join(process.cwd(), "tests/backtest/comps_hammer");
 const OUT = arg("out", join(OUT_DIR, `${SOURCE}${SALES ? "_" + SALES.join("-") : ""}${LIMIT ? "_n" + LIMIT : ""}.jsonl`));
 
@@ -153,6 +160,8 @@ interface Lot {
   listingUrl: string | null;
   /** The house's own catalogue-raisonné refs column, when it has one. */
   catalogueRefs: string | null;
+  signed: boolean | null;
+  editionSize: number | null;
 }
 
 function loadRoseberys(): Lot[] {
@@ -179,6 +188,8 @@ function loadRoseberys(): Lot[] {
       sold: r.sold === "sold", hammer: h > 0 ? h : null, realised: p > 0 ? p : null,
       premiumRatio: premium[r.sale_code] ?? 1.3, premiumBasis: premium[r.sale_code] ? "measured" : "assumed",
       listingUrl: r.lot_url || null, catalogueRefs: r.catalogue_refs?.trim() || null,
+      signed: r.signed === "yes" ? true : r.signed === "no" ? false : null,
+      editionSize: Number(r.edition_size) > 0 ? Number(r.edition_size) : null,
     });
   }
   return out;
@@ -199,6 +210,8 @@ function loadForum(): Lot[] {
       sold: r.sold === "sold", hammer: h > 0 ? h : null, realised: null,
       premiumRatio: FORUM_PREMIUM, premiumBasis: "assumed",
       listingUrl: r.lot_url || null, catalogueRefs: r.catalogue_refs?.trim() || null,
+      signed: r.signed === "yes" ? true : r.signed === "no" ? false : null,
+      editionSize: Number(r.edition_size) > 0 ? Number(r.edition_size) : null,
     });
   }
   return out;
@@ -215,6 +228,8 @@ interface Row extends Lot {
   technique: string | null;
   sinceDate: string;
   tiers: { same_work: TierStat; same_artist_technique: TierStat; same_artist: TierStat };
+  /** --stratify: tier-2 comps sharing the lot's signed status (and, when both known, edition band). */
+  strata?: { signedOnly: TierStat; signedAndBand: TierStat };
   bestTier: "same_work" | "same_artist_technique" | "same_artist" | "none";
   bestMedian: number | null;
   sellThrough: { sold: number; unsold: number } | null;
@@ -245,14 +260,16 @@ async function sellThrough(artist: string, titleKey: string, lot: Lot, sinceDate
   } finally { await s.close(); }
 }
 
-function tierStat(c: ComparablesResult, tier: Row["bestTier"]): TierStat {
-  const xs = c.comparables.filter((x) => x.tier === tier);
+function statOf(xs: ComparablesResult["comparables"]): TierStat {
   const p = xs.map((x) => x.priceRealisedGBP).filter((v): v is number => v != null && v > 0).sort((a, b) => a - b);
   const med = p.length ? (p.length % 2 ? p[(p.length - 1) / 2] : (p[p.length / 2 - 1] + p[p.length / 2]) / 2) : null;
   const h = xs.map((x) => x.hammerPriceGBP).filter((v): v is number => v != null && v > 0).sort((a, b) => a - b);
   const medH = h.length ? (h.length % 2 ? h[(h.length - 1) / 2] : (h[h.length / 2 - 1] + h[h.length / 2]) / 2) : null;
   const latest = xs.map((x) => x.saleDate?.slice(0, 10) ?? "").filter(Boolean).sort().pop() ?? null;
   return { n: xs.length, median: med, medianHammer: medH, latest };
+}
+function tierStat(c: ComparablesResult, tier: Row["bestTier"]): TierStat {
+  return statOf(c.comparables.filter((x) => x.tier === tier));
 }
 
 const identityCache = new Map<string, { canonical: string | null; ambiguous: number }>();
@@ -298,8 +315,14 @@ async function processLot(lot: Lot): Promise<Row> {
       sinceDate, untilDate: lot.saleDate,
       excludeSaleLot: { saleId: lot.saleId, lotNumber: lot.lotNumber },
       excludeListingUrl: lot.listingUrl,
-      limit: 60,
+      limit: STRATIFY ? 200 : 60,
     });
+    if (STRATIFY) {
+      const t2 = c.comparables.filter((x) => x.tier === "same_artist_technique");
+      const sameSigned = lot.signed == null ? [] : t2.filter((x) => x.signed === lot.signed);
+      const sameBand = lot.signed == null || lot.editionSize == null ? [] : sameSigned.filter((x) => editionBand(x.editionSize) === editionBand(lot.editionSize));
+      base.strata = { signedOnly: statOf(sameSigned), signedAndBand: statOf(sameBand) };
+    }
     base.tiers = {
       same_work: tierStat(c, "same_work"),
       same_artist_technique: tierStat(c, "same_artist_technique"),
@@ -445,6 +468,27 @@ function summarize(rows: Row[]) {
       const med = gs.length ? Math.exp(quantile(gs.map(outcome), 0.5)) : NaN;
       console.log(`  ${name.padEnd(22)} ${String(g.length).padStart(5)}  ${pct(unsold, g.length).padStart(7)}  ${pct(lo, gs.length).padStart(11)}  ${pct(hi, gs.length).padStart(12)}  ${(isNaN(med) ? "-" : f2(med)).padStart(18)}`);
     }
+  }
+
+  // stratified tier 2 vs plain tier 2, on the same lots
+  const strat = sold.filter((r) => r.strata);
+  if (strat.length) {
+    console.log(`\n── Tier 2 stratified on the lot's signed status / edition band vs plain tier 2 (same lots) ──`);
+    for (const [label, pick] of [
+      ["signed status matched (n>=3)", (r: Row) => r.strata!.signedOnly],
+      ["signed + edition band matched (n>=3)", (r: Row) => r.strata!.signedAndBand],
+    ] as const) {
+      const g = strat.filter((r) => pick(r).n >= 3 && pick(r).medianHammer != null && r.tiers.same_artist_technique.n >= 3 && r.tiers.same_artist_technique.medianHammer != null);
+      if (!g.length) { console.log(`  ${label}: n=0`); continue; }
+      const err = (f: (r: Row) => number) => g.map((r) => ln(f(r) / r.hammer!));
+      const show = (name: string, e: number[]) => console.log(`     ${name.padEnd(30)} n=${String(e.length).padStart(4)} geo=${f2(geo(e)).padStart(5)}  ±25%: ${pct(e.filter((x) => Math.abs(x) <= ln(1.25)).length, e.length).padStart(4)}  within 2x: ${pct(e.filter((x) => Math.abs(x) <= ln(2)).length, e.length).padStart(4)}  MAE(log)=${(e.reduce((t, x) => t + Math.abs(x), 0) / e.length).toFixed(3)}`);
+      console.log(`  ${label} — lots where both are available: ${g.length}`);
+      show("plain tier-2 hammer median", err((r) => r.tiers.same_artist_technique.medianHammer!));
+      show("stratified hammer median", err((r) => pick(r).medianHammer!));
+      show(`catalogue midpoint x ${DRIFT}`, err((r) => ((r.lowEst + r.highEst) / 2) * DRIFT));
+    }
+    const cov = strat.filter((r) => r.tiers.same_artist_technique.n >= 3).length;
+    console.log(`  coverage: tier-2 n>=3 on ${cov} sold lots; signed-matched n>=3 on ${strat.filter((r) => r.strata!.signedOnly.n >= 3).length}; signed+band n>=3 on ${strat.filter((r) => r.strata!.signedAndBand.n >= 3).length}`);
   }
 
   // predictors of hammer, head to head: does the comp add anything to the estimate?

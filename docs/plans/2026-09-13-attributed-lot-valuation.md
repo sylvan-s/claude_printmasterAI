@@ -328,6 +328,36 @@ second slice — the Splink work-identity comparison vector (title similarity, c
 family, dimensions, edition, DINOv2) as a scored, tiered candidate ranker, with the
 stripped-title matches adjudicated by dimensions and image the same way.
 
+## Does adjusting tier-2 comps for signed / edition / condition rescue them? (2026-09-13)
+
+Prompted by the Picasso lot above. Stage 3 DID know the lot was unsigned, edition of 200,
+framed, very good condition, and applied a 60-70% unsigned discount to a signed-edition-of-50
+population — and still landed 3x high, because the discount needed was ~90% and the one truly
+comparable comp (an unsigned large-edition plate at 950 hammer) was used as a floor, not the
+anchor.
+
+Two data facts found on the way: `Impression.signed` is set on every sold comp and
+`EditionRun.declaredSize` on 69% of them, and the comps query had been reading `er.editionSize`,
+a property that exists on 0 of 127,305 edition runs — so Stage 3 saw a null edition size on
+every comp it was ever shown. Fixed (`coalesce(er.declaredSize, …)`); `signed` now rides on
+each comp row.
+
+Measured (`--stratify`, same 2x2,500 lots): tier-2 comps restricted to the lot's signed status
+and edition band, against plain tier 2 and the estimate, on the same sold lots:
+
+| | Forum (n=687) MAE(log) / within 2x | Roseberys (n=469) MAE(log) / within 2x |
+|---|---|---|
+| plain same_artist_technique median | 0.635 / 65% | 0.561 / 72% |
+| signed + edition band matched | 0.577 / 69% | 0.553 / 72% |
+| catalogue midpoint × 0.82 | 0.226 / 94% | 0.268 / 94% |
+
+Stratifying helps a little and consistently, and it does not change the conclusion: a same-
+artist population is not a price even when segmented (its 10th-90th percentile still spans
+~10x), because the specific print — which plate, which state, which edition — dominates, and
+the house's estimate already prices that lot. Signed status and edition size belong in the
+prompt as facts about each comp (now present) and as filters on tier 2, not as a licence to
+anchor on tier 2.
+
 ## Housekeeping done 2026-09-13
 
 - The checkout was on `technique-classifier-deepdive`, 127 commits behind main, which is why

@@ -49,6 +49,10 @@ export interface AuctionComparable {
   workTitle: string | null;
   techniques: string[];
   editionSize: number | null;
+  /** Impression.signed as ingested — present on every sold auction record. A signed
+   *  small-edition print and an unsigned book plate by the same artist are different
+   *  markets; callers stratify on this rather than discounting by guesswork. */
+  signed: boolean | null;
   /** Premium-inclusive realised price, GBP at the sale-date rate. What the buyer paid.
    *  Null on the few records that carry only a hammer. */
   priceRealisedGBP: number | null;
@@ -149,11 +153,11 @@ WHERE src.sourceType = 'auction'
   AND ($excludeListingUrl IS NULL OR src.listingUrl IS NULL OR src.listingUrl <> $excludeListingUrl)
   AND ($excludeSaleId IS NULL OR NOT (src.saleId = $excludeSaleId AND src.lotNumber = $excludeLotNumber))
 OPTIONAL MATCH (imp)-[:USES_TECHNIQUE]->(t:Technique)
-WITH cw, src, er, collect(DISTINCT t.name) AS techniques
+WITH cw, src, er, imp, collect(DISTINCT t.name) AS techniques
 // Tier must be decided HERE, not after LIMIT. Ordering by saleDate alone and tiering in
 // TS would let a tier-1 same-work comp fall outside the LIMIT window whenever the artist
 // has enough recent sales — silently discarding the single most relevant comparable.
-WITH cw, src, er, techniques,
+WITH cw, src, er, imp, techniques,
      CASE
        WHEN $conceptualWorkId IS NOT NULL AND cw.id = $conceptualWorkId THEN 0
        WHEN size($conceptualWorkIds) > 0 AND cw.id IN $conceptualWorkIds THEN 0
@@ -171,7 +175,7 @@ WITH cw, src, er, techniques,
 ORDER BY tierRank ASC
 WITH src, collect({
        tierRank: tierRank, workId: cw.id, workTitle: cw.name,
-       editionSize: er.editionSize, techniques: techniques
+       editionSize: coalesce(er.declaredSize, er.editionSize), techniques: techniques, signed: imp.signed
      })[0] AS best
 ORDER BY best.tierRank ASC, src.saleDate DESC
 LIMIT $limit
@@ -191,6 +195,7 @@ RETURN best.tierRank AS tierRank,
        src.estimateHighGBP AS estimateHighGBP,
        src.listingUrl AS listingUrl,
        best.editionSize AS editionSize,
+       best.signed AS signed,
        best.techniques AS techniques
 `;
 
@@ -278,6 +283,7 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
         workTitle: r.get("workTitle") ?? null,
         techniques,
         editionSize: num(r.get("editionSize")),
+        signed: typeof r.get("signed") === "boolean" ? (r.get("signed") as boolean) : null,
         priceRealisedGBP: num(r.get("priceRealisedGBP")),
         hammerPriceGBP: num(r.get("hammerPriceGBP")),
         priceCurrency: r.get("priceCurrency") ?? null,
