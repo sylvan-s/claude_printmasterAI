@@ -3,7 +3,10 @@
 **Date:** 2026-09-13
 **Status:** Proposed. **Phase 0 gate passed on 2026-09-13** (results below): tiling at a fixed
 physical scale is worth +0.09 / +0.15 artist-balanced F1 on aquatint / drypoint over the same
-encoder at 518px, and resolution alone is worth nothing. Phases 1–4 are unblocked but not
+encoder at 518px, and resolution alone is worth nothing. **Amended 2026-09-13** after the
+physical-cue research in [`docs/research/intaglio-technique-visual-cues-2026-09-13.md`](../research/intaglio-technique-visual-cues-2026-09-13.md):
+a Phase 0b (encoder head-to-head and a finer tile scale, in the existing harness) is inserted
+before Phase 1, and Phases 1–4 are revised as marked. Phase 0b is next; nothing after it is
 started.
 
 The printmaking-technique classifier ([`knowledge_graph/technique_ml/`](../../knowledge_graph/technique_ml/README.md))
@@ -126,33 +129,101 @@ image's long axis (listing photographs include mounts, so tiles are slightly coa
 noise) — so the Phase 1 localiser should only widen the gap. Per-fold variance was not
 computed; that belongs in the Phase 4 evaluation, not here.
 
-### Phase 1 — high-resolution acquisition layer
+#### What the physical cues say about the Phase 0 result (2026-09-13)
+
+The research note puts each intaglio cue on a millimetre scale and reads the Phase 0
+numbers against it. The two findings that change the design:
+
+- **Drypoint vs etching is a sub-millimetre problem the 40 mm tile does not resolve.** The
+  only physical difference is the burr halo, ~0.1–0.5 mm beyond the line core; at 5.6 px/mm
+  that is under 2 px of gradient. The +0.15 F1 came from *aggregate* cues — velvety,
+  soft-edged dark masses where burr is dense — not from seeing burr. Aquatint cells
+  (~0.05–0.3 mm) are likewise aliased and survive only as a noise statistic, which is why
+  aquatint gained less. Whether finer tiles read the halo itself is an open, testable question.
+- **Line-level cues need ≥ 10 px/mm to see and ≥ 20 to characterise**, which only Roseberys
+  `xlarge` and small Bonhams sheets reach. Hatching *syntax* (0.5–3 mm spacing) is visible on
+  every source and is what the 224px model was already using. Plate mark and ink relief
+  (~40 µm) are lighting cues, absent from any flat-lit listing photograph.
+
+The null on the hand-crafted texture channel has five identifiable causes (no print-area
+localisation; spectra taken after resampling, so grain sat at or above Nyquist; JPEG block
+energy that moves with the resample factor; radial bands discarding orientation, which is
+the actual discriminant; no masking of line work). It is dropped as a feature and kept only
+as the native-resolution halftone audit in Phase 3.
+
+Burr wears off in a dozen to 20–30 impressions before steel-facing (1857) and 300–500 after,
+so pre-1860 "drypoint" lots carry an irreducible error floor. Drypoint metrics are split by
+period from here on.
+
+### Phase 0b — encoder head-to-head and a finer tile scale (added 2026-09-13)
+
+Run inside the Phase 0 harness on the same 899 images, before any bulk extraction, so the
+Phase 2 forward passes are spent on the winner:
+
+- **Encoders:** DINOv2-L (baseline) vs `facebook/dinov2-with-registers-large` vs
+  `facebook/dinov3-vitl16-pretrain-lvd1689m` (patch 16 — 256 px tiles to keep 40 mm, or
+  accept a 2.9 mm patch). Registers remove the high-norm background-token artefacts that
+  mat/paper tiles trigger; DINOv3's gram anchoring targets dense/texture fidelity, which is
+  what grain and burr are.
+- **Pooling:** CLS mean ⊕ max (baseline) vs orderless pooling of patch tokens (GeM /
+  Fisher-vector style) — texture is local, and the CLS token encodes the layout we want to
+  discard.
+- **A second, finer tile scale** of ~16–20 mm per 224 px tile (11–14 px/mm), computed only
+  where native px/mm ≥ 11 (Roseberys `xlarge`; Bonhams sheets ≤ ~260 mm), never upsampled.
+  Report drypoint and aquatint F1 **per px/mm bucket** (2–4, 4–7, 7–11, > 11). A monotone
+  rise with px/mm means the halo is being read and the fine scale earns its place; a flat
+  curve means the model reads macro cues and the fine scale is dropped.
+
+Go/no-go for Phase 2's encoder choice: the best configuration on artist-balanced F1 and AP,
+with the same 5-fold artist split as Phase 0.
+
+### Phase 1 — high-resolution acquisition layer (revised 2026-09-13)
 
 - A `hires_url(sourceUrl)` resolver per host implementing the substitutions in the table.
-- A print-area localiser run on a downsampled copy, so tiles come from the sheet and not
-  from the mat, frame or backdrop.
+- A print-area localiser run on a downsampled copy (edge-density / saliency, or a small
+  segmentation model), so tiles come from the sheet and not from the mat, frame or backdrop.
+  Prerequisite for everything below; Phase 0 used the central 60% and paid for it.
+- **Content-stratified tile placement** instead of a grid: (a) flat mid-tone regions —
+  aquatint reticulation, mezzotint ground, lithographic tint and halftone screens live here;
+  (b) high edge-density regions — line syntax and burr halos; (c) the darkest connected
+  regions — massed burr, mezzotint blacks; (d) a band along the print edge for the plate
+  mark where it is not matted out. Tiles > 90% paper-white are excluded — they carry the
+  photographer's lighting and paper colour and nothing about the process. ~16 tiles per
+  image, each tagged with its stratum so attention weights stay interpretable.
 - New `DigitalImage` properties: `hiresWidthPixels`, `hiresHeightPixels`, `pxPerMm` (from
-  `sheetDimensions`), `resolutionTier`. Images under a px/mm floor are flagged and excluded
-  from fine-grain classes, not from family-level classes.
+  `sheetDimensions`), `resolutionTier`. Tiers: family-level — any px/mm; aquatint / mezzotint
+  / drypoint — ≥ 5 px/mm (what Phase 0 worked at); fine-grain confident — ≥ 10 px/mm. Images
+  under a floor are excluded from that class, not from family-level classes.
 - Streaming, resumable, rate-limited, same `User-Agent` and politeness as the existing
   ingests. No image cache.
 
-### Phase 2 — feature extraction at scale
+### Phase 2 — feature extraction at scale (revised 2026-09-13)
 
+- The encoder, pooling and tile scales are whatever Phase 0b selected. Where the fine scale
+  is available it is stored alongside the primary one; where it is not, the head receives a
+  learned "absent" token, never an upsampled tile.
 - Labelled images first, artist-capped (the trainer caps at 40 per artist–technique anyway),
-  so ~50k images rather than 108k. At 16 tiles per image that is ~800k DINOv2-L forward
+  so ~50k images rather than 108k. At 16 tiles per image that is ~800k ViT-L forward
   passes — roughly 10–15 h on MPS plus ~75 GB over the wire; a multi-day background job.
-- Written to a new property (`tileEmbedding` + a small meta map), never to `embedding`.
-- Only if Phase 4 plateaus: LoRA fine-tune of the last DINOv2 blocks on tiles.
+- Per-tile vectors are kept (not only the pooled vector) so Phase 4's attention-MIL can be
+  trained without re-extracting. Written to a new property (`tileEmbedding` + a small meta
+  map recording scale, stratum and px/mm), never to `embedding`.
+- Only if Phase 4 plateaus: LoRA fine-tune of the last encoder blocks on tiles, gated on the
+  source-institution probe — with one photographer style per source, an adapter can learn the
+  camera.
 
 ### Phase 3 — label repair
 
 - Collapse naming-only distinctions: Giclée / Inkjet / Pigment / Digital print → one inkjet
   class. Treat the generic `Intaglio` (713) and `Relief printing` (238) labels as
   family-only supervision, not as process classes.
-- Use the halftone channel to audit `Lithograph` vs `Offset lithograph` (F1 0.01 today,
-  Bonhams/Roseberys-only): a rosette is physical evidence, so the label-quality problem
-  becomes measurable rather than assumed.
+- A **native-resolution halftone / screen detector** on flat-tone tiles (2D-FFT peak-pair
+  detection, moiré as the below-Nyquist fallback) audits `Lithograph` vs `Offset lithograph`
+  (F1 0.01 today, Bonhams/Roseberys-only): a rosette is physical, periodic and separable from
+  every hand process, so the label-quality problem becomes measurable rather than assumed. It
+  is the one extra channel this ADR adds; it also becomes a binary feature for the
+  photomechanical family. Ink-density, plate-tone and line-profile statistics are explicitly
+  *not* added — the first two measure the photographer, the third needs ≥ 15 px/mm.
 - Cross-source conflicts (one `ConceptualWork`, two institutions, two techniques) are
   flagged; museum labels outrank auction text.
 - An out-of-fold confident-learning pass surfaces probable mislabels for a small review,
@@ -162,8 +233,16 @@ computed; that belongs in the Phase 4 evaluation, not here.
 
 - The two-stage family → process design, the artist-grouped split and the **same held-out
   test artists** are kept, so results compare directly to 0.275 / 0.558.
-- Heads: MLP on pooled tiles first; attention-MIL over per-tile embeddings second, so the
-  model can find the one tile that carries the burr.
+- Heads: MLP on pooled tiles first; gated attention-MIL over per-tile embeddings second —
+  drypoint accents and aquatint fields occupy a minority of tiles, mean-pooling dilutes them
+  and max-pooling is noisy, and the attention weights say which tile (and which stratum)
+  carried the decision, which the adjudicator queue needs.
+- px/mm tier and source institution are inputs to the *calibration* layer only, so
+  confidence can depend on resolution without the encoder ever seeing the institution.
+- F1 is reported per px/mm bucket, and drypoint is reported split by period (pre-/post-1860,
+  from `ConceptualWork` dates) and by pure vs etching-combined label. A post-1860 drypoint
+  miss is a model error; a pre-1860 one is possibly a worn impression or a label issue and
+  goes to the adjudicator queue.
 - The source-institution probe is re-run and must drop from 0.907; if it does not, the new
   features have learned the camera again.
 - Target: aquatint, drypoint, mezzotint, wood engraving, linocut and offset lithograph clear
@@ -171,8 +250,10 @@ computed; that belongs in the Phase 4 evaluation, not here.
 
 ### Phase 5 — product implication
 
-`predict_technique.py` receives a user photograph of unknown scale. The model will need
-either the sheet dimensions or a close-up detail shot; Stage 1 should ask for one. This is
+`predict_technique.py` receives a user photograph of unknown scale, which cannot be placed
+on the px/mm scale at all without sheet dimensions or a ruler in frame. A raking-light
+close-up would additionally supply the plate mark and ink relief that no listing photograph
+has. Both belong in the Stage 1 capture prompt. This is
 noted here because it shapes the evaluation — the noise-robustness run already showed
 defocus is the expensive degradation — and is not otherwise decided by this ADR.
 
