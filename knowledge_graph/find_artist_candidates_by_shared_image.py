@@ -56,6 +56,27 @@ from collections import defaultdict
 
 from neo4j import GraphDatabase
 
+REFUSED_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "artist_never_merge.csv")
+
+
+def load_refused():
+    """Pairs a person has already decided are two different artists.
+
+    Without this the scan re-proposes them on every run, and the ones it re-proposes hardest are
+    the ones it is most wrong about: `John James Audubon` and `John Woodhouse Audubon` match at
+    cosine 1.000 BECAUSE the son painted many of the Quadrupeds plates his father began. A
+    refusal is a durable fact about two artists, not a judgement about one run's evidence."""
+    refused = {}
+    try:
+        with open(REFUSED_FILE, encoding="utf-8") as fh:
+            for row in csv.DictReader(fh):
+                key = tuple(sorted((row["artistA"], row["artistB"])))
+                refused[key] = row.get("reason", "")
+    except FileNotFoundError:
+        pass
+    return refused
+
+
 NEIGHBOURS = """
 MATCH (img:DigitalImage) WHERE img.embedding IS NOT NULL
 WITH img ORDER BY img.id SKIP $skip LIMIT $limit
@@ -201,7 +222,9 @@ def family_name_risk(a, b):
     return 0
 
 
-def route(a, b, ia, ib, relation):
+def route(a, b, ia, ib, relation, refused):
+    if tuple(sorted((a, b))) in refused:
+        return "refused"
     if NON_ARTIST.search(a) or NON_ARTIST.search(b):
         return "nonArtistNode"
     if COLLECTIVE.search(a) or COLLECTIVE.search(b):
@@ -271,6 +294,10 @@ def main():
     finally:
         driver.close()
 
+    refused = load_refused()
+    if refused:
+        print(f"{len(refused)} pair(s) already refused by a person — routed out, not re-proposed",
+              flush=True)
     by_pair = defaultdict(list)
     for r in rows:
         by_pair[tuple(sorted((r["artistA"], r["artistB"])))].append(r)
@@ -279,11 +306,13 @@ def main():
     for (a, b), rs in by_pair.items():
         ia, ib = info.get(a, {}), info.get(b, {})
         rel = name_relation(a, b)
+        key = tuple(sorted((a, b)))
         family_risk = family_name_risk(a, b)
         cos = sorted(float(x["cos"]) for x in rs)
         ex = max(rs, key=lambda x: float(x["cos"]))
         out.append({
-            "route": route(a, b, ia, ib, rel), "artistA": a, "artistB": b,
+            "route": route(a, b, ia, ib, rel, refused), "artistA": a, "artistB": b,
+            "refusedBecause": refused.get(key, ""),
             "sharedImages": len(rs), "maxCos": round(cos[-1], 4),
             "medianCos": round(statistics.median(cos), 4),
             "worksA": ia.get("works", 0), "worksB": ib.get("works", 0),
@@ -296,7 +325,8 @@ def main():
             "exampleWorkA": ex["workA"], "exampleWorkB": ex["workB"],
         })
     order = {"nameVariant": 0, "differentNames": 1, "collaboration": 2,
-             "afterAttribution": 3, "collective": 4, "nonArtistNode": 5, "ulanConflict": 6}
+             "afterAttribution": 3, "collective": 4, "nonArtistNode": 5, "ulanConflict": 6,
+             "refused": 7}
     out.sort(key=lambda r: (order.get(r["route"], 9), -r["sharedImages"], -r["maxCos"]))
     with open(args.out, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=list(out[0].keys()))
@@ -313,7 +343,7 @@ def main():
     for r in out:
         counts[r["route"]] += 1
     for k in ("nameVariant", "differentNames", "collaboration", "afterAttribution",
-              "collective", "nonArtistNode", "ulanConflict"):
+              "collective", "nonArtistNode", "ulanConflict", "refused"):
         if counts[k]:
             print(f"  {k:16s} {counts[k]:>5d}")
     print("\nNothing has been merged. Feed reviewed rows to "
