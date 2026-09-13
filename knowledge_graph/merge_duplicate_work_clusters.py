@@ -123,6 +123,11 @@ MERGE_RULES = {
     # is deliberately excluded: it measured 8/10 while this cell measured 15/15 (lb 82%),
     # and technique conflict is excluded outright at 1/8.
     "oneSidedCatalogue":   "COLLISION-RANK-1.1",     # one side cited, scored evidence agrees
+    # Both sides cite the SAME entry, written differently. entry_base took leading digits
+    # only, so an alphanumeric citation vanished and the pair read as one-sided; and the
+    # catalogue prefix can be repeated inside the number ("L." + "L.263" against "263").
+    # entry_exact_keys folds both away. This is exact-field matching, not similarity.
+    "catalogueSpellingVariant": "EXACT-CAT-MERGE-1.1",  # one citation, two spellings
     "humanTriage":         "human",                   # a person read the evidence and decided
 }
 

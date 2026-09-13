@@ -78,7 +78,7 @@ from generate_splink_merge_candidates import designation_only_difference
 
 from fit_splink_work_identity import (
     U_SAMPLE_PAIRS, _fold_title, _require_env, entry_keys, parse_dims, settings,
-    technique_family, training_rules,
+    entry_exact_keys, technique_family, training_rules,
 )
 
 # A group this large is a portfolio or a placeholder that survived the filter, not a duplicate
@@ -165,7 +165,8 @@ def build_frame(session, groups):
                 "title_folded": _fold_title(m["name"]),
                 "tech_family": technique_family(list(m["techs"]) + list(m["media"])),
                 "dim_w": width, "dim_h": height,
-                "entries": entry_keys(m["citations"]), "emb": embedding,
+                "entries": entry_keys(m["citations"]),
+                "exact_entries": entry_exact_keys(m["citations"]), "emb": embedding,
                 "clip": clip_embedding,
                 "year": m["year"],
                 "institutions": "; ".join(sorted(x for x in m["institutions"] if x)),
@@ -256,7 +257,7 @@ def main():
     # u is an agreement RATE estimated by random sampling, so a level that is genuinely rare in
     # the population needs a bigger sample, not a smaller model. Raise --u-pairs.
     FIELD_OF = {"image": "emb", "clip": "clip", "title": "title_folded",
-                "tech_family": "tech_family", "dims": "dim_w", "entry": "entries"}
+                "tech_family": "tech_family", "dims": "dim_w", "entry": "exact_entries"}
 
     def _populated(col):
         if col not in df.columns:
@@ -355,7 +356,11 @@ def main():
             # exactly one. The one-sided case is its own question — the cited node is an anchor
             # and the uncited one is either the same work or a sibling the citation would have
             # separated — and nothing downstream could ask it while only the group label existed.
-            ea, eb = set(a["entries"] or []), set(b["entries"] or [])
+            # the EXACT keys, not the stems: a pair citing F./S. IIA.30 against IIIA.30 agrees
+            # on no stem at all under entry_base (both yield nothing) and would read as
+            # `oneSided`, which is how a real catalogue conflict reached a merge candidate list.
+            ea = set(a["exact_entries"] or []) or set(a["entries"] or [])
+            eb = set(b["exact_entries"] or []) or set(b["entries"] or [])
             pair_cat = ("none" if not ea and not eb else
                         "oneSided" if not ea or not eb else
                         "agree" if ea & eb else "conflict")

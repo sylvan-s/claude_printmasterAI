@@ -143,13 +143,17 @@ def training_rules(df, min_pairs=200):
     coverage = {c: float(df[c].notna().mean()) for c in
                 ("dim_w", "tech_family", "title_folded", "year", "clip")
                 if c in df.columns}
-    if "entries" in df.columns:
-        coverage["entries"] = float(df["entries"].map(lambda v: bool(v)).mean())
+    for col in ("entries", "exact_entries"):
+        if col in df.columns:
+            coverage[col] = float(df[col].map(lambda v: bool(v)).mean())
     usable = [c for c, frac in coverage.items() if frac >= 0.10]
 
     # Deterministic rule: a conjunction precise enough that its matches are almost all true.
     # `entry` first where it exists, dimensions next — both are exact and independent of title.
-    if coverage.get("entries", 0) >= 0.10:
+    if coverage.get("exact_entries", 0) >= 0.10:
+        deterministic = ["l.title_folded = r.title_folded "
+                         "and len(list_intersect(l.exact_entries, r.exact_entries)) > 0"]
+    elif coverage.get("entries", 0) >= 0.10:
         deterministic = ["l.title_folded = r.title_folded "
                          "and len(list_intersect(l.entries, r.entries)) > 0"]
     elif coverage.get("dim_w", 0) >= 0.10:
@@ -224,6 +228,50 @@ def entry_base(number):
     return digits or None
 
 
+_ENTRY_ALNUM = re.compile(r"[^a-z0-9]")
+
+
+def entry_exact_keys(citations):
+    """EVERY citation as prefix+number folded to lowercase alphanumerics, stripping NOTHING.
+
+    `entry_base` takes leading DIGITS, breaking at the first non-digit from the START, so any
+    number that begins with a letter yields nothing at all and the citation vanishes from the
+    model. Measured 2026-09-13: 1,839 of 22,273 entries (8.3%), documenting 2,024 works.
+    Feldmann & Schellmann — Warhol's catalogue — is 96% invisible, and `entry` is the strongest
+    single comparison in the model at about +11 log2 on the partial frame.
+
+    The obvious repair, "alphabetic designator plus the first run of digits", is NOT SAFE. It
+    collapses W/C 4, W/D 10 and W/D 21 onto `w`, and RM12.03 through RM12.07 onto `rm12`: a
+    state suffix (618Bd) and a second number component (12.03) cannot be told apart by pattern.
+
+    So this strips nothing and is purely ADDITIVE. It can only group spellings that differ in
+    punctuation or case — measured, the 159 groups it forms are all of that kind ('222', 'P.222',
+    'p222'). It joins prefix-split spellings for free, since prefix and number are folded
+    together: Lynton/'G27' and 'Lynton G'/'27' both give `lyntong27`. Where the NUMBER repeats
+    its own catalogue's prefix ("L." + "L.263" against "L." + "263") both spellings are emitted,
+    because that is one citation written twice.
+
+    It does NOT replace entry_base, which exists for the Baer 618 / 618Bd state-family lesson.
+    The two are separate comparison levels and EM weights each.
+
+    KNOWN RESIDUE, not fixed here: `CatalogueRaisonne.numberingPrefix` is itself un-normalised —
+    2,319 spellings, 1,486 of them carrying a single entry, with Feldmann & Schellmann appearing
+    as at least 8 (`F./S.`, `F. & S.`, `Feldman & Schellman`, ...) and Baer as `Baer` and `Ba.`.
+    Folding the prefix into the key therefore still misses same-catalogue citations written under
+    different catalogue names."""
+    keys = set()
+    for prefix, number in citations or []:
+        folded_number = _ENTRY_ALNUM.sub("", str(number or "").lower())
+        if not folded_number:
+            continue
+        folded_prefix = _ENTRY_ALNUM.sub("", str(prefix or "").lower())
+        keys.add(folded_prefix + folded_number)
+        if folded_prefix and folded_number.startswith(folded_prefix) \
+                and len(folded_number) > len(folded_prefix):
+            keys.add(folded_prefix + folded_number[len(folded_prefix):])
+    return sorted(keys)
+
+
 def entry_keys(citations):
     """EVERY citation a work carries, as "prefix base" — e.g. ["baer 623", "bloch 999"].
 
@@ -267,7 +315,8 @@ def build_records(session, artist, catalogue):
             "title_folded": _fold_title(titles[0] if titles else None),
             "tech_family": technique_family(list(r["techs"]) + list(r["media"])),
             "dim_w": width, "dim_h": height,
-            "entries": entry_keys(r["citations"]), "emb": embedding,
+            "entries": entry_keys(r["citations"]),
+            "exact_entries": entry_exact_keys(r["citations"]), "emb": embedding,
         })
     return pd.DataFrame(rows)
 
@@ -349,11 +398,22 @@ def settings():
                 cll.ElseLevel(),
             ]),
             # SHARES ANY CITATION, not "the first ones happen to be equal" — see entry_keys.
+            # ONE level, firing on EITHER key. Splitting it into "shares the printed citation"
+            # and "shares only the stem" was tried on 2026-09-13 and dropped: on the partial
+            # frame the stem-only level held TWELVE pairs of 2,327, and EM duly returned +11.24
+            # for it against +9.16 for the exact level — the weaker evidence scoring higher,
+            # which is noise, not a finding. The recovery this change is for comes from
+            # entry_exact_keys reaching citations entry_base drops (8.3% of all entries), not
+            # from grading the two against each other. Revisit only on a frame where the
+            # stem-only level has enough pairs to estimate.
             CustomComparison(output_column_name="entry", comparison_levels=[
-                cll.CustomLevel("entries_l IS NULL OR entries_r IS NULL "
-                                "OR len(entries_l) = 0 OR len(entries_r) = 0",
+                cll.CustomLevel("(entries_l IS NULL OR len(entries_l) = 0) "
+                                "AND (exact_entries_l IS NULL OR len(exact_entries_l) = 0) "
+                                "OR (entries_r IS NULL OR len(entries_r) = 0) "
+                                "AND (exact_entries_r IS NULL OR len(exact_entries_r) = 0)",
                                 "no citation on one side").configure(is_null_level=True),
-                cll.CustomLevel("len(list_intersect(entries_l, entries_r)) > 0",
+                cll.CustomLevel("len(list_intersect(exact_entries_l, exact_entries_r)) > 0 "
+                                "OR len(list_intersect(entries_l, entries_r)) > 0",
                                 "shares a catalogue citation"),
                 cll.ElseLevel(),
             ]),
