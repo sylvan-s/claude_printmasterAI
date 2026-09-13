@@ -20,14 +20,19 @@
  * backfilled", never "not a real artist". Resolution is therefore enrichment and must never
  * gate anything.
  *
- * MATCHING IS EXACT, deliberately. Names are folded for accents and case (unaccent.ts) and
- * compared for equality against Artist.name and Artist.alternateNames — no CONTAINS, no
- * similarity. Fuzzy matching on artist identity has caused two confirmed corruption
- * incidents in this graph, and while this module only READS, a wrong resolution here would
- * be carried forward into every downstream query under the authority of "canonical".
+ * MATCHING IS EXACT, deliberately. The stored spelling is tried first — an index seek on
+ * `artist_name` (artist_lookup.ts) — and only on a miss are names folded for accents and
+ * case (unaccent.ts) and compared for equality against Artist.name and
+ * Artist.alternateNames — no CONTAINS, no similarity. Fuzzy matching on artist identity has
+ * caused two confirmed corruption incidents in this graph, and while this module only READS,
+ * a wrong resolution here would be carried forward into every downstream query under the
+ * authority of "canonical". One consequence of exact-first: when the graph holds both
+ * "Elisabeth Frink" and "Élisabeth Frink", a query for either spelling resolves to that
+ * node alone, and `ambiguousMatchCount` counts the nodes sharing the resolved spelling.
  */
 import { getDriver, getDatabase } from "./client.js";
-import { foldAccents, cypherFold } from "./unaccent.js";
+import { foldAccents } from "./unaccent.js";
+import { lookupArtistNames } from "./artist_lookup.js";
 
 export interface ArtistIdentity {
   /** The graph's own spelling — what downstream queries should use. */
@@ -51,15 +56,16 @@ export interface ArtistIdentity {
   ambiguousMatchCount: number;
 }
 
-// Folded on both sides so "Elisabeth Frink" meets "Élisabeth Frink", and equality — never
-// containment — so "Peter Blake" cannot resolve to "Peter Blake Jr" or vice versa.
+// $names is the graph's own spelling(s) from lookupArtistNames — exact index hit, then folded
+// equality against name or alias, never containment, so "Peter Blake" cannot resolve to
+// "Peter Blake Jr" or vice versa — and the read starts from the artist_name index.
+// $nameMatched is the subset that matched on the primary name rather than only via an alias.
 const QUERY = `
 MATCH (a:Artist)
-WHERE ${cypherFold("a.name")} = $name
-   OR any(alt IN coalesce(a.alternateNames, []) WHERE ${cypherFold("alt")} = $name)
+WHERE a.name IN $names
 OPTIONAL MATCH (a)-[:CREATED]->(cw:ConceptualWork)
 WITH a, count(DISTINCT cw) AS workCount,
-     CASE WHEN ${cypherFold("a.name")} = $name THEN 'name' ELSE 'alternateName' END AS matchedOn
+     CASE WHEN a.name IN $nameMatched THEN 'name' ELSE 'alternateName' END AS matchedOn
 RETURN a.name AS canonicalName, a.ulanUrl AS ulanUrl, a.wikidataUrl AS wikidataUrl,
        coalesce(a.alternateNames, []) AS alternateNames,
        matchedOn, workCount
@@ -79,7 +85,9 @@ export async function resolveArtistIdentity(artistName: string | null | undefine
 
   const session = getDriver().session({ database: getDatabase() });
   try {
-    const res = await session.run(QUERY, { name: foldAccents(queriedAs) });
+    const { names, nameMatched } = await lookupArtistNames(session, queriedAs);
+    if (names.length === 0) return null;
+    const res = await session.run(QUERY, { names, nameMatched });
     if (res.records.length === 0) return null;
     const top = res.records[0];
 

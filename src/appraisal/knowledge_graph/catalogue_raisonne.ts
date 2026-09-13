@@ -46,6 +46,7 @@
  */
 import { getDriver, getDatabase } from "./client.js";
 import { foldAccents } from "./unaccent.js";
+import { lookupArtistNames } from "./artist_lookup.js";
 
 /**
  * Distinct works that must cite a catalogue before a DERIVED citation is presented as an
@@ -107,10 +108,11 @@ export interface ArtistCatalogueRaisonne {
   totalWorks: number;
 }
 
+// $names is the graph's own spelling(s) from lookupArtistNames (exact index hit, then folded
+// name or alias), so this read starts from the artist_name index rather than a label scan.
 const LOOKUP = `
 MATCH (a:Artist)
-WHERE toLower(a.name) = toLower($artist)
-   OR any(alt IN coalesce(a.alternateNames, []) WHERE toLower(alt) = toLower($artist))
+WHERE a.name IN $names
 WITH a LIMIT 1
 OPTIONAL MATCH (a)-[:CREATED]->(w:ConceptualWork)
 WITH a, count(DISTINCT w) AS totalWorks
@@ -147,7 +149,9 @@ export async function queryCatalogueRaisonneForArtist(
   if (!artistName?.trim()) return null;
   const session = getDriver().session({ database: getDatabase() });
   try {
-    const res = await session.run(LOOKUP, { artist: artistName.trim() });
+    const { names } = await lookupArtistNames(session, artistName);
+    if (names.length === 0) return null;
+    const res = await session.run(LOOKUP, { names });
     const rec = res.records[0];
     if (!rec) return null;
 
@@ -314,14 +318,18 @@ export async function recordCatalogueRaisonneFinding(
 
   const session = getDriver().session({ database: getDatabase() });
   try {
+    // One resolution serves every write below: exact index hit first, folded name or alias on
+    // a miss. A name the graph holds under no spelling writes nothing.
+    const { names } = await lookupArtistNames(session, artist);
+    if (names.length === 0) return finding.foundNone ? "skipped_nothing_to_write" : "skipped_no_artist";
+
     if (finding.foundNone) {
       // Only mark "none known" on an artist that has no citations at all. An artist whose
       // works already cite a catalogue plainly has one, and Stage 2b failing to find it is a
       // search failure, not a fact about the literature.
       const res = await session.run(
         `MATCH (a:Artist)
-         WHERE toLower(a.name) = toLower($artist)
-            OR any(alt IN coalesce(a.alternateNames, []) WHERE toLower(alt) = toLower($artist))
+         WHERE a.name IN $names
          WITH a LIMIT 1
          OPTIONAL MATCH (a)-[:CREATED]->(:ConceptualWork)<-[:DOCUMENTS]-(:CatalogueEntry)
                        <-[:CONTAINS]-(cr:CatalogueRaisonne)
@@ -331,7 +339,7 @@ export async function recordCatalogueRaisonneFinding(
              a.catalogueRaisonneCheckedAt = $now,
              a.catalogueRaisonneCheckedBy = 'stage2b'
          RETURN a.name AS name`,
-        { artist, now: new Date().toISOString() },
+        { names, now: new Date().toISOString() },
       );
       return res.records.length > 0 ? "recorded_none" : "skipped_nothing_to_write";
     }
@@ -341,15 +349,14 @@ export async function recordCatalogueRaisonneFinding(
     // near-duplicate. Both the ingested (derived) and previously-recorded nodes are checked.
     const existing = await session.run(
       `MATCH (a:Artist)
-       WHERE toLower(a.name) = toLower($artist)
-          OR any(alt IN coalesce(a.alternateNames, []) WHERE toLower(alt) = toLower($artist))
+       WHERE a.name IN $names
        WITH a LIMIT 1
        OPTIONAL MATCH (a)-[:CREATED]->(:ConceptualWork)<-[:DOCUMENTS]-(:CatalogueEntry)
                      <-[:CONTAINS]-(dcr:CatalogueRaisonne)
        OPTIONAL MATCH (rcr:CatalogueRaisonne)-[:CATALOGUES]->(a)
        WITH collect(DISTINCT dcr.numberingPrefix) + collect(DISTINCT rcr.numberingPrefix) AS all
        RETURN [p IN all WHERE p IS NOT NULL] AS prefixes`,
-      { artist },
+      { names },
     );
     const key = catalogueMergeKey(catalogue);
     const mergeOnto = ((existing.records[0]?.get("prefixes") as string[]) ?? [])
@@ -362,8 +369,7 @@ export async function recordCatalogueRaisonneFinding(
     const res = await session.run(
       // MATCH the artist, never MERGE — see the module docstring on duplicate artists.
       `MATCH (a:Artist)
-       WHERE toLower(a.name) = toLower($artist)
-          OR any(alt IN coalesce(a.alternateNames, []) WHERE toLower(alt) = toLower($artist))
+       WHERE a.name IN $names
        WITH a LIMIT 1
        MERGE (cr:CatalogueRaisonne {numberingPrefix: $catalogue})
        SET cr.title = coalesce(cr.title, $title)
@@ -374,7 +380,7 @@ export async function recordCatalogueRaisonneFinding(
        REMOVE a.catalogueRaisonneStatus
        RETURN a.name AS name`,
       {
-        artist,
+        names,
         catalogue: catalogueKey,
         title: finding.title?.trim() || null,
         sourceUrl: finding.sourceUrl?.trim() || null,

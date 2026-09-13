@@ -22,7 +22,7 @@
  * missing background is a coverage fact about the graph, never evidence about the lot.
  */
 import { getDriver, getDatabase } from "./client.js";
-import { foldAccents, cypherFold } from "./unaccent.js";
+import { lookupArtistNames } from "./artist_lookup.js";
 
 export interface ArtistDinoFloor {
   /** The floor to apply: similarity exceeded by only 1% of this artist's different-work pairs. */
@@ -34,12 +34,13 @@ export interface ArtistDinoFloor {
   canonicalName: string;
 }
 
-// Same exact-match idiom as resolveArtistIdentity: folded equality against name or alias,
-// never CONTAINS. A floor fetched for the wrong artist would silently re-gate work identity.
+// Same exact-match idiom as resolveArtistIdentity: the name is resolved by lookupArtistNames
+// (exact index hit, then folded equality against name or alias, never CONTAINS) and this
+// read runs from the artist_name index. A floor fetched for the wrong artist would silently
+// re-gate work identity.
 const QUERY = `
 MATCH (a:Artist)
-WHERE (${cypherFold("a.name")} = $name
-       OR any(alt IN coalesce(a.alternateNames, []) WHERE ${cypherFold("alt")} = $name))
+WHERE a.name IN $names
   AND a.dinoBackgroundP99 IS NOT NULL
 RETURN a.name AS canonicalName, a.dinoBackgroundP99 AS p99,
        a.dinoBackgroundP95 AS p95, a.dinoBackgroundPairs AS pairs
@@ -53,7 +54,9 @@ export async function queryArtistDinoFloor(artistName: string | null | undefined
   if (!name) return null;
   const session = getDriver().session({ database: getDatabase() });
   try {
-    const res = await session.run(QUERY, { name: foldAccents(name) });
+    const { names } = await lookupArtistNames(session, name);
+    if (names.length === 0) return null;
+    const res = await session.run(QUERY, { names });
     if (res.records.length === 0) return null;
     const r = res.records[0];
     const num = (v: unknown): number | null =>
