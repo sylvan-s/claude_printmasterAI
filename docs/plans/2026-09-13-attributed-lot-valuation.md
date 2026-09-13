@@ -159,6 +159,119 @@ stable-lot count should rise and agreement should approach 100% on the tree half
 `src/appraisal/comp_storability.ts` measures whether Stage 2b comps are storable (key, numeric
 price, hammer-vs-premium basis). Until it reports, do not build the write-back.
 
+## Step 1 result (2026-09-13) — the gate did not pass the way the plan assumed
+
+Run: `npm run backtest:comps-hammer -- --source {forum|roseberys} --limit 2500 --seed 11`
+(2,500 random lots per house, all qualifiers "certain", multi-work lots excluded, comps cut to
+sales strictly before each lot's own sale date, 10-year window, own record excluded). Plus
+`npm run report:hammer` over the 35 stored pipeline results (10 of which have since sold).
+
+### What the market does, before anything else
+
+| | Forum (n=1,509 sold) | Roseberys (n=1,731 sold) |
+|---|---:|---:|
+| hammer inside [low, high] | 48% | 39% |
+| hammer below low | 37% | 44% |
+| hammer above high | 15% | 17% |
+| median hammer / estimate midpoint | 0.83 | 0.80 |
+| unsold | 40% | 30% |
+
+The premise in `valuation_report.ts` ("houses estimate conservatively to attract bidding") is
+wrong on this corpus: lots clear at ~0.8x the printed midpoint, four in ten sold lots go
+below low, and a third do not sell. "Fairly priced" has to be judged against that, not
+against the printed range.
+
+### Coverage: the graph reaches the same work on ~14% of lots
+
+| best tier reached (resolved lots) | Forum | Roseberys |
+|---|---:|---:|
+| artist resolves to a node | 99% | 99% |
+| same_work (exact title) | 13% | 15% |
+| same_work with >=3 prior comps | 5% | 5% |
+| same_artist_technique | 60% | 39% |
+| same_artist only | 15% | 23% |
+| nothing | 13% | 23% |
+
+The identity resolver is not the bottleneck. Tier-1 title matching is: ~1,500-1,850 lots per
+sample have comps for the artist but no same-work match, and most of those titles are
+ordinary ("Cats (Red)", "Femmes Fleurs", "Tiger") — variant wording, series suffixes, and
+`Untitled (qualifier)` being treated as low-information (`isLowInformationTitle`). This is
+ADR-0017 Decision 1 and plan step 3, and it is now the coverage ceiling on everything below.
+
+### Accuracy: same-work comps are usable, other tiers are not, and none beats the estimate
+
+Comp median / realised price (both premium-inclusive), sold lots:
+
+| tier | Forum geo / ±25% / within 2x | Roseberys geo / ±25% / within 2x |
+|---|---|---|
+| same_work, >=3 comps | 1.20 / 35% / 75% | 1.13 / 43% / 89% |
+| same_artist_technique, >=3 | 1.32 / 25% / 61% | 1.25 / 24% / 65% |
+| same_artist, >=3 | 1.74 / 16% / 43% | 1.49 / 19% / 53% |
+
+Same-work comps run 10-20% above what the lot then made, and land within 2x three
+quarters of the time. Same-artist comps are not a price. (Forum's premium is assumed at 1.30;
+if Forum's real ratio is higher, its comps look slightly less high.)
+
+**The decisive comparison** — predictors of hammer on the lots with >=2 same-work comps:
+
+| predictor | Forum (n=139): ±25% / 2x / MAE(log) | Roseberys (n=156): ±25% / 2x / MAE(log) |
+|---|---|---|
+| catalogue midpoint | 61% / 96% / 0.254 | 47% / 93% / 0.321 |
+| **catalogue midpoint × 0.82** | **64% / 95% / 0.241** | **53% / 91% / 0.288** |
+| same-work comp median (÷ premium) | 29% / 78% / 0.508 | 43% / 86% / 0.398 |
+| geometric blend of both, both debiased | 49% / 91% / 0.308 | 52% / 88% / 0.300 |
+
+The house's own estimate, scaled by the market's known 0.82 drift, is the best point
+predictor of hammer available, and adding the comps to it makes it worse. On the
+same_artist_technique tier the gap is larger still. Spearman of (comp median vs estimate)
+against (hammer vs estimate) is 0.28-0.30 on Roseberys same-work lots and 0.06-0.10 on
+Forum — the graph's comps are mostly same-house Roseberys results, so the Forum figure is
+the honest cross-house number.
+
+### What the comps DO carry
+
+- **Liquidity.** Prior sell-through of the same title below 50% → 41-52% of lots go unsold,
+  against 22-32% otherwise. This is the one clean, cross-house signal in the data.
+- **A directional flag on Roseberys.** Same-work comps > 1.5x the estimate: 33% hammer above
+  high (base 19%), 9% unsold (base 22%). Comps < 0.67x: 62% below low (base 36%). Weak and
+  same-house, but real.
+- **Nothing extra on Forum.** Buckets barely move off the base rate.
+
+### The pipeline runs high
+
+Ten stored blind runs now have a hammer: hammer inside the pipeline's range 5/10, inside the
+catalogue's 6/10; pipeline midpoint / hammer geo-mean 1.83 (one Gauguin at 61x; median 1.43),
+pipeline midpoint / realised 1.40. Of 21 unsold lots, the pipeline's LOW sat above the
+catalogue low on 12. Part of this is basis (ADR-0016 comps are premium-inclusive, the prompt
+asks for a hammer-basis estimate — ~1.3x by construction) and the rest is the same upward
+bias the comps show. Ten lots is not a measurement of accuracy; the direction is consistent
+with everything above.
+
+### What this changes in the plan
+
+1. **Step 2's cheap path cannot price from comps.** A "resolved node + tier-1 comps → price
+   from the graph" route would be worse than reading the catalogue estimate and scaling it.
+   The cheap path is instead: **estimate × 0.82 as the anchor**, with the graph supplying
+   sell-through (liquidity) and the same-work divergence flag, and Stage 1d/dimensions
+   supplying attribution verification. The LLM stages earn their cost only where the
+   catalogue claim fails verification or the lot is off-catalogue.
+2. **Step 3 (title identity → tier-1 coverage) moves ahead of step 2** in leverage: tier-1
+   coverage is 14% and it is the ceiling on every graph signal.
+3. **Stage 3's prompt basis must be fixed** before any LLM valuation is compared again:
+   either ask for a premium-inclusive number or divide the comps. Cheap, and it removes a
+   1.3x confound from every future run.
+4. **The house's estimate is the baseline any valuation must beat**, and on this data it has
+   not been beaten. Report every future accuracy figure next to "estimate × 0.82".
+
+### 3-year window: same conclusion, less coverage
+
+Re-run with `--window-years 3` on the identical 2x2,500 lots. Same-work coverage falls
+(Forum 13% → 9%, Roseberys 15% → 12%) and the upward bias does not go away (same_work >=3:
+geo 1.15 Forum, 1.26 Roseberys). Head to head on same_work n>=2 lots, MAE(log): estimate ×
+0.82 = 0.256 / 0.298, comps = 0.456 / 0.396, blend = 0.289 / 0.298 (Forum / Roseberys). A
+stale window is not why the comps lose; the blend at best ties the estimate. Ten years stays
+the default because it reaches more lots for the liquidity and divergence signals.
+
 ## Housekeeping done 2026-09-13
 
 - The checkout was on `technique-classifier-deepdive`, 127 commits behind main, which is why
