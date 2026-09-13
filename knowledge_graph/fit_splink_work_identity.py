@@ -85,6 +85,8 @@ from neo4j import GraphDatabase
 from splink import DuckDBAPI, Linker, SettingsCreator, block_on
 from splink.comparison_library import CustomComparison
 
+from catalogue_prefix import canonical_prefix, fold_prefix
+
 # Ported from two_pass_attribution.ts TECH_FAMILY_KEYWORDS, including its order, which is
 # load-bearing: relief must precede intaglio because intaglio's `engrav` also matches "wood
 # engraving". Kept in step with build_work_identity_dataset.py.
@@ -231,7 +233,7 @@ def entry_base(number):
 _ENTRY_ALNUM = re.compile(r"[^a-z0-9]")
 
 
-def entry_exact_keys(citations):
+def entry_exact_keys(citations, artist=None):
     """EVERY citation as prefix+number folded to lowercase alphanumerics, stripping NOTHING.
 
     `entry_base` takes leading DIGITS, breaking at the first non-digit from the START, so any
@@ -254,21 +256,26 @@ def entry_exact_keys(citations):
     It does NOT replace entry_base, which exists for the Baer 618 / 618Bd state-family lesson.
     The two are separate comparison levels and EM weights each.
 
-    KNOWN RESIDUE, not fixed here: `CatalogueRaisonne.numberingPrefix` is itself un-normalised —
-    2,319 spellings, 1,486 of them carrying a single entry, with Feldmann & Schellmann appearing
-    as at least 8 (`F./S.`, `F. & S.`, `Feldman & Schellman`, ...) and Baer as `Baer` and `Ba.`.
-    Folding the prefix into the key therefore still misses same-catalogue citations written under
-    different catalogue names."""
+    The prefix is canonicalised by `catalogue_prefix.canonical_prefix`, which folds the spelling
+    always and resolves an artist-scoped abbreviation only where the alias table carries measured
+    evidence. Pass `artist` to get that second tier; without it only folding applies."""
     keys = set()
     for prefix, number in citations or []:
         folded_number = _ENTRY_ALNUM.sub("", str(number or "").lower())
         if not folded_number:
             continue
-        folded_prefix = _ENTRY_ALNUM.sub("", str(prefix or "").lower())
-        keys.add(folded_prefix + folded_number)
-        if folded_prefix and folded_number.startswith(folded_prefix) \
-                and len(folded_number) > len(folded_prefix):
-            keys.add(folded_prefix + folded_number[len(folded_prefix):])
+        # BOTH the folded spelling and the canonical one, so canonicalisation can only ADD keys.
+        # It has to: where a source splits prefix and number differently — "Coppel" + "CEP.16"
+        # against "Coppel  CEP" + "16" — folding alone already made those agree, and mapping
+        # `coppel` to `coppelcep` doubles the designator on one side and breaks a match that
+        # was working. Measured: emitting only the canonical key turned 5 agreeing pairs into
+        # conflicts while fixing 57, and a canonicalisation that destroys evidence is not one.
+        for folded_prefix in {fold_prefix(prefix), canonical_prefix(prefix, artist)}:
+            keys.add(folded_prefix + folded_number)
+            # the number repeating its own prefix ("L." + "L.263") is one citation written twice
+            if folded_prefix and folded_number.startswith(folded_prefix) \
+                    and len(folded_number) > len(folded_prefix):
+                keys.add(folded_prefix + folded_number[len(folded_prefix):])
     return sorted(keys)
 
 
@@ -316,7 +323,8 @@ def build_records(session, artist, catalogue):
             "tech_family": technique_family(list(r["techs"]) + list(r["media"])),
             "dim_w": width, "dim_h": height,
             "entries": entry_keys(r["citations"]),
-            "exact_entries": entry_exact_keys(r["citations"]), "emb": embedding,
+            "exact_entries": entry_exact_keys(r["citations"], r.get("artist")),
+            "emb": embedding,
         })
     return pd.DataFrame(rows)
 
