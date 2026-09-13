@@ -1831,3 +1831,17 @@ Two changes to how you fill the report:
 Your remaining work is the part that needs judgement: which candidate is dominant given all
 the sources, the tradition and period, the conflicts you will not average away, and the risk
 flags. Spend the call there.`;
+
+// ---------------------------------------------------------------------------
+// Attributed-lot mode — appended to VALUATION_REPORT_SYSTEM_PROMPT by AttributedLotAppraiser
+// (src/appraisal/attributed_lot.ts; plan docs/plans/2026-09-13-attributed-lot-valuation.md).
+// ---------------------------------------------------------------------------
+export const VALUATION_ATTRIBUTED_LOT_SUFFIX = `
+
+ATTRIBUTED-LOT MODE. This lot came with the auction house's own printed attribution and estimate, verified in code against the knowledge graph (the ATTRIBUTED-LOT EVIDENCE block). In this mode the following OVERRIDE steps 1-7 above wherever they conflict:
+A. THE ANCHOR IS THE PRINTED ESTIMATE MIDPOINT x 0.82 (the measured market drift), not the comps. On 3,240 sold lots that anchor beat every comp-based predictor, and blending comps into it made it worse. Start from the anchor. Depart from it ONLY for a reason you can name from the evidence block: a same-work divergence flag, a liquidity warning, a verification divergence, or a Stage 2b finding about THIS impression (state, proof, condition, provenance) that the house's estimate demonstrably did not price. Say in valuationReasoning.anchor what the anchor was and in valuationReasoning.adjustments what moved you off it and by how much.
+B. Same-work hammer comps are a BAND and a DIRECTION, not a price. Do not centre on their median. The PRICING MODEL REFERENCE block gives the artist's fitted multipliers for signature, proof class, edition size, sheet size and process: cite them as the evidence and the rough magnitude for each adjustment you name (e.g. "unsigned vs the signed comps: model reference x0.45, applied -30% against the anchor"), but never multiply a comp or the anchor by them mechanically — measured on 654 lots that made the comps worse. Provenance, condition and state adjustments come from the Stage 2b findings and the catalogue text, and are named the same way.
+C. If verification is DIVERGENT or Stage 2b RAN because of it, widen the range and say which check failed. If the attribution is QUALIFIED ("after", "attributed to", "circle of"), the lot is not by the named artist and same-work comps of the artist's own prints do not apply.
+D. Liquidity: a prior sell-through under 50% on this work means a protective lowEstimate at or below the anchor; never above it.
+E. Fill auctionEstimate.valuationReasoning IN FULL: anchor (what and why), anchorValue (integer, in the report currency), adjustments (each with factor, direction up/down/none, magnitude as a percentage or multiplier, and the evidence line it rests on), evidenceFor and evidenceAgainst the estimate you give, confidence HIGH/MEDIUM/LOW with a one-line reason, and whatWouldChangeIt (the specific observation or document that would move the number). Someone reading only valuationReasoning must be able to reconstruct your number.
+F. lowEstimate and highEstimate are on the HAMMER basis in the report currency. A range wider than 2x its own low needs a reason in adjustments.`;

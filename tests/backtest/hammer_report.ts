@@ -64,6 +64,10 @@ interface Row {
   dir: string; artist: string; attributed: boolean; method: string;
   appLow: number; appHigh: number; catLow: number; catHigh: number;
   sold: boolean | null; hammer: number | null; realised: number | null;
+  /** Logged API spend for the run (usageSummary().totalUsd), when the harness stored it. */
+  costUsd: number | null;
+  /** Attributed-lot path only: whether Stage 2b was skipped. */
+  stage2bSkipped: boolean | null;
 }
 const rows: Row[] = [];
 for (const d of readdirSync(DIR)) {
@@ -87,6 +91,8 @@ for (const d of readdirSync(DIR)) {
     sold: o ? o.sold : raw.sold == null ? null : rawSold,
     hammer: o?.hammer ?? (rawSold ? rawHammer : null),
     realised: o?.realised ?? (rawSold ? rawRealised : null),
+    costUsd: typeof j.tokenUsage?.totalUsd === "number" ? j.tokenUsage.totalUsd : null,
+    stage2bSkipped: typeof j.attributedLot?.routing?.stage2bSkipped === "boolean" ? j.attributedLot.routing.stage2bSkipped : null,
   });
 }
 if (!rows.length) { console.log(`No valued results under ${DIR}${SUFFIX ? ` matching "${SUFFIX}"` : ""}.`); process.exit(0); }
@@ -112,7 +118,9 @@ if (soldRows.length) {
       r.hammer! >= r.appLow && r.hammer! <= r.appHigh ? "ham-in-app" : "ham-OUT-app",
       r.hammer! >= r.catLow && r.hammer! <= r.catHigh ? "ham-in-cat" : "ham-out-cat",
       r.attributed ? "attr" : "blind",
-    ].join(" ");
+      r.stage2bSkipped == null ? "" : r.stage2bSkipped ? "2b-skipped" : "2b-ran",
+      r.costUsd == null ? "" : `$${r.costUsd.toFixed(2)}`,
+    ].filter(Boolean).join(" ");
     console.log(
       `${r.dir.slice(0, 22).padEnd(22)} ${r.artist.slice(0, 20).padEnd(20)} ${`${money(r.appLow)}-${money(r.appHigh)}`.padStart(15)} ` +
       `${`${money(r.catLow)}-${money(r.catHigh)}`.padStart(13)} ${money(r.hammer!).padStart(7)} ${(r.realised ? money(r.realised) : "-").padStart(8)} ` +
@@ -128,6 +136,12 @@ if (soldRows.length) {
   console.log(`\n  hammer inside PIPELINE range   : ${hamInApp}/${soldRows.length} (${pct(hamInApp, soldRows.length)})`);
   console.log(`  hammer inside CATALOGUE range  : ${hamInCat}/${soldRows.length} (${pct(hamInCat, soldRows.length)})   <- the house's own hit rate on these lots`);
   console.log(`  pipeline mid / hammer          : median ${f2(Math.exp(med(toHam)))}  geo-mean ${f2(geo(toHam))}`);
+  const maeApp = toHam.reduce((t, x) => t + Math.abs(x), 0) / toHam.length;
+  const drift = 0.82;
+  const toHamDrift = soldRows.filter((r) => r.catLow && r.catHigh).map((r) => ln(((r.catLow + r.catHigh) / 2) * drift / r.hammer!));
+  console.log(`  MAE(log) pipeline mid / hammer : ${maeApp.toFixed(3)}   vs catalogue mid x ${drift}: ${toHamDrift.length ? (toHamDrift.reduce((t, x) => t + Math.abs(x), 0) / toHamDrift.length).toFixed(3) : "n/a"}   within 2x: pipeline ${pct(toHam.filter((x) => Math.abs(x) <= ln(2)).length, toHam.length)}, estimate x drift ${pct(toHamDrift.filter((x) => Math.abs(x) <= ln(2)).length, toHamDrift.length)}`);
+  const costs = soldRows.map((r) => r.costUsd).filter((c): c is number => c != null);
+  if (costs.length) console.log(`  logged cost per lot            : mean $${(costs.reduce((t, x) => t + x, 0) / costs.length).toFixed(3)} over ${costs.length} lot(s) (${soldRows.filter((r) => r.stage2bSkipped === true).length} with Stage 2b skipped, ${soldRows.filter((r) => r.stage2bSkipped === false).length} with it run)`);
   if (toReal.length) console.log(`  pipeline mid / realised        : median ${f2(Math.exp(med(toReal)))}  geo-mean ${f2(geo(toReal))}   (n=${toReal.length})`);
   if (catToHam.length) console.log(`  catalogue mid / hammer         : median ${f2(Math.exp(med(catToHam)))}  geo-mean ${f2(geo(catToHam))}`);
   for (const [label, sel] of [["blind", (r: Row) => !r.attributed], ["attributed", (r: Row) => r.attributed]] as const) {

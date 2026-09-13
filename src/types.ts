@@ -1,4 +1,5 @@
 import type { Stage2bComp, CompStorabilityReport } from "./appraisal/comp_storability.js";
+import type { AttributedLotReport } from "./appraisal/attributed_lot.js";
 
 export interface AuctionEstimate {
   lowEstimate: number;
@@ -6,6 +7,19 @@ export interface AuctionEstimate {
   currency: string;
   formattedEstimate: string;
   valuationContext: string;
+  /** Structured reasoning behind the number. Always present in attributed-lot mode
+   *  (src/appraisal/attributed_lot.ts); optional elsewhere. */
+  valuationReasoning?: ValuationReasoning;
+}
+
+export interface ValuationReasoning {
+  anchor: string;
+  anchorValue: number;
+  adjustments: Array<{ factor: string; direction: "up" | "down" | "none" | string; magnitude: string; evidence: string }>;
+  evidenceFor: string[];
+  evidenceAgainst: string[];
+  confidence: string;
+  whatWouldChangeIt: string[];
 }
 
 export interface TechnicalDetail {
@@ -50,6 +64,8 @@ export interface PrintAnalysisReport {
   stage1dResult?: Stage1dResult;
   stage2aResult?: TriageResult;
   stage2Result?: AttributionResearchResult;
+  /** Present only on the attributed-lot entry path (src/appraisal/attributed_lot.ts). */
+  attributedLot?: AttributedLotReport;
   pipelineMeta?: {
     specialistConfigUsed: string;
     humanEscalationRequired: boolean;

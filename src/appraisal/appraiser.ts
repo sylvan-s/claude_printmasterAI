@@ -57,6 +57,14 @@ import type { StyleConsistencyEvidence } from "./two_pass_attribution";
 import { getImageEmbeddings } from "./embedding_client.js";
 import { techniqueFamily } from "./two_pass_attribution";
 import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../shared/text_extraction";
+import { queryWorkFacts, queryArtistPriceProfile, type WorkFacts, type ComparablesResult, type ArtistPriceProfile } from "./knowledge_graph/index.js";
+import { mapTechniqueToAckgVocabulary as mapClaimTechnique } from "./stage2a_query_plan";
+import { VALUATION_ATTRIBUTED_LOT_SUFFIX } from "./prompts";
+import {
+  mergeClaimIntoAppraiserInput, verifyAttributedLot, routeAttributedLot, synthesizeAttributionResult,
+  buildAttributedLotValuationBlock, isAuthorshipClaim, ESTIMATE_DRIFT, deriveMisattributionRisk, workTitleFromImageMatch, veaNotRun,
+  type CatalogueAttribution, type WorkResolution,
+} from "./attributed_lot.js";
 
 // Resolved from the process working directory, not import.meta.url / __dirname:
 // esbuild's --format=cjs bundling (src/appraisal/appraiser.ts -> dist/server.cjs)
@@ -123,6 +131,10 @@ export interface AppraisalInput {
   provenanceNotes?: string;
   conditionNotes?: string;
   catalogueNotes?: string;
+  /** The attributed-lot entry path (src/appraisal/attributed_lot.ts): the auction house's
+   *  own printed attribution, estimate and lot facts. Read only by AttributedLotAppraiser;
+   *  every other appraiser ignores it. */
+  catalogueAttribution?: CatalogueAttribution;
   currency?: string;
   onProgress?: (event: AppraisalProgressEvent) => void;
   // Backtest/eval-harness only — not something a real submitting user would ever
@@ -200,6 +212,17 @@ export interface AppraisalMethodConfig {
   stage2bModel?: string;
   stage2Model?: string;
   stage3Model?: string;
+  /** Route through AttributedLotAppraiser: the catalogue's claim enters Stage 2a as a
+   *  documented_fact, is verified against the graph, and Stage 2b runs only when routing
+   *  says so. Requires stage2aModel. */
+  attributedLotPath?: boolean;
+  /** Attributed-lot path: do not run Stage 1a at all (a "not run" VEA stub goes downstream).
+   *  The catalogue already states technique, signature, edition, dimensions and condition, and
+   *  a vision model reading a catalogued image is a leakage surface. */
+  skipVea?: boolean;
+  /** Stage 2b: use the CLIENT-side web_search tool (Tavily, traced and costed here) on every
+   *  endpoint, not only on compat endpoints. Same tool name, so the prompt is unchanged. */
+  clientWebSearch?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -1273,7 +1296,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     // the client-side tool is substituted and the search happens here. Same tool NAME either
     // way, so the prompt does not change and the two are directly comparable.
     // FORCE_CLIENT_WEB_SEARCH=1 uses the client-side tool on Anthropic too, for A/B.
-    const useClientSearch = !!compatBaseUrl || process.env.FORCE_CLIENT_WEB_SEARCH === "1";
+    const useClientSearch = !!compatBaseUrl || process.env.FORCE_CLIENT_WEB_SEARCH === "1" || this.config.clientWebSearch === true;
     const tools = [
       useClientSearch
         ? MultiStageAppraiser.WEB_SEARCH_TOOL
@@ -1284,7 +1307,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     ];
     if (useClientSearch) {
       resetWebSearchUsage();
-      console.log(`[4-Stage] Stage 2b using CLIENT-side web_search (${compatBaseUrl ? "compat endpoint" : "forced"})`);
+      console.log(`[4-Stage] Stage 2b using CLIENT-side web_search (${compatBaseUrl ? "compat endpoint" : this.config.clientWebSearch ? "method config" : "forced by env"})`);
+    } else {
+      console.log(`[4-Stage] Stage 2b using Anthropic SERVER-side web_search`);
     }
     const excludedListing = parseExcludedListing(testingExcludeSourceListing);
 
@@ -1689,6 +1714,16 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
    * Default: log exactly what this loop has always logged. Override to also record.
    * Deliberately never throws — an observability hook must not be able to fail a stage.
    */
+  /**
+   * Last word on the Stage 2a evidence cells before the tree reads them. The default keeps
+   * the agent's cells; the attributed-lot path overrides the APPRAISER cells from the
+   * catalogue claim in code (the agent's own trust-tagging rule is written for free-text
+   * notes and would tag a house's printed header as a hypothesis).
+   */
+  protected overrideEvidenceCells(ev: EvidenceAgentOutput, _appraiserInput?: AppraiserInputResult): EvidenceAgentOutput {
+    return ev;
+  }
+
   protected onAckgLoopEvent(e: AckgLoopEvent): void {
     const p = `[Stage 2a ACKG loop] round ${e.round}`;
     switch (e.kind) {
@@ -2840,6 +2875,8 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
       return runEvidenceTree(degraded, false, stage1d, appraiserInput).triage;
     }
 
+    ev = this.overrideEvidenceCells(ev, appraiserInput);
+
     // The graph cells belong to the graph. The model read the facts block; here the values
     // are written from the rows themselves, so a mis-transcribed similarity or a remembered
     // support count cannot reach the tree wearing the graph's authority. The overrides are
@@ -3109,9 +3146,12 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     appraiserInput?: AppraiserInputResult,
     /** The graph's own name for the artist, resolved once in Stage 2a. Used ONLY to query
      *  the ACKG — the valuation still reports whatever Stage 2b attributed. */
-    canonicalArtistName?: string | null
+    canonicalArtistName?: string | null,
+    /** Attributed-lot mode (src/appraisal/attributed_lot.ts): the work already resolved in
+     *  code, a date cut for past sales, the evidence block and the prompt suffix. */
+    attributed?: { workIds: string[]; untilDate: string | null; block: string; systemSuffix: string } | null
   ): Promise<Partial<PrintAnalysisReport>> {
-    const systemInstruction = resolveCustomPrompt(VALUATION_REPORT_SYSTEM_PROMPT, currency, userNotes);
+    const systemInstruction = resolveCustomPrompt(VALUATION_REPORT_SYSTEM_PROMPT + (attributed?.systemSuffix ?? ""), currency, userNotes);
 
     // ADR-0016 — ACKG realised prices are the PRIMARY comparables source; Stage 2b's
     // free-text web findings are the fallback for artists the graph does not cover.
@@ -3135,7 +3175,9 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     let lotWorkNote = "";
     if (ackgArtist) {
       try {
-        const lotWork = await resolveLotWorkIds(ackgArtist, conclusion.workTitle ?? null, appraiserInput);
+        const lotWork = attributed?.workIds.length
+          ? { ids: attributed.workIds, note: `Work identity: resolved in code on the attributed-lot path (${attributed.workIds.length} node(s)); same_work comps below are that work's sales.` }
+          : await resolveLotWorkIds(ackgArtist, conclusion.workTitle ?? null, appraiserInput);
         lotWorkNote = lotWork.note;
         ackgComps = await queryAuctionComparables({
           artistName: ackgArtist,
@@ -3143,6 +3185,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
           workTitle: conclusion.workTitle ?? null,
           technique: conclusion.technique ?? vea?.printingTechniques?.[0]?.technique ?? null,
           sinceDate: STAGE3_COMPS_SINCE,
+          untilDate: attributed?.untilDate ?? null,
           limit: STAGE3_COMPS_LIMIT,
           // Same circularity guard as the free-text path below, but enforced in Cypher
           // rather than asked of the model: Roseberys lots are both in the graph and in
@@ -3202,7 +3245,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     const excludeSourceNote = testingExcludeSourceListing
       ? `\n\n⚠️ TESTING MODE — SOURCE LISTING EXCLUDED: This artwork's image and description were sourced directly from this auction listing: ${testingExcludeSourceListing}. If any entry in AUCTION COMPS above is that same listing (same auction house, matching sale/lot, or described as "the subject work" / "the identical work" / "the present lot"), you MUST exclude its estimate and price data from your valuation entirely — do not anchor on it, average it in, or cite it as a reason for your number. Value this work using only genuinely independent comps and evidence. If excluding it leaves no usable comps, say so explicitly in valuationContext and value from first principles as you would with zero comps.`
       : "";
-    const userText = `Synthesise a valuation for the following print from Stage 1 and Stage 2b findings.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea)}\n\nSTAGE 2b ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity/discount factors, forgery risk):\n${JSON.stringify(attr)}${buildAppraiserPhysicalBlock(appraiserInput, !!vea.imagesReceived?.primaryScan)}${compsNote}${excludeSourceNote}\n\n⚠️ CRITICAL: Output ONLY the valuation fields — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT search the web. Do NOT re-describe the artwork. Start your response with { and end with }.`;
+    const userText = `Synthesise a valuation for the following print from Stage 1 and Stage 2b findings.\n\nSTAGE 1 VISUAL EXTRACTION (condition, technique, dimensions, paper):\n${JSON.stringify(vea)}\n\nSTAGE 2b ATTRIBUTION RESEARCH (artist, edition, catalogue raisonné, rarity/discount factors, forgery risk):\n${JSON.stringify(attr)}${buildAppraiserPhysicalBlock(appraiserInput, !!vea.imagesReceived?.primaryScan)}${compsNote}${attributed ? `\n\n${attributed.block}` : ""}${excludeSourceNote}\n\n⚠️ CRITICAL: Output ONLY the valuation fields — auctionEstimate, recentAuctionSales, nextSteps, editionSizeAndPrintNumber, isLikelyReproductionOrPoster, reproductionExplanation. Do NOT search the web. Do NOT re-describe the artwork. Start your response with { and end with }.`;
     if (isClaude(stage3Model) || anthropicCompatBaseUrl(stage3Model)) {
       console.log(`[4-Stage] Stage 3 pure reasoning (no web search) — model: ${stage3Model}`);
       return this.callClaude(stage3Model, systemInstruction, [{ type: "text", text: userText }], "report_valuation", "Report the structured print valuation synthesised from Stage 1 condition and Stage 2b findings.", STAGE3_VALUATION_ONLY_SCHEMA);
@@ -3516,6 +3559,221 @@ export class FourStageAppraiser extends MultiStageAppraiser {
 }
 
 // ---------------------------------------------------------------------------
+// AttributedLotAppraiser — the attributed-lot entry path (src/appraisal/attributed_lot.ts)
+// ---------------------------------------------------------------------------
+
+export class AttributedLotAppraiser extends FourStageAppraiser {
+  /** The claim of the lot in flight — read by overrideEvidenceCells during Stage 2a. */
+  private activeClaim: CatalogueAttribution | null = null;
+  private activeCanonical: string | null = null;
+
+  protected overrideEvidenceCells(ev: EvidenceAgentOutput, _appraiserInput?: AppraiserInputResult): EvidenceAgentOutput {
+    const claim = this.activeClaim;
+    if (!claim || !ev.artistEvidence) return ev;
+    const a = ev.artistEvidence;
+    const before = `namesArtist=${a.appraiserNamesArtist} name="${a.appraiserArtistName}" trust=${a.appraiserTrust}`;
+    if (isAuthorshipClaim(claim.artistQualifier)) {
+      a.appraiserNamesArtist = true;
+      a.appraiserArtistName = claim.artist;
+      a.appraiserTrust = "documented_fact";
+    } else {
+      // "after X" / "attributed to X" is not an authorship claim by the house. The plan still
+      // queried X's oeuvre; the tree must not count the house as a vote for X.
+      a.appraiserNamesArtist = false;
+      a.appraiserArtistName = "";
+      a.appraiserTrust = "none";
+    }
+    if (ev.workEvidence && claim.title) ev.workEvidence.appraiserTitle = claim.title;
+    console.log(`[Attributed lot] appraiser cells set in code — agent had ${before}; now namesArtist=${a.appraiserNamesArtist} name="${a.appraiserArtistName}" trust=${a.appraiserTrust}`);
+    if (ev.riskFlags && isAuthorshipClaim(claim.artistQualifier)) {
+      const d = deriveMisattributionRisk(ev, claim, this.activeCanonical);
+      if (ev.riskFlags.misattributionRisk !== d.keep) {
+        console.log(`[Attributed lot] misattributionRisk ${ev.riskFlags.misattributionRisk} -> ${d.keep} in code: ${d.reason}${ev.riskFlags.misattributionRiskNote ? ` (agent's note: ${ev.riskFlags.misattributionRiskNote.slice(0, 140)})` : ""}`);
+        ev.riskFlags.misattributionRisk = d.keep;
+      }
+    }
+    return ev;
+  }
+
+  public async appraise(input: AppraisalInput): Promise<PrintAnalysisReport> {
+    const claim = input.catalogueAttribution;
+    if (!claim) return super.appraise(input);
+
+    const ai = this.getClient();
+    const currency = input.currency || claim.estimateCurrency || "GBP";
+    const defaultModel = this.config.modelName;
+    const stage1Model = this.config.stage1Model || defaultModel;
+    const stage2aModel = this.config.stage2aModel!;
+    const stage2bModel = this.config.stage2bModel || stage2aModel;
+    const stage3Model = this.config.stage3Model || defaultModel;
+    const runVisualSearch = this.config.enableVisualSearch !== false;
+    const runEmbeddingMatch = this.config.enableEmbeddingMatch !== false;
+    const emit = input.onProgress ?? (() => {});
+    const t0 = Date.now();
+
+    // The lot's own record, when it is in the graph (past sales, backtests): excluded from
+    // every graph read below, and the sale date cuts comps and sell-through.
+    const excluded = parseExcludedListing(input.testingExcludeSourceListing);
+    const saleLot = excluded.saleLot ?? (claim.saleId && claim.lotNumber != null ? { saleId: claim.saleId, lotNumber: claim.lotNumber } : null);
+    const excludeListingUrl = excluded.listingUrl ?? claim.lotUrl ?? null;
+    console.log(`[Attributed lot] "${claim.artist}"${claim.title ? ` — "${claim.title}"` : ""} qualifier=${claim.artistQualifier ?? "certain"} estimate=${claim.estimateLow ?? "?"}-${claim.estimateHigh ?? "?"} ${claim.estimateCurrency ?? ""}${saleLot ? ` excluding ${saleLot.saleId}/${saleLot.lotNumber}` : ""}`);
+
+    emit({ stage: "stage1b", status: "start", message: "Searching global image databases for visual matches…", percent: 5 });
+    const visualSearchPromise = runVisualSearch ? this.runStage1bVisionSearch(input.imageBase64, input.mimeType) : Promise.resolve(undefined);
+    emit({ stage: "stage1d", status: "start", message: "Matching image embeddings against internal art graph…", percent: 5 });
+    const embeddingMatchPromise = runEmbeddingMatch
+      ? this.runStage1dEmbeddingMatch(input.imageBase64, input.mimeType, saleLot?.saleId ?? null)
+      : Promise.resolve(undefined);
+    emit({ stage: "stage1c", status: "start", message: "Extracting structured claims from appraiser notes…", percent: 5 });
+    const appraiserInputPromise = this.runStage1cAppraiserInput({
+      inscribedMarksNotes: input.inscribedMarksNotes,
+      provenanceNotes: input.provenanceNotes,
+      conditionNotes: input.conditionNotes,
+      catalogueNotes: input.catalogueNotes,
+    });
+
+    let vea: VisualExtractionResult;
+    if (this.config.skipVea) {
+      console.log(`[Attributed lot] Stage 1a (VEA) NOT RUN — method config skipVea; catalogue facts stand in`);
+      emit({ stage: "stage1", status: "done", message: "Visual extraction skipped — catalogue facts used", percent: 20 });
+      vea = veaNotRun();
+    } else {
+      emit({ stage: "stage1", status: "start", message: "Extracting visual attributes — medium, technique, condition…", percent: 5 });
+      console.log(`[Timing] Stage 1 (VEA) starting — model: ${stage1Model}`);
+      vea = await this.runStage1VEA(input, stage1Model, ai);
+      console.log(`[Timing] Stage 1 (VEA) done — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+      emit({ stage: "stage1", status: "done", message: "Visual extraction complete", percent: 20 });
+      if (vea.imageAuthenticity?.haltRecommended) {
+        const halt = this.buildHaltReport(vea, currency);
+        halt.stage1cResult = await appraiserInputPromise.catch(() => undefined);
+        return halt;
+      }
+    }
+
+    const [visualSearch, stage1cRaw, stage1d] = await Promise.all([visualSearchPromise, appraiserInputPromise, embeddingMatchPromise]);
+    emit({ stage: "stage1b", status: "done", message: "Visual search complete", percent: 22 });
+    emit({ stage: "stage1c", status: "done", message: "Appraiser notes extraction complete", percent: 22 });
+    emit({ stage: "stage1d", status: "done", message: "Image-embedding match complete", percent: 22 });
+    // The catalogue's claim overlays Stage 1c's free-text extraction as documented_fact.
+    const appraiserInput = mergeClaimIntoAppraiserInput(stage1cRaw, claim);
+
+    emit({ stage: "stage2a", status: "start", message: "Verifying the catalogue attribution against the graph…", percent: 24 });
+    const t2a = Date.now();
+    console.log(`[Timing] Stage 2a (Triage) starting — model: ${stage2aModel}`);
+    // Resolve the CLAIM (not whatever the tree settles on) to the graph before Stage 2a, so the
+    // evidence-cell override can compare names against the graph's identity.
+    const claimIdentity = await resolveArtistIdentity(claim.artist);
+    const canonical = claimIdentity?.canonicalName ?? null;
+    console.log(`[Attributed lot] claim identity: ${formatArtistIdentity(claimIdentity, claim.artist)}`);
+    this.activeClaim = claim;
+    this.activeCanonical = canonical;
+    let triageResult: TriageResult;
+    try {
+      triageResult = await this.runStage2aTriage(vea, stage2aModel, input.userNotes, appraiserInput, visualSearch, stage1d, saleLot?.saleId ?? null);
+    } finally {
+      this.activeClaim = null;
+      this.activeCanonical = null;
+    }
+    console.log(`[Timing] Stage 2a (Triage) done — ${((Date.now() - t2a) / 1000).toFixed(1)}s`);
+    emit({ stage: "stage2a", status: "done", message: "Triage complete", percent: 40 });
+
+    // Then the work, its facts and its comps — all in code, all before any model is asked to judge.
+    let work: WorkResolution | null = null;
+    let workFacts: WorkFacts | null = null;
+    let comps: ComparablesResult | null = null;
+    let profile: ArtistPriceProfile | null = null;
+    if (canonical) {
+      try {
+        profile = await queryArtistPriceProfile(canonical);
+        if (profile) console.log(`[Attributed lot] price profile: basis ${profile.basis}${profile.earlierSales != null ? `, ${profile.earlierSales} earlier sales` : ""}${profile.segment ? `, segment ${profile.segment}` : ""}`);
+        let wi = await resolveWorkIdentity({ artistName: canonical, title: claim.title ?? "", catalogueRefs: claim.catalogueRefs?.length ? claim.catalogueRefs.join("; ") : null, excludeSaleLot: saleLot });
+        work = { via: "claim", basis: wi.basis, workIds: wi.workIds, matchedNames: wi.matchedNames, ambiguousAt: wi.ambiguousAt, ambiguousNames: wi.ambiguousNames };
+        console.log(`[Attributed lot] work identity: ${wi.basis ? `"${wi.matchedNames[0]}" via ${wi.basis} (${wi.workIds.length} node(s))` : wi.ambiguousAt ? `AMBIGUOUS at ${wi.ambiguousAt}: ${wi.ambiguousNames.slice(0, 4).join(" | ")}` : "unresolved"}`);
+        if (!wi.basis && !wi.ambiguousAt) {
+          // The image may name the node the title could not: same artist, DINOv2 above the
+          // floor, and the lot's title is the graph title's core. Resolved by EXACT name.
+          const imageTitle = workTitleFromImageMatch(claim, stage1d, canonical);
+          if (imageTitle) {
+            const wi2 = await resolveWorkIdentity({ artistName: canonical, title: imageTitle, excludeSaleLot: saleLot });
+            if (wi2.basis === "exact_title" && wi2.workIds.length) {
+              wi = wi2;
+              work = { via: "image_match", basis: wi2.basis, workIds: wi2.workIds, matchedNames: wi2.matchedNames, ambiguousAt: null, ambiguousNames: [] };
+              console.log(`[Attributed lot] work identity via image match: "${wi2.matchedNames[0]}" (${wi2.workIds.length} node(s)) — Stage 1d best match, DINOv2 ${stage1d?.dinov2SimilarityScore?.toFixed(3) ?? "?"}`);
+            }
+          }
+        }
+        if (wi.workIds.length) workFacts = await queryWorkFacts(wi.workIds, { excludeSaleLot: saleLot, untilDate: claim.saleDate ?? null });
+        comps = await queryAuctionComparables({
+          artistName: canonical,
+          conceptualWorkIds: wi.workIds,
+          workTitle: claim.title ?? null,
+          technique: mapClaimTechnique(claim.medium) ?? vea.printingTechniques?.[0]?.technique ?? null,
+          sinceDate: STAGE3_COMPS_SINCE,
+          untilDate: claim.saleDate ?? null,
+          excludeListingUrl,
+          excludeSaleLot: saleLot,
+          limit: STAGE3_COMPS_LIMIT,
+        });
+        console.log(`[Attributed lot] comps: same_work ${comps.summary.tierCounts.same_work}, same_artist_technique ${comps.summary.tierCounts.same_artist_technique}, same_artist ${comps.summary.tierCounts.same_artist}${comps.summary.medianSameWorkHammerGBP != null ? `; same-work median hammer ${comps.summary.medianSameWorkHammerGBP.toFixed(0)} GBP` : ""}`);
+      } catch (err: any) {
+        console.warn(`[Attributed lot] graph read failed (${err?.message ?? err}) — verification proceeds on what was read`);
+      }
+    }
+
+    const verification = verifyAttributedLot({
+      claim, canonicalArtist: canonical, triage: triageResult, vea, stage1d: stage1d ?? null, work, workFacts,
+      treeArtistCanonical: triageResult.artistAttribution?.artistIdentity?.canonicalArtistName ?? null,
+    });
+    const routing = routeAttributedLot(verification, comps?.summary.tierCounts.same_work ?? 0);
+    console.log(`[Attributed lot] verification ${verification.verdict.toUpperCase()}${verification.divergences.length ? ` — ${verification.divergences.join(" | ")}` : ""}`);
+    console.log(`[Attributed lot] routing: Stage 2b ${routing.stage2bSkipped ? "SKIPPED" : "RUNS"} — ${routing.reason}`);
+
+    let attr: AttributionResearchResult;
+    if (routing.stage2bSkipped) {
+      emit({ stage: "stage2b", status: "done", message: "Specialist research skipped — catalogue attribution verified against the graph", percent: 80 });
+      attr = synthesizeAttributionResult({ claim, canonicalArtist: canonical, verification, workFacts, triage: triageResult });
+    } else {
+      const t2b = Date.now();
+      emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
+      console.log(`[Timing] Stage 2b (Specialist) starting — model: ${stage2bModel}`);
+      attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing);
+      console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
+      emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
+    }
+
+    const t3 = Date.now();
+    emit({ stage: "stage3", status: "start", message: "Synthesising an evidence-based estimate…", percent: 82 });
+    console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
+    const block = buildAttributedLotValuationBlock({ claim, verification, routing, comps, workFacts, profile });
+    const valuation = await this.runStage3Valuation(
+      vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput, canonical,
+      { workIds: work?.workIds ?? [], untilDate: claim.saleDate ?? null, block, systemSuffix: VALUATION_ATTRIBUTED_LOT_SUFFIX },
+    );
+    console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
+    console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
+    emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });
+
+    const report = this.assembleReport(vea, attr, valuation, currency);
+    report.stage1Result = vea;
+    report.stage1cResult = appraiserInput;
+    report.stage1dResult = stage1d ? { ...stage1d, dinov2QueryVector: undefined } : stage1d;
+    report.stage2Result = attr;
+    report.stage2aResult = triageResult;
+    const mid = claim.estimateLow && claim.estimateHigh ? (claim.estimateLow + claim.estimateHigh) / 2 : null;
+    report.attributedLot = {
+      claim, verification, routing,
+      compsSummary: comps?.summary ?? null,
+      sellThrough: workFacts?.sellThrough ?? null,
+      driftAnchor: mid ? mid * ESTIMATE_DRIFT : null,
+    };
+    const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
+    report.modelUsed = `Attributed-lot [S1: ${this.config.skipVea ? "skip" : stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${routing.stage2bSkipped ? "skipped" : stage2bModel} | S3: ${stage3Model}]`;
+    report.promptVersion = "attributed-lot";
+    return report;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Appraiser configuration registry
 // ---------------------------------------------------------------------------
 
@@ -3741,6 +3999,34 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     stage3Model: "claude-haiku-4-5",
     enableVisualSearch: true,
   },
+  {
+    id: "claude-4stage-attributed",
+    name: "Attributed Lot (catalogue claim verified against the graph)",
+    description:
+      "For lots that arrive WITH the house's attribution and estimate. Opus vision (S1); Haiku " +
+      "evidence agent (S2a) with the catalogue's artist/title entered as documented_fact claims; " +
+      "the claim resolved to a ConceptualWork in code and verified against image, technique, " +
+      "dimensions and edition; Sonnet specialist search (S2b) ONLY on Scenario 2/4/5, a " +
+      "divergence, a qualified attribution or no same-work comps; Haiku valuation (S3) anchored " +
+      "on the printed estimate x 0.82 with structured reasoning. " +
+      "docs/plans/2026-09-13-attributed-lot-valuation.md, step 2.",
+    modelName: "claude-opus-4-8",
+    temperature: 0.1,
+    promptKey: "standard",
+    imageQuality: "original",
+    includeAuxiliaryScans: true,
+    provider: "anthropic",
+    stage1Model: "claude-opus-4-8",
+    stage2aModel: "claude-haiku-4-5",
+    stage2bModel: "claude-sonnet-4-6",
+    stage3Model: "claude-haiku-4-5",
+    // No vision and no Gemini visual search on this path: the catalogue states what they would
+    // read, and both are leakage surfaces on a catalogued image (2026-09-13 decision).
+    enableVisualSearch: false,
+    skipVea: true,
+    clientWebSearch: true,
+    attributedLotPath: true,
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -3749,7 +4035,9 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
 
 export const appraiserRegistry: Record<string, AppraisalMethod> = appraiserConfigs.reduce(
   (registry, config) => {
-    if (config.stage2aModel) {
+    if (config.attributedLotPath && config.stage2aModel) {
+      registry[config.id] = new AttributedLotAppraiser(config);
+    } else if (config.stage2aModel) {
       registry[config.id] = new FourStageAppraiser(config);
     } else if (config.stage1Model || config.stage2Model) {
       registry[config.id] = new ThreeStageAppraiser(config);
@@ -3775,6 +4063,7 @@ export function getAppraiser(methodName: string = "gemini-standard", aiClient?: 
 }
 
 export function getAppraiserFromConfig(config: AppraisalMethodConfig, aiClient?: GoogleGenAI): AppraisalMethod {
+  if (config.attributedLotPath && config.stage2aModel) return new AttributedLotAppraiser(config, aiClient);
   if (config.stage2aModel) return new FourStageAppraiser(config, aiClient);
   if (config.stage1Model || config.stage2Model) return new ThreeStageAppraiser(config, aiClient);
   if (config.provider === "anthropic") return new ConfigurableClaudeAppraiser(config);

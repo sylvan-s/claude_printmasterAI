@@ -597,7 +597,34 @@ export const STAGE3_VALUATION_ONLY_SCHEMA = {
         highEstimate: { type: Type.INTEGER, description: "High-end estimated auction value as a plain integer with NO currency symbol or commas, e.g. 2800 not '$2,800'." },
         currency: { type: Type.STRING, description: "Currency code only, e.g. 'USD', 'GBP', 'EUR'. No symbols." },
         formattedEstimate: { type: Type.STRING, description: "Human-readable price range using the currency code only, NOT the symbol, e.g. '1200 - 2800 USD'. The UI adds the symbol — do not include it here." },
-        valuationContext: { type: Type.STRING, description: "Explanation of the valuation rationale, condition penalties applied, and how comps informed the estimate." }
+        valuationContext: { type: Type.STRING, description: "Explanation of the valuation rationale, condition penalties applied, and how comps informed the estimate." },
+        // Optional in the standard path; mandatory in attributed-lot mode (VALUATION_ATTRIBUTED_LOT_SUFFIX).
+        valuationReasoning: {
+          type: Type.OBJECT,
+          description: "Structured articulation of how the number was reached: anchor, each adjustment with its evidence, evidence for/against, confidence, what would change it.",
+          properties: {
+            anchor: { type: Type.STRING, description: "What the estimate was anchored on and why (e.g. 'printed estimate midpoint x 0.82 market drift')." },
+            anchorValue: { type: Type.INTEGER, description: "The anchor as a plain integer in the report currency." },
+            adjustments: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  factor: { type: Type.STRING, description: "The factor adjusted for (condition, liquidity, same-work divergence, edition, verification...)." },
+                  direction: { type: Type.STRING, description: "'up' | 'down' | 'none'" },
+                  magnitude: { type: Type.STRING, description: "Percentage or multiplier applied, e.g. '-15%' or 'x0.9'." },
+                  evidence: { type: Type.STRING, description: "The evidence line this adjustment rests on." },
+                },
+                required: ["factor", "direction", "magnitude", "evidence"],
+              },
+            },
+            evidenceFor: { type: Type.ARRAY, items: { type: Type.STRING } },
+            evidenceAgainst: { type: Type.ARRAY, items: { type: Type.STRING } },
+            confidence: { type: Type.STRING, description: "'HIGH' | 'MEDIUM' | 'LOW' followed by a one-line reason." },
+            whatWouldChangeIt: { type: Type.ARRAY, items: { type: Type.STRING } },
+          },
+          required: ["anchor", "anchorValue", "adjustments", "evidenceFor", "evidenceAgainst", "confidence", "whatWouldChangeIt"],
+        },
       },
       required: ["lowEstimate", "highEstimate", "currency", "formattedEstimate", "valuationContext"]
     },

@@ -447,12 +447,138 @@ timestamp, so the check uses the backfill/repair stamps plus the row count as th
 tests; house is excluded from the adjustment until step 7. Next: the gate backtest — same-work
 comps × adjustment vs raw same-work medians on the hammer backtest lots.
 
+**Step 6 gate result (2026-09-13): FAILED — the multipliers are not applied in Stage 3.**
+`npm run backtest:comps-hammer -- --source {forum|roseberys} --limit 2500 --seed 11 --resolve-work --adjust`
+(the step-3 lots; the lot's own attributes read from its graph record so both sides of the
+adjustment are classified by the trainer's rules — `price_attrs.ts`, verified identical to
+`train_price_model.py` on all 48,847 export rows). Same-work comps re-priced to the lot by
+`adjustmentBetween` over signature, proof, edition, size and process (house excluded):
+
+| sold lots with a profile + same-work hammer comps | Roseberys (n=371) raw → adjusted | Forum (n=283) raw → adjusted | estimate × 0.82 |
+|---|---|---|---|
+| MAE(log), n>=1 | 0.471 → 0.464 | 0.520 → 0.556 | 0.273 / 0.243 |
+| MAE(log), n>=2 | 0.401 → 0.438 | 0.532 → 0.566 | 0.284 / 0.239 |
+| MAE(log), n>=3 | 0.397 → 0.433 | 0.500 → 0.521 | 0.265 / 0.246 |
+| within 2x, n>=3 | 89% → 82% | 76% → 77% | 93% |
+| lots the adjustment moved >25% (95 / 87): MAE | 0.670 → 0.649, geo 1.45 → 1.24 | 0.608 → 0.716 | 0.252 / 0.271 |
+| Spearman(comp/mid, hammer/mid), n>=1 | 0.234 → 0.231 | 0.077 → 0.059 | — |
+
+The adjustment removes some of the upward bias where it fires hard on Roseberys (geo 1.45 →
+1.24) and adds noise everywhere else; on Forum — the cross-house, honest number — it is worse
+on every cut. The control (comp attributes identical to the lot's, n=108) is unchanged by
+construction. Profile basis does not rescue it: shrunk 0.453 → 0.453 / 0.501 → 0.541, prior
+0.560 → 0.497 / 0.786 → 0.808, segment n too small. The attribute that differs most often is
+size (area_log on 65-87% of lots), and the fitted size elasticity is the one that mis-prices:
+the same print in a different sheet size is usually a different edition, not a scaled price.
+
+**What Stage 3 does with the profile instead:** nothing numeric. The attributed-lot path
+lists, per same-work comp, the attributes that differ from the lot (signed / edition / size /
+process) as facts, and says in the prompt that applying the fitted multipliers did not beat the
+raw comps on 650 lots. The anchor stays estimate × 0.82; the comps stay a band and a
+divergence flag. Revisit only with a per-work (not per-artist) model — plate/state/edition are
+the price, and an artist-level elasticity cannot see them.
+
 ### 7. Cross-house repeat-sale test
 
 Same work, attribute-matched, sold at one house and later at another: the realised spread net
 of each house's drift. Tests whether the like-for-like house effect (Roseberys ×0.36-0.95 of
 Bonhams) is an arbitrage or a selection artefact. Needed before the house effect is used in a
 verdict.
+
+## Step 2 built (2026-09-13) — the attributed-lot entry path
+
+`src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method
+`claude-4stage-attributed`, harness `npm run backtest:attributed-lot -- --url <roseberys lot url>`
+(or `--sale A0785 --lot 1`). 41 pure-function tests (`npm run test:attributed-lot`).
+
+Input: `AppraisalInput.catalogueAttribution` — the house's printed artist (with qualifier),
+title, year, medium, edition, signed, dimensions, catalogue refs, estimate, sale/lot/date/URL.
+The server route picks the path from the INPUT: any 4-stage method runs it when the field is
+present. Flow:
+
+1. Stage 1a/1b/1c/1d as today. The claim is then overlaid on Stage 1c's extraction in code
+   (`mergeClaimIntoAppraiserInput`) as `documented_fact`, and `overrideEvidenceCells` forces
+   the Stage 2a APPRAISER cells from the claim — the agent's own trust rule is written for
+   free-text notes and would tag a printed header as a hypothesis. A qualified attribution
+   ("after X") is never an authorship vote. The tree still runs: a lone documented_fact source
+   cannot reach Scenario 1, so the claim cannot short-circuit routing.
+2. The CLAIM (not the tree's settled artist) is resolved to the graph, then the work
+   (`resolveWorkIdentity`, ADR-0017 levels, own record excluded), the work's facts
+   (`queryWorkFacts`: techniques, dims, edition sizes, own sell-through) and its comps
+   (sale-date cut when the lot is a past sale).
+3. `verifyAttributedLot` — artist (identity + tree verdict), work (resolved / ambiguous /
+   unresolved), image (Stage 1d best match vs the resolved work), technique (tree match, else
+   VEA vs catalogued), dimensions (tree match, else catalogue vs node within 5% / sheet 8%),
+   edition (claimed size among the node's edition runs; an unseen size is flagged, not a
+   divergence), plus the tree's impression divergence. Verdict: verified / partially_verified
+   / divergent / unverifiable.
+4. `routeAttributedLot` — Stage 2b is SKIPPED iff: unqualified attribution, work resolved,
+   >=1 same-work comp, verdict not divergent/unverifiable, and Scenario not 2/4/5. Otherwise
+   Stage 2b runs unchanged. When skipped, `synthesizeAttributionResult` builds the ASA-shaped
+   result Stage 3 expects from the claim, the graph and the verification.
+5. Stage 3 (Haiku) gets the ATTRIBUTED-LOT EVIDENCE block + `VALUATION_ATTRIBUTED_LOT_SUFFIX`:
+   the anchor is the printed midpoint x 0.82 (step 1), same-work comps are a band and a
+   divergence flag with the measured bucket base rates, liquidity is the work's own
+   sell-through, comp attribute differences are listed as facts (step 6: multipliers not
+   applied), and `auctionEstimate.valuationReasoning` (anchor, adjustments with evidence,
+   for/against, confidence, what would change it) is mandatory. Report carries
+   `report.attributedLot` (claim, verification, routing, comps summary, sell-through, anchor).
+
+Not built: a Forum URL fetcher (Roseberys only), and a UI field for the claim.
+
+### Decisions taken on the path (2026-09-13, evening)
+
+- **Stage 1a and 1b are OFF on the attributed method.** The catalogue states technique, signature,
+  edition, dimensions and condition (Stage 1c carries them), and a frontier vision model or a
+  Gemini visual search reading a catalogued image is a leakage surface. Measured: Opus vision was
+  $0.47 of the $0.74/lot on the six lots that ran with it.
+- **Stage 2b uses the client-side (Tavily) web_search on every endpoint** — `clientWebSearch` on
+  the method — for traceability and cost. The six earlier lots had silently used Anthropic's
+  server-side search; the log now says which ran.
+- **misattributionRisk is code-derived on this path** (`deriveMisattributionRisk`): the agent's
+  flag survives only when some source names a different artist. Before this, the model set it on
+  every lot (6/6), forcing Scenario 2 and Stage 2b on all of them. Step 4 of the plan, applied
+  here first.
+- **Read-side name compatibility** (`namesCompatible`): the tree's "G Braque" is not a divergence
+  from "Georges Braque"; an illegible initial never matches. The graph's identity resolver stays
+  exact-match.
+- **Image-match work route** (`workTitleFromImageMatch`): when the claim's title does not resolve
+  but Stage 1d's best match is the same artist above the DINOv2 floor and the lot title is the
+  graph title's core (minus series suffix and bracketed citations), resolve by that exact name.
+- **The pricing model is a reference, not arithmetic**: Stage 3 gets the artist's fitted
+  multipliers for the lot's attributes and a model-implied factor per same-work comp, and is told
+  to cite them as direction/magnitude for named adjustments (step 6 gate).
+
+### Step 3 result on A0793 (upcoming sale of 2026-09-23; ten random single-artist lots, seed 7)
+
+`npm run backtest:attributed-lot -- --sale A0793 --random 10 --seed 7 --dry-run` predicted 3 lots
+could skip Stage 2b; all three did. Stage 1a/1b off, Stage 3 on Haiku.
+
+| | lots | cost/lot | time/lot |
+|---|---:|---:|---:|
+| Stage 2b skipped (16, 47, 64) | 3 | $0.037 | 62-73 s |
+| Stage 2b ran, client-side search (3-4 searches) | 7 | $0.199 | 142-211 s |
+| all ten | 10 | $0.150 | — |
+
+Against the six earlier lots at $0.74 (Opus vision on, server-side search): 5x cheaper with 2b,
+20x cheaper without. Estimate midpoint / drift anchor ranged 0.52-1.28; two lots departed hard —
+64 (Bawden, one 2017 comp at 0.59x the anchor fired the "comps well below" flag, -41%) and 420
+(Cindy Sherman, 1,200-2,200 vs 3,000-5,000 on edition size + 0/1 sell-through + no
+examination). No hammer until 23 September; score with `npm run report:hammer -- --suffix _attrpath`.
+
+Observed, not yet acted on:
+- The same-work divergence flag fired on a single eight-year-old comp (lot 64). Gate it on n>=2
+  or on recency before trusting the -41%.
+- Catalogue typos defeat exact identity: "Storm Thorgeson" (graph: Thorgerson) produced a tree
+  CONFLICT -> Scenario 5; "Clegry Boia" (graph: Clegyr Boia) left the work unresolved until the
+  Stage 2b tool spelled it right. A one-edit surname tolerance on the READ side (verification and
+  work lookup, never merges) would have caught both.
+- Stage 2b searched for the lot's own listing on lot 530 ("Roseberys lot 530 A0793 realised
+  price"). Harmless on an upcoming lot; on a past lot it is the leakage the exclusion note only
+  asks the model to ignore. Filter the house + sale code out of the client-side search query.
+- Stage 3 keeps citing "no physical examination" as a -10 to -20% adjustment now that Stage 1a
+  is off by design; the suffix should say the catalogue's condition line is the condition evidence.
+
 
 ## Housekeeping done 2026-09-13
 
