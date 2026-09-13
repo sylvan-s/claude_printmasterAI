@@ -406,6 +406,52 @@ etching-only, which is the question the burr actually answers; (c) the pre-/post
 pure-vs-combined splits of the drypoint metric; (d) a VLM baseline on the same images with
 artist and text removed, to put a number on what a frontier model reads from pixels alone.
 
+#### Phase 4 pilot, second pass (2026-09-13) — head budget, hierarchical framing, composition
+
+Runs on the same shards (`train_tile_head.py --lr/--restrict`; results in
+`artifacts/tile_head_e150.json`, `tile_head_mil_lr1e-3.json`, `tile_head_drypoint_hier.json`,
+`tile_head_aquatint_hier.json`):
+
+| Run | Head | Result |
+|---|---|---|
+| A: 150 epochs (vs 40) | pooled / MIL / MIL+fine | unchanged: aquatint AP 0.652 / 0.613 / 0.619, drypoint 0.297 / 0.279 / 0.278 |
+| B: MIL, 150 epochs, lr 1e-3 | MIL | unchanged: aquatint 0.603, drypoint 0.291 |
+| C: hierarchical drypoint — images labelled only etching and/or drypoint, 2,551 imgs, 25% positive | pooled / MIL | F1 0.445 / 0.367, AP 0.415 / 0.366 |
+| D: hierarchical aquatint — etching and/or aquatint, 3,244 imgs, 41% positive | pooled / MIL | F1 0.681 / 0.689, AP 0.727 / 0.670 |
+
+**Attention-MIL is not under-trained; it does not help.** Four times the budget and a higher
+learning rate leave it level with or below mean ⊕ max on every class and both framings. The
+fine scale as extra instances likewise. Both are dropped from the Phase 4 design until a new
+reason appears.
+
+**The framing helps drypoint only slightly, and the Phase 0/0b level does not reproduce.** The
+composition test (Phase 0's own head, etching/drypoint-only images from the pilot shards)
+isolates the reasons, read as AP relative to prevalence because F1 is not comparable across
+class balances ("always yes" scores 0.67 on a balanced set and 0.29 at 17%):
+
+| Drypoint set-up | n | prev. | AP | AP ÷ prev. |
+|---|---:|---:|---:|---:|
+| Phase 0b DINOv3 grid tiles, ≤5/artist, Bonhams+Roseberys | 896 | 0.33 | 0.835 | **2.5×** |
+| pilot tiles, same recipe (≤5/artist, B+R, balanced) | 446 | 0.50 | 0.723 | 1.45× |
+| all institutions, ≤5/artist, balanced | 552 | 0.50 | 0.617 | 1.23× |
+| B+R, ≤40/artist, natural balance | 1,561 | 0.22 | 0.453 | 2.06× |
+| all institutions, ≤40/artist, natural | 2,476 | 0.23 | 0.412 | 1.8× |
+| run C (pooled) | 2,551 | 0.25 | 0.415 | 1.66× |
+| the 334 images shared with Phase 0, either tiling | 334 | 0.33 | ~0.51 | 1.5× |
+
+Every pilot configuration sits at 1.5–2.1× prevalence; Phase 0b's 2.5× is not reached by any
+of them, including the one that copies its recipe on the same images. The drypoint signal is
+real and modest, and the Phase 0b figure was most likely the favourable end of run-to-run
+variance — which nothing so far has measured. **Fold-level variance (and a bootstrap over
+artists) is the next thing to add to every number in this ADR before any further design
+decision is taken on drypoint.** Aquatint is steadier: 1.8× prevalence under the hierarchical
+framing, 0.68 F1 at 41%.
+
+Design state after the pilot: pooled mean ⊕ max of stratified 40 mm DINOv3 tiles into a small
+MLP, per family; drypoint and aquatint posed hierarchically within intaglio; no MIL, no fine
+scale, no hand-crafted channels. Etching-as-a-class is dropped (78% prevalent, trivially
+predicted); it is the intaglio default that the other processes are detected against.
+
 ### Phase 5 — product implication
 
 `predict_technique.py` receives a user photograph of unknown scale, which cannot be placed

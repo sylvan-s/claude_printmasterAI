@@ -1,6 +1,6 @@
 """
 PrintMasterAI — ADR-0019 Phase 4 (pilot): technique heads over per-tile DINOv3 embeddings.
-Version: TECHML-TILEHEAD-1.0
+Version: TECHML-TILEHEAD-1.1
 
 Trains and evaluates, on the Phase 2 shards + manifest, with the same artist-grouped protocol
 the existing classifier uses (no artist in both train and test; artist-balanced metrics):
@@ -42,8 +42,13 @@ BUCKETS = [(2, 4), (4, 7), (7, 11), (11, 1e9)]
 # data
 # ---------------------------------------------------------------------------
 
-def load(shards_dir, manifest_path, classes):
+def load(shards_dir, manifest_path, classes, restrict=None):
+    """restrict: keep only images whose technique set is a subset of this list — e.g.
+    restrict=['Etching','Drypoint'] with classes=['Drypoint'] poses pure-etching vs
+    etching+drypoint, the question the burr actually answers (ADR-0019 Phase 4 pilot)."""
     rows = {json.loads(l)["imageId"]: json.loads(l) for l in open(manifest_path)}
+    if restrict:
+        rows = {k: r for k, r in rows.items() if set(r["techniques"]) <= set(restrict)}
     P, F, HF, PS, FS, ids = [], [], [], [], [], []
     meta = {}
     for p in sorted(glob.glob(os.path.join(shards_dir, "tiles_*.npz"))):
@@ -103,7 +108,7 @@ class GatedMIL:
         return self.head(z), a
 
 
-def fit(model_kind, Xtr, Mtr, Str, Ytr, wtr, d_in, epochs, seed, device):
+def fit(model_kind, Xtr, Mtr, Str, Ytr, wtr, d_in, epochs, seed, device, lr=5e-4):
     import torch
     torch.manual_seed(seed)
     n_out = Ytr.shape[1]
@@ -114,7 +119,7 @@ def fit(model_kind, Xtr, Mtr, Str, Ytr, wtr, d_in, epochs, seed, device):
         mil = GatedMIL(d_in, n_out, use_scale=(model_kind == "mil_fine"))
         net = mil.module.to(device)
         params = net.parameters()
-    opt = torch.optim.AdamW(params, lr=5e-4, weight_decay=1e-2)
+    opt = torch.optim.AdamW(params, lr=lr, weight_decay=1e-2)
     Yt = torch.from_numpy(Ytr).to(device)
     pos = Yt.mean(0).clamp(min=1e-3)
     loss_fn = torch.nn.BCEWithLogitsLoss(pos_weight=((1 - pos) / pos).clamp(max=10), reduction="none")
@@ -184,7 +189,7 @@ def standardise(X, fit_mask):
     return ((X - mu) / sd).astype(np.float32)
 
 
-def evaluate(d, classes, kinds, k, seed, epochs, device, out_path):
+def evaluate(d, classes, kinds, k, seed, epochs, device, out_path, lr=5e-4):
     Y, groups, native = d["Y"], d["groups"], d["native"]
     folds = group_kfold(groups, k, seed)
     n_cls = len(classes)
@@ -204,7 +209,7 @@ def evaluate(d, classes, kinds, k, seed, epochs, device, out_path):
             val_m = tr.copy(); val_m[tr] = np.isin(tr_groups, list(val_artists))
             Z = standardise(X, fit_m)
             predict = fit(kind, Z[fit_m], M[fit_m] if M is not None else None, S[fit_m] if S is not None else None,
-                          Y[fit_m], artist_eval_weights(groups[fit_m]).astype(np.float32), Z.shape[-1], epochs, seed + f, device)
+                          Y[fit_m], artist_eval_weights(groups[fit_m]).astype(np.float32), Z.shape[-1], epochs, seed + f, device, lr)
             pv = predict(Z[val_m], M[val_m] if M is not None else None, S[val_m] if S is not None else None)
             wv = artist_eval_weights(groups[val_m])
             for c in range(n_cls):
@@ -264,6 +269,8 @@ def main():
     ap.add_argument("--models", default="pooled,mil,mil_fine")
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--epochs", type=int, default=40)
+    ap.add_argument("--lr", type=float, default=5e-4)
+    ap.add_argument("--restrict", help="comma-separated: keep only images whose techniques are all in this set")
     ap.add_argument("--seed", type=int, default=13)
     ap.add_argument("--device", default=None)
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "artifacts", "tile_head_pilot.json"))
@@ -271,8 +278,9 @@ def main():
     import torch
     device = args.device or ("mps" if torch.backends.mps.is_available() else "cpu")
     classes = [c.strip() for c in args.classes.split(",")]
-    d = load(args.shards, args.manifest, classes)
-    evaluate(d, classes, [m.strip() for m in args.models.split(",")], args.folds, args.seed, args.epochs, device, args.out)
+    restrict = [c.strip() for c in args.restrict.split(",")] if args.restrict else None
+    d = load(args.shards, args.manifest, classes, restrict)
+    evaluate(d, classes, [m.strip() for m in args.models.split(",")], args.folds, args.seed, args.epochs, device, args.out, args.lr)
 
 
 if __name__ == "__main__":
