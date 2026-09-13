@@ -51,6 +51,7 @@ import os
 import re
 import statistics
 import sys
+import unicodedata
 from collections import defaultdict
 
 from neo4j import GraphDatabase
@@ -89,18 +90,58 @@ COLLECTIVE = re.compile(r"various artists|\band others\b|\bet al\b", re.I)
 # Frith. The images are near-identical because one IS a print of the other, which is precisely
 # why image evidence cannot settle it. These are two people and must never be merged.
 AFTER = re.compile(r"\bafter\b", re.I)
+# "X and Y" / "X & Y" is a COLLABORATION, and like "after" it contains the other party's name, so
+# token-subset containment matches it. Found by reading the full run's output: `Andy Warhol` vs
+# `Andy Warhol & Keith Haring` (7 shared images), `Rembrandt van Rijn` vs `Rembrandt van Rijn &
+# Philip Gilbert Hamerton`, `Christopher Wool` vs `Christopher Wool and Felix Gonzalez-Torres`.
+# Merging those would attribute the collaborator's share to one hand. The joint work may deserve
+# its own node or a second CREATED edge; it does not deserve to be folded away here.
+JOINT = re.compile(r"\s(&|and)\s", re.I)
+# Honorifics and academy post-nominals are not forenames. They arrive attached to the name in
+# auction catalogues and made the family-name flag fire on `Peter Blake` vs `Peter Blake RDI`.
+POST_NOMINAL = {"ra", "pra", "ppra", "rdi", "rws", "hrws", "rsw", "hrsa", "rsa", "rba", "prb",
+                "prba", "are", "ari", "arca", "hariba", "hre", "lld", "kbe", "obe", "cbe", "mbe",
+                "dbe", "frs", "rca", "rha", "hon", "sir", "dame", "bt", "esq"}
+PARTICLE = {"de", "del", "della", "van", "von", "der", "den", "du", "da", "di", "la", "le",
+            "el", "al", "bin", "ibn", "mac", "mc", "st", "saint", "y"}
+
+
+def _fold(name):
+    """Lowercase, strip bracketed asides, and DECOMPOSE accents. Without the decomposition
+    `Brassaï` tokenises as {brassa} and never matches `Brassai photograph: Untitled`, which the
+    first full run put in `differentNames` at cosine 1.000."""
+    n = unicodedata.normalize("NFD", re.sub(r"\(.*?\)", "", name or "").lower())
+    return "".join(c for c in n if not unicodedata.combining(c))
 
 
 def tokens(name):
-    return {t for t in re.split(r"[^a-z]+", re.sub(r"\(.*?\)", "", (name or "").lower()))
-            if len(t) > 1}
+    return {t for t in re.split(r"[^a-z]+", _fold(name)) if len(t) > 1}
+
+
+def _similar(a, b):
+    """Character-level near-identity, for names that token comparison cannot reach because BOTH
+    tokens are misspelt: `Edouardo Poalozzi` against `Eduardo Paolozzi` (6 shared images at
+    0.951) shares no token at all, yet is plainly one person. jellyfish is already a dependency
+    of merge_artists.py."""
+    import jellyfish
+    x, y = re.sub(r"[^a-z]", "", _fold(a)), re.sub(r"[^a-z]", "", _fold(b))
+    if not x or not y:
+        return False
+    if x == y:
+        return True
+    # 0.90, not 0.93: `Edouardo Poalozzi` against `Eduardo Paolozzi` scores 0.9122 and is plainly
+    # one person. The family-name traps this must NOT reach sit far below — `John James Audubon`
+    # against `John Woodhouse Audubon` is 0.8310, `Brett Weston` against `Edward Weston` 0.6730.
+    return jellyfish.jaro_winkler_similarity(x, y) >= 0.90
 
 
 def name_relation(a, b):
     """How the two NAMES relate — evidence, not a verdict."""
     ta, tb = tokens(a), tokens(b)
     if not ta or not tb:
-        return "unknown"
+        # `J.R` against `JR` has no token over one character, so an early return here hid an
+        # exact match. Fall through to the character-level test instead of giving up.
+        return "spellingNearMiss" if _similar(a, b) else "unknown"
     if ta == tb:
         return "sameTokens"
     if ta < tb or tb < ta:
@@ -110,9 +151,54 @@ def name_relation(a, b):
         # one token differs — a misspelling or an initial. mcneil/mcneill is the case that
         # defeated the name-first pass, so it is named here rather than silently lumped in.
         return "oneTokenDiffers"
+    if _similar(a, b):
+        return "spellingNearMiss"
     if shared:
         return "partialOverlap"
     return "unrelated"
+
+
+def family_name_risk(a, b):
+    """THE CALDER TRAP, recorded in find_artist_merge_candidates.py's own docstring: `Alexander
+    Calder` against `Alexander Milne Calder` is the sculptor's grandfather, `Camille Pissarro`
+    against `Orovida Camille Pissarro` his granddaughter. Both pairs are two real people, and a
+    shared surname with entirely different forenames is how a family reads.
+
+    The test is deliberately narrow. A first attempt flagged any tokenSubset whose leading word
+    differed, which fired on every initialism — `L.S. Lowry` against `Laurence Stephen Lowry`,
+    `M.C. Escher`, `J J J Tissot` — while missing `Brett Weston` against `Edward Weston` and
+    `John James Audubon` against `John Woodhouse Audubon`, which are the real shape. Initials are
+    dropped by `tokens`, so an abbreviated name has NO forename token and cannot fire here; the
+    flag needs full forenames on both sides that share none.
+
+    Advisory, not a route. The pair still wants a person; this says where to look hardest."""
+    import jellyfish
+    ta, tb = tokens(a), tokens(b)
+    surname = _fold(a).split()[-1] if _fold(a).split() else ""
+    if not ta or not tb or surname not in ta or surname not in tb:
+        return 0
+    fa, fb = ta - {surname}, tb - {surname}
+    if not fa or not fb:
+        return 0                      # an initialism has no forename token; not a family case
+    # A SECOND attempt asked whether the forenames share nothing, which missed both documented
+    # traps outright: Calder/Calder and Pissarro/Pissarro SHARE a forename and differ by an extra
+    # middle name. The trap is an extra FULL forename, not a disjoint one.
+    extra = fa.symmetric_difference(fb)
+    if not extra:
+        return 0
+    # ...and a token that is merely the other side misspelt is a spelling variant, not a
+    # relative: Anthony/Antony Caro, Nicholas/Nicolas Party.
+    for t in extra:
+        other = fb if t in fa else fa
+        if t in POST_NOMINAL or t in PARTICLE:
+            continue                  # `Peter Blake RDI`, `Christopher Le Brun PPRA`
+        # an extra token that ABBREVIATES or is misspelt from one on the other side is the same
+        # forename written differently, not a relative: Max/Maximilian, Anthony/Antony
+        if any(o.startswith(t) or t.startswith(o)
+               or jellyfish.jaro_winkler_similarity(t, o) >= 0.90 for o in other):
+            continue
+        return 1
+    return 0
 
 
 def route(a, b, ia, ib, relation):
@@ -122,10 +208,12 @@ def route(a, b, ia, ib, relation):
         return "collective"
     if AFTER.search(a) != AFTER.search(b):
         return "afterAttribution"
+    if bool(JOINT.search(a)) != bool(JOINT.search(b)):
+        return "collaboration"
     ua, ub = ia.get("ulan"), ib.get("ulan")
     if ua and ub and ua != ub:
         return "ulanConflict"          # two Getty records are two people. Never merge.
-    if relation in ("sameTokens", "tokenSubset", "oneTokenDiffers"):
+    if relation in ("sameTokens", "tokenSubset", "oneTokenDiffers", "spellingNearMiss"):
         return "nameVariant"
     return "differentNames"
 
@@ -191,6 +279,7 @@ def main():
     for (a, b), rs in by_pair.items():
         ia, ib = info.get(a, {}), info.get(b, {})
         rel = name_relation(a, b)
+        family_risk = family_name_risk(a, b)
         cos = sorted(float(x["cos"]) for x in rs)
         ex = max(rs, key=lambda x: float(x["cos"]))
         out.append({
@@ -198,7 +287,7 @@ def main():
             "sharedImages": len(rs), "maxCos": round(cos[-1], 4),
             "medianCos": round(statistics.median(cos), 4),
             "worksA": ia.get("works", 0), "worksB": ib.get("works", 0),
-            "nameRelation": rel,
+            "nameRelation": rel, "familyNameRisk": family_risk,
             "ulanA": ia.get("ulan") or "", "ulanB": ib.get("ulan") or "",
             "bornA": ia.get("born") or "", "bornB": ib.get("born") or "",
             "diedA": ia.get("died") or "", "diedB": ib.get("died") or "",
@@ -206,8 +295,8 @@ def main():
             "exampleTitleA": ex["titleA"], "exampleTitleB": ex["titleB"],
             "exampleWorkA": ex["workA"], "exampleWorkB": ex["workB"],
         })
-    order = {"nameVariant": 0, "differentNames": 1, "afterAttribution": 2, "collective": 3,
-             "nonArtistNode": 4, "ulanConflict": 5}
+    order = {"nameVariant": 0, "differentNames": 1, "collaboration": 2,
+             "afterAttribution": 3, "collective": 4, "nonArtistNode": 5, "ulanConflict": 6}
     out.sort(key=lambda r: (order.get(r["route"], 9), -r["sharedImages"], -r["maxCos"]))
     with open(args.out, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=list(out[0].keys()))
@@ -223,8 +312,8 @@ def main():
     counts = defaultdict(int)
     for r in out:
         counts[r["route"]] += 1
-    for k in ("nameVariant", "differentNames", "afterAttribution", "collective",
-              "nonArtistNode", "ulanConflict"):
+    for k in ("nameVariant", "differentNames", "collaboration", "afterAttribution",
+              "collective", "nonArtistNode", "ulanConflict"):
         if counts[k]:
             print(f"  {k:16s} {counts[k]:>5d}")
     print("\nNothing has been merged. Feed reviewed rows to "
