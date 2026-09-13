@@ -1069,6 +1069,11 @@ export interface CellOverride {
  * indistinguishable from a real one.
  */
 export function applyCandidateFacts(ev: any, cf: CandidateFacts): CellOverride[] {
+  // Blocks the model returned as strings are dropped by normalizeEvidenceBlocks; anything
+  // still not an object cannot be written into, so there is nothing to override.
+  for (const k of ["artistEvidence", "workEvidence", "impressionEvidence", "riskFlags"]) {
+    if (ev && ev[k] != null && typeof ev[k] !== "object") return [];
+  }
   const out: CellOverride[] = [];
   const set = (obj: any, cell: string, value: unknown) => {
     // Never assign into a non-object. A model can return a whole evidence block as a JSON
@@ -1115,7 +1120,9 @@ export function applyCandidateFacts(ev: any, cf: CandidateFacts): CellOverride[]
 export function applyObservedDims(ev: any, plan: Stage2aQueryPlan): CellOverride[] {
   const d = plan.observedDims;
   const i = ev?.impressionEvidence;
-  if (!d || !i) return [];
+  // A block the model returned as a string (or anything but an object) is not writable —
+  // see normalizeEvidenceBlocks. Nothing to override; the tree reads it as absent.
+  if (!d || !i || typeof i !== "object") return [];
   const out: CellOverride[] = [];
   const set = (cell: string, value: unknown) => {
     const prev = i[cell];

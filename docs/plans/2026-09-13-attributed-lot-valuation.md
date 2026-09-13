@@ -566,19 +566,55 @@ Against the six earlier lots at $0.74 (Opus vision on, server-side search): 5x c
 (Cindy Sherman, 1,200-2,200 vs 3,000-5,000 on edition size + 0/1 sell-through + no
 examination). No hammer until 23 September; score with `npm run report:hammer -- --suffix _attrpath`.
 
-Observed, not yet acted on:
-- The same-work divergence flag fired on a single eight-year-old comp (lot 64). Gate it on n>=2
-  or on recency before trusting the -41%.
-- Catalogue typos defeat exact identity: "Storm Thorgeson" (graph: Thorgerson) produced a tree
-  CONFLICT -> Scenario 5; "Clegry Boia" (graph: Clegyr Boia) left the work unresolved until the
-  Stage 2b tool spelled it right. A one-edit surname tolerance on the READ side (verification and
-  work lookup, never merges) would have caught both.
-- Stage 2b searched for the lot's own listing on lot 530 ("Roseberys lot 530 A0793 realised
-  price"). Harmless on an upcoming lot; on a past lot it is the leakage the exclusion note only
-  asks the model to ignore. Filter the house + sale code out of the client-side search query.
-- Stage 3 keeps citing "no physical examination" as a -10 to -20% adjustment now that Stage 1a
-  is off by design; the suffix should say the catalogue's condition line is the condition evidence.
+### The four observations, fixed (2026-09-13, later)
 
+1. **A lone stale comp no longer fires the divergence flag.** `divergenceSignalUsable`: two or
+   more same-work sales always carry the signal; ONE carries it only within
+   `LONE_COMP_MAX_AGE_YEARS` (3) of the lot's own sale. Below the bar the comp is still shown
+   to Stage 3, labelled "NOT a directional signal". A0793/64 re-run: the -41% "comps well
+   below" cut is gone and the 2017 hammer is treated as a floor with its age named.
+2. **One typed slip is tolerated on the READ side only** — `knowledge_graph/typo_tolerance.ts`,
+   optimal string alignment distance 1 (a transposition counts as one edit; plain Levenshtein
+   calls it two, and "Clegry" for "Clegyr" is exactly a transposition). Three guards: designator
+   tokens (digits, roman numerals) must be identical on both sides, so "Spinning Man V" vs "VII"
+   and "pl. 25" vs "pl. 26" are refused; the differing token must be >=5 characters; every other
+   token must match exactly. Applied in three places: `nameSimilarity` (the tree's identity
+   fusion — A0793/168's "Storm Thorgeson" vs "Thorgerson" scored 0.50, below TAU_NAME, and the
+   tree reported a CONFLICT between two spellings of one man), `sameArtist` in the verification,
+   and a LAST-resort `typo_title` level in `resolveWorkIdentity` after every exact level has
+   missed. The ACKG's write rule is untouched: nothing here merges, writes or dedupes.
+   A0793/168 re-run: Scenario 5 -> Scenario 3, verification DIVERGENT -> VERIFIED.
+   A0793/67 is NOT fixed by this and correctly so: "Clegyr Boia I" against a graph node named
+   "Clegyr Boia" differs by a numeral, which the designator guard refuses.
+3. **Stage 2b can no longer search for the lot it is valuing** — `src/appraisal/search_scope.ts`.
+   `sanitizeSearchQuery` strips the sale code and lot number from every query, and the house
+   only when the query was already naming this sale (searching "Roseberys" in general is
+   legitimate); `filterExcludedResults` drops any result whose URL is the lot's own listing or a
+   sibling lot in the same sale. Wired for production, not just the harness: the attributed path
+   passes the claim's house/sale/lot/URL, and a harness run derives the same from its exclusion
+   string. Prompted by A0793/530, where Stage 2b searched `Nick Smith "Radiant Baby" Roseberys
+   lot 530 A0793 realised price sold`. Unit-tested on that exact query; the re-run did not
+   exercise it live because the model did not name the sale that time.
+4. **Stage 3 no longer treats the absent vision stage as a discount** — suffix clause G: Stage 1a
+   is off by design, the catalogue's condition wording IS the condition evidence and should be
+   priced, and a further deduction for "no physical examination" double-counts what the house's
+   own estimate already reflects. Partially effective on the re-run: A0793/168 went from -15% to
+   -5% but still names it. Worth another pass if it persists.
+
+**Found on the way and fixed:** an evidence block the model returns as a malformed JSON string
+used to survive as a string and then crash the lot in the cell writers ("Cannot create property
+'observedSheetMm' on string", Haiku, A0793/64). `normalizeEvidenceBlocks` now DROPS a string
+block that does not parse to a plain object, so it reads as absent; `applyObservedDims` and
+`applyCandidateFacts` refuse to write into a non-object block as a second line of defence.
+
+**Also tightened:** suffix clause D (liquidity). The measured base rates need three or more
+prior appearances and a sell-through below 50%; A0793/64's re-run converted "sold 1 of 2" into a
+-40% cut citing that clause. It now says what the measurement supports and what it does not.
+
+Observed, not yet acted on:
+- Stage 3's own reasoning is where a thin signal now reappears as a large adjustment (A0793/64's
+  -40% liquidity cut). The evidence block states thresholds; the prompt has to keep saying which
+  side of them the lot sits on.
 
 ## Housekeeping done 2026-09-13
 

@@ -51,6 +51,7 @@ import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
 import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery, queryArtistDinoFloor, resolveWorkIdentity } from "./knowledge_graph/index.js";
 import { assessComps, formatCompStorability, type CompStorabilityReport } from "./comp_storability.js";
+import { sanitizeSearchQuery, filterExcludedResults, hasRef, type ExcludedListingRef } from "./search_scope.js";
 import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
 import type { StyleConsistencyEvidence } from "./two_pass_attribution";
@@ -932,6 +933,14 @@ async function resolveLotWorkIds(
   }
 }
 
+/** The harness's prose exclusion string, read as a search-scope reference. */
+function refFromExcludedListing(raw: string | null | undefined): ExcludedListingRef | null {
+  const p = parseExcludedListing(raw);
+  if (!p.listingUrl && !p.saleLot) return null;
+  const house = raw?.match(/^\s*([A-Za-z][A-Za-z'&. ]{2,30}?)\s*,/)?.[1]?.trim() ?? null;
+  return { house, saleId: p.saleLot?.saleId ?? null, lotNumber: p.saleLot?.lotNumber ?? null, listingUrl: p.listingUrl };
+}
+
 function compactComparableForValuation(c: any) {
   return {
     tier: c.tier,
@@ -1260,6 +1269,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
      *  ACKG is indexed by, so it is used for any graph query about that same artist — see
      *  canonicalArtistForQuery for why a query about a different candidate is left alone. */
     stage2aIdentity?: { canonicalArtistName: string; alternateNames?: string[] } | null,
+    /** The lot's own listing. Its sale code, lot number and URL are kept OUT of every web
+     *  search — see search_scope.ts. Distinct from testingExcludeSourceListing above, which is
+     *  prose for the model and only ever set by a harness. */
+    excludeRef?: ExcludedListingRef | null,
   ): Promise<any> {
     const compatBaseUrl = anthropicCompatBaseUrl(modelName);
     const apiKey = compatBaseUrl
@@ -1373,8 +1386,15 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
             return { type: "tool_result", tool_use_id: b.id, content };
           }
           if (b.name === "web_search") {
-            const q = typeof b.input?.query === "string" ? b.input.query : "";
-            const r = await tavilySearch(q, { maxResults: SEARCH_MAX_RESULTS });
+            const asked = typeof b.input?.query === "string" ? b.input.query : "";
+            // The lot's own sale code / lot number never reach the search engine, and its own
+            // listing never reaches the model — a request in the prompt is not a filter.
+            const { query: q, removed } = sanitizeSearchQuery(asked, excludeRef);
+            if (removed.length) console.log(`[4-Stage] Stage 2b search scope: removed ${removed.join(", ")} from "${asked.slice(0, 80)}"`);
+            const raw = await tavilySearch(q, { maxResults: SEARCH_MAX_RESULTS });
+            const { results, dropped } = filterExcludedResults(raw.results, excludeRef);
+            if (dropped.length) console.log(`[4-Stage] Stage 2b search scope: dropped ${dropped.length} result(s) for this lot's own listing (${dropped.map((d) => d.url).join(", ").slice(0, 160)})`);
+            const r = { ...raw, results };
             console.log(`[4-Stage] Stage 2b web_search "${q.slice(0, 70)}": ${r.results.length} result(s)${r.error ? ` — ${r.error.slice(0, 60)}` : ""}`);
             return { type: "tool_result", tool_use_id: b.id, content: formatSearchForModel(r) };
           }
@@ -2983,7 +3003,11 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     appraiserInput?: AppraiserInputResult,
     /** Backtest-only; forwarded to the ACKG comparables tool so Stage 2b cannot be handed
      *  the very listing this input came from as a comparable. */
-    testingExcludeSourceListing?: string
+    testingExcludeSourceListing?: string,
+    /** The lot's own listing, kept out of every web search (search_scope.ts). Set on the
+     *  attributed-lot path from the catalogue claim, and on a harness run from the excluded
+     *  listing string — a production lot has one just as a backtest lot does. */
+    excludeRef?: ExcludedListingRef | null,
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
@@ -3031,7 +3055,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
     const result: AttributionResearchResult = isClaude(stage2bModel) || anthropicCompatBaseUrl(stage2bModel)
-      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing, triage.artistAttribution?.artistIdentity ?? null)
+      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing, triage.artistAttribution?.artistIdentity ?? null, excludeRef ?? refFromExcludedListing(testingExcludeSourceListing))
       : await this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
     await this.persistCatalogueRaisonneFinding(result);
     // Phase 0 of the comps write-back is a measurement, not a feature: nothing is written,
@@ -3736,7 +3760,11 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
       const t2b = Date.now();
       emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
       console.log(`[Timing] Stage 2b (Specialist) starting — model: ${stage2bModel}`);
-      attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing);
+      attr = await this.runStage2bSpecialist(
+        vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing,
+        // A production attributed lot has a listing too; the guard is not a testing feature.
+        { house: claim.house, saleId: claim.saleId, lotNumber: claim.lotNumber, listingUrl: claim.lotUrl },
+      );
       console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
       emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
     }

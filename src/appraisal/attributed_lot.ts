@@ -39,6 +39,7 @@ import type { AuctionComparable, ComparablesResult } from "./knowledge_graph/que
 import type { WorkFacts } from "./knowledge_graph/query_work_facts.js";
 import type { WorkIdentityBasis } from "./knowledge_graph/work_identity.js";
 import { foldAccents, normalizeTitleKey } from "./knowledge_graph/unaccent.js";
+import { isSurnameTypoVariant } from "./knowledge_graph/typo_tolerance.js";
 import { priceAttrsOfComparable, priceAttrsOfLot } from "./knowledge_graph/price_attrs.js";
 import { adjustmentBetween, type ArtistPriceProfile, type PriceAttrs } from "./knowledge_graph/artist_price_profile.js";
 import { mapTechniqueToAckgVocabulary } from "./stage2a_query_plan.js";
@@ -210,6 +211,8 @@ export interface AttributedLotVerification {
   edition: { claimedSize: number | null; cataloguedSizes: number[]; status: "agrees" | "unseen_edition" | "unassessable" };
   impressionDivergence: string | null;
   scenario: number | null;
+  /** A tree "conflict" that resolved to spelling variants of the claimed artist, if any. */
+  spellingNote: string | null;
   divergences: string[];
   verdict: "verified" | "partially_verified" | "divergent" | "unverifiable";
 }
@@ -225,7 +228,8 @@ const tokensOf = (s: string) => fold(s).replace(NAME_NOISE, " ").split(/\s+/).fi
  * equality, equality of their graph identities when both resolved, or — for the model's
  * abbreviated spellings ("G Braque", "P. Picasso") — the same surname with a compatible
  * first name or initial. An illegible or single-token read ("E. [illegible]") never matches:
- * one letter is not a name. This is a read-side comparison, never a merge rule.
+ * one letter is not a name. `sameArtist` below adds one typed slip in the surname. This is a
+ * read-side comparison, never a merge rule.
  */
 export function namesCompatible(a: string | null | undefined, b: string | null | undefined, canonicalA?: string | null, canonicalB?: string | null): boolean {
   if (!a || !b) return false;
@@ -243,6 +247,12 @@ export function namesCompatible(a: string | null | undefined, b: string | null |
   const fa = ta[0], fb = tb[0];
   if (fa === fb) return true;
   return (fa.length === 1 && fb.startsWith(fa)) || (fb.length === 1 && fa.startsWith(fb));
+}
+
+/** `namesCompatible`, plus a single typing slip in the surname — a house's catalogue is typed
+ *  by hand ("Storm Thorgeson" for the graph's "Thorgerson", Roseberys A0793/168). */
+export function sameArtist(a: string | null | undefined, b: string | null | undefined, canonicalA?: string | null, canonicalB?: string | null): boolean {
+  return namesCompatible(a, b, canonicalA, canonicalB) || isSurnameTypoVariant(a, b);
 }
 
 /** Citations in brackets and a trailing ", from <series>" removed, then normalised. */
@@ -324,6 +334,8 @@ export function verifyAttributedLot(input: {
   const { claim, canonicalArtist, triage, vea, stage1d, work, workFacts, treeArtistCanonical } = input;
   const qualifier: ArtistQualifier = claim.artistQualifier || "certain";
   const divergences: string[] = [];
+  /** Set when a tree "conflict" turned out to be two spellings of the claimed artist. */
+  let spellingNote: string | null = null;
 
   // artist
   const aa = triage?.artistAttribution ?? null;
@@ -331,8 +343,21 @@ export function verifyAttributedLot(input: {
   let artistStatus: AttributedLotVerification["artist"]["status"];
   if (!canonicalArtist) artistStatus = "not_in_graph";
   else if (!aa || aa.verdict === "not_attributed") artistStatus = "unresolved";
-  else if (aa.verdict === "conflict") { artistStatus = "diverges"; divergences.push(`artist: the evidence tree reports a CONFLICT (${aa.contradictingIdentities?.join(", ") || "competing identities"}) against the catalogue's "${claim.artist}"`); }
-  else if (treeArtist && !namesCompatible(treeArtist, claim.artist, treeArtistCanonical ?? null, canonicalArtist) && !sameName(treeArtist, canonicalArtist)) { artistStatus = "diverges"; divergences.push(`artist: the evidence tree attributes to "${treeArtist}", the catalogue says "${claim.artist}"`); }
+  else if (aa.verdict === "conflict") {
+    // A conflict between two SPELLINGS of the claimed artist is not a conflict about who made
+    // the print. It is a catalogue typo, and treating it as a divergence sends an otherwise
+    // clean lot to a specialist search (measured, A0793/168).
+    const contradicting = aa.contradictingIdentities ?? [];
+    const others = contradicting.filter((n) => !sameArtist(n, claim.artist, null, canonicalArtist) && !sameName(n, canonicalArtist));
+    if (contradicting.length > 0 && others.length === 0) {
+      artistStatus = "agrees";
+      spellingNote = `the evidence tree reported competing identities (${contradicting.join(", ")}) that are spelling variants of the catalogue's "${claim.artist}" — read as one artist`;
+    } else {
+      artistStatus = "diverges";
+      divergences.push(`artist: the evidence tree reports a CONFLICT (${others.join(", ") || "competing identities"}) against the catalogue's "${claim.artist}"`);
+    }
+  }
+  else if (treeArtist && !sameArtist(treeArtist, claim.artist, treeArtistCanonical ?? null, canonicalArtist) && !sameName(treeArtist, canonicalArtist)) { artistStatus = "diverges"; divergences.push(`artist: the evidence tree attributes to "${treeArtist}", the catalogue says "${claim.artist}"`); }
   else artistStatus = "agrees";
 
   // work
@@ -347,7 +372,7 @@ export function verifyAttributedLot(input: {
   const conf = stage1d?.matchConfidence ?? null;
   if (stage1d) {
     if (!bestArtist) imageStatus = "no_match";
-    else if (sameName(bestArtist, canonicalArtist) || namesCompatible(bestArtist, claim.artist, null, canonicalArtist)) {
+    else if (sameName(bestArtist, canonicalArtist) || sameArtist(bestArtist, claim.artist, null, canonicalArtist)) {
       const names = [...(work?.matchedNames ?? []), ...(workFacts?.names ?? []), claim.title ?? ""].filter(Boolean).map(normalizeTitleKey);
       imageStatus = bestTitle && names.includes(normalizeTitleKey(bestTitle)) ? "agrees" : "different_work_same_artist";
     } else if (conf === "HIGH") { imageStatus = "different_artist"; divergences.push(`image: the nearest catalogued image (DINOv2 ${dino?.toFixed(3) ?? "?"}, HIGH) is by "${bestArtist}", not "${claim.artist}"`); }
@@ -407,6 +432,7 @@ export function verifyAttributedLot(input: {
     edition: { claimedSize: claim.editionSize ?? null, cataloguedSizes: sizes, status: editionStatus },
     impressionDivergence: impDiv,
     scenario,
+    spellingNote,
     divergences,
     verdict,
   };
@@ -514,6 +540,41 @@ export function synthesizeAttributionResult(input: {
 /** Measured 2026-09-13 on 2 x 2,500 Roseberys/Forum lots (plan step 1). */
 export const ESTIMATE_DRIFT = 0.82;
 
+/** A lone same-work comp older than this is history, not a read on today's market: the
+ *  divergence base rates were measured over lots whose comps sat inside the sale's own
+ *  10-year window, and a single stale sale is the thinnest possible slice of that. Roseberys
+ *  A0793/64 cut 41% off the anchor on one 2017 hammer. */
+export const LONE_COMP_MAX_AGE_YEARS = 3;
+
+/** Years between an ISO date and the lot's sale (or today, for an upcoming lot). */
+export function compAgeYears(compDate: string | null | undefined, saleDate: string | null | undefined): number | null {
+  if (!compDate) return null;
+  const t = Date.parse(compDate.slice(0, 10));
+  if (Number.isNaN(t)) return null;
+  const ref = saleDate ? Date.parse(saleDate.slice(0, 10)) : Date.now();
+  if (Number.isNaN(ref)) return null;
+  return (ref - t) / (365.25 * 24 * 3600 * 1000);
+}
+
+/**
+ * Does the same-work comp set carry a directional signal at all?
+ *
+ * Two or more prior sales always do. ONE does only when it is recent: the measured base rates
+ * ("comps >1.5x the anchor -> 33% above high", "<0.67x -> 62% below low") come from a bucket
+ * analysis over lots with same-work comps, and a single sale from years ago is a weaker
+ * instrument than that analysis ever tested. Below the bar the comp is still shown to Stage 3
+ * as evidence — it just does not arrive labelled as a directional flag.
+ */
+export function divergenceSignalUsable(comps: { saleDate: string | null }[], saleDate: string | null | undefined): { usable: boolean; reason: string } {
+  if (comps.length >= 2) return { usable: true, reason: `${comps.length} prior sales` };
+  if (comps.length === 0) return { usable: false, reason: "no same-work sales" };
+  const age = compAgeYears(comps[0].saleDate, saleDate);
+  if (age == null) return { usable: false, reason: "the single prior sale carries no date" };
+  return age <= LONE_COMP_MAX_AGE_YEARS
+    ? { usable: true, reason: `one prior sale, ${age.toFixed(1)} years old` }
+    : { usable: false, reason: `the only prior sale is ${age.toFixed(1)} years old (over ${LONE_COMP_MAX_AGE_YEARS})` };
+}
+
 /** The lot's pricing attributes by the trainer's rules — plate/image dimensions before sheet,
  *  as train_price_model.dims_cm reads them, so a comp and the lot are banded the same way. */
 export function lotPriceAttrs(claim: CatalogueAttribution): PriceAttrs {
@@ -583,7 +644,7 @@ export function buildAttributedLotValuationBlock(input: {
   }
 
   lines.push(`  VERIFICATION (verdict: ${v.verdict.toUpperCase()}):`);
-  lines.push(`    artist   : ${v.artist.status}${v.artist.canonical ? ` — graph identity "${v.artist.canonical}"` : ""}; evidence tree ${v.artist.treeVerdict ?? "n/a"}/${v.artist.treeConfidence ?? "-"}${v.artist.qualifier !== "certain" ? ` [QUALIFIED: ${v.artist.qualifier}]` : ""}`);
+  lines.push(`    artist   : ${v.artist.status}${v.artist.canonical ? ` — graph identity "${v.artist.canonical}"` : ""}; evidence tree ${v.artist.treeVerdict ?? "n/a"}/${v.artist.treeConfidence ?? "-"}${v.artist.qualifier !== "certain" ? ` [QUALIFIED: ${v.artist.qualifier}]` : ""}${v.spellingNote ? `; ${v.spellingNote}` : ""}`);
   lines.push(`    work     : ${v.work.status}${v.work.resolvedName ? ` — "${v.work.resolvedName}" via ${v.work.basis}${v.work.via === "image_match" ? " (node named by the Stage 1d image match, resolved by exact title)" : ""}${v.work.impressionCount != null ? `, ${v.work.impressionCount} recorded impressions` : ""}` : ""}${v.work.ambiguousAt ? ` (ambiguous at ${v.work.ambiguousAt})` : ""}`);
   lines.push(`    image    : ${v.image.status}${v.image.bestArtist ? ` — nearest "${v.image.bestArtist}"${v.image.bestTitle ? ` / "${v.image.bestTitle}"` : ""}${v.image.dino != null ? ` DINOv2 ${v.image.dino.toFixed(3)}` : ""}${v.image.confidence ? ` ${v.image.confidence}` : ""}` : ""}`);
   lines.push(`    technique: ${v.technique.status} — observed ${v.technique.observed ?? "n/a"}; catalogued ${v.technique.catalogued.join("/") || "n/a"}; house says ${v.technique.claimed ?? "n/a"}`);
@@ -599,10 +660,13 @@ export function buildAttributedLotValuationBlock(input: {
     lines.push(`  SAME-WORK HAMMER EVIDENCE: ${sw.length} prior sale(s) of this work, median hammer ${swMed != null ? gbp(swMed) : "n/a"} GBP, range ${swHammers.length ? `${gbp(Math.min(...swHammers))} - ${gbp(Math.max(...swHammers))}` : "n/a"}, latest ${comps?.summary.latestSale ?? "?"}.`);
     if (mid && swMed != null) {
       const r = swMed / (mid * ESTIMATE_DRIFT);
-      const flag = r > 1.5 ? "COMPS WELL ABOVE the estimate (>1.5x the drift anchor): on Roseberys such lots went above the high estimate 33% of the time (base 19%) and unsold 9% (base 22%); on Forum the buckets barely moved."
+      const signal = divergenceSignalUsable(sw, claim.saleDate);
+      const flag = !signal.usable
+        ? `NOT a directional signal — ${signal.reason}. Treat this sale as one data point about the work, not as evidence that the house has mispriced the lot; stay near the anchor unless something else moves you.`
+        : r > 1.5 ? "COMPS WELL ABOVE the estimate (>1.5x the drift anchor): on Roseberys such lots went above the high estimate 33% of the time (base 19%) and unsold 9% (base 22%); on Forum the buckets barely moved."
         : r < 0.67 ? "COMPS WELL BELOW the estimate (<0.67x the drift anchor): on Roseberys 62% of such lots hammered below the low estimate (base 36%)."
         : "comps in line with the estimate (0.67-1.5x the drift anchor): no directional signal beyond the anchor.";
-      lines.push(`    divergence flag: same-work median / drift anchor = ${r.toFixed(2)} — ${flag}`);
+      lines.push(`    same-work median / drift anchor = ${r.toFixed(2)} — ${flag}`);
     }
     const lotAttrs = lotPriceAttrs(claim);
     const diffs = sw.slice(0, 8).map((c) => {

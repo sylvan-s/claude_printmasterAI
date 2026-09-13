@@ -12,6 +12,7 @@ export { queryArtistPriceProfile, adjustmentBetween, editionBand, areaBand, peri
 export type { ArtistPriceProfile, PriceAttrs, PriceAdjustment, PriceProfileBasis, SignatureClass, ProofClass, EditionBand, AreaBand } from "./artist_price_profile.js";
 export { priceAttrsOfComparable, priceAttrsOfLot, signatureClass, proofClass, editionSizeOf, dimsCm, primaryProcess, PROCESSES } from "./price_attrs.js";
 export { queryWorkFacts } from "./query_work_facts.js";
+export { isTypoVariant, isSurnameTypoVariant, isDesignatorToken, osaDistanceAtMost } from "./typo_tolerance.js";
 export type { WorkFacts } from "./query_work_facts.js";
 export { lookupArtistNames } from "./artist_lookup.js";
 export type { ArtistLookup, ArtistLookupVia } from "./artist_lookup.js";

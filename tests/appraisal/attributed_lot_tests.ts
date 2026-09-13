@@ -9,6 +9,7 @@ import {
   mergeClaimIntoAppraiserInput, verifyAttributedLot, routeAttributedLot, synthesizeAttributionResult,
   buildAttributedLotValuationBlock, describeCompDifferences, lotPriceAttrs, primaryDimension, emptyAppraiserInput,
   namesCompatible, workTitleFromImageMatch, deriveMisattributionRisk,
+  sameArtist, divergenceSignalUsable, compAgeYears,
   type CatalogueAttribution, type WorkResolution,
 } from "../../src/appraisal/attributed_lot";
 import type { TriageResult, Stage1dResult, VisualExtractionResult } from "../../src/types";
@@ -120,7 +121,7 @@ console.log("Stage 3 block + comp differences");
   const comps = { comparables: [comp as any, { ...comp, hammerPriceGBP: 9000, saleDate: "2025-01-01" } as any], summary: { count: 2, tierCounts: { same_work: 2, same_artist_technique: 0, same_artist: 0 }, medianGBP: 6500, medianHammerGBP: 7000, medianSameWorkHammerGBP: 7000, minGBP: 6500, maxGBP: 6500, earliestSale: "2024-03-01", latestSale: "2025-01-01" }, coverageNote: "" };
   const block = buildAttributedLotValuationBlock({ claim, verification: v, routing: routeAttributedLot(v, 2), comps, workFacts: facts });
   ok("block names the drift anchor", block.includes("midpoint x 0.82 = 4,100"));
-  ok("block carries the divergence flag", /divergence flag: same-work median \/ drift anchor = 1\.71 — COMPS WELL ABOVE/.test(block));
+  ok("block carries the divergence flag", /same-work median \/ drift anchor = 1\.71 — COMPS WELL ABOVE/.test(block));
   ok("block carries liquidity", block.includes("sold 5, unsold 2 (71% sell-through)"));
   ok("block says 2b skipped", block.includes("Stage 2b SKIPPED"));
   ok("block lists the comp difference as a fact", block.includes("signature hand vs lot unsigned"));
@@ -162,6 +163,41 @@ console.log("deriveMisattributionRisk");
   eq("flag kept when VEA reads another name", deriveMisattributionRisk({ ...base, artistEvidence: { ...base.artistEvidence, veaArtistName: "Marc Chagall" } }, claim, "Pablo Picasso").keep, true);
   eq("VEA abbreviated spelling of the claimed artist is not 'someone else'", deriveMisattributionRisk({ ...base, artistEvidence: { ...base.artistEvidence, veaArtistName: "P. Picasso" } }, claim, "Pablo Picasso").keep, false);
   eq("not flagged stays not flagged", deriveMisattributionRisk({ ...base, riskFlags: { misattributionRisk: false } }, claim, "Pablo Picasso").keep, false);
+}
+
+console.log("sameArtist — one typed slip in the surname");
+{
+  ok("catalogue typo", sameArtist("Storm Thorgeson", "Storm Thorgerson"));
+  ok("transposition", sameArtist("Graham Sutherand", "Graham Sutherland") || sameArtist("Peter Blakr", "Peter Blake"));
+  ok("still covers the initial case", sameArtist("G Braque", "Georges Braque"));
+  ok("different surname is not a slip", !sameArtist("Georges Braque", "Georges Bracque".replace("Bracque", "Rouault")));
+  ok("same surname, different forename", !sameArtist("Paloma Picasso", "Pablo Picasso"));
+  ok("illegible", !sameArtist("E. [illegible]", "Edvard Munch"));
+  const conflict = triage({ verdict: "conflict", artistName: null, confidence: null, contradictingIdentities: ["Storm Thorgeson", "Storm Thorgerson"] });
+  const spelling = verifyAttributedLot({ claim: { ...claim, artist: "Storm Thorgeson", title: "Metal Heads" }, canonicalArtist: "Storm Thorgerson", triage: conflict, vea: vea(null), stage1d: null, work: null, workFacts: null });
+  eq("a conflict between two spellings is not a divergence", [spelling.artist.status, spelling.divergences.length], ["agrees", 0]);
+  ok("and it is reported", !!spelling.spellingNote);
+  const real = triage({ verdict: "conflict", artistName: null, confidence: null, contradictingIdentities: ["Pablo Picasso", "Georges Braque"] });
+  const realV = verifyAttributedLot({ claim, canonicalArtist: "Pablo Picasso", triage: real, vea: vea(null), stage1d: null, work, workFacts: facts });
+  eq("a real competing identity still diverges", realV.artist.status, "diverges");
+}
+
+console.log("divergenceSignalUsable — a lone stale comp is not a signal");
+{
+  const c = (d: string) => ({ saleDate: d });
+  eq("two comps always count", divergenceSignalUsable([c("2017-01-01"), c("2018-01-01")], "2026-09-23").usable, true);
+  eq("one recent comp counts", divergenceSignalUsable([c("2025-01-01")], "2026-09-23").usable, true);
+  eq("one stale comp does not", divergenceSignalUsable([c("2017-03-22")], "2026-09-23").usable, false);
+  eq("one undated comp does not", divergenceSignalUsable([{ saleDate: null }], "2026-09-23").usable, false);
+  eq("none does not", divergenceSignalUsable([], "2026-09-23").usable, false);
+  eq("an upcoming lot measures against today", divergenceSignalUsable([c(new Date().toISOString().slice(0, 10))], null).usable, true);
+  ok("age is measured against the lot's own sale", Math.abs((compAgeYears("2017-03-22", "2026-09-23") ?? 0) - 9.5) < 0.1);
+  // The A0793/64 shape: one 2017 hammer at 0.59x the anchor must not arrive as a directional flag.
+  const old = { tier: "same_work", institutionName: "Bonhams", saleDate: "2017-03-22", saleId: "x", lotNumber: 1, workTitle: "Le Repas frugal", techniques: ["Etching"], editionSize: 250, signed: false, rawMedium: "etching", copyType: null, plateDimensions: null, imageDimensions: null, sheetDimensions: null, priceRealisedGBP: 845, hammerPriceGBP: 650, priceCurrency: "GBP", priceRealisedNative: 845, fxRateDate: null, estimateLowGBP: null, estimateHighGBP: null, listingUrl: null };
+  const v2 = verifyAttributedLot({ claim, canonicalArtist: "Pablo Picasso", triage: triage(), vea: vea("Etching"), stage1d: null, work, workFacts: facts });
+  const b = buildAttributedLotValuationBlock({ claim, verification: v2, routing: routeAttributedLot(v2, 1), comps: { comparables: [old as any], summary: { count: 1, tierCounts: { same_work: 1, same_artist_technique: 0, same_artist: 0 }, medianGBP: 845, medianHammerGBP: 650, medianSameWorkHammerGBP: 650, minGBP: 845, maxGBP: 845, earliestSale: "2017-03-22", latestSale: "2017-03-22" }, coverageNote: "" }, workFacts: facts });
+  ok("a lone 2017 comp is labelled NOT a directional signal", /NOT a directional signal/.test(b));
+  ok("and the comp is still shown", /2017-03-22 Bonhams hammer 650/.test(b));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

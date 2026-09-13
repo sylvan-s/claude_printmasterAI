@@ -15,6 +15,7 @@
  * Run the tests: npm run test:two-pass
  */
 import { Scenario, SCENARIO_NAMES } from "./routing";
+import { isTypoVariant } from "./knowledge_graph/typo_tolerance.js";
 // HONORIFICS lives in src/shared so the blind-mode leak detectors in benchmark/
 // share one vocabulary with this matcher rather than drifting copies.
 import { HONORIFICS, NATIONALITY_WORDS } from "../shared/text_extraction";
@@ -133,7 +134,24 @@ export function nameSimilarity(a: string, b: string): number {
   const tb = new Set(normalizeName(b).tokens);
   if (ta.size === 0 || tb.size === 0) return 0;
   let inter = 0;
-  for (const t of ta) if (tb.has(t)) inter++;
+  const unmatchedA: string[] = [], unmatchedB = new Set(tb);
+  for (const t of ta) {
+    if (tb.has(t)) { inter++; unmatchedB.delete(t); } else unmatchedA.push(t);
+  }
+  // One typed slip per name, and only ever one: two sources naming the same person routinely
+  // disagree by a character, because one of them is a house's hand-typed catalogue. Measured
+  // on Roseberys A0793/168 — the catalogue's "Storm Thorgeson" against the graph's "Storm
+  // Thorgerson" scored 0.5 here, below TAU_NAME, so the tree reported a CONFLICT between two
+  // spellings of one man and routed an otherwise clean lot to Scenario 5. isTypoVariant
+  // refuses anything where a numeral differs, so "Henry VIII" cannot become "Henry VII".
+  // This is evidence FUSION over one object, never a graph merge — see typo_tolerance.ts.
+  let slipUsed = false;
+  for (const t of unmatchedA) {
+    if (slipUsed) break;
+    for (const u of unmatchedB) {
+      if (isTypoVariant(t, u)) { inter++; unmatchedB.delete(u); slipUsed = true; break; }
+    }
+  }
   return inter / Math.min(ta.size, tb.size);
 }
 

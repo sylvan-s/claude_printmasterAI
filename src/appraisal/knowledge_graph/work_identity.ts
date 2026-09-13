@@ -47,10 +47,11 @@
  * basis is reported with the result so a caller can weight it.
  */
 import { getDriver, getDatabase } from "./client.js";
+import { isTypoVariant } from "./typo_tolerance.js";
 import { foldAccents, normalizeTitleKey } from "./unaccent.js";
 import { isLowInformationTitle } from "./title_normalize.js";
 
-export type WorkIdentityBasis = "exact_title" | "citation" | "citation_and_title" | "stripped_title" | "stripped_no_series";
+export type WorkIdentityBasis = "exact_title" | "citation" | "citation_and_title" | "stripped_title" | "stripped_no_series" | "typo_title";
 
 export interface WorkIdentity {
   workIds: string[];
@@ -320,6 +321,16 @@ export async function resolveWorkIdentity(input: {
   if (keyNoSeries) {
     const sideKey = (t: string) => titleIdentityKeyNoSeries(t) || titleIdentityKey(t);
     const r = finish("stripped_no_series", decide("stripped_no_series", works.filter((w) => namesOf(w).some((t) => sideKey(t) === keyNoSeries)), (w) => titleIdentityKey(w.name)));
+    if (r) return r;
+  }
+  // 5. LAST, and only after every exact level has missed: one typing slip in the title.
+  //    A house's catalogue is typed by hand and a single wrong character ("Clegry Boia" for
+  //    "Clegyr Boia", Roseberys A0793/67) otherwise costs a specialist web search to recover.
+  //    isTypoVariant refuses anything where a plate/state designator differs, so series
+  //    siblings cannot be reached this way. Read-side evidence only; it never merges.
+  if (keyIdentifying) {
+    const hit = works.filter((w) => namesOf(w).some((t) => isTypoVariant(titleIdentityKey(t), key)));
+    const r = finish("typo_title", decide("typo_title", hit, (w) => titleIdentityKey(w.name)));
     if (r) return r;
   }
   return base;
