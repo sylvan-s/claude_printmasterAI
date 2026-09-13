@@ -1,0 +1,68 @@
+{
+  "results": {
+    "F0": {
+      "Aquatint": {
+        "artist_bal_F1": 0.57667475938797,
+        "artist_bal_AP": 0.5359367578017132,
+        "threshold": 0.2,
+        "positives": 299
+      },
+      "Drypoint": {
+        "artist_bal_F1": 0.5443419218063354,
+        "artist_bal_AP": 0.49593994072218617,
+        "threshold": 0.3,
+        "positives": 300
+      }
+    },
+    "F1": {
+      "Aquatint": {
+        "artist_bal_F1": 0.5687491297721863,
+        "artist_bal_AP": 0.5461541885593297,
+        "threshold": 0.25,
+        "positives": 299
+      },
+      "Drypoint": {
+        "artist_bal_F1": 0.5609480738639832,
+        "artist_bal_AP": 0.5334205363031733,
+        "threshold": 0.2,
+        "positives": 300
+      }
+    },
+    "F2": {
+      "Aquatint": {
+        "artist_bal_F1": 0.6548386216163635,
+        "artist_bal_AP": 0.6731401474189578,
+        "threshold": 0.3,
+        "positives": 299
+      },
+      "Drypoint": {
+        "artist_bal_F1": 0.7095406651496887,
+        "artist_bal_AP": 0.7452888579580779,
+        "threshold": 0.3,
+        "positives": 300
+      }
+    },
+    "F3": {
+      "Aquatint": {
+        "artist_bal_F1": 0.646430253982544,
+        "artist_bal_AP": 0.6804444181651212,
+        "threshold": 0.49999999999999994,
+        "positives": 299
+      },
+      "Drypoint": {
+        "artist_bal_F1": 0.7025171518325806,
+        "artist_bal_AP": 0.7510627820184714,
+        "threshold": 0.39999999999999997,
+        "positives": 300
+      }
+    }
+  },
+  "n_images": 899,
+  "n_artists": 348,
+  "px_per_mm_median": 5.6,
+  "by_bucket": {
+    "etching": 300,
+    "aquatint": 299,
+    "drypoint": 300
+  }
+}
