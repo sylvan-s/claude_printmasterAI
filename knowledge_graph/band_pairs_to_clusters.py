@@ -121,7 +121,7 @@ def main():
     finally:
         driver.close()
 
-    uf, meta = UnionFind(), {}
+    uf, meta, confidences = UnionFind(), {}, {}
     kept = stale = vetoed = 0
     for r in band:
         a, b = r["workA"], r["workB"]
@@ -137,6 +137,19 @@ def main():
                              "year": r.get("yearA") or None,
                              "weight": r.get("matchWeight", ""),
                              "cat": r.get("catalogueVerdict", "")}
+        # A MODEL DECISION HAS TO CARRY ITS SCORE. Schema § 11 requires `confidence` whenever
+        # decidedBy = 'model', and the merger reads it off the cluster — which this script never
+        # wrote, so a visualAdjudication merge built here would have produced model decisions
+        # with no score attached. Where a cluster spans several adjudicated pairs the MINIMUM is
+        # taken: the cluster is only as well-evidenced as its weakest link.
+        if r.get("confidence"):
+            try:
+                seen = confidences.get(a)
+                confidences[a] = confidences[b] = (
+                    float(r["confidence"]) if seen is None
+                    else min(seen, float(r["confidence"])))
+            except ValueError:
+                pass
 
     components = defaultdict(list)
     for node in list(uf.parent):
@@ -154,6 +167,8 @@ def main():
             "workIds": sorted(members), "size": len(members),
             "corroborator": f"{args.label}; catalogue {cat}",
             "matchWeight": m["weight"],
+            **({"confidence": min(confidences[x] for x in members if x in confidences)}
+               if any(x in confidences for x in members) else {}),
         })
     clusters.sort(key=lambda c: (-c["size"], c["artist"]))
     with open(args.out, "w", encoding="utf-8") as fh:
