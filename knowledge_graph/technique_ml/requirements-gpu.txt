@@ -1,0 +1,7 @@
+# ADR-0019 Phase 2 extraction box. torch comes from the box image (CUDA build); pin the rest
+# to what was verified locally on 2026-09-13.
+transformers==4.57.6
+pillow>=11
+numpy>=2
+requests
+huggingface_hub

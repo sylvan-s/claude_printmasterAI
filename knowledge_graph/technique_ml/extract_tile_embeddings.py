@@ -1,6 +1,6 @@
 """
 PrintMasterAI — ADR-0019 Phase 2: tile embeddings at a fixed physical scale.
-Version: TECHML-PHASE2-EXTRACT-1.2
+Version: TECHML-PHASE2-EXTRACT-1.3
 
 Runs on a rented GPU box (or locally on MPS for smoke tests) from a manifest written by
 export_phase2_manifest.py. Needs no graph access — only the manifest, network access to
@@ -18,7 +18,7 @@ Steps 1–3 are pure-Python/PIL and GIL-bound (the first pod run pinned one core
 with the GPU at 4%), so they run in a process pool; only step 4 runs in the main process.
 
 Output is shards of 500 images under --out-dir:
-  tiles_NNNN.npz   image_ids, primary_cls [n,16,1024] f16, fine_cls [n,16,1024] f16
+  tiles_NNNN.npz   image_ids, primary_cls [n,16,1024] f32, fine_cls [n,16,1024] f32
                    (zeros where absent), has_fine [n], primary_strata / fine_strata [n,16]
                    (index into STRATA_NAMES), primary_px_per_mm / fine_px_per_mm [n]
   tiles_NNNN.meta.jsonl   one line per image: imageId, box, native/used px/mm, tile counts
@@ -131,7 +131,10 @@ def load_encoder(name, device):
     import torch
     from transformers import AutoImageProcessor, AutoModel
     proc = AutoImageProcessor.from_pretrained(name)
-    dtype = torch.float16 if device == "cuda" else torch.float32
+    # fp32 everywhere: DINOv3 ViT-L in fp16 on CUDA returned NaN for every CLS vector on the
+    # first pilot run (65,412/65,412 tiles). The GPU is nowhere near the bottleneck, so fp32
+    # costs nothing that matters. Shards are stored fp32 for the same reason.
+    dtype = torch.float32
     model = AutoModel.from_pretrained(name, dtype=dtype).to(device).eval()
     mean = torch.tensor(proc.image_mean, dtype=dtype).view(1, 3, 1, 1).to(device)
     std = torch.tensor(proc.image_std, dtype=dtype).view(1, 3, 1, 1).to(device)
@@ -139,13 +142,16 @@ def load_encoder(name, device):
 
 
 def encode(enc, tiles):
-    """[n,224,224,3] uint8 -> [n, DIM] float16 CLS."""
+    """[n,224,224,3] uint8 -> [n, DIM] float32 CLS. Raises if any value is non-finite."""
     import torch
     x = torch.from_numpy(tiles).permute(0, 3, 1, 2).to(enc["device"]).to(enc["dtype"]).div(255)
     x = (x - enc["mean"]) / enc["std"]
     with torch.no_grad():
         h = enc["model"](pixel_values=x).last_hidden_state[:, 0, :]
-    return h.float().cpu().numpy().astype(np.float16)
+    out = h.float().cpu().numpy().astype(np.float32)
+    if not np.isfinite(out).all():
+        raise RuntimeError(f"non-finite embedding ({int((~np.isfinite(out)).sum())} values) — encoder dtype/overflow problem")
+    return out
 
 
 class ShardWriter:
@@ -166,7 +172,7 @@ class ShardWriter:
         if not self.buf:
             return
         n = len(self.buf)
-        pk, fk = np.zeros((n, N_TILES, DIM), np.float16), np.zeros((n, N_TILES, DIM), np.float16)
+        pk, fk = np.zeros((n, N_TILES, DIM), np.float32), np.zeros((n, N_TILES, DIM), np.float32)
         ps, fs = np.full((n, N_TILES), -1, np.int8), np.full((n, N_TILES), -1, np.int8)
         pp, fp = np.zeros(n, np.float32), np.zeros(n, np.float32)
         has_fine = np.zeros(n, bool)

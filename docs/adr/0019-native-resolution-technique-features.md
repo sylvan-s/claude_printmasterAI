@@ -292,6 +292,41 @@ costs at most one 500-image shard. `failures.jsonl` records anything skipped and
 Per-tile vectors stay in the shards for the Phase 4 attention-MIL head; only the pooled
 vectors go into the graph.
 
+#### Pilot run (2026-09-13) — what actually happened
+
+4,959-image intaglio manifest (etching / aquatint / drypoint / engraving / mezzotint at
+≥ 5 px/mm, 40 per artist–technique, 782 artists). Result: **4,784 images extracted, 1,515
+with the fine scale, 175 excluded** ("print area smaller than one tile" — small prints at the
+40 mm scale, not errors). Shards: 301 MB in `technique_ml/data/tiles_pilot/`. Steady-state
+**10 img/s** on an RTX 4090 pod; the whole run was 8 minutes of GPU time, total spend under
+$2 including the false starts below. Scripts: `runpod_pod.py` (create / wait / terminate over
+the REST API), `pod_bootstrap.sh`, `pod_collect.sh`, `pod_cpu_test.py`.
+
+Lessons that are now baked into those scripts, in the order they cost time:
+
+1. **The bottleneck is CPU, not GPU.** Decode of a 4000×5800 WebP is 2.7–3.8 s, the primary
+   tiles 1–2.6 s, the fine-scale window statistics 3.7–6.5 s; the GPU encode is negligible.
+   Preprocessing runs in a `spawn` process pool created *before* torch loads (forking after
+   the encoder is initialised inherits its OpenMP state and the children stall).
+   `stratified_tiles()` now uses integral images and a BOX downsample.
+2. **RunPod hosts differ enormously in real CPU.** An EU-RO-1 L4 pod advertised 48 vCPUs, had
+   a 5.1-core cgroup quota, and delivered **2.7 effective cores ~8× slower than an M1 core** —
+   0.3 img/s and unfixable in code. A US-NC-1 RTX 4090 pod: 13.6 effective M1-class cores.
+   `pod_bootstrap.sh` measures effective cores and refuses to launch under 6.
+3. **SSH key injection is `PUBLIC_KEY`**, not the documented `SSH_PUBLIC_KEY`; the helper
+   passes both. The stock image has no `rsync`; collection is a tar stream over SSH.
+4. **Copy → verify → terminate are three separate steps.** The first successful run's shards
+   were lost because the terminate was chained after a failed copy with `;`. `pod_collect.sh`
+   verifies shard shapes, uniqueness and non-empty rows and prints `SAFE-TO-TERMINATE`;
+   nothing terminates a pod automatically.
+5. The HF token lives in `~/.cache/huggingface/token` (from `huggingface-cli login`), not in
+   `.env`; it is streamed to the box over stdin and is the only secret the box ever holds.
+
+For the full-corpus run (~50k images) the same box class gives ~1.5 h; the remaining CPU
+cost is the WebP/JPEG decode and the fine-scale statistics, which could be halved with
+`pillow-simd`/libvips and by computing the fine-scale window statistics on a downsampled
+copy. Not needed for the pilot.
+
 ### Phase 3 — label repair
 
 - Collapse naming-only distinctions: Giclée / Inkjet / Pigment / Digital print → one inkjet
@@ -327,6 +362,49 @@ vectors go into the graph.
   features have learned the camera again.
 - Target: aquatint, drypoint, mezzotint, wood engraving, linocut and offset lithograph clear
   the escalation gate (7 of 21 techniques do today).
+
+#### Phase 4 pilot result (2026-09-13) — `train_tile_head.py`, `artifacts/tile_head_pilot.json`
+
+Multi-label heads over the pilot shards: 4,784 intaglio images, 769 artists, 5-fold
+artist-grouped CV, thresholds tuned on held-out training artists. Positives: etching 3,733 /
+aquatint 1,518 / drypoint 816 / engraving 614. Artist-balanced F1 / AP:
+
+| Head | Etching | Aquatint | Drypoint | Engraving |
+|---|---|---|---|---|
+| POOLED: mean ⊕ max of 16 primary tiles → MLP | 0.885 / 0.892 | **0.634 / 0.641** | **0.388 / 0.312** | **0.652 / 0.653** |
+| MIL: gated attention over primary tiles | 0.879 / 0.891 | 0.628 / 0.602 | 0.357 / 0.286 | 0.626 / 0.624 |
+| MIL+FINE: fine-scale tiles as extra instances with a scale embedding | 0.887 / 0.888 | 0.618 / 0.619 | 0.372 / 0.266 | 0.589 / 0.659 |
+| "always yes" F1 at this prevalence | 0.876 | 0.485 | 0.291 | 0.228 |
+
+Source-institution probe on the pooled features: 0.757 against a 0.384 majority baseline over
+eight institutions (the old figure, 0.907 / 0.734, was over three, so only the excess is
+comparable — and it has grown, not shrunk).
+
+What this says, plainly:
+
+1. **Engraving and aquatint are learned; etching is barely above trivial; drypoint is weak.**
+   Engraving at 0.65 F1 on 13% prevalence and aquatint at 0.63 on 32% are real signal.
+   Etching at 78% prevalence is nearly the "always yes" answer.
+2. **Neither attention-MIL nor the fine scale helped here**, in direct contradiction of the
+   Phase 0b subset result for the fine scale. The MIL heads were trained for 40 mini-batch
+   epochs at 5e-4 and may be under-trained; that is untested and is the first cheap check.
+3. **The tiling pipeline is not to blame.** On the 334 images shared with Phase 0, the same
+   head on Phase 0b's central-grid DINOv3 tiles vs the pilot's localised, stratified tiles
+   scores aquatint 0.575/0.527 vs 0.612/0.517 and drypoint 0.579/0.542 vs 0.537/0.482 —
+   equivalent within noise.
+4. **Drypoint's fall from 0.76 to 0.39 is the task framing.** Phase 0 posed a balanced
+   etching-only vs drypoint(±etching) question with 300 positives; here drypoint is 17% of a
+   multi-label intaglio set, the positives are mostly etching+drypoint accents, and the
+   negatives include aquatints and engravings. The research note's expectation — that
+   drypoint-as-accent and pre-1860 worn burr carry an irreducible error — applies in full.
+   The per-period split the ADR asked for has not been run yet.
+
+Next steps, in the order they are worth doing: (a) MIL with proper training budget and a
+learning-rate sweep — cheap, and it decides whether attention is dead or under-fed; (b) a
+hierarchical framing for drypoint — pure etching vs etching+drypoint, negatives restricted to
+etching-only, which is the question the burr actually answers; (c) the pre-/post-1860 and
+pure-vs-combined splits of the drypoint metric; (d) a VLM baseline on the same images with
+artist and text removed, to put a number on what a frontier model reads from pixels alone.
 
 ### Phase 5 — product implication
 
