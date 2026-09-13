@@ -1,7 +1,7 @@
 """
 PrintMasterAI — a database of price-feature elasticities per artist, with priors from similar
 artists where an artist's own sales are too few to estimate them.
-Version: PRICING-PRIORS-1.0
+Version: PRICING-PRIORS-1.1
 
 The transfer test (transfer_test.py) showed the multipliers are artist-specific: a signed
 premium of x2.2 for Picasso and x1.5 for Rembrandt, an edition-size effect that INVERTS between
@@ -21,6 +21,21 @@ What is stored (priors/artist_elasticities.json + neighbours.csv):
   level), the prior it was shrunk toward, the kappa, the neighbours that formed the prior, the
   artist's price level (intercept on deflated log hammer), and the descriptor vector.
 
+Since 1.1 there are three tiers of artist, by how many earlier sales they have:
+  >= MIN_OWN (15)   own fit shrunk toward the neighbour prior            basis "shrunk"
+  >= MIN_DESC (5)   the neighbour prior outright — the few sales are enough to place the
+                    artist in descriptor space (price level, signed share, technique mix,
+                    period, nationality) and pick donors, not enough to fit 33 coefficients
+                                                                          basis "prior"
+  < MIN_DESC        nothing per artist; the READER falls back to a SEGMENT DEFAULT keyed on
+                    nationality group x period (segment_defaults in the JSON), the
+                    sqrt(n)-weighted mean of the stored elasticities of the artists in that
+                    segment. Keys are "<nat>|<period>" with "any" marginals and "any|any" as
+                    the global fallback; `segment_key()` defines the grouping and the graph
+                    reader (artist_price_profile.ts) mirrors it.
+`built_at` stamps the build; write_price_priors.py uses it as the run id and
+check_price_priors_fresh.py compares it against the latest ingest/merge in the graph.
+
 Elasticities are read off a log-linear model with reference levels dropped, on log hammer
 DEFLATED by pooled sale-year effects, so an artist's fit is about attributes and not about
 when their lots happened to sell. Continuous terms are elasticities per doubling.
@@ -38,6 +53,7 @@ import json
 import math
 import os
 import sys
+from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
@@ -54,6 +70,8 @@ REFS = {"signature": "unsigned", "proof": "numbered", "edition_band": "76-150", 
 CONT = ["edition_log", "area_log"]
 MIN_LEVEL_ROWS = 3        # an artist's own coefficient for a level is trusted only with this many rows on it
 MIN_OWN = 15              # below this many earlier sales an artist gets the prior outright
+MIN_DESC = 5              # below this many earlier sales there is no per-artist entry at all (segment default)
+MIN_SEGMENT_ARTISTS = 3   # a segment default needs at least this many artists behind it
 DONOR_MIN = 100           # neighbours are drawn from artists with at least this many earlier sales
 K_NEIGHBOURS = 10
 KAPPAS = [0, 10, 30, 60, 120, 300]
@@ -115,11 +133,65 @@ def descriptors(df_a: pd.DataFrame, feat_a: pd.DataFrame, ydefl_a: pd.Series) ->
         "share_bonhams": float((df_a["house"] == "Bonhams").mean()),
         "nat_british": float(bool(__import__("re").search(r"brit|english|scot|welsh", nat.lower()))),
         "nat_american": float("american" in nat.lower()),
-        "nat_french": float("french" in nat.lower()),
+        "nat_french": float(bool(__import__("re").search(r"french|fran[cç]ais", nat.lower()))),   # the graph holds both "French" and "française"
         "nat_spanish": float("spanish" in nat.lower()),
         "nat_german": float("german" in nat.lower()),
         "nationality": nat,
     }
+
+
+# Checked in this order, first hit wins ("German/American" is american). Mirrored in
+# src/appraisal/knowledge_graph/artist_price_profile.ts — change both or neither.
+NAT_GROUPS = ["british", "american", "french", "spanish", "german"]
+
+
+def period_of(born) -> str:
+    """Birth-year period. Mirrored in src/appraisal/knowledge_graph/artist_price_profile.ts —
+    change both or neither."""
+    if born is None or (isinstance(born, float) and math.isnan(born)):
+        return "unknown"
+    b = int(born)
+    if b < 1800:
+        return "pre1800"
+    if b < 1880:
+        return "c19"
+    if b < 1930:
+        return "modern"
+    return "contemporary"
+
+
+def nat_group_of(desc: dict) -> str:
+    for g in NAT_GROUPS:
+        if desc.get(f"nat_{g}", 0.0) >= 0.5:
+            return g
+    return "other"
+
+
+def segment_key(desc: dict) -> str:
+    return f"{nat_group_of(desc)}|{period_of(desc.get('born'))}"
+
+
+def segment_defaults(entries: dict, cols) -> dict:
+    """sqrt(n)-weighted mean of the stored elasticities and price level over the artists in
+    each nationality-group x period cell, plus the "any" marginals and the global cell."""
+    groups = {}
+    for a, e in entries.items():
+        nat, per = segment_key(e["descriptors"]).split("|")
+        for key in (f"{nat}|{per}", f"{nat}|any", f"any|{per}", "any|any"):
+            groups.setdefault(key, []).append((a, e))
+    out = {}
+    for key, members in groups.items():
+        if len(members) < MIN_SEGMENT_ARTISTS:
+            continue
+        w = np.array([math.sqrt(e["earlier_sales"]) for _, e in members])
+        w = w / w.sum()
+        out[key] = {
+            "artists": len(members),
+            "sales": int(sum(e["earlier_sales"] for _, e in members)),
+            "price_level_log": float(sum(wi * e["price_level_log"] for wi, (_, e) in zip(w, members))),
+            "elasticities": {col: float(sum(wi * e["elasticities"][col]["value"] for wi, (_, e) in zip(w, members))) for col in cols},
+        }
+    return out
 
 
 def main():
@@ -131,6 +203,7 @@ def main():
     args = ap.parse_args()
 
     df = pd.read_csv(args.csv, low_memory=False)
+    source_rows = int(len(df))          # rows in the export, before any filter: the freshness check compares this to the graph
     df = df[df["saleDate"] >= args.min_year]
     df = df[~df["rawMedium"].fillna("").str.lower().str.contains(r"\bthe book\b|the complete set|set of \d|portfolio of|\(vol\)")]
     df = df[df["artist"].notna()].reset_index(drop=True)
@@ -160,7 +233,8 @@ def main():
     cols = list(X.columns)
     n_art = df.loc[train, "artist"].value_counts()
     print(f"rows={len(df)} artists={df['artist'].nunique()}  train={train.sum()} test={test.sum()}  "
-          f"artists with >={MIN_OWN} earlier sales: {(n_art >= MIN_OWN).sum()}, donors (>={DONOR_MIN}): {(n_art >= DONOR_MIN).sum()}")
+          f"artists with >={MIN_OWN} earlier sales: {(n_art >= MIN_OWN).sum()}, with >={MIN_DESC}: {(n_art >= MIN_DESC).sum()}, "
+          f"donors (>={DONOR_MIN}): {(n_art >= DONOR_MIN).sum()}")
 
     # 2. own fits per artist on deflated log price (attributes only), with per-level support
     own_beta, own_support, own_n, level = {}, {}, {}, {}
@@ -173,11 +247,13 @@ def main():
         own_beta[a] = pd.Series(r.coef_, index=cols)
         own_support[a] = level_support(feat[m], cols)
 
-    # 3. descriptors and neighbours (donors only)
+    # 3. descriptors and neighbours (donors only). Descriptors need only MIN_DESC sales: an
+    #    artist with 5 sales can be PLACED (price level, signed share, period) even though their
+    #    own coefficients cannot be fitted.
     desc = {}
     for a in n_art.index:
         m = train & (df["artist"] == a).values
-        if m.sum() >= MIN_OWN:
+        if m.sum() >= MIN_DESC:
             desc[a] = descriptors(df[m], feat[m], ydefl[m])
     D = pd.DataFrame(desc).T
     num_cols = [c for c in D.columns if c != "nationality"]
@@ -229,7 +305,7 @@ def main():
         intercept = float(np.median(ydefl[m_tr] - Xa.values @ beta.values)) if m_tr.sum() else float(ydefl[train].median())
         return X[rows].values @ beta.values + intercept + theta[rows].values
 
-    bands = [(MIN_OWN, 40), (40, 100), (100, 300), (300, 10 ** 9)]
+    bands = [(MIN_DESC, MIN_OWN), (MIN_OWN, 40), (40, 100), (100, 300), (300, 10 ** 9)]
     print(f"\n── MAE(log) on sales from {args.cut}, by how many EARLIER sales the artist has ──")
     hdr = f"{'earlier sales':<14}{'artists':>8}{'test rows':>10} {'median':>8} {'pooled':>8} {'own':>8} {'prior':>8} " + " ".join(f"k={k:<4}" for k in KAPPAS) + f" {'estimate':>9}"
     print(hdr)
@@ -267,14 +343,20 @@ def main():
 
     # 5. write the priors database
     os.makedirs(args.out_dir, exist_ok=True)
-    db = {"version": "PRICING-PRIORS-1.0", "cut": args.cut, "kappa": best_k, "reference_levels": REFS,
-          "elasticity_columns": cols, "year_effects": year_eff, "continuous_medians": med, "artists": {}}
+    built_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    db = {"version": "PRICING-PRIORS-1.1", "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
+          "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
+          "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),
+          "reference_levels": REFS, "elasticity_columns": cols, "year_effects": year_eff, "continuous_medians": med,
+          "segment_key": "<nationality group: british|american|french|spanish|german|other>|<period by birth year: pre1800|c19 (1800-1879)|modern (1880-1929)|contemporary (1930+)|unknown>",
+          "artists": {}, "segment_defaults": {}}
     for a in Dn.index:
         b = shrunk(a, best_k)
         m_tr = train & (df["artist"] == a).values
         intercept = float(np.median(ydefl[m_tr] - X[m_tr].values @ b.values))
         db["artists"][a] = {
             "earlier_sales": own_n[a],
+            "basis": "shrunk" if a in own_beta else "prior",
             "price_level_log": intercept,
             "elasticities": {col: {"value": float(b[col]), "multiplier": float(math.exp(b[col] * (math.log(2) if col in CONT else 1.0))),
                                     "own": float(own_beta[a][col]) if a in own_beta and own_support[a].get(col, 0) >= MIN_LEVEL_ROWS else None,
@@ -283,6 +365,7 @@ def main():
             "neighbours": neighbours.get(a, {}),
             "descriptors": desc[a],
         }
+    db["segment_defaults"] = segment_defaults(db["artists"], cols)
     with open(os.path.join(args.out_dir, "artist_elasticities.json"), "w") as f:
         json.dump(db, f, indent=1, ensure_ascii=False)
     nb_rows = [(a, b, w) for a, nbs in neighbours.items() for b, w in nbs.items()]
@@ -290,7 +373,12 @@ def main():
     summary = pd.DataFrame({a: {"earlier_sales": own_n[a], "price_level": math.exp(db["artists"][a]["price_level_log"]),
                                 **{col: db["artists"][a]["elasticities"][col]["multiplier"] for col in cols}} for a in Dn.index}).T.sort_values("earlier_sales", ascending=False)
     summary.to_csv(os.path.join(args.out_dir, "artist_multipliers.csv"))
-    print(f"\nwrote {len(db['artists'])} artists -> {args.out_dir}/artist_elasticities.json, neighbours.csv, artist_multipliers.csv")
+    n_shrunk = sum(1 for e in db["artists"].values() if e["basis"] == "shrunk")
+    print(f"\nwrote {len(db['artists'])} artists ({n_shrunk} shrunk own fits, {len(db['artists']) - n_shrunk} prior-only) and "
+          f"{len(db['segment_defaults'])} segment defaults -> {args.out_dir}/artist_elasticities.json, neighbours.csv, artist_multipliers.csv")
+    print("segment defaults (artists / sales / hand-signed multiplier / edition >300 multiplier):")
+    for key, sd in sorted(db["segment_defaults"].items()):
+        print(f"  {key:<24} {sd['artists']:>4} {sd['sales']:>7}  x{math.exp(sd['elasticities'].get('signature_hand', 0.0)):.2f}  x{math.exp(sd['elasticities'].get('edition_band_>300', 0.0)):.2f}")
 
     # a few readable examples
     print("\n── Examples: shrunk multipliers (own → prior → stored) ──")

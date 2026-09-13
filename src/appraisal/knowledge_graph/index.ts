@@ -8,6 +8,8 @@ export { queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCa
 export { queryEditionRuns, formatEditionRunsForClaude, EDITION_DEFAULT_LIMIT } from "./edition_runs.js";
 export { resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery } from "./artist_identity.js";
 export { queryArtistDinoFloor } from "./artist_dino_floor.js";
+export { queryArtistPriceProfile, adjustmentBetween, editionBand, areaBand, periodOf, nationalityGroup, segmentKey, pickSegmentDefault, multipliersFrom } from "./artist_price_profile.js";
+export type { ArtistPriceProfile, PriceAttrs, PriceAdjustment, PriceProfileBasis, SignatureClass, ProofClass, EditionBand, AreaBand } from "./artist_price_profile.js";
 export { lookupArtistNames } from "./artist_lookup.js";
 export type { ArtistLookup, ArtistLookupVia } from "./artist_lookup.js";
 export type { ArtistDinoFloor } from "./artist_dino_floor.js";

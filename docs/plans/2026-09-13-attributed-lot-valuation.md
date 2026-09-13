@@ -434,6 +434,19 @@ Gate: on the hammer backtest, same-work comps adjusted by the artist's multiplie
 same-work medians, MAE(log) and within-2x on the same lots. Rebuild cadence: after each bulk
 ingest or artist-merge pass.
 
+**Step 6 status (2026-09-13): graph layer and read side DONE; Stage 3 wiring NOT done (gate).**
+`build_priors.py` 1.1 extends coverage to 745 artists (319 shrunk own fits + 426 prior-only
+from 5–14 sales; the prior scores 0.691 vs 0.774 median on that band) and adds 31 segment
+defaults keyed nationality group × birth-year period. `knowledge_graph/write_price_priors.py`
+wrote run `PRICING-PRIORS-1.1@2026-09-13T16:50:19+00:00`: 1 PricingModelRun, 745 Artists
+tagged (all matched by exact name, none ambiguous), 7,450 PRICE_NEIGHBOUR edges; re-run is
+idempotent; `check_price_priors_fresh.py` passes (built after the latest MergeEvent 05:27 and
+price stamp 16:10; 48,847 sold priced rows then and now). SourceRecord carries no ingest
+timestamp, so the check uses the backfill/repair stamps plus the row count as the proxy.
+`queryArtistPriceProfile` + `adjustmentBetween` live in `artist_price_profile.ts` with 42 unit
+tests; house is excluded from the adjustment until step 7. Next: the gate backtest — same-work
+comps × adjustment vs raw same-work medians on the hammer backtest lots.
+
 ### 7. Cross-house repeat-sale test
 
 Same work, attribute-matched, sold at one house and later at another: the realised spread net

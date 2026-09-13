@@ -124,7 +124,7 @@ artists — a follow-up test; and never a single donor's slopes.
 
 `build_priors.py` → `priors/artist_elasticities.json`, `artist_multipliers.csv`, `neighbours.csv`.
 
-For every artist with ≥15 earlier sales (319 artists, 38,762 sales 2010–2026) it stores each
+For every artist with ≥15 earlier sales (319 artists, 38,762 sales 2010–2026; since 1.1 also a prior-only entry from 5 sales, see below) it stores each
 elasticity three ways — the artist's own estimate with its support, the prior, and the shrunk
 value actually to use — plus the artist's price level, the neighbours that formed the prior,
 and the descriptor vector. Elasticities are log-linear coefficients on log hammer deflated by
@@ -164,6 +164,50 @@ To apply: take a lot's attribute vector, look up the artist's stored elasticitie
 artist below 15 sales, the prior computed from their descriptors' nearest donors), and the
 product of the multipliers is the adjustment between two impressions of the same work — the
 same-work comp corrected for signature, edition, size and process, per artist.
+
+## 1.1: priors from five sales, segment defaults, and the graph as the store (2026-09-13)
+
+Same build, extended. Three tiers by earlier-sales count (`basis` in the JSON):
+
+| basis | earlier sales | artists | what is stored |
+|---|---:|---:|---|
+| `shrunk` | ≥ 15 | 319 | own fit shrunk toward the neighbour prior (as 1.0) |
+| `prior` | 5–14 | 426 | the neighbour prior outright — five sales place an artist in descriptor space (price level, signed share, technique mix, period, nationality) but cannot fit 33 coefficients |
+| segment default | < 5 | — | no per-artist entry; the reader falls back to the sqrt(n)-weighted mean of the stored elasticities over the artist's nationality group × birth-year period (31 cells incl. `any` marginals and `any|any`) |
+
+The 5–14 band on the same temporal test: median 0.774 · pooled 0.681 · **prior 0.691** · estimate
+0.473 (426 artists, 671 test rows) — the neighbour prior is as good as the pooled model for
+artists it has never fitted, and 0.08 log better than their own median. κ re-chosen on the
+larger set: 30 and 60 tie at 0.653 and 30 is stored. Segment defaults read sensibly: hand-signed
+×1.76 French vs ×1.39 British; edition >300 ×0.37 French, ×0.65 American modern, ×0.88 British
+contemporary — the modern-master vs contemporary-edition inversion from the transfer test, now
+as a fallback table. Nationality "française" (145 graph nodes) now counts as French.
+
+**In the graph.** `knowledge_graph/write_price_priors.py` (the only writer; dry-run, pre-snapshot,
+batched UNWIND, verification) writes one `PricingModelRun` per build (`<version>@<built_at>`,
+with the column list, reference levels, year effects, continuous medians and the segment
+defaults as JSON strings, row counts), `Artist.priceLevelLog / priceElasticities /
+priceEarlierSales / priceElasticitiesRun / priceElasticitiesBasis` on every artist matched by
+EXACT name (745/745 resolved; unmatched or ambiguous names are reported and skipped), and
+`(:Artist)-[:PRICE_NEIGHBOUR {weight, run}]->(:Artist)` for the donors (7,450 edges). A new
+run clears the old tags and edges. `check_price_priors_fresh.py` fails when the live run predates
+the latest MergeEvent or SourceRecord price-data stamp, or when the sold-priced row count the
+build saw (48,847) differs from the graph's now.
+
+Read side: `src/appraisal/knowledge_graph/artist_price_profile.ts` — `queryArtistPriceProfile`
+(artist tier, else segment fallback from the artist's nationality and birth year) and the pure
+`adjustmentBetween(lot, comp, profile)`: the multiplier from a same-work comp's hammer to the
+lot's, over signature, proof, edition band, area band, process and the two per-doubling terms.
+House is deliberately excluded until the cross-house repeat-sale test. NOT wired into Stage 3 —
+gated on the backtest (plan step 6).
+
+```bash
+knowledge_graph/venv-embeddings/bin/python knowledge_graph/pricing_ml/export_sales.py --out knowledge_graph/pricing_ml/data/all_sales.csv
+knowledge_graph/venv-embeddings/bin/python knowledge_graph/pricing_ml/build_priors.py knowledge_graph/pricing_ml/data/all_sales.csv
+python3 knowledge_graph/write_price_priors.py --dry-run && python3 knowledge_graph/write_price_priors.py
+python3 knowledge_graph/check_price_priors_fresh.py
+npm run test:price-profile
+```
 
 ## Next
 

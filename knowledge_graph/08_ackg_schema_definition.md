@@ -111,6 +111,7 @@ rather than re-derived at every node:
 | `ConceptualWork` | Work | `dateCreated` (fuzzy date shape) |
 | `Matrix` | Work | material (copper/zinc/stone/block) |
 | `MergeEvent` | Provenance | `mergedFromId`, `rule`, `ruleVersion`, `decidedBy`, `evidence`, `confidence`, `at` (§ 11) |
+| `PricingModelRun` | Derived | one per `build_priors.py` build: `id`, `version`, `cut`, `kappa`, `elasticityColumns`, `referenceLevels`/`yearEffects`/`continuousMedians`/`segmentDefaults` (JSON strings), `rowCount`, `sourceRowCount`, `builtAt` (§ 12) |
 | `State` | Work | `traditionType` — tradition-agnostic: covers both Western plate-states and ukiyo-e printing generations; `stateNumber`, `displayLabel` (§ 10) |
 | `EditionRun` | Work | `declaredSize`, `dateRange` (fuzzy date shape) |
 | `Impression` | Instance | `editionNumber`, `copyType` (numbered / AP / HC / PP / BAT / TP — local enum, no AAT equivalent per doc 06 §2.6), sheet/image dimensions, `signed` (bool), `provenanceNote` (free text, deferred — § 5) |
@@ -623,6 +624,52 @@ are gone and only the `--backup` JSON can rebuild them.
 This complements [ADR-0017](../docs/adr/0017-work-title-identity-principal-name-and-aliases.md)
 Decision 4 rather than duplicating it. That decision puts provenance of the **wording** on the
 assertion (`Impression.sourceTitle`); this records provenance of the **identity decision**.
+
+## 12. Schema addition: price elasticity priors (`PricingModelRun`, `Artist.price*`, `PRICE_NEIGHBOUR`)
+
+**Added 2026-09-13.** A DERIVED layer, not source data: the per-artist price elasticities from
+`pricing_ml/build_priors.py` (plan `docs/plans/2026-09-13-attributed-lot-valuation.md` step 6).
+The committed `pricing_ml/priors/artist_elasticities.json` is the build artefact;
+`write_price_priors.py` is the ONLY writer and the appraisal pipeline never writes any of this.
+
+```
+PricingModelRun {
+  id,                 # "<version>@<built_at>", e.g. PRICING-PRIORS-1.1@2026-09-13T16:50:19+00:00
+  version, cut, kappa, minOwnSales, minDescriptorSales,
+  elasticityColumns,  # list — the order of every Artist.priceElasticities vector under this run
+  referenceLevels,    # JSON string: the level per attribute whose coefficient is zero
+  yearEffects,        # JSON string: pooled sale-year effects the log hammer was deflated by
+  continuousMedians,  # JSON string: training medians of edition_log / area_log
+  segmentDefaults,    # JSON string: "<nat>|<period>" -> {price_level_log, elasticities, artists, sales}
+  segmentKey,         # how the key is formed (nationality group x birth-year period)
+  rowCount, sourceRowCount, artistCount, builtAt, writtenAt, writer
+}
+
+Artist {
+  priceLevelLog,          # intercept on deflated log hammer
+  priceElasticities,      # flat float list in the run's elasticityColumns order
+  priceEarlierSales,      # sales before the run's cut
+  priceElasticitiesRun,   # PricingModelRun.id — the staleness tag
+  priceElasticitiesBasis  # "shrunk" (>= 15 sales, own fit shrunk to the prior) | "prior" (5-14 sales)
+}
+
+Artist -[:PRICE_NEIGHBOUR {weight, run}]-> Artist   # the donors that formed the artist's prior
+```
+
+Exactly one run is live at a time: writing a new run removes the `price*` properties from
+artists it no longer covers and deletes `PRICE_NEIGHBOUR` edges carrying an older run id. Older
+`PricingModelRun` nodes are kept, so any run remains reversible by id from the gitignored
+pre-snapshot (`price_priors_presnapshot_<ts>.json`). Artists with fewer than 5 sales carry
+nothing; the reader (`src/appraisal/knowledge_graph/artist_price_profile.ts`) falls back to the
+run's `segmentDefaults` from the artist's `nationality` and `dateBorn_year`.
+
+Staleness: the priors are derived from sold `SourceRecord`s and artist identity, so they go
+stale on an ingest or a merge. `check_price_priors_fresh.py` fails when the live run's `builtAt`
+predates the latest `MergeEvent.at` or the latest SourceRecord price-data stamp
+(`fxBackfillAt` / `saleDateBackfillAt` / `estimateGBPRepairedAt` / `premiumBasisCorrectedAt` —
+`SourceRecord` has no ingest timestamp of its own), or when the count of sold, GBP-priced,
+dated auction rows differs from the run's `sourceRowCount`. Rebuild cadence: after every bulk
+ingest or artist-merge pass.
 
 ## Next steps
 
