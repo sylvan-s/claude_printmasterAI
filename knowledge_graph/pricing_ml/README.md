@@ -120,6 +120,51 @@ So: per-artist models where an artist has a few hundred sales; segment-pooled mo
 (modern-master editions / contemporary editions / old master) as the fallback for thin
 artists — a follow-up test; and never a single donor's slopes.
 
+## The priors database: elasticities per artist, shrunk toward similar artists (2026-09-13)
+
+`build_priors.py` → `priors/artist_elasticities.json`, `artist_multipliers.csv`, `neighbours.csv`.
+
+For every artist with ≥15 earlier sales (319 artists, 38,762 sales 2010–2026) it stores each
+elasticity three ways — the artist's own estimate with its support, the prior, and the shrunk
+value actually to use — plus the artist's price level, the neighbours that formed the prior,
+and the descriptor vector. Elasticities are log-linear coefficients on log hammer deflated by
+pooled sale-year effects, reference levels dropped (unsigned, numbered, edition 76–150, area
+400–900 cm², lithograph, Bonhams); continuous terms per doubling.
+
+    elasticity = (n_own × own + κ × prior) / (n_own + κ),  κ = 60 (chosen on later sales)
+
+The prior is a similarity-weighted mean over the artist's 10 nearest **donor** artists (≥100
+earlier sales, 63 of them) in a standardised descriptor space: price level, price spread,
+share hand-signed/unsigned, median edition size and sheet area, technique-family mix, share
+of artist's proofs, median work year, birth year, house mix, nationality group — price level,
+work year and birth year weighted double. A level an artist has never sold (fewer than 3 rows)
+takes the prior outright.
+
+MAE(log) on sales from 2024-07, by the artist's earlier-sales count:
+
+| earlier sales | artists | test rows | median | pooled | own | prior only | shrunk κ=60 | estimate |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 15–40 | 188 | 851 | 0.746 | 0.689 | 0.707 | 0.703 | **0.679** | 0.433 |
+| 40–100 | 68 | 851 | 0.676 | 0.669 | 0.639 | 0.639 | **0.616** | 0.426 |
+| 100–300 | 49 | 1,627 | 0.732 | 0.690 | 0.612 | 0.683 | **0.608** | 0.367 |
+| 300+ | 14 | 1,577 | 0.972 | 0.776 | 0.686 | 0.772 | **0.684** | 0.343 |
+
+For thin artists the neighbour prior is as informative as the artist's own data, and the blend
+beats own, prior and pooled in every band. The gains are modest (0.01–0.03 log), consistent,
+and the estimate remains ~0.3 log better everywhere. Sensible neighbours fall out without being
+told: Picasso ← Miró, Dalí, Chagall, Hockney; Banksy ← Warhol, Hockney, Hirst, Lichtenstein;
+Rembrandt ← Gillray, Renoir, Dürer, Whistler; Chadwick ← Moore, Piper, Frink, Sutherland.
+
+Readable examples (own → prior → stored): Banksy screenprint vs lithograph 6.88 → 1.46 → 5.65
+(414 sales keep most of the own value); Banksy edition >300 1.46 → 0.53 → 1.28 (the market
+inversion survives shrinkage); KAWS (38 sales) screenprint 2.31 → 1.31 → 1.64; Lynn Chadwick
+(39 sales) hand-signed 0.97 → 1.31 → 1.16.
+
+To apply: take a lot's attribute vector, look up the artist's stored elasticities (or, for an
+artist below 15 sales, the prior computed from their descriptors' nearest donors), and the
+product of the multipliers is the adjustment between two impressions of the same work — the
+same-work comp corrected for signature, edition, size and process, per artist.
+
 ## Next
 
 Rarity/state words (rare, unique, one of N, state, proof aside from the edition) as features;

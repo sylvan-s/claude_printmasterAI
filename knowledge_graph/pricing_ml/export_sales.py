@@ -53,7 +53,8 @@ WITH a, s, i, er, cw,
      collect(DISTINCT t.name) AS techniques,
      collect(DISTINCT p.name) AS papers,
      collect(DISTINCT CASE WHEN ce IS NULL THEN null ELSE cr.numberingPrefix + ' ' + ce.number END) AS citations
-RETURN a.name AS artist, a.ulanUrl AS artistUlan, s.id AS sourceId, s.institutionName AS house, s.saleId AS saleId, s.lotNumber AS lotNumber,
+RETURN a.name AS artist, a.ulanUrl AS artistUlan, a.nationality AS artistNationality,
+       a.dateBorn_year AS artistBorn, a.dateDied_year AS artistDied, s.id AS sourceId, s.institutionName AS house, s.saleId AS saleId, s.lotNumber AS lotNumber,
        substring(s.saleDate, 0, 10) AS saleDate, s.listingUrl AS listingUrl,
        s.hammerPriceGBP AS hammerGBP, s.priceRealisedGBP AS realisedGBP,
        s.estimateLow AS estimateLow, s.estimateHigh AS estimateHigh, s.fxRateToGBP AS fxRateToGBP,
@@ -69,7 +70,7 @@ ORDER BY saleDate
 """
 
 FIELDS = [
-    "artist", "artistUlan", "sourceId", "house", "saleId", "lotNumber", "saleDate", "listingUrl", "hammerGBP", "realisedGBP",
+    "artist", "artistUlan", "artistNationality", "artistBorn", "artistDied", "sourceId", "house", "saleId", "lotNumber", "saleDate", "listingUrl", "hammerGBP", "realisedGBP",
     "estimateLow", "estimateHigh", "fxRateToGBP", "estimateLowGBP", "estimateHighGBP", "currency", "workId", "workName", "workYear", "impressionId",
     "sourceTitle", "rawMedium", "signed", "copyType", "editionSize", "plateDims", "imageDims", "sheetDims",
     "techniques", "papers", "citations",

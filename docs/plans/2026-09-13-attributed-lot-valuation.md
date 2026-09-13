@@ -397,6 +397,13 @@ Warhol/Picasso but ×1.1–1.2 for Banksy/Hockney/Hirst; screenprint ×5.8 for B
 ×1.5 Rembrandt vs ×3.4 Hirst. Like-for-like house effect: Roseberys ×0.36–0.95 of Bonhams
 (pooled ×0.51), partly selection. Details in `knowledge_graph/pricing_ml/README.md`.
 
+**Elasticity priors database** (`knowledge_graph/pricing_ml/priors/`, 319 artists): per-artist
+log-linear elasticities shrunk toward a similarity-weighted prior from the 10 nearest donor
+artists (κ = 60 chosen on later sales). For artists with 15–40 earlier sales the prior alone
+matches their own fit and the blend beats own, prior and pooled in every sales band (e.g.
+0.679 vs 0.707 own vs 0.689 pooled at 15–40); the estimate stays ~0.3 log better. This is the
+adjustment table for same-work comps, per artist, with a fallback for thin artists.
+
 ## Housekeeping done 2026-09-13
 
 - The checkout was on `technique-classifier-deepdive`, 127 commits behind main, which is why

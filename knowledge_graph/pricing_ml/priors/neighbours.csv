@@ -1,0 +1,3191 @@
+artist,neighbour,weight
+Pablo Picasso,Joan Miró,0.2611481920061558
+Pablo Picasso,Salvador Dalí,0.14666807699773424
+Pablo Picasso,David Hockney,0.11409708914959406
+Pablo Picasso,Marc Chagall,0.13169087357755316
+Pablo Picasso,Henri Matisse,0.06728048997595307
+Pablo Picasso,Georges Braque,0.05801170582268407
+Pablo Picasso,Howard Hodgkin,0.059624683636682885
+Pablo Picasso,Wayne Thiebaud,0.04489168836922432
+Pablo Picasso,Elisabeth Frink,0.05731453392602005
+Pablo Picasso,Rufino Tamayo,0.059272666538398217
+Marc Chagall,Henri Matisse,0.17765896088632577
+Marc Chagall,Georges Braque,0.13202762756831946
+Marc Chagall,Sonia Delaunay,0.07994973549556562
+Marc Chagall,Henri de Toulouse-Lautrec,0.07649970805080826
+Marc Chagall,Pierre-Auguste Renoir,0.08993752744069897
+Marc Chagall,David Hockney,0.1536159979037871
+Marc Chagall,Alexander Calder,0.09848034153411846
+Marc Chagall,Elisabeth Frink,0.07399385024554465
+Marc Chagall,Jasper Johns,0.06085705958604088
+Marc Chagall,Graham Sutherland,0.05697919128879088
+Joan Miró,Pablo Picasso,0.3211689397471444
+Joan Miró,Salvador Dalí,0.16160113865784417
+Joan Miró,Rufino Tamayo,0.0646919913727642
+Joan Miró,Alexander Calder,0.08130622385837277
+Joan Miró,Elisabeth Frink,0.061386207114588524
+Joan Miró,Howard Hodgkin,0.062490972779925234
+Joan Miró,Henry Moore,0.0929517523618505
+Joan Miró,Paula Rego,0.047166050584427695
+Joan Miró,Graham Sutherland,0.047631436441094833
+Joan Miró,Georges Braque,0.059605287081987715
+Andy Warhol,Roy Lichtenstein,0.20410104237643495
+Andy Warhol,Keith Haring,0.1334800538384099
+Andy Warhol,Jasper Johns,0.0761814355006469
+Andy Warhol,Tom Wesselmann,0.0758741446374895
+Andy Warhol,Ed Ruscha,0.079454664366422
+Andy Warhol,Bridget Riley,0.07042841956743359
+Andy Warhol,Robert Rauschenberg,0.09206596805699081
+Andy Warhol,Banksy,0.11946550862053791
+Andy Warhol,Donald Sultan,0.0655570834715831
+Andy Warhol,Robert Motherwell,0.0833916795640513
+David Hockney,Patrick Hughes,0.1060659681760126
+David Hockney,Richard Hamilton,0.09461649432927015
+David Hockney,Howard Hodgkin,0.12426101466127105
+David Hockney,Elisabeth Frink,0.11733581481504064
+David Hockney,Graham Sutherland,0.07738738483850499
+David Hockney,Damien Hirst,0.1392251530598967
+David Hockney,Tracey Emin,0.11674553695284057
+David Hockney,Paula Rego,0.07030086590573223
+David Hockney,Julian Opie,0.0679131146235648
+David Hockney,Jim Dine,0.08614865263786628
+Laurence Stephen Lowry,Takashi Murakami,0.12363102161729263
+Laurence Stephen Lowry,Tracey Emin,0.1228761594735597
+Laurence Stephen Lowry,Damien Hirst,0.14217819022289865
+Laurence Stephen Lowry,Connor Brothers,0.10093714630212727
+Laurence Stephen Lowry,Patrick Hughes,0.06599517122049871
+Laurence Stephen Lowry,Richard Hamilton,0.06186528083155175
+Laurence Stephen Lowry,Howard Hodgkin,0.08134826201429467
+Laurence Stephen Lowry,Peter Blake,0.09533804745807153
+Laurence Stephen Lowry,Robert Rauschenberg,0.08727859267984664
+Laurence Stephen Lowry,John Piper,0.11855212817985841
+John Piper,Terry Frost,0.17059952891356275
+John Piper,Victor Pasmore,0.13135618882718078
+John Piper,John Hoyland,0.08209746763250333
+John Piper,Howard Hodgkin,0.10313411030392254
+John Piper,Elisabeth Frink,0.09392974252197117
+John Piper,Patrick Caulfield,0.09092097162462293
+John Piper,Graham Sutherland,0.06238491813753915
+John Piper,Henry Moore,0.11693460297173393
+John Piper,Peter Blake,0.09225168559027014
+John Piper,Paula Rego,0.05639078347669307
+Banksy,Andy Warhol,0.18114878347801264
+Banksy,Keith Haring,0.09156948000702815
+Banksy,Damien Hirst,0.12405376408061693
+Banksy,Julian Opie,0.06606238093536398
+Banksy,David Shrigley,0.08853691523977933
+Banksy,Richard Hamilton,0.061514177707333174
+Banksy,David Hockney,0.15238283563491484
+Banksy,Roy Lichtenstein,0.11254509453647635
+Banksy,Patrick Hughes,0.05947147773728325
+Banksy,Bridget Riley,0.06271509064319138
+Henry Moore,Graham Sutherland,0.10907518772389004
+Henry Moore,Paula Rego,0.09625084696381267
+Henry Moore,Elisabeth Frink,0.11815439854783341
+Henry Moore,John Piper,0.16071752198928085
+Henry Moore,Howard Hodgkin,0.09800147527915262
+Henry Moore,Terry Frost,0.10855300909799355
+Henry Moore,John Hoyland,0.0677015142111348
+Henry Moore,Eduardo Paolozzi,0.06997972286648176
+Henry Moore,Victor Pasmore,0.0917993286332033
+Henry Moore,Rufino Tamayo,0.07976699468721707
+Sam Francis,Robert Motherwell,0.16696548146498896
+Sam Francis,James Rosenquist,0.11001013510075508
+Sam Francis,Jasper Johns,0.09797250390112261
+Sam Francis,Ellsworth Kelly,0.09068661150304025
+Sam Francis,Ed Ruscha,0.10577111843414556
+Sam Francis,Jim Dine,0.11616442202686804
+Sam Francis,Frank Stella,0.0796118293965756
+Sam Francis,Robert Rauschenberg,0.10195185967588465
+Sam Francis,Wayne Thiebaud,0.0589344967358701
+Sam Francis,Rufino Tamayo,0.07193154176074926
+Roy Lichtenstein,Andy Warhol,0.2283617604257552
+Roy Lichtenstein,Keith Haring,0.1167780932996302
+Roy Lichtenstein,Jasper Johns,0.09222697805742282
+Roy Lichtenstein,Ed Ruscha,0.08717656097921862
+Roy Lichtenstein,Robert Rauschenberg,0.103490281917934
+Roy Lichtenstein,Tom Wesselmann,0.07041258777252431
+Roy Lichtenstein,Robert Motherwell,0.09213252028750708
+Roy Lichtenstein,Wayne Thiebaud,0.062066079136076244
+Roy Lichtenstein,Jim Dine,0.08187029502320957
+Roy Lichtenstein,Frank Stella,0.0654848431007219
+Damien Hirst,Tracey Emin,0.1503567026717751
+Damien Hirst,David Shrigley,0.11327079658258553
+Damien Hirst,Patrick Hughes,0.07609668601852673
+Damien Hirst,Connor Brothers,0.10028916321227926
+Damien Hirst,Richard Hamilton,0.06751178328668088
+Damien Hirst,Howard Hodgkin,0.08943404214437448
+Damien Hirst,Peter Blake,0.1034036826733769
+Damien Hirst,David Hockney,0.1608641743435363
+Damien Hirst,Julian Opie,0.05702118463444126
+Damien Hirst,Takashi Murakami,0.08175178443242345
+Rembrandt van Rijn,James Gillray,0.14582529813402378
+Rembrandt van Rijn,Albrecht Dürer,0.11483441314468056
+Rembrandt van Rijn,James Abbott McNeill Whistler,0.1064517054767455
+Rembrandt van Rijn,Pierre-Auguste Renoir,0.1181811628277855
+Rembrandt van Rijn,Henri de Toulouse-Lautrec,0.08627103894531049
+Rembrandt van Rijn,Christopher Richard Wynne Nevinson ARA,0.0791614416287621
+Rembrandt van Rijn,Henri Matisse,0.10570855070850131
+Rembrandt van Rijn,Louis Icart,0.08193724541025593
+Rembrandt van Rijn,Ansel Adams,0.07654529833673396
+Rembrandt van Rijn,Georges Braque,0.0850838453872009
+Alexander Calder,Thomas Hart Benton,0.10276268309807189
+Alexander Calder,Rufino Tamayo,0.10709375806898089
+Alexander Calder,Sam Francis,0.14544143063475795
+Alexander Calder,James Rosenquist,0.0786004159768257
+Alexander Calder,Jim Dine,0.09460564678750744
+Alexander Calder,Robert Motherwell,0.09522808591934542
+Alexander Calder,Jasper Johns,0.07115035938247849
+Alexander Calder,Elisabeth Frink,0.08402925823099545
+Alexander Calder,Robert Rauschenberg,0.09773952621284236
+Alexander Calder,Henry Moore,0.12334883568819426
+Salvador Dalí,Joan Miró,0.2439906767140699
+Salvador Dalí,Pablo Picasso,0.27176745118913737
+Salvador Dalí,Graham Sutherland,0.043925809048894524
+Salvador Dalí,Elisabeth Frink,0.054733805887533404
+Salvador Dalí,Howard Hodgkin,0.05658987072533776
+Salvador Dalí,Rufino Tamayo,0.05649383185125285
+Salvador Dalí,Henry Moore,0.08404217761785435
+Salvador Dalí,Paula Rego,0.0425802234638863
+Salvador Dalí,Victor Pasmore,0.059970427618240424
+Salvador Dalí,John Piper,0.08590572588379308
+Terry Frost,John Piper,0.2093507392567472
+Terry Frost,Victor Pasmore,0.13700430816825268
+Terry Frost,John Hoyland,0.09228441532316152
+Terry Frost,Howard Hodgkin,0.0962748082392028
+Terry Frost,Patrick Caulfield,0.08883395473838135
+Terry Frost,Peter Blake,0.10027170453244093
+Terry Frost,Eduardo Paolozzi,0.06749897869570196
+Terry Frost,Elisabeth Frink,0.07291300484377135
+Terry Frost,Paula Rego,0.05728081558398592
+Terry Frost,David Shrigley,0.07828727061835435
+Tracey Emin,Damien Hirst,0.1715021723044581
+Tracey Emin,Howard Hodgkin,0.10496102104757507
+Tracey Emin,David Shrigley,0.1099077542638244
+Tracey Emin,Peter Blake,0.11949842870629601
+Tracey Emin,Connor Brothers,0.10524585464862696
+Tracey Emin,Patrick Hughes,0.07441106555150806
+Tracey Emin,Elisabeth Frink,0.08752758590044778
+Tracey Emin,Terry Frost,0.10262135603577048
+Tracey Emin,John Hoyland,0.06400755474262404
+Tracey Emin,Paula Rego,0.06031720679886906
+Peter Blake,David Shrigley,0.12951666836861814
+Peter Blake,Patrick Caulfield,0.10740574819480059
+Peter Blake,Terry Frost,0.12573979851440095
+Peter Blake,John Piper,0.15015291710942055
+Peter Blake,Tracey Emin,0.11091070591899921
+Peter Blake,Eduardo Paolozzi,0.07239310420071243
+Peter Blake,John Hoyland,0.06811369990774908
+Peter Blake,Howard Hodgkin,0.08567076326902573
+Peter Blake,Victor Pasmore,0.09181297954441575
+Peter Blake,Patrick Hughes,0.05828361497185763
+Takashi Murakami,Connor Brothers,0.11478407554887746
+Takashi Murakami,Tracey Emin,0.12822323569398972
+Takashi Murakami,Laurence Stephen Lowry,0.15545010160773504
+Takashi Murakami,Damien Hirst,0.1333016745563421
+Takashi Murakami,Christo and Jeanne-Claude,0.07115251444351432
+Takashi Murakami,Robert Rauschenberg,0.09079515271627245
+Takashi Murakami,Peter Blake,0.09371128121697093
+Takashi Murakami,Patrick Hughes,0.05928598519258247
+Takashi Murakami,David Shrigley,0.08177295869197805
+Takashi Murakami,Howard Hodgkin,0.07152302033173737
+Robert Rauschenberg,James Rosenquist,0.10959222644047892
+Robert Rauschenberg,Jim Dine,0.11611877620373544
+Robert Rauschenberg,Robert Motherwell,0.11669862780518674
+Robert Rauschenberg,Sam Francis,0.15886204924659747
+Robert Rauschenberg,Jasper Johns,0.0867740565123645
+Robert Rauschenberg,Ed Ruscha,0.08765612197830329
+Robert Rauschenberg,Roy Lichtenstein,0.13769098166588864
+Robert Rauschenberg,Tom Wesselmann,0.06457413642689895
+Robert Rauschenberg,Christo and Jeanne-Claude,0.06685638728024366
+Robert Rauschenberg,Wayne Thiebaud,0.05517663644030242
+Henri Matisse,Marc Chagall,0.3135353925963995
+Henri Matisse,Georges Braque,0.1105712655482556
+Henri Matisse,Henri de Toulouse-Lautrec,0.07779189501414957
+Henri Matisse,Pierre-Auguste Renoir,0.09361823628962263
+Henri Matisse,Sonia Delaunay,0.06264876848755674
+Henri Matisse,David Hockney,0.13119986543688572
+Henri Matisse,Christopher Richard Wynne Nevinson ARA,0.053807094448501576
+Henri Matisse,Jasper Johns,0.052242555411999944
+Henri Matisse,Ansel Adams,0.05554555581336482
+Henri Matisse,Graham Sutherland,0.049039370953263814
+Victor Vasarely,Patrick Caulfield,0.10757455024044374
+Victor Vasarely,John Piper,0.15415211554710745
+Victor Vasarely,Terry Frost,0.11961948267469072
+Victor Vasarely,Peter Blake,0.1132492295233033
+Victor Vasarely,Sonia Delaunay,0.07682146088664632
+Victor Vasarely,Victor Pasmore,0.10216269824187099
+Victor Vasarely,Georges Braque,0.08986496677374409
+Victor Vasarely,Bridget Riley,0.07676201818056866
+Victor Vasarely,John Hoyland,0.07061075594141818
+Victor Vasarely,David Shrigley,0.08918272199020655
+Pierre-Auguste Renoir,Henri de Toulouse-Lautrec,0.10006637098934279
+Pierre-Auguste Renoir,Henri Matisse,0.1295276862095656
+Pierre-Auguste Renoir,Marc Chagall,0.2279843796597484
+Pierre-Auguste Renoir,Georges Braque,0.1005347983281202
+Pierre-Auguste Renoir,James Abbott McNeill Whistler,0.08269095355332137
+Pierre-Auguste Renoir,Sonia Delaunay,0.0668738967488249
+Pierre-Auguste Renoir,Louis Icart,0.06987066721551567
+Pierre-Auguste Renoir,Henry Moore,0.10993062762896459
+Pierre-Auguste Renoir,Graham Sutherland,0.05530520501051554
+Pierre-Auguste Renoir,Thomas Hart Benton,0.05721541465608083
+Connor Brothers,Tracey Emin,0.14423815819093777
+Connor Brothers,Patrick Hughes,0.08535087646188352
+Connor Brothers,Damien Hirst,0.15422930812560462
+Connor Brothers,Takashi Murakami,0.11576696746524391
+Connor Brothers,David Shrigley,0.10085404144164269
+Connor Brothers,Peter Blake,0.11032387143035448
+Connor Brothers,Richard Hamilton,0.06774873036206176
+Connor Brothers,Julian Opie,0.06403055103759854
+Connor Brothers,Christo and Jeanne-Claude,0.0736237839080186
+Connor Brothers,Howard Hodgkin,0.08383371157665406
+Victor Pasmore,Terry Frost,0.16587347327303137
+Victor Pasmore,John Piper,0.19821296312994607
+Victor Pasmore,Howard Hodgkin,0.11022528457497836
+Victor Pasmore,John Hoyland,0.08037808047704381
+Victor Pasmore,Paula Rego,0.06755259532791397
+Victor Pasmore,Patrick Caulfield,0.0873224489902752
+Victor Pasmore,Elisabeth Frink,0.08373893416099899
+Victor Pasmore,Peter Blake,0.09019279216638493
+Victor Pasmore,Eduardo Paolozzi,0.05982819789801762
+Victor Pasmore,Graham Sutherland,0.05667523000140969
+David Shrigley,Peter Blake,0.1427589280632048
+David Shrigley,Julian Opie,0.07167084426331372
+David Shrigley,Tracey Emin,0.11271258767697347
+David Shrigley,Damien Hirst,0.12922974810132887
+David Shrigley,Terry Frost,0.11080379882890787
+David Shrigley,Howard Hodgkin,0.08955713639312973
+David Shrigley,Patrick Caulfield,0.08840319434934941
+David Shrigley,Patrick Hughes,0.059284343390703445
+David Shrigley,John Piper,0.1157788635190104
+David Shrigley,Victor Pasmore,0.07980055541407836
+Robert Motherwell,Sam Francis,0.20526682756672054
+Robert Motherwell,Jasper Johns,0.10043128290730094
+Robert Motherwell,Ed Ruscha,0.10538703808543651
+Robert Motherwell,Jim Dine,0.10940860472933456
+Robert Motherwell,James Rosenquist,0.08676037426645315
+Robert Motherwell,Ellsworth Kelly,0.06944922720650151
+Robert Motherwell,Robert Rauschenberg,0.09628675769723244
+Robert Motherwell,Wayne Thiebaud,0.06303980459451748
+Robert Motherwell,Frank Stella,0.06766530925737144
+Robert Motherwell,Roy Lichtenstein,0.09630477368913128
+Patrick Caulfield,John Piper,0.17850324256831776
+Patrick Caulfield,Peter Blake,0.13368541163899067
+Patrick Caulfield,Terry Frost,0.1378985876425202
+Patrick Caulfield,Victor Pasmore,0.11000280053675004
+Patrick Caulfield,David Shrigley,0.10019484674278442
+Patrick Caulfield,John Hoyland,0.07264431501778172
+Patrick Caulfield,Howard Hodgkin,0.08320121861421474
+Patrick Caulfield,Eduardo Paolozzi,0.05807121203785708
+Patrick Caulfield,Bridget Riley,0.059439889419535256
+Patrick Caulfield,Elisabeth Frink,0.06635847578124811
+Keith Haring,Roy Lichtenstein,0.16300738962855046
+Keith Haring,Andy Warhol,0.2054599955870765
+Keith Haring,Jasper Johns,0.07368569707941061
+Keith Haring,Ed Ruscha,0.07458558271549547
+Keith Haring,Jim Dine,0.07618652341494987
+Keith Haring,Robert Rauschenberg,0.08529563694725913
+Keith Haring,David Hockney,0.1345758957241419
+Keith Haring,Robert Motherwell,0.07572201563554298
+Keith Haring,Julian Opie,0.05321968741533466
+Keith Haring,Donald Sultan,0.05826157585223852
+Howard Hodgkin,Elisabeth Frink,0.11396879590923295
+Howard Hodgkin,John Piper,0.15095365039257985
+Howard Hodgkin,Victor Pasmore,0.10414019248637647
+Howard Hodgkin,Terry Frost,0.11191585547365117
+Howard Hodgkin,Paula Rego,0.06720572346920672
+Howard Hodgkin,Graham Sutherland,0.061958715971645976
+Howard Hodgkin,John Hoyland,0.059842664630215196
+Howard Hodgkin,Tracey Emin,0.08877682104512316
+Howard Hodgkin,David Hockney,0.13673807650571043
+Howard Hodgkin,Henry Moore,0.1044995041162581
+Rufino Tamayo,Alexander Calder,0.13017508318109752
+Rufino Tamayo,Sam Francis,0.14739568705341718
+Rufino Tamayo,Paula Rego,0.0731586032934895
+Rufino Tamayo,James Rosenquist,0.07917868819092613
+Rufino Tamayo,Sonia Delaunay,0.0762228106050601
+Rufino Tamayo,Henry Moore,0.1394936697724358
+Rufino Tamayo,Elisabeth Frink,0.08866508971231397
+Rufino Tamayo,Robert Motherwell,0.09397457928336507
+Rufino Tamayo,Jim Dine,0.08633692965287146
+Rufino Tamayo,Howard Hodgkin,0.08539885925502318
+Jim Dine,James Rosenquist,0.11216550958280666
+Jim Dine,Robert Motherwell,0.12561217604794067
+Jim Dine,Sam Francis,0.1679840521747134
+Jim Dine,Jasper Johns,0.08200038474327787
+Jim Dine,Robert Rauschenberg,0.1128204408853042
+Jim Dine,Ed Ruscha,0.08940591545393856
+Jim Dine,Wayne Thiebaud,0.07013870153342039
+Jim Dine,Roy Lichtenstein,0.1001268270775109
+Jim Dine,Frank Stella,0.05718643680964519
+Jim Dine,Alexander Calder,0.08255955569144212
+Georges Braque,Marc Chagall,0.2560900391939116
+Georges Braque,Sonia Delaunay,0.09100247123478952
+Georges Braque,Henri Matisse,0.11966669252512958
+Georges Braque,Henry Moore,0.11088901140433816
+Georges Braque,Louis Icart,0.0669006456567934
+Georges Braque,Graham Sutherland,0.056618596345456663
+Georges Braque,Elisabeth Frink,0.06969500452331243
+Georges Braque,Rufino Tamayo,0.06928625784232821
+Georges Braque,Pierre-Auguste Renoir,0.07401047940885705
+Georges Braque,Alexander Calder,0.08584080186508328
+James Gillray,James Abbott McNeill Whistler,0.12932498932521597
+James Gillray,Pierre-Auguste Renoir,0.1296015698358738
+James Gillray,Rembrandt van Rijn,0.14063858167478926
+James Gillray,Henri de Toulouse-Lautrec,0.0875847776163291
+James Gillray,Christopher Richard Wynne Nevinson ARA,0.08092097234911763
+James Gillray,Louis Icart,0.08717002730910658
+James Gillray,Henri Matisse,0.10400193575149469
+James Gillray,Graham Sutherland,0.07064508136702467
+James Gillray,Victor Pasmore,0.0981578117679826
+James Gillray,Stanley William Hayter,0.07195425300306567
+Elisabeth Frink,Howard Hodgkin,0.11874806111013579
+Elisabeth Frink,Graham Sutherland,0.08537486958292465
+Elisabeth Frink,Paula Rego,0.07655191253343967
+Elisabeth Frink,Henry Moore,0.13925354317553773
+Elisabeth Frink,John Piper,0.14432304570849766
+Elisabeth Frink,Victor Pasmore,0.08090455238535044
+Elisabeth Frink,John Hoyland,0.05650467104284529
+Elisabeth Frink,Terry Frost,0.08853518350208497
+Elisabeth Frink,David Hockney,0.13438317280024578
+Elisabeth Frink,Tracey Emin,0.07542098815893804
+Richard Diebenkorn,Robert Motherwell,0.13009984681245387
+Richard Diebenkorn,Jasper Johns,0.09055580939743411
+Richard Diebenkorn,Wayne Thiebaud,0.08346338105879067
+Richard Diebenkorn,Ed Ruscha,0.09093776058220063
+Richard Diebenkorn,Jim Dine,0.10021559057011674
+Richard Diebenkorn,Sam Francis,0.14149288421630046
+Richard Diebenkorn,Roy Lichtenstein,0.13450341471750296
+Richard Diebenkorn,Keith Haring,0.08840244558050021
+Richard Diebenkorn,Donald Sultan,0.07052864123652959
+Richard Diebenkorn,James Rosenquist,0.06980022582817075
+Louis Icart,Georges Braque,0.10974314573722033
+Louis Icart,Sonia Delaunay,0.08684293439583798
+Louis Icart,Paula Rego,0.06988372150128105
+Louis Icart,Stanley William Hayter,0.07244448051596009
+Louis Icart,Victor Pasmore,0.0958908306961247
+Louis Icart,Marc Chagall,0.19262729532772044
+Louis Icart,Henri Matisse,0.09680242951624103
+Louis Icart,Elisabeth Frink,0.08250773134557783
+Louis Icart,Graham Sutherland,0.06604466360236037
+Louis Icart,Henry Moore,0.12721276736167608
+Ed Ruscha,Jasper Johns,0.12574976647070746
+Ed Ruscha,Robert Motherwell,0.12697243070337452
+Ed Ruscha,Sam Francis,0.1619350416126329
+Ed Ruscha,Jim Dine,0.09565069820025753
+Ed Ruscha,Frank Stella,0.07930010450058113
+Ed Ruscha,Ellsworth Kelly,0.06725996702519738
+Ed Ruscha,James Rosenquist,0.07088600645976893
+Ed Ruscha,Roy Lichtenstein,0.12008065646982428
+Ed Ruscha,Wayne Thiebaud,0.062250335186970374
+Ed Ruscha,Robert Rauschenberg,0.08991499337068548
+Christo and Jeanne-Claude,Robert Rauschenberg,0.1445642159793809
+Christo and Jeanne-Claude,Connor Brothers,0.12278872485342393
+Christo and Jeanne-Claude,James Rosenquist,0.08740722870495286
+Christo and Jeanne-Claude,Richard Hamilton,0.07673175716025313
+Christo and Jeanne-Claude,Jim Dine,0.10207887955959416
+Christo and Jeanne-Claude,Takashi Murakami,0.1148570458903011
+Christo and Jeanne-Claude,Patrick Hughes,0.07491259035947721
+Christo and Jeanne-Claude,Tracey Emin,0.11229828072473277
+Christo and Jeanne-Claude,Keith Haring,0.09187309206930103
+Christo and Jeanne-Claude,Jasper Johns,0.07248818469858295
+Frank Stella,Ellsworth Kelly,0.10085045784228747
+Frank Stella,Ed Ruscha,0.10354122479857394
+Frank Stella,Sam Francis,0.16746912239005957
+Frank Stella,Jasper Johns,0.08950259361158781
+Frank Stella,Robert Motherwell,0.11356367383791881
+Frank Stella,Wayne Thiebaud,0.06879703072191379
+Frank Stella,Jim Dine,0.08616018604646845
+Frank Stella,Roy Lichtenstein,0.11919741183780176
+Frank Stella,Robert Rauschenberg,0.08796070175411907
+Frank Stella,Tom Wesselmann,0.06295759715926924
+James Abbott McNeill Whistler,James Gillray,0.1229102814424056
+James Abbott McNeill Whistler,Pierre-Auguste Renoir,0.1324132847667261
+James Abbott McNeill Whistler,Ansel Adams,0.08884451826729403
+James Abbott McNeill Whistler,Henri de Toulouse-Lautrec,0.08626423247408233
+James Abbott McNeill Whistler,Christopher Richard Wynne Nevinson ARA,0.08245023304139766
+James Abbott McNeill Whistler,Louis Icart,0.0880813278349071
+James Abbott McNeill Whistler,Henri Matisse,0.10906420200613597
+James Abbott McNeill Whistler,Georges Braque,0.08898309771036794
+James Abbott McNeill Whistler,Graham Sutherland,0.06899608286855304
+James Abbott McNeill Whistler,Henry Moore,0.13199273958813024
+Ansel Adams,Christopher Richard Wynne Nevinson ARA,0.08241441469857284
+Ansel Adams,Roy Lichtenstein,0.13607106736549385
+Ansel Adams,Wayne Thiebaud,0.0708119499562792
+Ansel Adams,Jim Dine,0.09138629844406745
+Ansel Adams,Alexander Calder,0.11452718186786827
+Ansel Adams,Jasper Johns,0.07233166646086539
+Ansel Adams,Keith Haring,0.08717997758130888
+Ansel Adams,Robert Rauschenberg,0.0968936998697277
+Ansel Adams,Robert Motherwell,0.09056720348383088
+Ansel Adams,David Hockney,0.15781654027198558
+Henri de Toulouse-Lautrec,Henri Matisse,0.13508532756061056
+Henri de Toulouse-Lautrec,Pierre-Auguste Renoir,0.12705902487136383
+Henri de Toulouse-Lautrec,Marc Chagall,0.2449493428483275
+Henri de Toulouse-Lautrec,Georges Braque,0.09066648542421582
+Henri de Toulouse-Lautrec,James Abbott McNeill Whistler,0.0703972134757454
+Henri de Toulouse-Lautrec,Sonia Delaunay,0.06257199625960227
+Henri de Toulouse-Lautrec,Ansel Adams,0.06546190965442036
+Henri de Toulouse-Lautrec,Christopher Richard Wynne Nevinson ARA,0.060300898925414737
+Henri de Toulouse-Lautrec,Alexander Calder,0.08932127503731183
+Henri de Toulouse-Lautrec,Graham Sutherland,0.05418652594298766
+Albrecht Dürer,Rembrandt van Rijn,0.20846333758811697
+Albrecht Dürer,James Gillray,0.11631815035736146
+Albrecht Dürer,James Abbott McNeill Whistler,0.0905438591812897
+Albrecht Dürer,Pierre-Auguste Renoir,0.10632358021819269
+Albrecht Dürer,Henri de Toulouse-Lautrec,0.08108156188846118
+Albrecht Dürer,Henri Matisse,0.10235755152680191
+Albrecht Dürer,Christopher Richard Wynne Nevinson ARA,0.07466372604159247
+Albrecht Dürer,Louis Icart,0.07905923959679098
+Albrecht Dürer,Sybil Andrews,0.06616307925418367
+Albrecht Dürer,Ansel Adams,0.07502591434720898
+Bridget Riley,Tom Wesselmann,0.0954183811351786
+Bridget Riley,Patrick Caulfield,0.09853159941627075
+Bridget Riley,Donald Sultan,0.07721311763700983
+Bridget Riley,David Shrigley,0.0955786740108077
+Bridget Riley,Terry Frost,0.10584553702747122
+Bridget Riley,Roy Lichtenstein,0.12197127339294592
+Bridget Riley,John Piper,0.13199546670773415
+Bridget Riley,Howard Hodgkin,0.08419997672341718
+Bridget Riley,Peter Blake,0.0990904886633746
+Bridget Riley,Victor Pasmore,0.09015548528579005
+James Rosenquist,Jim Dine,0.133750791693748
+James Rosenquist,Sam Francis,0.18781117086032625
+James Rosenquist,Robert Rauschenberg,0.1319154364565271
+James Rosenquist,Robert Motherwell,0.1217292916540398
+James Rosenquist,Ed Ruscha,0.08261428764106106
+James Rosenquist,Jasper Johns,0.07220022796364088
+James Rosenquist,Rufino Tamayo,0.07583184222250942
+James Rosenquist,Ellsworth Kelly,0.05535876933249349
+James Rosenquist,Alexander Calder,0.08956598300088467
+James Rosenquist,Wayne Thiebaud,0.0492221991747693
+Christopher Richard Wynne Nevinson ARA,Ansel Adams,0.08506071839064243
+Christopher Richard Wynne Nevinson ARA,David Hockney,0.18439686731726765
+Christopher Richard Wynne Nevinson ARA,Elisabeth Frink,0.0813434022298481
+Christopher Richard Wynne Nevinson ARA,Richard Hamilton,0.062315700129017444
+Christopher Richard Wynne Nevinson ARA,Henri Matisse,0.09282350455882618
+Christopher Richard Wynne Nevinson ARA,Patrick Hughes,0.062469766832876056
+Christopher Richard Wynne Nevinson ARA,Paula Rego,0.06035829939566093
+Christopher Richard Wynne Nevinson ARA,Marc Chagall,0.17421015002438306
+Christopher Richard Wynne Nevinson ARA,Henry Moore,0.11798955923276916
+Christopher Richard Wynne Nevinson ARA,Howard Hodgkin,0.07903203188870896
+Donald Sultan,Tom Wesselmann,0.09454161072008578
+Donald Sultan,Bridget Riley,0.08461342939716172
+Donald Sultan,Robert Motherwell,0.10624637159524718
+Donald Sultan,Keith Haring,0.09732582449888594
+Donald Sultan,Roy Lichtenstein,0.13384885660478402
+Donald Sultan,Jim Dine,0.0929678463248225
+Donald Sultan,Patrick Caulfield,0.09283634401829513
+Donald Sultan,Robert Rauschenberg,0.10382044349931484
+Donald Sultan,Victor Pasmore,0.09802823237419016
+Donald Sultan,David Shrigley,0.09577104096721276
+Tom Wesselmann,Bridget Riley,0.09474026279988114
+Tom Wesselmann,Roy Lichtenstein,0.1516093421501831
+Tom Wesselmann,Donald Sultan,0.08417129124633706
+Tom Wesselmann,Robert Motherwell,0.10482780744696024
+Tom Wesselmann,Robert Rauschenberg,0.10793699604426514
+Tom Wesselmann,Sam Francis,0.13831557518819732
+Tom Wesselmann,Jim Dine,0.09026383073952929
+Tom Wesselmann,Jasper Johns,0.07304499919353599
+Tom Wesselmann,Frank Stella,0.07669261883732292
+Tom Wesselmann,Ed Ruscha,0.07839727635378775
+Jasper Johns,Ed Ruscha,0.13368019332093456
+Jasper Johns,Robert Motherwell,0.12716660052259623
+Jasper Johns,Sam Francis,0.15754221104321242
+Jasper Johns,Roy Lichtenstein,0.13738174502108189
+Jasper Johns,Jim Dine,0.092171784591326
+Jasper Johns,Robert Rauschenberg,0.09401861490549264
+Jasper Johns,Ellsworth Kelly,0.06270066691509459
+Jasper Johns,Frank Stella,0.07132498796656839
+Jasper Johns,Wayne Thiebaud,0.05927128955261035
+Jasper Johns,James Rosenquist,0.06474190616108294
+Eduardo Paolozzi,John Hoyland,0.09294690325098508
+Eduardo Paolozzi,Terry Frost,0.12784284428162074
+Eduardo Paolozzi,John Piper,0.14760327774537346
+Eduardo Paolozzi,Graham Sutherland,0.07350077902499756
+Eduardo Paolozzi,Peter Blake,0.10928107820183482
+Eduardo Paolozzi,Stanley William Hayter,0.07248229881195686
+Eduardo Paolozzi,Victor Pasmore,0.09228714332510124
+Eduardo Paolozzi,Howard Hodgkin,0.08451194756179134
+Eduardo Paolozzi,Henry Moore,0.12431514553171302
+Eduardo Paolozzi,Elisabeth Frink,0.07522858226462589
+Sonia Delaunay,Georges Braque,0.12033225386448616
+Sonia Delaunay,Rufino Tamayo,0.10014752246827013
+Sonia Delaunay,Marc Chagall,0.2003321677640175
+Sonia Delaunay,Henry Moore,0.12411376696986003
+Sonia Delaunay,Alexander Calder,0.1056057460717738
+Sonia Delaunay,Elisabeth Frink,0.07590948522184804
+Sonia Delaunay,Paula Rego,0.05909232957537064
+Sonia Delaunay,Graham Sutherland,0.059641553401205236
+Sonia Delaunay,Louis Icart,0.06902609783400776
+Sonia Delaunay,Henri Matisse,0.08579907682916073
+Thomas Hart Benton,Alexander Calder,0.18305222905734903
+Thomas Hart Benton,Henry Moore,0.1523491486080584
+Thomas Hart Benton,Rufino Tamayo,0.10143373990948516
+Thomas Hart Benton,Elisabeth Frink,0.08684773356485799
+Thomas Hart Benton,Sonia Delaunay,0.07252762777740132
+Thomas Hart Benton,James Rosenquist,0.07383791738232026
+Thomas Hart Benton,Graham Sutherland,0.0682452328803651
+Thomas Hart Benton,Georges Braque,0.08570901669207893
+Thomas Hart Benton,Jim Dine,0.08762000003972888
+Thomas Hart Benton,Robert Motherwell,0.08837735408835487
+Stanley William Hayter,Eduardo Paolozzi,0.09144094312809513
+Stanley William Hayter,John Hoyland,0.08639710437736542
+Stanley William Hayter,Graham Sutherland,0.08081989935868777
+Stanley William Hayter,Victor Pasmore,0.10832299484151052
+Stanley William Hayter,Paula Rego,0.07430984735860184
+Stanley William Hayter,Henry Moore,0.14142532344810999
+Stanley William Hayter,Terry Frost,0.11406159906042866
+Stanley William Hayter,John Piper,0.1340723879402846
+Stanley William Hayter,Howard Hodgkin,0.08625436091803877
+Stanley William Hayter,Elisabeth Frink,0.08289553956887728
+John Hoyland,Terry Frost,0.1554715300764296
+John Hoyland,John Piper,0.17532073817330543
+John Hoyland,Eduardo Paolozzi,0.08617535389542233
+John Hoyland,Victor Pasmore,0.11134103827600403
+John Hoyland,Howard Hodgkin,0.08983170906640674
+John Hoyland,Paula Rego,0.06483630362568438
+John Hoyland,Elisabeth Frink,0.08130962804599674
+John Hoyland,Graham Sutherland,0.0635405687391477
+John Hoyland,Peter Blake,0.09298787441846496
+John Hoyland,Patrick Caulfield,0.07918525568313806
+Patrick Hughes,David Hockney,0.20274334375975142
+Patrick Hughes,Howard Hodgkin,0.09317729136112586
+Patrick Hughes,Richard Hamilton,0.06775752875488492
+Patrick Hughes,Tracey Emin,0.10841091856850583
+Patrick Hughes,Damien Hirst,0.12234771249169688
+Patrick Hughes,Elisabeth Frink,0.08008742742748805
+Patrick Hughes,Connor Brothers,0.08906389839792246
+Patrick Hughes,David Shrigley,0.08526804358894724
+Patrick Hughes,Peter Blake,0.09284465634083325
+Patrick Hughes,Julian Opie,0.058299179308844123
+Graham Sutherland,Henry Moore,0.19177832356746471
+Graham Sutherland,Elisabeth Frink,0.12345459913351929
+Graham Sutherland,Howard Hodgkin,0.09698669601977357
+Graham Sutherland,Paula Rego,0.07207948307980724
+Graham Sutherland,John Piper,0.14552286431957204
+Graham Sutherland,Eduardo Paolozzi,0.0699818668969821
+Graham Sutherland,John Hoyland,0.06664935981363602
+Graham Sutherland,Victor Pasmore,0.08260107562600545
+Graham Sutherland,Stanley William Hayter,0.059531418526320865
+Graham Sutherland,Terry Frost,0.09141431301691863
+Sybil Andrews,Christopher Richard Wynne Nevinson ARA,0.08224805757782686
+Sybil Andrews,Ansel Adams,0.08202797224716815
+Sybil Andrews,David Hockney,0.17414828025837653
+Sybil Andrews,Wayne Thiebaud,0.06970696446869287
+Sybil Andrews,Howard Hodgkin,0.09080722199472156
+Sybil Andrews,Elisabeth Frink,0.08710129666166513
+Sybil Andrews,Patrick Hughes,0.06941274946586563
+Sybil Andrews,Roy Lichtenstein,0.12760454313582836
+Sybil Andrews,Jim Dine,0.08717569504545446
+Sybil Andrews,Henry Moore,0.1297672191444005
+Paula Rego,Elisabeth Frink,0.11385666905713362
+Paula Rego,Henry Moore,0.17058816811725053
+Paula Rego,Howard Hodgkin,0.10583941394569567
+Paula Rego,Graham Sutherland,0.07328782932480393
+Paula Rego,Victor Pasmore,0.09972258706940386
+Paula Rego,John Hoyland,0.06906425814385468
+Paula Rego,John Piper,0.13549239139425748
+Paula Rego,Terry Frost,0.1066834841518079
+Paula Rego,Rufino Tamayo,0.071017013449601
+Paula Rego,Stanley William Hayter,0.054448185346191426
+Ellsworth Kelly,Sam Francis,0.19951073508653722
+Ellsworth Kelly,Frank Stella,0.1145032551507898
+Ellsworth Kelly,Robert Motherwell,0.12682427878891675
+Ellsworth Kelly,Ed Ruscha,0.09996665662140759
+Ellsworth Kelly,Jasper Johns,0.0890655015829233
+Ellsworth Kelly,James Rosenquist,0.0723135142379427
+Ellsworth Kelly,Jim Dine,0.0803727297712596
+Ellsworth Kelly,Robert Rauschenberg,0.08579922532113236
+Ellsworth Kelly,Rufino Tamayo,0.07507022683738157
+Ellsworth Kelly,Wayne Thiebaud,0.05657387660170897
+Wayne Thiebaud,Jim Dine,0.11261226047614725
+Wayne Thiebaud,Robert Motherwell,0.11867269689462737
+Wayne Thiebaud,Jasper Johns,0.08567562192960736
+Wayne Thiebaud,Ed Ruscha,0.09433845026741668
+Wayne Thiebaud,Sam Francis,0.14910654586907443
+Wayne Thiebaud,Frank Stella,0.07898904475849022
+Wayne Thiebaud,Roy Lichtenstein,0.12973903215266017
+Wayne Thiebaud,Richard Diebenkorn,0.07569277151953593
+Wayne Thiebaud,James Rosenquist,0.06613250689660301
+Wayne Thiebaud,Robert Rauschenberg,0.08904106923583743
+Julian Opie,David Shrigley,0.12302011221262231
+Julian Opie,Richard Hamilton,0.0730676233560741
+Julian Opie,Patrick Hughes,0.07353461738331171
+Julian Opie,Peter Blake,0.11109653360981966
+Julian Opie,Howard Hodgkin,0.08917040249545435
+Julian Opie,David Hockney,0.15932493583429264
+Julian Opie,Damien Hirst,0.11653440006524234
+Julian Opie,Patrick Caulfield,0.08152579092056124
+Julian Opie,Keith Haring,0.07910168719516734
+Julian Opie,Tracey Emin,0.09362389692745428
+Richard Hamilton,David Hockney,0.20610050129932497
+Richard Hamilton,Patrick Hughes,0.07888577208425163
+Richard Hamilton,Julian Opie,0.06895335059979567
+Richard Hamilton,Damien Hirst,0.1279171426487717
+Richard Hamilton,Peter Blake,0.10279601392262407
+Richard Hamilton,Tracey Emin,0.09807192488629377
+Richard Hamilton,Howard Hodgkin,0.07955237446255345
+Richard Hamilton,David Shrigley,0.08334023486976182
+Richard Hamilton,Connor Brothers,0.08241086730822342
+Richard Hamilton,Elisabeth Frink,0.07197181791839954
+Allen Jones,John Hoyland,0.08912721351577055
+Allen Jones,Elisabeth Frink,0.10942738750493608
+Allen Jones,Graham Sutherland,0.08427742144855703
+Allen Jones,John Piper,0.16494226074452364
+Allen Jones,Howard Hodgkin,0.09542445249121069
+Allen Jones,Eduardo Paolozzi,0.07686793713616986
+Allen Jones,Terry Frost,0.10785469468096487
+Allen Jones,Henry Moore,0.13026916176420084
+Allen Jones,Paula Rego,0.05920332992319746
+Allen Jones,Peter Blake,0.0826061407904689
+Claes Oldenburg,James Rosenquist,0.1210398316258778
+Claes Oldenburg,Robert Motherwell,0.14054550152579073
+Claes Oldenburg,Robert Rauschenberg,0.1368482156726675
+Claes Oldenburg,Jim Dine,0.11875443058538995
+Claes Oldenburg,Sam Francis,0.15810733976661084
+Claes Oldenburg,Jasper Johns,0.07764990439393968
+Claes Oldenburg,Ed Ruscha,0.0812338418567064
+Claes Oldenburg,Ellsworth Kelly,0.05414856602437241
+Claes Oldenburg,Wayne Thiebaud,0.051402362847818676
+Claes Oldenburg,Richard Diebenkorn,0.060270005700826114
+Edward Bawden,Graham Sutherland,0.07866337075020186
+Edward Bawden,David Hockney,0.18676885240402036
+Edward Bawden,Elisabeth Frink,0.09509611614769502
+Edward Bawden,Howard Hodgkin,0.09426727522022949
+Edward Bawden,Richard Hamilton,0.07028068581058576
+Edward Bawden,Patrick Hughes,0.06930949391232542
+Edward Bawden,John Piper,0.1304446289807033
+Edward Bawden,Henry Moore,0.1251778415901685
+Edward Bawden,David Shrigley,0.08832533885860588
+Edward Bawden,Julian Opie,0.06166639632546429
+Marino Marini,Rufino Tamayo,0.14906416550008214
+Marino Marini,Paula Rego,0.07813506016887664
+Marino Marini,Henry Moore,0.15156180480399375
+Marino Marini,Graham Sutherland,0.07709620333510125
+Marino Marini,Elisabeth Frink,0.095995858678041
+Marino Marini,James Rosenquist,0.07750230814837387
+Marino Marini,Sonia Delaunay,0.06944470766721503
+Marino Marini,John Piper,0.1320899241771936
+Marino Marini,Jim Dine,0.08450571798813342
+Marino Marini,Howard Hodgkin,0.08460424953298931
+Lill Tschudi,Sybil Andrews,0.12175609000963837
+Lill Tschudi,Ansel Adams,0.08373024421289138
+Lill Tschudi,Jim Dine,0.09263884350894026
+Lill Tschudi,Wayne Thiebaud,0.0697059974955832
+Lill Tschudi,Georges Braque,0.08830743648922493
+Lill Tschudi,Henri Matisse,0.09941098364936836
+Lill Tschudi,Roy Lichtenstein,0.12626794876405723
+Lill Tschudi,Christopher Richard Wynne Nevinson ARA,0.07279834357133956
+Lill Tschudi,Elisabeth Frink,0.08359760537622835
+Lill Tschudi,David Hockney,0.16178650692272822
+Alex Katz,Robert Motherwell,0.12787392068167136
+Alex Katz,Jim Dine,0.1151617463033129
+Alex Katz,Sam Francis,0.1606484183233496
+Alex Katz,Robert Rauschenberg,0.12019035154001338
+Alex Katz,Ed Ruscha,0.09322984964423242
+Alex Katz,James Rosenquist,0.08073043726599903
+Alex Katz,Jasper Johns,0.07850777373135658
+Alex Katz,Tom Wesselmann,0.07706587258123729
+Alex Katz,Frank Stella,0.07845676815612312
+Alex Katz,Wayne Thiebaud,0.06813486177270436
+Josef Albers,Donald Sultan,0.08751008012147579
+Josef Albers,Roy Lichtenstein,0.14583873858418123
+Josef Albers,Robert Motherwell,0.10702043088756494
+Josef Albers,Keith Haring,0.09946949315274176
+Josef Albers,Jasper Johns,0.07412029781760462
+Josef Albers,Jim Dine,0.0861062886161627
+Josef Albers,Richard Diebenkorn,0.07692322690773844
+Josef Albers,Andy Warhol,0.1607721533183506
+Josef Albers,Tom Wesselmann,0.067814516961501
+Josef Albers,Robert Rauschenberg,0.09442477363267895
+Sol LeWitt,Jim Dine,0.12053179945765206
+Sol LeWitt,James Rosenquist,0.09697733742285843
+Sol LeWitt,Robert Motherwell,0.12246099414775206
+Sol LeWitt,Tom Wesselmann,0.09122973525910051
+Sol LeWitt,Sam Francis,0.15960054221575037
+Sol LeWitt,Robert Rauschenberg,0.11824601211403866
+Sol LeWitt,Wayne Thiebaud,0.06852098571208003
+Sol LeWitt,Ed Ruscha,0.07879037615191573
+Sol LeWitt,Donald Sultan,0.07181566253250204
+Sol LeWitt,Frank Stella,0.07182655498634996
+Robert Indiana,Keith Haring,0.11619988315269152
+Robert Indiana,Donald Sultan,0.08369489549666602
+Robert Indiana,Jim Dine,0.09636487088946943
+Robert Indiana,Roy Lichtenstein,0.1324488963771043
+Robert Indiana,Robert Rauschenberg,0.09913175168373542
+Robert Indiana,Robert Motherwell,0.09250817342512768
+Robert Indiana,James Rosenquist,0.0719958545240529
+Robert Indiana,Andy Warhol,0.16391347521690733
+Robert Indiana,Jasper Johns,0.06829481469009169
+Robert Indiana,Ed Ruscha,0.07544738454415371
+Antony Gormley,Tracey Emin,0.17981370363033292
+Antony Gormley,Connor Brothers,0.11096459076048025
+Antony Gormley,Takashi Murakami,0.10560624202286739
+Antony Gormley,Patrick Hughes,0.07068064856430514
+Antony Gormley,Damien Hirst,0.12422049385059052
+Antony Gormley,Peter Blake,0.10389534845395601
+Antony Gormley,Howard Hodgkin,0.08770067899803713
+Antony Gormley,Eduardo Paolozzi,0.0709395681172761
+Antony Gormley,Paula Rego,0.06525224485129986
+Antony Gormley,Elisabeth Frink,0.08092648075085461
+William Scott,Elisabeth Frink,0.1100125552189669
+William Scott,John Piper,0.15472796993595225
+William Scott,Howard Hodgkin,0.09963565000918105
+William Scott,Henry Moore,0.1482688436031792
+William Scott,Paula Rego,0.06809201200499186
+William Scott,Graham Sutherland,0.0638351854177613
+William Scott,Terry Frost,0.10022788383557937
+William Scott,Alexander Calder,0.09835341569024288
+William Scott,Rufino Tamayo,0.07626396715083471
+William Scott,Victor Pasmore,0.08058251713331051
+John James Audubon,James Abbott McNeill Whistler,0.11992024711013154
+John James Audubon,James Gillray,0.12450563120326748
+John James Audubon,Henri de Toulouse-Lautrec,0.0866601641620207
+John James Audubon,Pierre-Auguste Renoir,0.10788979568027082
+John James Audubon,Henri Matisse,0.09826471292701768
+John James Audubon,Ansel Adams,0.07423116864947069
+John James Audubon,Christopher Richard Wynne Nevinson ARA,0.06949071807618397
+John James Audubon,Marc Chagall,0.175575390546734
+John James Audubon,Richard Diebenkorn,0.0723413723925724
+John James Audubon,Louis Icart,0.07112079925233077
+Cyril Edward Power,Sybil Andrews,0.1440962834539184
+Cyril Edward Power,Christopher Richard Wynne Nevinson ARA,0.08645229152687751
+Cyril Edward Power,Ansel Adams,0.08126406910207559
+Cyril Edward Power,David Hockney,0.17477411478051824
+Cyril Edward Power,Henri Matisse,0.10172129663810632
+Cyril Edward Power,Wayne Thiebaud,0.06740341726623648
+Cyril Edward Power,Roy Lichtenstein,0.1270421076399896
+Cyril Edward Power,Patrick Hughes,0.06744750766841379
+Cyril Edward Power,Richard Hamilton,0.06483851517782849
+Cyril Edward Power,Howard Hodgkin,0.08496039674603545
+Friedensreich Hundertwasser,Bridget Riley,0.09587982450925057
+Friedensreich Hundertwasser,Patrick Caulfield,0.10070874402697447
+Friedensreich Hundertwasser,John Piper,0.15070752269263674
+Friedensreich Hundertwasser,Terry Frost,0.11538255125893919
+Friedensreich Hundertwasser,Victor Pasmore,0.10107665969227302
+Friedensreich Hundertwasser,David Shrigley,0.09841299478972985
+Friedensreich Hundertwasser,Peter Blake,0.10758331921873497
+Friedensreich Hundertwasser,Howard Hodgkin,0.09106191067588972
+Friedensreich Hundertwasser,Donald Sultan,0.07025059509949286
+Friedensreich Hundertwasser,Tom Wesselmann,0.06893587803607869
+Man Ray,Jim Dine,0.10614177046743851
+Man Ray,Alexander Calder,0.1304723924093847
+Man Ray,James Rosenquist,0.08366072638851199
+Man Ray,Rufino Tamayo,0.09460679288943329
+Man Ray,Thomas Hart Benton,0.07503064970357795
+Man Ray,Robert Motherwell,0.0960499260902177
+Man Ray,Henry Moore,0.13007739956386227
+Man Ray,Robert Rauschenberg,0.09670160218660218
+Man Ray,Sam Francis,0.12389620945699135
+Man Ray,Paula Rego,0.06336253084398
+Helen Frankenthaler,Robert Motherwell,0.1418160774907606
+Helen Frankenthaler,Sam Francis,0.1758541447595071
+Helen Frankenthaler,Ed Ruscha,0.101057846534366
+Helen Frankenthaler,Jasper Johns,0.08501413761632917
+Helen Frankenthaler,Jim Dine,0.09937939264552988
+Helen Frankenthaler,Wayne Thiebaud,0.07113564232877512
+Helen Frankenthaler,Frank Stella,0.08086403696052398
+Helen Frankenthaler,Robert Rauschenberg,0.102446511907524
+Helen Frankenthaler,James Rosenquist,0.07297867279799788
+Helen Frankenthaler,Tom Wesselmann,0.06945353695868627
+Antoni Tàpies,Salvador Dalí,0.15613003236915451
+Antoni Tàpies,Joan Miró,0.2313924660996138
+Antoni Tàpies,Pablo Picasso,0.23366898568437
+Antoni Tàpies,Graham Sutherland,0.0439546832071311
+Antoni Tàpies,Elisabeth Frink,0.05469664076824318
+Antoni Tàpies,Paula Rego,0.04245475976060647
+Antoni Tàpies,Rufino Tamayo,0.05582816706883856
+Antoni Tàpies,Henry Moore,0.08311797338347494
+Antoni Tàpies,John Hoyland,0.04322787411030679
+Antoni Tàpies,Howard Hodgkin,0.0555284175482606
+Käthe Kollwitz,Henry Moore,0.16232632173269834
+Käthe Kollwitz,Georges Braque,0.10495359448199147
+Käthe Kollwitz,Ansel Adams,0.09240334214772314
+Käthe Kollwitz,Graham Sutherland,0.08272673886063649
+Käthe Kollwitz,Louis Icart,0.09577728437405574
+Käthe Kollwitz,Christopher Richard Wynne Nevinson ARA,0.08749226678312885
+Käthe Kollwitz,Elisabeth Frink,0.1014269851179026
+Käthe Kollwitz,Paula Rego,0.07939218561754502
+Käthe Kollwitz,James Abbott McNeill Whistler,0.08992109696828879
+Käthe Kollwitz,Rufino Tamayo,0.10358018391602956
+Ben Nicholson,Paula Rego,0.07561230910888685
+Ben Nicholson,Victor Pasmore,0.10368496193382812
+Ben Nicholson,Howard Hodgkin,0.09389337424528377
+Ben Nicholson,Elisabeth Frink,0.08872983842096127
+Ben Nicholson,Henry Moore,0.1360276542097962
+Ben Nicholson,David Hockney,0.1565518301471767
+Ben Nicholson,Graham Sutherland,0.06354028592372964
+Ben Nicholson,Christopher Richard Wynne Nevinson ARA,0.06506021805036619
+Ben Nicholson,John Piper,0.12153017774386896
+Ben Nicholson,Terry Frost,0.09536935021610235
+Georges Rouault,Pierre-Auguste Renoir,0.14914213810134258
+Georges Rouault,Georges Braque,0.10209221279935922
+Georges Rouault,Henri Matisse,0.11013033924023309
+Georges Rouault,Marc Chagall,0.20321091342689904
+Georges Rouault,Louis Icart,0.08003356469974521
+Georges Rouault,James Abbott McNeill Whistler,0.07490750966622653
+Georges Rouault,Sonia Delaunay,0.06806468413517038
+Georges Rouault,Henri de Toulouse-Lautrec,0.06867709321086216
+Georges Rouault,Graham Sutherland,0.06088424139822021
+Georges Rouault,Victor Pasmore,0.08285730332194163
+Albert Irvin,Terry Frost,0.15628782679563852
+Albert Irvin,John Hoyland,0.08829620410707746
+Albert Irvin,Patrick Caulfield,0.10131194476113164
+Albert Irvin,John Piper,0.15399098872608064
+Albert Irvin,Peter Blake,0.11255444516035128
+Albert Irvin,Eduardo Paolozzi,0.07696280264021103
+Albert Irvin,Victor Pasmore,0.10065558115076105
+Albert Irvin,David Shrigley,0.0841195409950861
+Albert Irvin,Howard Hodgkin,0.07306768902173337
+Albert Irvin,Elisabeth Frink,0.052752976641928934
+Julian Trevelyan,Stanley William Hayter,0.11170422524505913
+Julian Trevelyan,Paula Rego,0.09082366493165114
+Julian Trevelyan,Victor Pasmore,0.10885555138761868
+Julian Trevelyan,Henry Moore,0.14588494191747764
+Julian Trevelyan,John Hoyland,0.07426352988350046
+Julian Trevelyan,Graham Sutherland,0.07268177046331258
+Julian Trevelyan,Elisabeth Frink,0.08534799251198862
+Julian Trevelyan,Terry Frost,0.102820097246084
+Julian Trevelyan,Howard Hodgkin,0.08221393900794204
+Julian Trevelyan,John Piper,0.12540428740536574
+Martin Lewis,Ansel Adams,0.1195267054917
+Martin Lewis,Christopher Richard Wynne Nevinson ARA,0.10512596020993682
+Martin Lewis,Wayne Thiebaud,0.09018570520549576
+Martin Lewis,Louis Icart,0.0992658971212351
+Martin Lewis,Jim Dine,0.1016511140378276
+Martin Lewis,Paula Rego,0.07613923109366826
+Martin Lewis,Alexander Calder,0.12638221146496387
+Martin Lewis,James Abbott McNeill Whistler,0.0851201875507287
+Martin Lewis,Robert Motherwell,0.10336267688280644
+Martin Lewis,Georges Braque,0.09324031094163734
+Fernand Léger,Georges Braque,0.12090782067497333
+Fernand Léger,Marc Chagall,0.246570206172793
+Fernand Léger,Henri Matisse,0.11258627334119438
+Fernand Léger,Sonia Delaunay,0.07715783369453502
+Fernand Léger,Pierre-Auguste Renoir,0.07809887758125444
+Fernand Léger,Graham Sutherland,0.05084089673494265
+Fernand Léger,Victor Vasarely,0.07247938891444515
+Fernand Léger,Elisabeth Frink,0.06282073492064376
+Fernand Léger,Alexander Calder,0.08254484578866554
+Fernand Léger,Henry Moore,0.09599312217655286
+Francis Bacon,David Hockney,0.2198900686041742
+Francis Bacon,Howard Hodgkin,0.0987083112590984
+Francis Bacon,Patrick Hughes,0.07623015896851246
+Francis Bacon,Elisabeth Frink,0.08986390240799577
+Francis Bacon,Damien Hirst,0.11575031896993866
+Francis Bacon,Jasper Johns,0.06331699073293022
+Francis Bacon,Roy Lichtenstein,0.10917167974118139
+Francis Bacon,Henry Moore,0.11306542839146107
+Francis Bacon,Paula Rego,0.05747761329412414
+Francis Bacon,Richard Hamilton,0.056525527630583675
+Joe Tilson,John Hoyland,0.1043777704471863
+Joe Tilson,Terry Frost,0.1451358996940107
+Joe Tilson,Eduardo Paolozzi,0.0839582412661283
+Joe Tilson,John Piper,0.156451771071884
+Joe Tilson,Peter Blake,0.11853410697450746
+Joe Tilson,Patrick Caulfield,0.10047127179035449
+Joe Tilson,Victor Pasmore,0.10264367529821589
+Joe Tilson,Howard Hodgkin,0.0703183421673565
+Joe Tilson,David Shrigley,0.07167377919757052
+Joe Tilson,Stanley William Hayter,0.046435142092786034
+Tsuguharu Foujita,Georges Braque,0.12011484786163215
+Tsuguharu Foujita,Marc Chagall,0.23791528223214364
+Tsuguharu Foujita,Henri Matisse,0.12087922339834876
+Tsuguharu Foujita,Sonia Delaunay,0.07201035597098594
+Tsuguharu Foujita,Louis Icart,0.06417218767751469
+Tsuguharu Foujita,David Hockney,0.12961045346124395
+Tsuguharu Foujita,Pierre-Auguste Renoir,0.07295783001465132
+Tsuguharu Foujita,Elisabeth Frink,0.06335503201245149
+Tsuguharu Foujita,Rufino Tamayo,0.06544747595330293
+Tsuguharu Foujita,Christopher Richard Wynne Nevinson ARA,0.0535373114177251
+Sandra Blow,Patrick Caulfield,0.12945466296850483
+Sandra Blow,Terry Frost,0.14860854837237433
+Sandra Blow,John Hoyland,0.08236768828670915
+Sandra Blow,John Piper,0.15820475548514498
+Sandra Blow,Victor Pasmore,0.10024852700654541
+Sandra Blow,Peter Blake,0.11001563884137727
+Sandra Blow,David Shrigley,0.08066601367035645
+Sandra Blow,Eduardo Paolozzi,0.05749286981893779
+Sandra Blow,Howard Hodgkin,0.06763048865738806
+Sandra Blow,Victor Vasarely,0.0653108068926618
+Zao Wou-Ki,Sonia Delaunay,0.10513378235253844
+Zao Wou-Ki,Georges Braque,0.10178803033609261
+Zao Wou-Ki,Rufino Tamayo,0.0986679525707118
+Zao Wou-Ki,Marc Chagall,0.1988425444720595
+Zao Wou-Ki,Sam Francis,0.12071078661448618
+Zao Wou-Ki,Robert Motherwell,0.08556464077642997
+Zao Wou-Ki,Henri Matisse,0.08874302711130869
+Zao Wou-Ki,Paula Rego,0.059317615773490685
+Zao Wou-Ki,James Rosenquist,0.06406802961654656
+Zao Wou-Ki,Jim Dine,0.07716359037633566
+Paul Landacre,Sybil Andrews,0.09978813196513962
+Paul Landacre,Jim Dine,0.10666833299716069
+Paul Landacre,Ansel Adams,0.09189454467334886
+Paul Landacre,Thomas Hart Benton,0.08157205067087428
+Paul Landacre,Wayne Thiebaud,0.0750173440012512
+Paul Landacre,Georges Braque,0.09548036746620442
+Paul Landacre,Henry Moore,0.1414375242580324
+Paul Landacre,Alexander Calder,0.1200773053664982
+Paul Landacre,Terry Frost,0.11230606629212125
+Paul Landacre,James Rosenquist,0.07575833230936899
+Giorgio de Chirico,Rufino Tamayo,0.14820897850099946
+Giorgio de Chirico,Alexander Calder,0.12675061039549124
+Giorgio de Chirico,James Rosenquist,0.07825390751833528
+Giorgio de Chirico,Henry Moore,0.13804916758110505
+Giorgio de Chirico,Sonia Delaunay,0.07256192061916389
+Giorgio de Chirico,Sam Francis,0.13240601103337535
+Giorgio de Chirico,Graham Sutherland,0.06701354391988211
+Giorgio de Chirico,Elisabeth Frink,0.08194242701518213
+Giorgio de Chirico,Thomas Hart Benton,0.06795317969699759
+Giorgio de Chirico,Robert Motherwell,0.08686025371946789
+Patrick Heron,Patrick Caulfield,0.1259684837527442
+Patrick Heron,John Piper,0.18052989912825163
+Patrick Heron,Terry Frost,0.13332608682206046
+Patrick Heron,Victor Pasmore,0.11494175023079813
+Patrick Heron,Howard Hodgkin,0.08861250939840931
+Patrick Heron,Peter Blake,0.09110331880684681
+Patrick Heron,John Hoyland,0.058634377060922505
+Patrick Heron,Bridget Riley,0.06112174007541727
+Patrick Heron,David Shrigley,0.0772671216265534
+Patrick Heron,Elisabeth Frink,0.06849471309799633
+Gustave Baumann,Sybil Andrews,0.0968196668555867
+Gustave Baumann,Ansel Adams,0.09105239635773593
+Gustave Baumann,Wayne Thiebaud,0.07848903003496949
+Gustave Baumann,Jim Dine,0.10256010671102127
+Gustave Baumann,Roy Lichtenstein,0.14435439745531875
+Gustave Baumann,Thomas Hart Benton,0.08033661104053427
+Gustave Baumann,Alexander Calder,0.12627449777091646
+Gustave Baumann,Georges Braque,0.09455907487624216
+Gustave Baumann,Tom Wesselmann,0.07814498658440822
+Gustave Baumann,Henri Matisse,0.10740923231326675
+Bernard Buffet,Sonia Delaunay,0.11214583438353047
+Bernard Buffet,Georges Braque,0.1148822819646896
+Bernard Buffet,Rufino Tamayo,0.09008034836558726
+Bernard Buffet,Marc Chagall,0.19723678135833791
+Bernard Buffet,Graham Sutherland,0.06634403226920256
+Bernard Buffet,Elisabeth Frink,0.08094573392510016
+Bernard Buffet,Henry Moore,0.12294177447361038
+Bernard Buffet,James Rosenquist,0.06669184895849353
+Bernard Buffet,Victor Vasarely,0.08887029861258378
+Bernard Buffet,Paula Rego,0.059861065688864436
+Karel Appel,Rufino Tamayo,0.1178175265430115
+Karel Appel,Graham Sutherland,0.07489235355246948
+Karel Appel,Henry Moore,0.14316568399760798
+Karel Appel,Elisabeth Frink,0.09182009293189909
+Karel Appel,John Hoyland,0.07345117138474186
+Karel Appel,John Piper,0.14638296264476638
+Karel Appel,James Rosenquist,0.07590196233580625
+Karel Appel,Paula Rego,0.06603934900816752
+Karel Appel,Alexander Calder,0.10796574949482729
+Karel Appel,Terry Frost,0.10256314810670256
+Francisco Zúñiga,Rufino Tamayo,0.13045213248419654
+Francisco Zúñiga,James Rosenquist,0.08988867103551434
+Francisco Zúñiga,Sam Francis,0.15337115126379192
+Francisco Zúñiga,Ellsworth Kelly,0.07203759247097798
+Francisco Zúñiga,Robert Motherwell,0.09857532580868937
+Francisco Zúñiga,Jim Dine,0.08715049863304647
+Francisco Zúñiga,Henry Moore,0.12813312196188437
+Francisco Zúñiga,Alexander Calder,0.10891608249171512
+Francisco Zúñiga,Sonia Delaunay,0.06780171495926143
+Francisco Zúñiga,Graham Sutherland,0.06367370889092253
+Barbara Hepworth,Elisabeth Frink,0.09966872002111177
+Barbara Hepworth,Henry Moore,0.1520212254430153
+Barbara Hepworth,John Piper,0.1531328562254758
+Barbara Hepworth,Paula Rego,0.07112718060691657
+Barbara Hepworth,Rufino Tamayo,0.09309807301558716
+Barbara Hepworth,Howard Hodgkin,0.09139779528841659
+Barbara Hepworth,Terry Frost,0.09934729016100367
+Barbara Hepworth,Graham Sutherland,0.06187563222410066
+Barbara Hepworth,Alexander Calder,0.10024261850620511
+Barbara Hepworth,Victor Pasmore,0.07808860850816728
+Giovanni Battista Piranesi,James Gillray,0.16862486383291952
+Giovanni Battista Piranesi,James Abbott McNeill Whistler,0.11084183485139226
+Giovanni Battista Piranesi,Rembrandt van Rijn,0.15860169180941353
+Giovanni Battista Piranesi,Pierre-Auguste Renoir,0.1099906217489296
+Giovanni Battista Piranesi,Henri de Toulouse-Lautrec,0.07860912724637345
+Giovanni Battista Piranesi,Louis Icart,0.07860201773540601
+Giovanni Battista Piranesi,Henri Matisse,0.09241686209419955
+Giovanni Battista Piranesi,Christopher Richard Wynne Nevinson ARA,0.06702935042449727
+Giovanni Battista Piranesi,Georges Braque,0.07564913079512064
+Giovanni Battista Piranesi,Graham Sutherland,0.05963449946174808
+Craigie Aitchison,Patrick Caulfield,0.1303355561726109
+Craigie Aitchison,John Piper,0.16899094012335467
+Craigie Aitchison,Terry Frost,0.13181284745379973
+Craigie Aitchison,Victor Pasmore,0.10749974787427488
+Craigie Aitchison,Peter Blake,0.10882360971620357
+Craigie Aitchison,John Hoyland,0.06367955630204852
+Craigie Aitchison,Howard Hodgkin,0.08065953307245105
+Craigie Aitchison,David Shrigley,0.08251212250420943
+Craigie Aitchison,Bridget Riley,0.05838599230918563
+Craigie Aitchison,Elisabeth Frink,0.06730009447186168
+Mr Brainwash,Victor Vasarely,0.14506492099928994
+Mr Brainwash,Bridget Riley,0.08373401448031005
+Mr Brainwash,David Shrigley,0.10351878981738288
+Mr Brainwash,Patrick Caulfield,0.09686633685909009
+Mr Brainwash,Peter Blake,0.11335586727586489
+Mr Brainwash,Terry Frost,0.1104746926772711
+Mr Brainwash,John Piper,0.13119898049588
+Mr Brainwash,Donald Sultan,0.06877028208122295
+Mr Brainwash,John Hoyland,0.06465917567382262
+Mr Brainwash,Howard Hodgkin,0.08235693963986536
+Patrick Procktor,Stanley William Hayter,0.12708957813026828
+Patrick Procktor,Eduardo Paolozzi,0.1060457404065047
+Patrick Procktor,John Hoyland,0.08945780135523496
+Patrick Procktor,Graham Sutherland,0.08527481719226633
+Patrick Procktor,Paula Rego,0.0708532859532592
+Patrick Procktor,Victor Pasmore,0.09949496915383518
+Patrick Procktor,Elisabeth Frink,0.08817151408326565
+Patrick Procktor,Howard Hodgkin,0.09054928110007238
+Patrick Procktor,Terry Frost,0.11046282130509869
+Patrick Procktor,Henry Moore,0.1326001913201946
+Mel Ramos,James Rosenquist,0.09746438698008293
+Mel Ramos,Jim Dine,0.11715150524622238
+Mel Ramos,Alexander Calder,0.14600598686945593
+Mel Ramos,Robert Rauschenberg,0.11614447297355575
+Mel Ramos,Robert Motherwell,0.09481789752505057
+Mel Ramos,Sam Francis,0.13168553778563813
+Mel Ramos,Thomas Hart Benton,0.06886797347906488
+Mel Ramos,Jasper Johns,0.06746731619766855
+Mel Ramos,Rufino Tamayo,0.08271004901555216
+Mel Ramos,Elisabeth Frink,0.0776848739277088
+Bruce McLean,John Hoyland,0.09457154665670874
+Bruce McLean,Eduardo Paolozzi,0.09781932280419237
+Bruce McLean,Terry Frost,0.12573948934787396
+Bruce McLean,Peter Blake,0.11832656826986003
+Bruce McLean,Patrick Caulfield,0.10026141704417406
+Bruce McLean,John Piper,0.1397866009148285
+Bruce McLean,David Shrigley,0.09320414271665577
+Bruce McLean,Victor Pasmore,0.09050979588932455
+Bruce McLean,Stanley William Hayter,0.06395611965228488
+Bruce McLean,Howard Hodgkin,0.07582499670409706
+Grayson Perry,Julian Opie,0.09399586488435265
+Grayson Perry,David Shrigley,0.12052659750103492
+Grayson Perry,Eduardo Paolozzi,0.08732229254409296
+Grayson Perry,Peter Blake,0.12188186781434332
+Grayson Perry,Tracey Emin,0.1242367788300122
+Grayson Perry,Richard Hamilton,0.075184265930921
+Grayson Perry,Howard Hodgkin,0.09756478813677563
+Grayson Perry,Damien Hirst,0.13468552097598177
+Grayson Perry,Graham Sutherland,0.0723710436613334
+Grayson Perry,Patrick Hughes,0.07223097972115228
+David Spiller,Patrick Caulfield,0.12269388869637568
+David Spiller,Bridget Riley,0.08804611785836143
+David Spiller,Terry Frost,0.12703765735015093
+David Spiller,John Piper,0.1494795436275598
+David Spiller,Victor Pasmore,0.10186331147148557
+David Spiller,David Shrigley,0.09714811343651954
+David Spiller,Peter Blake,0.10134486760468939
+David Spiller,Howard Hodgkin,0.08360836917039226
+David Spiller,Tom Wesselmann,0.06584641127045031
+David Spiller,John Hoyland,0.06293171951401505
+Richard Smith,Eduardo Paolozzi,0.10737619878307945
+Richard Smith,John Hoyland,0.09843755186289381
+Richard Smith,Stanley William Hayter,0.0944893805817258
+Richard Smith,Graham Sutherland,0.08040691151969598
+Richard Smith,Henry Moore,0.13928518094435785
+Richard Smith,Terry Frost,0.11242650710957254
+Richard Smith,Paula Rego,0.06633210840560061
+Richard Smith,John Piper,0.13481925720069748
+Richard Smith,Elisabeth Frink,0.08351932060429672
+Richard Smith,Howard Hodgkin,0.08290758298807958
+Yoshitomo Nara,Julian Opie,0.0850329871102624
+Yoshitomo Nara,Connor Brothers,0.11844679090666843
+Yoshitomo Nara,Christo and Jeanne-Claude,0.09285563281842522
+Yoshitomo Nara,Takashi Murakami,0.12088976669177949
+Yoshitomo Nara,Tracey Emin,0.12024564536909421
+Yoshitomo Nara,Richard Hamilton,0.0734293724076809
+Yoshitomo Nara,David Shrigley,0.10278923584416759
+Yoshitomo Nara,Damien Hirst,0.13528461701607336
+Yoshitomo Nara,Patrick Hughes,0.07397211211887027
+Yoshitomo Nara,Eduardo Paolozzi,0.07705383971697817
+Shepard Fairey (Obey),Peter Blake,0.13228394059408424
+Shepard Fairey (Obey),David Shrigley,0.10677971728691583
+Shepard Fairey (Obey),Patrick Caulfield,0.09934057513955147
+Shepard Fairey (Obey),Donald Sultan,0.07737007078059818
+Shepard Fairey (Obey),Eduardo Paolozzi,0.07491190307499643
+Shepard Fairey (Obey),John Hoyland,0.0710142254781573
+Shepard Fairey (Obey),Terry Frost,0.10891357194314856
+Shepard Fairey (Obey),Victor Vasarely,0.09541606117937136
+Shepard Fairey (Obey),Tracey Emin,0.10319555231063736
+Shepard Fairey (Obey),John Piper,0.13077438221253915
+Charles Arnoldi,Elisabeth Frink,0.10009899562009648
+Charles Arnoldi,Jim Dine,0.10192621516044635
+Charles Arnoldi,Howard Hodgkin,0.09971433638461824
+Charles Arnoldi,Paula Rego,0.07544375598294902
+Charles Arnoldi,Terry Frost,0.11818666396812073
+Charles Arnoldi,Rufino Tamayo,0.09565926629362678
+Charles Arnoldi,John Piper,0.14485256070378272
+Charles Arnoldi,Victor Pasmore,0.0981211016750042
+Charles Arnoldi,John Hoyland,0.07025744963665162
+Charles Arnoldi,David Shrigley,0.09573965457470406
+Peter Doig,Tracey Emin,0.16753471786555676
+Peter Doig,Damien Hirst,0.14975328496970736
+Peter Doig,Howard Hodgkin,0.09249069654816594
+Peter Doig,David Shrigley,0.09071719914352143
+Peter Doig,Peter Blake,0.09702135709831568
+Peter Doig,Terry Frost,0.09932416721628017
+Peter Doig,Connor Brothers,0.08510986113450368
+Peter Doig,Victor Pasmore,0.084692215953948
+Peter Doig,Elisabeth Frink,0.07518526653907176
+Peter Doig,Paula Rego,0.05817123353092922
+Sean Scully,Rufino Tamayo,0.11516494785354445
+Sean Scully,Paula Rego,0.08692123545415834
+Sean Scully,Wayne Thiebaud,0.08240979047138851
+Sean Scully,Jim Dine,0.10445729070066748
+Sean Scully,Sam Francis,0.14650508150613387
+Sean Scully,Howard Hodgkin,0.09784078313912623
+Sean Scully,Robert Motherwell,0.10083716066655016
+Sean Scully,Victor Pasmore,0.10079409993556898
+Sean Scully,James Rosenquist,0.07669479153015203
+Sean Scully,Elisabeth Frink,0.08837481874271005
+John Baldessari,Robert Rauschenberg,0.1776762291146267
+John Baldessari,Jasper Johns,0.0794652177231715
+John Baldessari,Sam Francis,0.1444988316327387
+John Baldessari,James Rosenquist,0.0792838989232711
+John Baldessari,Robert Motherwell,0.1003951096618986
+John Baldessari,Ed Ruscha,0.08034128767168534
+John Baldessari,Jim Dine,0.08850276578468726
+John Baldessari,Roy Lichtenstein,0.12241665424631282
+John Baldessari,Frank Stella,0.06937091920552466
+John Baldessari,Ellsworth Kelly,0.05804908603608328
+Paul Nash,Graham Sutherland,0.08137514092901127
+Paul Nash,Henry Moore,0.15014970597665053
+Paul Nash,Elisabeth Frink,0.09691172262335816
+Paul Nash,Howard Hodgkin,0.09461020222127771
+Paul Nash,John Piper,0.14246202731781782
+Paul Nash,David Hockney,0.16902985255847805
+Paul Nash,Paula Rego,0.06798229818657887
+Paul Nash,Patrick Hughes,0.0681997636370902
+Paul Nash,Julian Opie,0.06490617575629933
+Paul Nash,Richard Hamilton,0.06437311079343805
+Robert Longo,Robert Rauschenberg,0.14613465780978077
+Robert Longo,Jim Dine,0.09994379419743335
+Robert Longo,Jasper Johns,0.07956732490640711
+Robert Longo,Roy Lichtenstein,0.13936717059056308
+Robert Longo,Christo and Jeanne-Claude,0.08400493936266967
+Robert Longo,Ed Ruscha,0.08104497480028293
+Robert Longo,James Rosenquist,0.07466021772771425
+Robert Longo,Keith Haring,0.08532653673030581
+Robert Longo,Sam Francis,0.1259255295728859
+Robert Longo,Robert Motherwell,0.08402485430195701
+Edward S. Curtis,James Abbott McNeill Whistler,0.10418543118599037
+Edward S. Curtis,Ansel Adams,0.09819672653720542
+Edward S. Curtis,Christo and Jeanne-Claude,0.09454662673538965
+Edward S. Curtis,Robert Rauschenberg,0.11194622920545463
+Edward S. Curtis,Henri de Toulouse-Lautrec,0.08346054015907466
+Edward S. Curtis,Richard Hamilton,0.07239562654837724
+Edward S. Curtis,Pierre-Auguste Renoir,0.1037690439866536
+Edward S. Curtis,Roy Lichtenstein,0.13623029109355528
+Edward S. Curtis,Keith Haring,0.09240833463454252
+Edward S. Curtis,Henri Matisse,0.10286114991375668
+Gerhard Richter,Damien Hirst,0.14055443681976942
+Gerhard Richter,Takashi Murakami,0.1101120104025722
+Gerhard Richter,Richard Hamilton,0.07049267191360062
+Gerhard Richter,Tracey Emin,0.11336966198260848
+Gerhard Richter,Laurence Stephen Lowry,0.14154111030990305
+Gerhard Richter,Connor Brothers,0.09825290356238836
+Gerhard Richter,Patrick Hughes,0.07058937363716619
+Gerhard Richter,Julian Opie,0.06833197369592833
+Gerhard Richter,Keith Haring,0.0905402830260793
+Gerhard Richter,David Shrigley,0.09621557464998393
+Ruth Bernhard,Ansel Adams,0.17953379293729643
+Ruth Bernhard,Christopher Richard Wynne Nevinson ARA,0.07802348852562821
+Ruth Bernhard,Jim Dine,0.09355459054305704
+Ruth Bernhard,Alexander Calder,0.11859089404182399
+Ruth Bernhard,Wayne Thiebaud,0.0703023284813471
+Ruth Bernhard,Roy Lichtenstein,0.12895170916125662
+Ruth Bernhard,Robert Rauschenberg,0.10005428082367483
+Ruth Bernhard,Jasper Johns,0.07039640670402773
+Ruth Bernhard,Thomas Hart Benton,0.06921894756177689
+Ruth Bernhard,Robert Motherwell,0.09137356122011102
+James Jacques Joseph Tissot,Pierre-Auguste Renoir,0.13995690743199854
+James Jacques Joseph Tissot,James Abbott McNeill Whistler,0.10007312468289169
+James Jacques Joseph Tissot,Louis Icart,0.09902616324785228
+James Jacques Joseph Tissot,Henri de Toulouse-Lautrec,0.0797740961414778
+James Jacques Joseph Tissot,James Gillray,0.09019652229936209
+James Jacques Joseph Tissot,Henri Matisse,0.10278322146933735
+James Jacques Joseph Tissot,Georges Braque,0.08740523712929897
+James Jacques Joseph Tissot,Marc Chagall,0.17959952777631788
+James Jacques Joseph Tissot,Sonia Delaunay,0.06080187713325644
+James Jacques Joseph Tissot,Christopher Richard Wynne Nevinson ARA,0.060383322688206786
+Maurits Cornelis Escher,Sybil Andrews,0.11049270254020824
+Maurits Cornelis Escher,Ansel Adams,0.10112218143872884
+Maurits Cornelis Escher,Alexander Calder,0.13175326652086353
+Maurits Cornelis Escher,Wayne Thiebaud,0.07773520811431037
+Maurits Cornelis Escher,Christopher Richard Wynne Nevinson ARA,0.08409791924479798
+Maurits Cornelis Escher,Rufino Tamayo,0.10031139490283093
+Maurits Cornelis Escher,Roy Lichtenstein,0.1417049791217812
+Maurits Cornelis Escher,Georges Braque,0.0946578822297202
+Maurits Cornelis Escher,Bridget Riley,0.08084089629810859
+Maurits Cornelis Escher,Thomas Hart Benton,0.07728356958865021
+Harland Miller,Damien Hirst,0.1686872823074513
+Harland Miller,Patrick Hughes,0.07470674274427086
+Harland Miller,Richard Hamilton,0.07214881638437672
+Harland Miller,Julian Opie,0.06759347880243598
+Harland Miller,David Shrigley,0.09009748306310983
+Harland Miller,David Hockney,0.15762232078299748
+Harland Miller,Connor Brothers,0.08980695280199612
+Harland Miller,Banksy,0.11337261850617282
+Harland Miller,Tracey Emin,0.09100228834077398
+Harland Miller,Keith Haring,0.07496201626641491
+Robyn Denny,Eduardo Paolozzi,0.11996907936753509
+Robyn Denny,John Hoyland,0.10354532263993242
+Robyn Denny,Stanley William Hayter,0.08521811286725914
+Robyn Denny,Terry Frost,0.12715675557224043
+Robyn Denny,John Piper,0.14251854303331757
+Robyn Denny,Victor Pasmore,0.09610837663926079
+Robyn Denny,Peter Blake,0.10197782232961591
+Robyn Denny,Graham Sutherland,0.06298166495357115
+Robyn Denny,Patrick Caulfield,0.08147643639118204
+Robyn Denny,Howard Hodgkin,0.07904788620608552
+Louise Bourgeois,Robert Motherwell,0.10354803982969239
+Louise Bourgeois,Georges Braque,0.09153747773331854
+Louise Bourgeois,Marc Chagall,0.20482716969638906
+Louise Bourgeois,Sonia Delaunay,0.07495184172629987
+Louise Bourgeois,Jim Dine,0.09086369491733066
+Louise Bourgeois,Jasper Johns,0.07324357156995014
+Louise Bourgeois,Sam Francis,0.12747329824207496
+Louise Bourgeois,Robert Rauschenberg,0.09564926239861775
+Louise Bourgeois,James Rosenquist,0.06920919124801174
+Louise Bourgeois,Donald Sultan,0.06869645263831481
+Sebastião Salgado,Ansel Adams,0.11342442001774031
+Sebastião Salgado,Paula Rego,0.08065193285103997
+Sebastião Salgado,Elisabeth Frink,0.09865064933516153
+Sebastião Salgado,Howard Hodgkin,0.09915417809396848
+Sebastião Salgado,Patrick Hughes,0.0752315999528058
+Sebastião Salgado,Bridget Riley,0.07920047613710976
+Sebastião Salgado,Victor Pasmore,0.1008469646290202
+Sebastião Salgado,Rufino Tamayo,0.09375045267381182
+Sebastião Salgado,Terry Frost,0.11460381695992533
+Sebastião Salgado,John Piper,0.14448550934941679
+Gene Kloss,Jim Dine,0.12138569416397993
+Gene Kloss,Wayne Thiebaud,0.08735281827219658
+Gene Kloss,Paula Rego,0.08628131744987798
+Gene Kloss,James Rosenquist,0.09364763620153872
+Gene Kloss,Stanley William Hayter,0.08898358018897208
+Gene Kloss,Louis Icart,0.10055562414610397
+Gene Kloss,Victor Pasmore,0.11789329721731742
+Gene Kloss,Elisabeth Frink,0.10202866827360753
+Gene Kloss,Ansel Adams,0.09074039043656834
+Gene Kloss,Robert Motherwell,0.11113097364983733
+René Magritte,Henry Moore,0.1529880894701547
+René Magritte,Paula Rego,0.0746465621341117
+René Magritte,Georges Braque,0.09242847567329229
+René Magritte,Victor Pasmore,0.1015852558358174
+René Magritte,Howard Hodgkin,0.09388903243272452
+René Magritte,Elisabeth Frink,0.0886056144927297
+René Magritte,Rufino Tamayo,0.09147315106786463
+René Magritte,Graham Sutherland,0.06998885337007968
+René Magritte,David Hockney,0.16480913311143963
+René Magritte,Thomas Hart Benton,0.06958583241178576
+Edward Weston,Ansel Adams,0.1379938253651646
+Edward Weston,Christopher Richard Wynne Nevinson ARA,0.0852666174615231
+Edward Weston,James Abbott McNeill Whistler,0.08804336918369061
+Edward Weston,Richard Diebenkorn,0.09088623688716829
+Edward Weston,Roy Lichtenstein,0.1333903646459819
+Edward Weston,Robert Motherwell,0.0986563009882835
+Edward Weston,Henri Matisse,0.10398231058155276
+Edward Weston,Wayne Thiebaud,0.06954243053110373
+Edward Weston,Alexander Calder,0.11706947195140441
+Edward Weston,Donald Sultan,0.07516907240412703
+Eduardo Chillida,Salvador Dalí,0.13885336345836405
+Eduardo Chillida,Joan Miró,0.2212061463312733
+Eduardo Chillida,Pablo Picasso,0.2513552335723439
+Eduardo Chillida,Elisabeth Frink,0.049594047654348106
+Eduardo Chillida,Howard Hodgkin,0.05104553712178675
+Eduardo Chillida,Jim Dine,0.050840021147335754
+Eduardo Chillida,David Hockney,0.094758693343937
+Eduardo Chillida,Paula Rego,0.03832467613086554
+Eduardo Chillida,Rufino Tamayo,0.05013801257847748
+Eduardo Chillida,Victor Pasmore,0.05388426866126801
+Yayoi Kusama,Banksy,0.14188873168767865
+Yayoi Kusama,Andy Warhol,0.179506471130338
+Yayoi Kusama,Keith Haring,0.09003663311564017
+Yayoi Kusama,Bridget Riley,0.072620431278019
+Yayoi Kusama,Roy Lichtenstein,0.1210171589131772
+Yayoi Kusama,David Hockney,0.13900239749395385
+Yayoi Kusama,Patrick Hughes,0.05725925542814209
+Yayoi Kusama,Richard Hamilton,0.05248148355516446
+Yayoi Kusama,Damien Hirst,0.09598829385834179
+Yayoi Kusama,Julian Opie,0.0501991435395448
+Lynn Chadwick,Graham Sutherland,0.09660279990150027
+Lynn Chadwick,Henry Moore,0.1840146388709578
+Lynn Chadwick,Elisabeth Frink,0.1118452176417196
+Lynn Chadwick,John Piper,0.14628194606554687
+Lynn Chadwick,Paula Rego,0.06866336314306691
+Lynn Chadwick,John Hoyland,0.06971039262257162
+Lynn Chadwick,Howard Hodgkin,0.08627740550875009
+Lynn Chadwick,Eduardo Paolozzi,0.06410656493850973
+Lynn Chadwick,Terry Frost,0.0950009108254811
+Lynn Chadwick,Rufino Tamayo,0.07749676048189609
+Adolph Gottlieb,Tom Wesselmann,0.09114034659180796
+Adolph Gottlieb,Donald Sultan,0.0830029590235873
+Adolph Gottlieb,Terry Frost,0.12277936465502377
+Adolph Gottlieb,John Piper,0.15526450675967549
+Adolph Gottlieb,Victor Pasmore,0.1054527129509833
+Adolph Gottlieb,Bridget Riley,0.07893605689755331
+Adolph Gottlieb,Patrick Caulfield,0.09433218536012651
+Adolph Gottlieb,John Hoyland,0.06618628335949937
+Adolph Gottlieb,Robert Rauschenberg,0.09545636308255301
+Adolph Gottlieb,Alexander Calder,0.10744922131919
+KAWS,Keith Haring,0.11199896443112428
+KAWS,Donald Sultan,0.0838507120254812
+KAWS,David Shrigley,0.10721126179091132
+KAWS,Julian Opie,0.06989590945698183
+KAWS,Patrick Hughes,0.07159440459565232
+KAWS,Roy Lichtenstein,0.1309882968554774
+KAWS,Howard Hodgkin,0.08890836442733764
+KAWS,Tracey Emin,0.10671580480961448
+KAWS,Damien Hirst,0.1246218961233175
+KAWS,Peter Blake,0.10421438548410202
+Grant Wood,Thomas Hart Benton,0.14611046333446318
+Grant Wood,Alexander Calder,0.16870490664310148
+Grant Wood,Rufino Tamayo,0.09366871750196837
+Grant Wood,Henry Moore,0.1355922315771327
+Grant Wood,Sonia Delaunay,0.06638264963369304
+Grant Wood,Elisabeth Frink,0.07935485129894215
+Grant Wood,Georges Braque,0.07923902818406986
+Grant Wood,Jim Dine,0.08093622886147775
+Grant Wood,James Rosenquist,0.0659122743419062
+Grant Wood,Robert Motherwell,0.08409864862324544
+Sidney Nolan,John Piper,0.16540124330128395
+Sidney Nolan,Eduardo Paolozzi,0.08316537970435622
+Sidney Nolan,Peter Blake,0.11763841325937596
+Sidney Nolan,Terry Frost,0.1200793385787041
+Sidney Nolan,John Hoyland,0.07606050898239354
+Sidney Nolan,Howard Hodgkin,0.09322985910350143
+Sidney Nolan,Elisabeth Frink,0.08885975525151758
+Sidney Nolan,Graham Sutherland,0.06995996327369278
+Sidney Nolan,Victor Pasmore,0.09663873827809255
+Sidney Nolan,Patrick Caulfield,0.08896680026708195
+Jonas Wood,Christo and Jeanne-Claude,0.09642583400221788
+Jonas Wood,Connor Brothers,0.11076025375884815
+Jonas Wood,Takashi Murakami,0.11718041073768169
+Jonas Wood,Tracey Emin,0.11456004709930158
+Jonas Wood,Julian Opie,0.07130491440644302
+Jonas Wood,Robert Rauschenberg,0.1056657496462578
+Jonas Wood,David Shrigley,0.09499286299618265
+Jonas Wood,Eduardo Paolozzi,0.07087884666389004
+Jonas Wood,Damien Hirst,0.11955881032737228
+Jonas Wood,Peter Blake,0.09867227036180483
+Francisco José de Goya y Lucientes,James Gillray,0.08792724269929741
+Francisco José de Goya y Lucientes,Pablo Picasso,0.22472478714479904
+Francisco José de Goya y Lucientes,James Abbott McNeill Whistler,0.07382736492112267
+Francisco José de Goya y Lucientes,Salvador Dalí,0.1011379638386767
+Francisco José de Goya y Lucientes,Joan Miró,0.1692352407538212
+Francisco José de Goya y Lucientes,Pierre-Auguste Renoir,0.0812565638767523
+Francisco José de Goya y Lucientes,Rembrandt van Rijn,0.09232735357755674
+Francisco José de Goya y Lucientes,Henri de Toulouse-Lautrec,0.05828987173173396
+Francisco José de Goya y Lucientes,Christopher Richard Wynne Nevinson ARA,0.05344218336031377
+Francisco José de Goya y Lucientes,Louis Icart,0.057831428095926056
+Willem de Kooning,Robert Rauschenberg,0.139006750096306
+Willem de Kooning,Alexander Calder,0.1469764937930265
+Willem de Kooning,Sam Francis,0.14896855154308425
+Willem de Kooning,Robert Motherwell,0.1041320888844317
+Willem de Kooning,James Rosenquist,0.08103469036322715
+Willem de Kooning,Jasper Johns,0.07835569362382132
+Willem de Kooning,Jim Dine,0.09402835856278076
+Willem de Kooning,Rufino Tamayo,0.08087555509550608
+Willem de Kooning,Ellsworth Kelly,0.05839583223862101
+Willem de Kooning,Ed Ruscha,0.06822598579919521
+Alberto Giacometti,Rufino Tamayo,0.1221389095963307
+Alberto Giacometti,Alexander Calder,0.141182104427682
+Alberto Giacometti,Henry Moore,0.159881291621865
+Alberto Giacometti,Thomas Hart Benton,0.08306124913480857
+Alberto Giacometti,Elisabeth Frink,0.10004305286366401
+Alberto Giacometti,Paula Rego,0.07618960390540107
+Alberto Giacometti,Howard Hodgkin,0.09219535968963004
+Alberto Giacometti,Georges Braque,0.08693608557491399
+Alberto Giacometti,Sonia Delaunay,0.07139078892165679
+Alberto Giacometti,Graham Sutherland,0.06698155426404774
+Erté (Romain de Tirtoff),John Piper,0.16800678372879832
+Erté (Romain de Tirtoff),Terry Frost,0.12429286539984487
+Erté (Romain de Tirtoff),John Hoyland,0.07448575992055377
+Erté (Romain de Tirtoff),Victor Pasmore,0.10307611947803037
+Erté (Romain de Tirtoff),Patrick Caulfield,0.09560980133110018
+Erté (Romain de Tirtoff),Victor Vasarely,0.10338672836637179
+Erté (Romain de Tirtoff),Peter Blake,0.10406035033391471
+Erté (Romain de Tirtoff),Rufino Tamayo,0.08246335824724113
+Erté (Romain de Tirtoff),Eduardo Paolozzi,0.06508743193520045
+Erté (Romain de Tirtoff),Howard Hodgkin,0.0795308012589445
+Nathan Oliveira,Jim Dine,0.12764072018812483
+Nathan Oliveira,James Rosenquist,0.0978070619478323
+Nathan Oliveira,Sam Francis,0.16662204112153683
+Nathan Oliveira,Robert Motherwell,0.10678228007547198
+Nathan Oliveira,Robert Rauschenberg,0.10527797406235219
+Nathan Oliveira,Alexander Calder,0.10925340356504339
+Nathan Oliveira,Jasper Johns,0.06953276442404548
+Nathan Oliveira,Wayne Thiebaud,0.06409021764034181
+Nathan Oliveira,Ed Ruscha,0.07322910049884374
+Nathan Oliveira,Rufino Tamayo,0.07976443647640756
+Romare Bearden,Alexander Calder,0.1623716475685124
+Romare Bearden,Jim Dine,0.1046986347010442
+Romare Bearden,James Rosenquist,0.08626402148449738
+Romare Bearden,Robert Motherwell,0.10498088340630496
+Romare Bearden,Sam Francis,0.1448248852055216
+Romare Bearden,Rufino Tamayo,0.0915448682559442
+Romare Bearden,Robert Rauschenberg,0.10099534668480156
+Romare Bearden,Tom Wesselmann,0.06944204147082265
+Romare Bearden,Thomas Hart Benton,0.06786238992189483
+Romare Bearden,Jasper Johns,0.06701528130065626
+Brett Weston,Ansel Adams,0.1513978999780881
+Brett Weston,Alexander Calder,0.13414025184598544
+Brett Weston,Jim Dine,0.10503236068101354
+Brett Weston,Paula Rego,0.07586236503177904
+Brett Weston,Robert Rauschenberg,0.111985024590592
+Brett Weston,Wayne Thiebaud,0.07405703269185837
+Brett Weston,Thomas Hart Benton,0.0763841927053834
+Brett Weston,Elisabeth Frink,0.09207822775905765
+Brett Weston,James Rosenquist,0.07882693755291353
+Brett Weston,Robert Motherwell,0.10023570716332898
+Anish Kapoor,Paula Rego,0.09212215101988186
+Anish Kapoor,Howard Hodgkin,0.11446945951327347
+Anish Kapoor,David Hockney,0.18572798191905235
+Anish Kapoor,Victor Pasmore,0.10540403801571394
+Anish Kapoor,Elisabeth Frink,0.09337478307509015
+Anish Kapoor,Tracey Emin,0.10951509007956277
+Anish Kapoor,Patrick Hughes,0.06754737333832568
+Anish Kapoor,Terry Frost,0.105238620198615
+Anish Kapoor,John Hoyland,0.06369314221021395
+Anish Kapoor,Stanley William Hayter,0.06290736063027107
+Max Beckmann,Christopher Richard Wynne Nevinson ARA,0.07333599937082559
+Max Beckmann,Georges Braque,0.08429680608272104
+Max Beckmann,Henri Matisse,0.09623487065546901
+Max Beckmann,David Hockney,0.15883462113729854
+Max Beckmann,Marc Chagall,0.18393552089045698
+Max Beckmann,Ansel Adams,0.0722907311657438
+Max Beckmann,Elisabeth Frink,0.08038857781229196
+Max Beckmann,Graham Sutherland,0.06389703794354418
+Max Beckmann,Henry Moore,0.12244545555124643
+Max Beckmann,Thomas Hart Benton,0.06434037939040245
+Max Ernst,Henry Moore,0.1501596774624532
+Max Ernst,Graham Sutherland,0.07658663557880495
+Max Ernst,Rufino Tamayo,0.09769139167352982
+Max Ernst,Elisabeth Frink,0.09409521867370323
+Max Ernst,John Piper,0.1481951853320578
+Max Ernst,Paula Rego,0.0725823478010428
+Max Ernst,Georges Braque,0.09194021099778335
+Max Ernst,Thomas Hart Benton,0.07511346319060928
+Max Ernst,Howard Hodgkin,0.093660244508722
+Max Ernst,Victor Pasmore,0.09997562478129352
+Richard Serra,Wayne Thiebaud,0.10460932428643112
+Richard Serra,Sam Francis,0.17946025325482223
+Richard Serra,Robert Motherwell,0.11970232200920279
+Richard Serra,Ed Ruscha,0.09505011358217848
+Richard Serra,Jim Dine,0.10490437126314192
+Richard Serra,Jasper Johns,0.08284251633355476
+Richard Serra,Frank Stella,0.08118299526726136
+Richard Serra,James Rosenquist,0.0730077030158675
+Richard Serra,Tom Wesselmann,0.0669785959649268
+Richard Serra,Robert Rauschenberg,0.092261805022613
+Yaacov Agam,Victor Vasarely,0.19953779675087818
+Yaacov Agam,Patrick Caulfield,0.09514944351691382
+Yaacov Agam,Peter Blake,0.10301594494463157
+Yaacov Agam,John Piper,0.1296013663291045
+Yaacov Agam,Terry Frost,0.10098649010122793
+Yaacov Agam,Bridget Riley,0.06770590466516066
+Yaacov Agam,Victor Pasmore,0.08555638583774078
+Yaacov Agam,John Hoyland,0.06106735064105595
+Yaacov Agam,David Shrigley,0.08246746762662097
+Yaacov Agam,Georges Braque,0.07491184958666557
+Laura Knight,Stanley William Hayter,0.11070750090647033
+Laura Knight,Henry Moore,0.15789599848691752
+Laura Knight,Graham Sutherland,0.07841795162204498
+Laura Knight,Victor Pasmore,0.10830640294820287
+Laura Knight,Paula Rego,0.07586806882038548
+Laura Knight,Eduardo Paolozzi,0.07417479877805137
+Laura Knight,Elisabeth Frink,0.0867227017447609
+Laura Knight,John Piper,0.135683727614298
+Laura Knight,John Hoyland,0.06732294368294138
+Laura Knight,Terry Frost,0.10489990539592725
+Wassily Kandinsky,Henri Matisse,0.14030073711786234
+Wassily Kandinsky,Georges Braque,0.10166223888612595
+Wassily Kandinsky,Marc Chagall,0.22727847440406695
+Wassily Kandinsky,Pierre-Auguste Renoir,0.10332519651510814
+Wassily Kandinsky,Henri de Toulouse-Lautrec,0.06968558324366865
+Wassily Kandinsky,Sonia Delaunay,0.0554654855914972
+Wassily Kandinsky,Graham Sutherland,0.04909227568920765
+Wassily Kandinsky,David Hockney,0.11768497562073432
+Wassily Kandinsky,Richard Hamilton,0.045597862773650306
+Wassily Kandinsky,Henry Moore,0.08990717015807832
+Christo,Robert Rauschenberg,0.1850573812139409
+Christo,James Rosenquist,0.08432803455135725
+Christo,Jim Dine,0.09600815170089035
+Christo,Christo and Jeanne-Claude,0.08103864298297446
+Christo,Jasper Johns,0.07145050125106824
+Christo,Roy Lichtenstein,0.12124273158869145
+Christo,Robert Motherwell,0.08759759475928648
+Christo,Ed Ruscha,0.0732010911815141
+Christo,Sam Francis,0.1209195062914673
+Christo,Connor Brothers,0.0791563644788094
+Richard Misrach,Christo and Jeanne-Claude,0.10643400851789744
+Richard Misrach,Robert Rauschenberg,0.12148644459747251
+Richard Misrach,Takashi Murakami,0.11205915022141959
+Richard Misrach,Connor Brothers,0.1039844550007864
+Richard Misrach,Damien Hirst,0.1201817796400235
+Richard Misrach,Tracey Emin,0.10233792834449518
+Richard Misrach,Roy Lichtenstein,0.11797913098098728
+Richard Misrach,Ansel Adams,0.07087230767590008
+Richard Misrach,Jim Dine,0.08198331333919133
+Richard Misrach,Patrick Hughes,0.06268148168182665
+William Lionel Wyllie,Louis Icart,0.10307567899528376
+William Lionel Wyllie,Stanley William Hayter,0.08582163102796007
+William Lionel Wyllie,James Abbott McNeill Whistler,0.09085243899458523
+William Lionel Wyllie,Christopher Richard Wynne Nevinson ARA,0.08501437409699421
+William Lionel Wyllie,Henry Moore,0.15036905068712547
+William Lionel Wyllie,Victor Pasmore,0.10623694289207056
+William Lionel Wyllie,Paula Rego,0.07432887270965037
+William Lionel Wyllie,Graham Sutherland,0.07466629354554606
+William Lionel Wyllie,John Piper,0.14165840042507846
+William Lionel Wyllie,Elisabeth Frink,0.08797631662570579
+Richard Estes,Ed Ruscha,0.10258656766296129
+Richard Estes,Robert Motherwell,0.11902569984339847
+Richard Estes,James Rosenquist,0.08754501764909253
+Richard Estes,Tom Wesselmann,0.08391052238795373
+Richard Estes,Donald Sultan,0.0836168962316505
+Richard Estes,Robert Rauschenberg,0.114096844043145
+Richard Estes,Jim Dine,0.09873668865935063
+Richard Estes,Jasper Johns,0.07978803127294133
+Richard Estes,Sam Francis,0.14574896156372832
+Richard Estes,Frank Stella,0.0849447706857781
+Lucian Freud,Wayne Thiebaud,0.08958596847315589
+Lucian Freud,David Hockney,0.20597959565612262
+Lucian Freud,Howard Hodgkin,0.10423286576969386
+Lucian Freud,Richard Diebenkorn,0.0930591603504196
+Lucian Freud,Paula Rego,0.0772771134017863
+Lucian Freud,Robert Motherwell,0.10420453731329103
+Lucian Freud,Victor Pasmore,0.10172158679448418
+Lucian Freud,Jasper Johns,0.0763888040886604
+Lucian Freud,Patrick Hughes,0.07164414973792005
+Lucian Freud,Christopher Richard Wynne Nevinson ARA,0.07590621841446603
+William Kentridge,Elisabeth Frink,0.1004402097775388
+William Kentridge,Paula Rego,0.07837775234962555
+William Kentridge,Howard Hodgkin,0.10248218230894696
+William Kentridge,David Hockney,0.19155057034194287
+William Kentridge,Jim Dine,0.0960927594603653
+William Kentridge,Patrick Hughes,0.071376014539621
+William Kentridge,Tracey Emin,0.11033793945110365
+William Kentridge,Wayne Thiebaud,0.06711940888741294
+William Kentridge,Victor Pasmore,0.09460554527927324
+William Kentridge,Rufino Tamayo,0.08761761760416965
+Michael Rothenstein,Eduardo Paolozzi,0.10247507144394735
+Michael Rothenstein,John Hoyland,0.08622220435242572
+Michael Rothenstein,Terry Frost,0.12419091402299731
+Michael Rothenstein,Stanley William Hayter,0.07719130324179783
+Michael Rothenstein,Graham Sutherland,0.07305533530278314
+Michael Rothenstein,John Piper,0.14018202983454822
+Michael Rothenstein,Peter Blake,0.10155029735007891
+Michael Rothenstein,Henry Moore,0.12381897919441959
+Michael Rothenstein,Victor Pasmore,0.08899916350206274
+Michael Rothenstein,Howard Hodgkin,0.08231470175493921
+Edward Borein,Ansel Adams,0.11252291155306739
+Edward Borein,Louis Icart,0.11269841544072946
+Edward Borein,James Abbott McNeill Whistler,0.10534995367992732
+Edward Borein,Christopher Richard Wynne Nevinson ARA,0.09993342720097849
+Edward Borein,Wayne Thiebaud,0.07818042835441923
+Edward Borein,Paula Rego,0.07623436911008397
+Edward Borein,Georges Braque,0.09555244429588812
+Edward Borein,Henry Moore,0.14546412291507702
+Edward Borein,Jim Dine,0.09716662009676626
+Edward Borein,Stanley William Hayter,0.07689730735306285
+Roberto Matta,Jim Dine,0.10772059349236308
+Roberto Matta,Graham Sutherland,0.08340107138990618
+Roberto Matta,David Hockney,0.19306142981625904
+Roberto Matta,James Rosenquist,0.08462135651922251
+Roberto Matta,Stanley William Hayter,0.07845128019505718
+Roberto Matta,Elisabeth Frink,0.09457045509041993
+Roberto Matta,Howard Hodgkin,0.09411399286310566
+Roberto Matta,Paula Rego,0.06953605355973397
+Roberto Matta,Robert Motherwell,0.09666996614694766
+Roberto Matta,Victor Pasmore,0.0978538009269846
+Stik,Connor Brothers,0.13096273599785546
+Stik,Tracey Emin,0.1335591338827411
+Stik,Takashi Murakami,0.11294537961721308
+Stik,Patrick Hughes,0.0755810886238988
+Stik,Eduardo Paolozzi,0.07742502005244409
+Stik,Damien Hirst,0.13165503955191504
+Stik,David Shrigley,0.09829175822671593
+Stik,Peter Blake,0.1081457354299363
+Stik,Julian Opie,0.06656922702238716
+Stik,Richard Hamilton,0.06486488159489315
+Berenice Abbott,Ansel Adams,0.15651360866177622
+Berenice Abbott,Jim Dine,0.09759080696398034
+Berenice Abbott,Christopher Richard Wynne Nevinson ARA,0.08028172768156144
+Berenice Abbott,Alexander Calder,0.1170776580376186
+Berenice Abbott,Christo and Jeanne-Claude,0.0796253772361572
+Berenice Abbott,Robert Rauschenberg,0.10241681874382544
+Berenice Abbott,Wayne Thiebaud,0.06815391005741991
+Berenice Abbott,Roy Lichtenstein,0.12773789379166656
+Berenice Abbott,Elisabeth Frink,0.08498442179000519
+Berenice Abbott,Georges Braque,0.08561777703598906
+Bob Dylan,Takashi Murakami,0.13052809193567477
+Bob Dylan,Damien Hirst,0.13248835587514626
+Bob Dylan,Tracey Emin,0.113250778973864
+Bob Dylan,Laurence Stephen Lowry,0.13907595870294273
+Bob Dylan,Connor Brothers,0.09522625103151566
+Bob Dylan,Christo and Jeanne-Claude,0.07634932237748933
+Bob Dylan,Patrick Hughes,0.06565279466584613
+Bob Dylan,Robert Rauschenberg,0.09515793168076812
+Bob Dylan,Peter Blake,0.09335834800990676
+Bob Dylan,Richard Hamilton,0.05891216674684626
+Alan Davie,Eduardo Paolozzi,0.10066412391012529
+Alan Davie,John Hoyland,0.0918100771075798
+Alan Davie,Graham Sutherland,0.08556640143342058
+Alan Davie,Henry Moore,0.15229546372824077
+Alan Davie,John Piper,0.14753148652877363
+Alan Davie,Stanley William Hayter,0.0730393982566796
+Alan Davie,Elisabeth Frink,0.088542564486865
+Alan Davie,Terry Frost,0.11210092628481431
+Alan Davie,Howard Hodgkin,0.08459807390336244
+Alan Davie,Paula Rego,0.06385148436013859
+Henri Cartier-Bresson,Ansel Adams,0.09955160841215964
+Henri Cartier-Bresson,Georges Braque,0.10716543790039126
+Henri Cartier-Bresson,Marc Chagall,0.23425900220015927
+Henri Cartier-Bresson,Henri Matisse,0.11343021147415938
+Henri Cartier-Bresson,Louis Icart,0.08910428627895813
+Henri Cartier-Bresson,Sonia Delaunay,0.07899554687945642
+Henri Cartier-Bresson,Christopher Richard Wynne Nevinson ARA,0.07302026085780151
+Henri Cartier-Bresson,Paula Rego,0.06157572674016111
+Henri Cartier-Bresson,Elisabeth Frink,0.07657686898542798
+Henri Cartier-Bresson,Henri de Toulouse-Lautrec,0.06632105027132539
+Samuel Palmer,James Abbott McNeill Whistler,0.11883594675578943
+Samuel Palmer,James Gillray,0.12796124435820766
+Samuel Palmer,Christopher Richard Wynne Nevinson ARA,0.09226465855373814
+Samuel Palmer,Pierre-Auguste Renoir,0.11397070086370159
+Samuel Palmer,Louis Icart,0.0824381233730322
+Samuel Palmer,Henry Moore,0.13114091360953625
+Samuel Palmer,Victor Pasmore,0.09416564443344347
+Samuel Palmer,Henri Matisse,0.09705636320346299
+Samuel Palmer,Ansel Adams,0.07429500208100663
+Samuel Palmer,Stanley William Hayter,0.06787140276808178
+Joan Mitchell,Sam Francis,0.18293435820633402
+Joan Mitchell,Jasper Johns,0.09041799000627161
+Joan Mitchell,Alexander Calder,0.13506466381373655
+Joan Mitchell,Robert Motherwell,0.11032101787083308
+Joan Mitchell,Jim Dine,0.09737062588293224
+Joan Mitchell,Ellsworth Kelly,0.07364401945570219
+Joan Mitchell,Ed Ruscha,0.08528598027989814
+Joan Mitchell,James Rosenquist,0.0719434389612081
+Joan Mitchell,Robert Rauschenberg,0.08836545527972542
+Joan Mitchell,Frank Stella,0.06465245024335867
+Louise Nevelson,Jim Dine,0.13325040607740724
+Louise Nevelson,Robert Motherwell,0.11850958424430356
+Louise Nevelson,James Rosenquist,0.09162980149435485
+Louise Nevelson,Wayne Thiebaud,0.08302717053430612
+Louise Nevelson,Sam Francis,0.15184500895517217
+Louise Nevelson,Robert Rauschenberg,0.10871867616916638
+Louise Nevelson,Rufino Tamayo,0.08964040218531942
+Louise Nevelson,Tom Wesselmann,0.06768866246500646
+Louise Nevelson,Jasper Johns,0.06728177174593278
+Louise Nevelson,Victor Pasmore,0.08840851612903086
+Raoul Dufy,Georges Braque,0.11464898423618136
+Raoul Dufy,Marc Chagall,0.22470311590572475
+Raoul Dufy,Henri Matisse,0.11263091801065618
+Raoul Dufy,Sonia Delaunay,0.07888918133008345
+Raoul Dufy,Pierre-Auguste Renoir,0.09715720204818692
+Raoul Dufy,Henri de Toulouse-Lautrec,0.07120853990829033
+Raoul Dufy,Graham Sutherland,0.06215249038159142
+Raoul Dufy,Henry Moore,0.11008372132835355
+Raoul Dufy,Elisabeth Frink,0.06740473067648955
+Raoul Dufy,Louis Icart,0.061121116174442394
+Prunella Clough,Eduardo Paolozzi,0.11978955018367832
+Prunella Clough,John Hoyland,0.08997722598069766
+Prunella Clough,Graham Sutherland,0.08456798357210442
+Prunella Clough,Stanley William Hayter,0.08212733620164014
+Prunella Clough,Henry Moore,0.1535105613359852
+Prunella Clough,Paula Rego,0.06910857366554152
+Prunella Clough,Terry Frost,0.11056544858314822
+Prunella Clough,John Piper,0.13084823455202224
+Prunella Clough,Elisabeth Frink,0.08104595816220805
+Prunella Clough,Howard Hodgkin,0.0784591277629743
+Gillian Ayres,Paula Rego,0.0927171190222637
+Gillian Ayres,Victor Pasmore,0.11776369596306223
+Gillian Ayres,Elisabeth Frink,0.10044256342053157
+Gillian Ayres,Howard Hodgkin,0.10081852807171639
+Gillian Ayres,John Hoyland,0.07772248879333352
+Gillian Ayres,Stanley William Hayter,0.07613163287172857
+Gillian Ayres,Terry Frost,0.11457627488855421
+Gillian Ayres,John Piper,0.13558928701944284
+Gillian Ayres,Graham Sutherland,0.06578473993824796
+Gillian Ayres,Henry Moore,0.1184536700111189
+Alfred Eisenstaedt,Jim Dine,0.10724678560821042
+Alfred Eisenstaedt,Ansel Adams,0.0924900991725308
+Alfred Eisenstaedt,Thomas Hart Benton,0.0833933949425569
+Alfred Eisenstaedt,Alexander Calder,0.1288173314328093
+Alfred Eisenstaedt,Robert Rauschenberg,0.10767982991960846
+Alfred Eisenstaedt,Roy Lichtenstein,0.13409026381838085
+Alfred Eisenstaedt,Elisabeth Frink,0.09012992201920628
+Alfred Eisenstaedt,James Rosenquist,0.07600079901539224
+Alfred Eisenstaedt,Howard Hodgkin,0.09132868021333024
+Alfred Eisenstaedt,Georges Braque,0.08882289385797443
+William Wegman,Takashi Murakami,0.14537417664107222
+William Wegman,Laurence Stephen Lowry,0.15340160070513056
+William Wegman,Robert Rauschenberg,0.10292914113849821
+William Wegman,Tracey Emin,0.10760053014018224
+William Wegman,Connor Brothers,0.09097753124676987
+William Wegman,Damien Hirst,0.11751891794583612
+William Wegman,Christo and Jeanne-Claude,0.0702275259242807
+William Wegman,James Rosenquist,0.06026163732238662
+William Wegman,Peter Blake,0.08285801947989221
+William Wegman,Jim Dine,0.06885091945595126
+Rockwell Kent,Sybil Andrews,0.09271846432198662
+Rockwell Kent,Thomas Hart Benton,0.08372952988561337
+Rockwell Kent,Jim Dine,0.09996210087048747
+Rockwell Kent,Ansel Adams,0.08576471959720436
+Rockwell Kent,Georges Braque,0.0920296273967095
+Rockwell Kent,Wayne Thiebaud,0.07091021836407525
+Rockwell Kent,Alexander Calder,0.11796449426592774
+Rockwell Kent,Henry Moore,0.1352569303766414
+Rockwell Kent,Henri Matisse,0.09781484307001519
+Rockwell Kent,Roy Lichtenstein,0.12384907185133898
+Ai Weiwei,Tracey Emin,0.1335240979731186
+Ai Weiwei,Takashi Murakami,0.1230937449227113
+Ai Weiwei,Peter Blake,0.11599725103433345
+Ai Weiwei,David Shrigley,0.10207778301648217
+Ai Weiwei,Damien Hirst,0.12246500127309629
+Ai Weiwei,Connor Brothers,0.09256735418866337
+Ai Weiwei,Eduardo Paolozzi,0.06879824417240499
+Ai Weiwei,Terry Frost,0.09925995457097946
+Ai Weiwei,John Hoyland,0.06239070687384967
+Ai Weiwei,Howard Hodgkin,0.07982586197436077
+Frank Auerbach,Paula Rego,0.08573159738872449
+Frank Auerbach,Victor Pasmore,0.11509187106195574
+Frank Auerbach,Terry Frost,0.12161290904278396
+Frank Auerbach,Henry Moore,0.14821870377082094
+Frank Auerbach,Howard Hodgkin,0.09337838918646468
+Frank Auerbach,John Piper,0.1424891882302666
+Frank Auerbach,Stanley William Hayter,0.07265396637285478
+Frank Auerbach,Elisabeth Frink,0.0862594498626714
+Frank Auerbach,John Hoyland,0.06665791295724104
+Frank Auerbach,Eduardo Paolozzi,0.06790601212621633
+Augustus Edwin John,Christopher Richard Wynne Nevinson ARA,0.09419429197512222
+Augustus Edwin John,Stanley William Hayter,0.08821283972733557
+Augustus Edwin John,Henry Moore,0.16351675359297171
+Augustus Edwin John,Paula Rego,0.07658111749179326
+Augustus Edwin John,Graham Sutherland,0.07775316180595304
+Augustus Edwin John,Victor Pasmore,0.10589722422771852
+Augustus Edwin John,James Abbott McNeill Whistler,0.08185181505160476
+Augustus Edwin John,Elisabeth Frink,0.09032452790667453
+Augustus Edwin John,Louis Icart,0.08279195876154291
+Augustus Edwin John,John Piper,0.13887630945928364
+Paul Delvaux,Rufino Tamayo,0.11867490166220308
+Paul Delvaux,Henry Moore,0.16948835212976548
+Paul Delvaux,Graham Sutherland,0.07669034493170322
+Paul Delvaux,Alexander Calder,0.12264320022075065
+Paul Delvaux,Elisabeth Frink,0.0908145554598576
+Paul Delvaux,Paula Rego,0.07061509412552588
+Paul Delvaux,John Piper,0.1416553952648356
+Paul Delvaux,Sonia Delaunay,0.07121223896008647
+Paul Delvaux,John Hoyland,0.0681874115739034
+Paul Delvaux,Thomas Hart Benton,0.07001850567136858
+Hiroshi Sugimoto,Ansel Adams,0.08795783866620759
+Hiroshi Sugimoto,David Hockney,0.19059936530670274
+Hiroshi Sugimoto,Patrick Hughes,0.07580535726705208
+Hiroshi Sugimoto,Roy Lichtenstein,0.1390976120488746
+Hiroshi Sugimoto,Keith Haring,0.09398564113361145
+Hiroshi Sugimoto,Damien Hirst,0.12571514143216703
+Hiroshi Sugimoto,Bridget Riley,0.07311342839982277
+Hiroshi Sugimoto,Richard Hamilton,0.06289908095140635
+Hiroshi Sugimoto,Jasper Johns,0.06783087230037284
+Hiroshi Sugimoto,Howard Hodgkin,0.08299566249378246
+Gerald Laing,Peter Blake,0.1683218805504677
+Gerald Laing,Patrick Caulfield,0.12286532878180614
+Gerald Laing,David Shrigley,0.10204250211602159
+Gerald Laing,John Piper,0.14278352653045354
+Gerald Laing,Eduardo Paolozzi,0.07248854223815342
+Gerald Laing,Terry Frost,0.10911337306342626
+Gerald Laing,John Hoyland,0.06883977864226473
+Gerald Laing,Victor Pasmore,0.08592539160981001
+Gerald Laing,Howard Hodgkin,0.07501228063313621
+Gerald Laing,Julian Opie,0.05260739583446047
+Serge Poliakoff,Sonia Delaunay,0.12885226366921285
+Serge Poliakoff,Georges Braque,0.11546978993350043
+Serge Poliakoff,Marc Chagall,0.20177457296979598
+Serge Poliakoff,Rufino Tamayo,0.08460260333050267
+Serge Poliakoff,Alexander Calder,0.09903925098558686
+Serge Poliakoff,Henry Moore,0.11022330056718062
+Serge Poliakoff,Henri Matisse,0.08260687691986177
+Serge Poliakoff,Elisabeth Frink,0.06982384633386665
+Serge Poliakoff,Thomas Hart Benton,0.05594596123706327
+Serge Poliakoff,Paula Rego,0.05166153405342902
+Gordon House,Eduardo Paolozzi,0.11708300519383816
+Gordon House,John Hoyland,0.08880720352101378
+Gordon House,Stanley William Hayter,0.08050042161082446
+Gordon House,Terry Frost,0.11315023393852969
+Gordon House,Graham Sutherland,0.07148751231621035
+Gordon House,Peter Blake,0.10627002702787357
+Gordon House,John Piper,0.1359193442011445
+Gordon House,Victor Pasmore,0.0893501970640536
+Gordon House,Patrick Caulfield,0.08025393845967287
+Gordon House,Henry Moore,0.117178116666839
+Anders Zorn,Louis Icart,0.12028820805460474
+Anders Zorn,James Abbott McNeill Whistler,0.10169698734400537
+Anders Zorn,Stanley William Hayter,0.0874983928363837
+Anders Zorn,Christopher Richard Wynne Nevinson ARA,0.08926120805176227
+Anders Zorn,Henry Moore,0.15448810343443986
+Anders Zorn,Paula Rego,0.07808278010317578
+Anders Zorn,Victor Pasmore,0.10962773693721536
+Anders Zorn,Georges Braque,0.09767069758267664
+Anders Zorn,Ansel Adams,0.0852300472755581
+Anders Zorn,Graham Sutherland,0.07615583838017818
+Elizabeth Blackadder,Paula Rego,0.09336958187850368
+Elizabeth Blackadder,Stanley William Hayter,0.09402449437922933
+Elizabeth Blackadder,John Hoyland,0.0879459085859503
+Elizabeth Blackadder,Victor Pasmore,0.10624205383832168
+Elizabeth Blackadder,Elisabeth Frink,0.08941464894529576
+Elizabeth Blackadder,Terry Frost,0.11197213610341471
+Elizabeth Blackadder,Graham Sutherland,0.07012412321815804
+Elizabeth Blackadder,Henry Moore,0.13404370993237805
+Elizabeth Blackadder,Howard Hodgkin,0.08482962200196477
+Elizabeth Blackadder,John Piper,0.12803372111678385
+Ivor Abrahams,Eduardo Paolozzi,0.11328142486763376
+Ivor Abrahams,Graham Sutherland,0.08257765258119168
+Ivor Abrahams,John Hoyland,0.0821170453149114
+Ivor Abrahams,Peter Blake,0.12068675050981037
+Ivor Abrahams,Stanley William Hayter,0.07737426347680687
+Ivor Abrahams,Tracey Emin,0.10931089420417119
+Ivor Abrahams,John Piper,0.13510963119640154
+Ivor Abrahams,Terry Frost,0.10609528272131376
+Ivor Abrahams,Elisabeth Frink,0.0829830540353219
+Ivor Abrahams,David Shrigley,0.09046400109243742
+Claude Flight,Sybil Andrews,0.14327287030768024
+Claude Flight,Christopher Richard Wynne Nevinson ARA,0.08368600083623037
+Claude Flight,David Hockney,0.17617847058423652
+Claude Flight,Ansel Adams,0.08075171132131546
+Claude Flight,Patrick Hughes,0.06991036827015827
+Claude Flight,Henri Matisse,0.10094188528296381
+Claude Flight,Richard Hamilton,0.06618483350297494
+Claude Flight,Wayne Thiebaud,0.06645063703981131
+Claude Flight,Howard Hodgkin,0.08760746581363997
+Claude Flight,Roy Lichtenstein,0.125015757040989
+Norman Rockwell,James Rosenquist,0.09478012759517657
+Norman Rockwell,Alexander Calder,0.14348777223048342
+Norman Rockwell,Robert Rauschenberg,0.12105837481948215
+Norman Rockwell,Thomas Hart Benton,0.07486375517532028
+Norman Rockwell,Jim Dine,0.09314480039022711
+Norman Rockwell,Rufino Tamayo,0.0904795632125827
+Norman Rockwell,Sam Francis,0.12743154182230657
+Norman Rockwell,Robert Motherwell,0.08708919732965287
+Norman Rockwell,Jasper Johns,0.059051160505986224
+Norman Rockwell,Henry Moore,0.10861370691878211
+Chris Ofili,Tracey Emin,0.15140933743180962
+Chris Ofili,Howard Hodgkin,0.08939085465079143
+Chris Ofili,Elisabeth Frink,0.08466645710536762
+Chris Ofili,Paula Rego,0.06533663297702062
+Chris Ofili,Terry Frost,0.10162753468254997
+Chris Ofili,Henry Moore,0.11943965565955807
+Chris Ofili,Damien Hirst,0.11220121947961306
+Chris Ofili,John Hoyland,0.061510298131354835
+Chris Ofili,Peter Blake,0.0930657872259664
+Chris Ofili,John Piper,0.1213522226559684
+Charles Frederick Tunnicliffe,Stanley William Hayter,0.08930673134453973
+Charles Frederick Tunnicliffe,Paula Rego,0.08421830180496295
+Charles Frederick Tunnicliffe,Victor Pasmore,0.11240286237409897
+Charles Frederick Tunnicliffe,Henry Moore,0.1535418655942606
+Charles Frederick Tunnicliffe,Elisabeth Frink,0.08941298496118306
+Charles Frederick Tunnicliffe,Graham Sutherland,0.06965284287639356
+Charles Frederick Tunnicliffe,Terry Frost,0.10889072976384678
+Charles Frederick Tunnicliffe,John Piper,0.1374825460995152
+Charles Frederick Tunnicliffe,Howard Hodgkin,0.08745692853556146
+Charles Frederick Tunnicliffe,John Hoyland,0.06763420664563762
+Robert Mangold,Jim Dine,0.14026065173168423
+Robert Mangold,James Rosenquist,0.1004289812291381
+Robert Mangold,Robert Motherwell,0.12818538128857263
+Robert Mangold,Robert Rauschenberg,0.11510906712729059
+Robert Mangold,Donald Sultan,0.08289563588152835
+Robert Mangold,Sam Francis,0.14588639326211608
+Robert Mangold,Ed Ruscha,0.08128517201544272
+Robert Mangold,Jasper Johns,0.07110526862175615
+Robert Mangold,Tom Wesselmann,0.070705064171515
+Robert Mangold,Wayne Thiebaud,0.06413838467095635
+Barbara Kruger,Donald Sultan,0.09888363588140947
+Barbara Kruger,Julian Opie,0.08537466880788665
+Barbara Kruger,Keith Haring,0.11259209260788736
+Barbara Kruger,David Shrigley,0.11375431657172892
+Barbara Kruger,Peter Blake,0.1178062998460643
+Barbara Kruger,Eduardo Paolozzi,0.07731503329908604
+Barbara Kruger,Howard Hodgkin,0.09241737313951906
+Barbara Kruger,Terry Frost,0.11242087952001804
+Barbara Kruger,Victor Pasmore,0.09792211408263342
+Barbara Kruger,Patrick Caulfield,0.09151358624376678
+Pierre Soulages,Sonia Delaunay,0.0929165253943879
+Pierre Soulages,Georges Braque,0.10658694901234485
+Pierre Soulages,Marc Chagall,0.22500574701016593
+Pierre Soulages,Rufino Tamayo,0.08540057349236883
+Pierre Soulages,Henri Matisse,0.09362390749736493
+Pierre Soulages,Howard Hodgkin,0.08135987040697508
+Pierre Soulages,Elisabeth Frink,0.07617492042187497
+Pierre Soulages,Alexander Calder,0.10041925060616806
+Pierre Soulages,Paula Rego,0.05697875126409742
+Pierre Soulages,Victor Vasarely,0.08153350489425198
+Alphonse Mucha,Henri de Toulouse-Lautrec,0.10236827367671486
+Alphonse Mucha,Pierre-Auguste Renoir,0.10018292345570838
+Alphonse Mucha,Henri Matisse,0.09904184916197346
+Alphonse Mucha,Marc Chagall,0.1923335463633023
+Alphonse Mucha,James Abbott McNeill Whistler,0.07549061806753878
+Alphonse Mucha,Alexander Calder,0.10623551386519216
+Alphonse Mucha,Ansel Adams,0.07005128053539947
+Alphonse Mucha,Graham Sutherland,0.0610908785364819
+Alphonse Mucha,Henry Moore,0.11733946413567865
+Alphonse Mucha,Georges Braque,0.07586565220201
+Herb Ritts,Ansel Adams,0.0955825694223937
+Herb Ritts,Jim Dine,0.1007749706289593
+Herb Ritts,Tom Wesselmann,0.08175646582156976
+Herb Ritts,Alexander Calder,0.12030656151289885
+Herb Ritts,Robert Rauschenberg,0.10605309620646525
+Herb Ritts,Wayne Thiebaud,0.07062639626069092
+Herb Ritts,Sam Francis,0.1336138744648743
+Herb Ritts,Robert Motherwell,0.0946998727057699
+Herb Ritts,Roy Lichtenstein,0.12575049097564744
+Herb Ritts,Jasper Johns,0.0708357020007307
+Larry Rivers,Robert Rauschenberg,0.13517053775362137
+Larry Rivers,James Rosenquist,0.09661115996205
+Larry Rivers,Jim Dine,0.1008326718751849
+Larry Rivers,Christo and Jeanne-Claude,0.08105067650026475
+Larry Rivers,Alexander Calder,0.11569449285566116
+Larry Rivers,Sam Francis,0.12279294135442874
+Larry Rivers,Robert Motherwell,0.0861172140527082
+Larry Rivers,John Piper,0.12495088311133853
+Larry Rivers,Elisabeth Frink,0.07704075474085537
+Larry Rivers,Graham Sutherland,0.05973866779388697
+Jean Dubuffet,Marc Chagall,0.2579534574054945
+Jean Dubuffet,Henri Matisse,0.12045490088214453
+Jean Dubuffet,Georges Braque,0.08817379813506565
+Jean Dubuffet,Sonia Delaunay,0.05989973495852269
+Jean Dubuffet,Jasper Johns,0.05643671912851403
+Jean Dubuffet,Roy Lichtenstein,0.09776180852187845
+Jean Dubuffet,Keith Haring,0.0676615470377669
+Jean Dubuffet,David Hockney,0.12631703612456208
+Jean Dubuffet,Robert Motherwell,0.07046301605234737
+Jean Dubuffet,Henri de Toulouse-Lautrec,0.05487798175370392
+Manuel Alvarez Bravo,Ansel Adams,0.12282743317359206
+Manuel Alvarez Bravo,Christopher Richard Wynne Nevinson ARA,0.08473810645598423
+Manuel Alvarez Bravo,Paula Rego,0.07251798146329604
+Manuel Alvarez Bravo,Henry Moore,0.1404108851208191
+Manuel Alvarez Bravo,Georges Braque,0.08946732512924234
+Manuel Alvarez Bravo,Elisabeth Frink,0.0882058669792301
+Manuel Alvarez Bravo,Victor Pasmore,0.09621257080878412
+Manuel Alvarez Bravo,John Piper,0.13803173632838955
+Manuel Alvarez Bravo,Rufino Tamayo,0.08850424803946773
+Manuel Alvarez Bravo,Louis Icart,0.07908384650119465
+Jean Cocteau,Georges Braque,0.10356818436874056
+Jean Cocteau,Marc Chagall,0.22543913897311982
+Jean Cocteau,Sonia Delaunay,0.08238776536527719
+Jean Cocteau,Henri Matisse,0.1057265363562124
+Jean Cocteau,Henri de Toulouse-Lautrec,0.06991476022956489
+Jean Cocteau,Pierre-Auguste Renoir,0.0885503015235242
+Jean Cocteau,Graham Sutherland,0.05982695869231242
+Jean Cocteau,Henry Moore,0.10859019129072277
+Jean Cocteau,Elisabeth Frink,0.067540654144055
+Jean Cocteau,Alexander Calder,0.0884555090564708
+Mary Cassatt,James Abbott McNeill Whistler,0.16179471986785338
+Mary Cassatt,Pierre-Auguste Renoir,0.1182736970254317
+Mary Cassatt,Ansel Adams,0.0850810137917271
+Mary Cassatt,James Gillray,0.0905542939440053
+Mary Cassatt,Henri de Toulouse-Lautrec,0.07608895729902826
+Mary Cassatt,Louis Icart,0.08062641219738866
+Mary Cassatt,Henri Matisse,0.09984929562525506
+Mary Cassatt,Christopher Richard Wynne Nevinson ARA,0.07278097087697408
+Mary Cassatt,Henry Moore,0.13010019679200735
+Mary Cassatt,Georges Braque,0.08485044258032906
+Edvard Munch,Ansel Adams,0.08939369574084298
+Edvard Munch,Christopher Richard Wynne Nevinson ARA,0.08336680642102003
+Edvard Munch,Henri Matisse,0.10258939605586237
+Edvard Munch,Marc Chagall,0.195209264315565
+Edvard Munch,Georges Braque,0.08393241567743714
+Edvard Munch,Alexander Calder,0.10711320363705482
+Edvard Munch,Henry Moore,0.1193304065944015
+Edvard Munch,Elisabeth Frink,0.07711252919965048
+Edvard Munch,Rufino Tamayo,0.07901168709025476
+Edvard Munch,Thomas Hart Benton,0.06294059526791096
+Stow Wengenroth,Thomas Hart Benton,0.10288987558536032
+Stow Wengenroth,Henry Moore,0.16452065123344192
+Stow Wengenroth,Alexander Calder,0.1392204660814726
+Stow Wengenroth,Graham Sutherland,0.08058827154073192
+Stow Wengenroth,Eduardo Paolozzi,0.08018796001353885
+Stow Wengenroth,Elisabeth Frink,0.09028036340307947
+Stow Wengenroth,James Rosenquist,0.07557470981760218
+Stow Wengenroth,Jim Dine,0.09052294943558088
+Stow Wengenroth,Georges Braque,0.0875284823866
+Stow Wengenroth,Rufino Tamayo,0.08868627050259181
+Massimo Campigli,Rufino Tamayo,0.11660793538172802
+Massimo Campigli,Thomas Hart Benton,0.09034877775250827
+Massimo Campigli,Henry Moore,0.16145742571676217
+Massimo Campigli,Alexander Calder,0.13334344654865818
+Massimo Campigli,Graham Sutherland,0.07285410742807774
+Massimo Campigli,Elisabeth Frink,0.08808337643501743
+Massimo Campigli,Sonia Delaunay,0.07305072627849668
+Massimo Campigli,John Piper,0.130057516732286
+Massimo Campigli,Paula Rego,0.06161877711205686
+Massimo Campigli,Georges Braque,0.0725779106144086
+Norman Ackroyd,Stanley William Hayter,0.13066393045674535
+Norman Ackroyd,Eduardo Paolozzi,0.1031700083690504
+Norman Ackroyd,John Hoyland,0.0887293678921184
+Norman Ackroyd,Graham Sutherland,0.07449458990198056
+Norman Ackroyd,Paula Rego,0.07168800210433042
+Norman Ackroyd,Terry Frost,0.1133127898467005
+Norman Ackroyd,Victor Pasmore,0.0987501300136618
+Norman Ackroyd,Henry Moore,0.13196358993430946
+Norman Ackroyd,Howard Hodgkin,0.08533656351695328
+Norman Ackroyd,Tracey Emin,0.10189102796414984
+Edgar Degas,Pierre-Auguste Renoir,0.19163824389013748
+Edgar Degas,Henri de Toulouse-Lautrec,0.10002035024921155
+Edgar Degas,Henri Matisse,0.11770503246340092
+Edgar Degas,Marc Chagall,0.19827331335124312
+Edgar Degas,James Abbott McNeill Whistler,0.07761921016478403
+Edgar Degas,Georges Braque,0.08683580379623052
+Edgar Degas,Sonia Delaunay,0.05570623052996575
+Edgar Degas,James Gillray,0.06485852036752777
+Edgar Degas,Louis Icart,0.057868975532253605
+Edgar Degas,Graham Sutherland,0.04947431965524536
+Chuck Close,Jim Dine,0.11702169527532943
+Chuck Close,Robert Rauschenberg,0.12069834444911683
+Chuck Close,Wayne Thiebaud,0.0793352364653165
+Chuck Close,Tom Wesselmann,0.08454692651893035
+Chuck Close,Roy Lichtenstein,0.13940335255367986
+Chuck Close,Robert Motherwell,0.09986076437311789
+Chuck Close,Sam Francis,0.13725453475906021
+Chuck Close,Jasper Johns,0.07295176132920544
+Chuck Close,James Rosenquist,0.07279405493978823
+Chuck Close,Ed Ruscha,0.07613332933645535
+Chris Levine,Patrick Hughes,0.09463790912750998
+Chris Levine,Tracey Emin,0.13828486241677485
+Chris Levine,Damien Hirst,0.15730760070251915
+Chris Levine,Connor Brothers,0.11620058636322061
+Chris Levine,David Shrigley,0.10842623778852659
+Chris Levine,Peter Blake,0.11319985774535084
+Chris Levine,Richard Hamilton,0.068132300319051
+Chris Levine,Julian Opie,0.06251678158945292
+Chris Levine,Howard Hodgkin,0.0784339516296914
+Chris Levine,Eduardo Paolozzi,0.06285991231790257
+Sara Pope,Connor Brothers,0.16103438687474164
+Sara Pope,Tracey Emin,0.12156582416752806
+Sara Pope,Takashi Murakami,0.10328220776735128
+Sara Pope,Peter Blake,0.10027494493839446
+Sara Pope,David Shrigley,0.09062560019495204
+Sara Pope,Damien Hirst,0.11911350360787175
+Sara Pope,John Hoyland,0.06371121017174942
+Sara Pope,Patrick Hughes,0.06296067742824567
+Sara Pope,Terry Frost,0.09863700750942622
+Sara Pope,Howard Hodgkin,0.07879463733973956
+Margaret Bourke-White,Ansel Adams,0.09725136342185002
+Margaret Bourke-White,Keith Haring,0.09878923055220182
+Margaret Bourke-White,Henri de Toulouse-Lautrec,0.08234092471557553
+Margaret Bourke-White,James Abbott McNeill Whistler,0.08333911098570519
+Margaret Bourke-White,Henri Matisse,0.10357660809461701
+Margaret Bourke-White,Roy Lichtenstein,0.12911775547940363
+Margaret Bourke-White,Christopher Richard Wynne Nevinson ARA,0.07293360610596988
+Margaret Bourke-White,Richard Diebenkorn,0.08003950890386902
+Margaret Bourke-White,Julian Opie,0.06455745037534603
+Margaret Bourke-White,Marc Chagall,0.18805444136546193
+Marc Quinn,Connor Brothers,0.1346044744196279
+Marc Quinn,Takashi Murakami,0.13441375415130358
+Marc Quinn,Tracey Emin,0.120864656176292
+Marc Quinn,Damien Hirst,0.13370699428515415
+Marc Quinn,Laurence Stephen Lowry,0.13937159468867608
+Marc Quinn,Patrick Hughes,0.059143905368255104
+Marc Quinn,Christo and Jeanne-Claude,0.0660280226210788
+Marc Quinn,Richard Hamilton,0.05334106735704349
+Marc Quinn,Peter Blake,0.08381089987514699
+Marc Quinn,David Shrigley,0.07471463105742182
+Niki de Saint Phalle,Sonia Delaunay,0.09769215598621082
+Niki de Saint Phalle,Victor Vasarely,0.12329633105056594
+Niki de Saint Phalle,Georges Braque,0.09687550662403774
+Niki de Saint Phalle,John Piper,0.12747633310645526
+Niki de Saint Phalle,Rufino Tamayo,0.08160197659015025
+Niki de Saint Phalle,Elisabeth Frink,0.07586902590968067
+Niki de Saint Phalle,Terry Frost,0.09404328820711619
+Niki de Saint Phalle,Howard Hodgkin,0.07682404732306473
+Niki de Saint Phalle,Marc Chagall,0.1674162860426474
+Niki de Saint Phalle,John Hoyland,0.05890504916007089
+Pure Evil (Charles Uzzell Edwards),Eduardo Paolozzi,0.09506217936291107
+Pure Evil (Charles Uzzell Edwards),John Hoyland,0.08681441994859765
+Pure Evil (Charles Uzzell Edwards),Peter Blake,0.12777003955589075
+Pure Evil (Charles Uzzell Edwards),Terry Frost,0.12073541449116854
+Pure Evil (Charles Uzzell Edwards),Patrick Caulfield,0.09691333630894121
+Pure Evil (Charles Uzzell Edwards),David Shrigley,0.10187559457803629
+Pure Evil (Charles Uzzell Edwards),John Piper,0.12902632132141845
+Pure Evil (Charles Uzzell Edwards),Tracey Emin,0.0964561540075773
+Pure Evil (Charles Uzzell Edwards),Victor Pasmore,0.08502609739142468
+Pure Evil (Charles Uzzell Edwards),Stanley William Hayter,0.06032044303403416
+Richard Anuszkiewicz,Donald Sultan,0.09387147236517271
+Richard Anuszkiewicz,Tom Wesselmann,0.08564463304723671
+Richard Anuszkiewicz,Patrick Caulfield,0.10201688574229614
+Richard Anuszkiewicz,James Rosenquist,0.08339141316973869
+Richard Anuszkiewicz,John Piper,0.1499253170839163
+Richard Anuszkiewicz,Victor Pasmore,0.10367384123361498
+Richard Anuszkiewicz,Terry Frost,0.11683757036473906
+Richard Anuszkiewicz,Robert Rauschenberg,0.10476455009347758
+Richard Anuszkiewicz,Jim Dine,0.08996602614845713
+Richard Anuszkiewicz,John Hoyland,0.0699082907513507
+Donald Hamilton Fraser,John Hoyland,0.09372960777673414
+Donald Hamilton Fraser,Eduardo Paolozzi,0.09779647949850406
+Donald Hamilton Fraser,Terry Frost,0.1317116404090551
+Donald Hamilton Fraser,Peter Blake,0.12017599101538094
+Donald Hamilton Fraser,Patrick Caulfield,0.09750040926365788
+Donald Hamilton Fraser,John Piper,0.14620616354637792
+Donald Hamilton Fraser,Victor Pasmore,0.09209403350641301
+Donald Hamilton Fraser,Stanley William Hayter,0.06436810210097064
+Donald Hamilton Fraser,David Shrigley,0.08490839754118201
+Donald Hamilton Fraser,Howard Hodgkin,0.07150917534172435
+Pierre Bonnard,Pierre-Auguste Renoir,0.14071201406954437
+Pierre Bonnard,Henri Matisse,0.12774138731871368
+Pierre Bonnard,Henri de Toulouse-Lautrec,0.08991677735881132
+Pierre Bonnard,Marc Chagall,0.23082520820627792
+Pierre Bonnard,Georges Braque,0.10131587811189319
+Pierre Bonnard,Sonia Delaunay,0.06095296098931882
+Pierre Bonnard,Graham Sutherland,0.05279375518024393
+Pierre Bonnard,Henry Moore,0.09536766355304663
+Pierre Bonnard,James Abbott McNeill Whistler,0.053253473158581435
+Pierre Bonnard,Thomas Hart Benton,0.047120882053568784
+David Alfaro Siqueiros,Thomas Hart Benton,0.08778186861050578
+David Alfaro Siqueiros,Graham Sutherland,0.08281454432597612
+David Alfaro Siqueiros,Henry Moore,0.15902085105861652
+David Alfaro Siqueiros,Alexander Calder,0.13270938228505835
+David Alfaro Siqueiros,Rufino Tamayo,0.10036614725369089
+David Alfaro Siqueiros,Elisabeth Frink,0.09657323623408172
+David Alfaro Siqueiros,Sonia Delaunay,0.0691430913142761
+David Alfaro Siqueiros,Georges Braque,0.08250526430576666
+David Alfaro Siqueiros,John Piper,0.13013389851895243
+David Alfaro Siqueiros,Paula Rego,0.05895171609307532
+Jacques Villon,Georges Braque,0.13142670860143374
+Jacques Villon,Sonia Delaunay,0.08266504860098899
+Jacques Villon,Marc Chagall,0.19904103484834995
+Jacques Villon,Henri Matisse,0.1018750087010638
+Jacques Villon,Louis Icart,0.0809085773942739
+Jacques Villon,Pierre-Auguste Renoir,0.09260853443847028
+Jacques Villon,Graham Sutherland,0.06196681341782941
+Jacques Villon,Henry Moore,0.11103403885800056
+Jacques Villon,Victor Vasarely,0.081508168500909
+Jacques Villon,Stanley William Hayter,0.056966066638680375
+George Bellows,Thomas Hart Benton,0.09837887414851254
+George Bellows,Alexander Calder,0.15554989122528534
+George Bellows,Henry Moore,0.14615911590304037
+George Bellows,Graham Sutherland,0.07564290800584299
+George Bellows,Ansel Adams,0.08364438385612172
+George Bellows,James Rosenquist,0.07893027506056388
+George Bellows,Elisabeth Frink,0.09054077706649921
+George Bellows,Jim Dine,0.09146335903755853
+George Bellows,Georges Braque,0.08863135244918291
+George Bellows,Rufino Tamayo,0.09105906324739235
+Marie Laurencin,Georges Braque,0.1269980942199232
+Marie Laurencin,Sonia Delaunay,0.08644517086322033
+Marie Laurencin,Louis Icart,0.08071551412451806
+Marie Laurencin,Marc Chagall,0.1868045663507424
+Marie Laurencin,Henri Matisse,0.09503214282674351
+Marie Laurencin,Graham Sutherland,0.06450419786767639
+Marie Laurencin,Henry Moore,0.12187730569003223
+Marie Laurencin,Pierre-Auguste Renoir,0.08464591906473247
+Marie Laurencin,Victor Vasarely,0.08257508503655141
+Marie Laurencin,Elisabeth Frink,0.07040200395586003
+Philippe Halsman,Ansel Adams,0.1111581434686481
+Philippe Halsman,James Abbott McNeill Whistler,0.11034428852936796
+Philippe Halsman,Julian Opie,0.08286461307806275
+Philippe Halsman,Keith Haring,0.10680365957994055
+Philippe Halsman,Pierre-Auguste Renoir,0.11561732107195112
+Philippe Halsman,Graham Sutherland,0.08238024422460853
+Philippe Halsman,Donald Sultan,0.08731830213008186
+Philippe Halsman,Eduardo Paolozzi,0.0858384708798771
+Philippe Halsman,Victor Pasmore,0.11367717373462939
+Philippe Halsman,Jim Dine,0.1039977833028327
+Antony Micallef,Elisabeth Frink,0.11171008631147504
+Antony Micallef,Paula Rego,0.07679585598606116
+Antony Micallef,Howard Hodgkin,0.09921560178128933
+Antony Micallef,John Hoyland,0.07289425987482365
+Antony Micallef,Tracey Emin,0.11280510334125511
+Antony Micallef,Henry Moore,0.1351740676504284
+Antony Micallef,John Piper,0.13849019729204215
+Antony Micallef,Graham Sutherland,0.06829275241199571
+Antony Micallef,Terry Frost,0.10496138160307837
+Antony Micallef,David Shrigley,0.07966069374755112
+Leonetto Cappiello,Henri de Toulouse-Lautrec,0.08941183185437583
+Leonetto Cappiello,Graham Sutherland,0.06880487213657524
+Leonetto Cappiello,Alexander Calder,0.11138278212657395
+Leonetto Cappiello,Pierre-Auguste Renoir,0.09439387106902995
+Leonetto Cappiello,James Abbott McNeill Whistler,0.07494795675024242
+Leonetto Cappiello,Elisabeth Frink,0.0822405550480249
+Leonetto Cappiello,Henry Moore,0.1262149629784402
+Leonetto Cappiello,Marc Chagall,0.18505699774489964
+Leonetto Cappiello,Rufino Tamayo,0.08429436773094692
+Leonetto Cappiello,Howard Hodgkin,0.08325180256089074
+Nick Smith,Connor Brothers,0.15159194667403042
+Nick Smith,Tracey Emin,0.12410874276574917
+Nick Smith,Takashi Murakami,0.1084866118698849
+Nick Smith,Damien Hirst,0.1326391477707554
+Nick Smith,Patrick Hughes,0.05970977262702479
+Nick Smith,David Shrigley,0.08109716679793673
+Nick Smith,Peter Blake,0.08502257225436663
+Nick Smith,Howard Hodgkin,0.07054614774409666
+Nick Smith,Laurence Stephen Lowry,0.10811539581343475
+Nick Smith,Robert Rauschenberg,0.07868249568272051
+Mary Fedden,Eduardo Paolozzi,0.11350803309046066
+Mary Fedden,John Hoyland,0.08467348549329608
+Mary Fedden,Graham Sutherland,0.08150009380908764
+Mary Fedden,Stanley William Hayter,0.0781431522005324
+Mary Fedden,Henry Moore,0.14717697525872417
+Mary Fedden,Terry Frost,0.11180931607713153
+Mary Fedden,John Piper,0.13616621895372313
+Mary Fedden,Tracey Emin,0.10143829826785153
+Mary Fedden,Paula Rego,0.06316203369345039
+Mary Fedden,Howard Hodgkin,0.08242239315574233
+Jules Chéret,Henri de Toulouse-Lautrec,0.10837683873469822
+Jules Chéret,Pierre-Auguste Renoir,0.11384053791058456
+Jules Chéret,Henri Matisse,0.10645149852444988
+Jules Chéret,Marc Chagall,0.2060969342853744
+Jules Chéret,Georges Braque,0.08821290194789219
+Jules Chéret,Sonia Delaunay,0.07221856698832528
+Jules Chéret,James Abbott McNeill Whistler,0.0719837385780347
+Jules Chéret,Louis Icart,0.0738259741623151
+Jules Chéret,Graham Sutherland,0.06198495919026192
+Jules Chéret,Alexander Calder,0.0970080496780638
+Frank William Brangwyn,Stanley William Hayter,0.10587133907580797
+Frank William Brangwyn,Graham Sutherland,0.08693241492355124
+Frank William Brangwyn,Henry Moore,0.154507454737208
+Frank William Brangwyn,John Hoyland,0.0794326268203472
+Frank William Brangwyn,Eduardo Paolozzi,0.08150499301680905
+Frank William Brangwyn,Paula Rego,0.07311230875157408
+Frank William Brangwyn,John Piper,0.14631174088268456
+Frank William Brangwyn,Victor Pasmore,0.10146305406694217
+Frank William Brangwyn,Elisabeth Frink,0.08989305670441881
+Frank William Brangwyn,Louis Icart,0.08097101102065692
+Luigi Kasimir,Stanley William Hayter,0.09629008610816532
+Luigi Kasimir,Louis Icart,0.10747971817188061
+Luigi Kasimir,Graham Sutherland,0.08046719506309777
+Luigi Kasimir,Victor Pasmore,0.1087840089487802
+Luigi Kasimir,Eduardo Paolozzi,0.0815358905083514
+Luigi Kasimir,Paula Rego,0.07549441248394108
+Luigi Kasimir,John Hoyland,0.07663940553458981
+Luigi Kasimir,Henry Moore,0.14658664637235191
+Luigi Kasimir,James Abbott McNeill Whistler,0.0838279787234273
+Luigi Kasimir,John Piper,0.1428946580854146
+Ronald Brooks Kitaj,Eduardo Paolozzi,0.08710732305253575
+Ronald Brooks Kitaj,John Hoyland,0.08281475309115695
+Ronald Brooks Kitaj,Peter Blake,0.11943381683494465
+Ronald Brooks Kitaj,Terry Frost,0.12306891397233295
+Ronald Brooks Kitaj,John Piper,0.15273739400725192
+Ronald Brooks Kitaj,Patrick Caulfield,0.09847629457910935
+Ronald Brooks Kitaj,Victor Pasmore,0.09742859114240741
+Ronald Brooks Kitaj,Donald Sultan,0.07443251136962538
+Ronald Brooks Kitaj,David Shrigley,0.09325405828362936
+Ronald Brooks Kitaj,James Rosenquist,0.07124634366700641
+Brice Marden,Wayne Thiebaud,0.09751762413129679
+Brice Marden,Jim Dine,0.1183954982962239
+Brice Marden,Robert Motherwell,0.12461325981201668
+Brice Marden,Sam Francis,0.15966685830835628
+Brice Marden,James Rosenquist,0.08715272868811544
+Brice Marden,Tom Wesselmann,0.07856498410115365
+Brice Marden,Ed Ruscha,0.08430656878852286
+Brice Marden,Robert Rauschenberg,0.1056121638221322
+Brice Marden,Jasper Johns,0.07491775479288121
+Brice Marden,Donald Sultan,0.06925255925930095
+Barry Flanagan,Eduardo Paolozzi,0.10451969691883572
+Barry Flanagan,Stanley William Hayter,0.09794064474302759
+Barry Flanagan,John Hoyland,0.08426957833315385
+Barry Flanagan,Graham Sutherland,0.07766799970585761
+Barry Flanagan,Terry Frost,0.12267018480608546
+Barry Flanagan,Henry Moore,0.14285447774822152
+Barry Flanagan,Paula Rego,0.0720312642877294
+Barry Flanagan,Victor Pasmore,0.09852853871780208
+Barry Flanagan,Howard Hodgkin,0.09125611693881293
+Barry Flanagan,Tracey Emin,0.108261497800474
+Tom Phillips,Eduardo Paolozzi,0.1240500292778896
+Tom Phillips,John Hoyland,0.08518664872855462
+Tom Phillips,Peter Blake,0.11985686880421463
+Tom Phillips,Terry Frost,0.1189794527077797
+Tom Phillips,David Shrigley,0.0958638420561133
+Tom Phillips,John Piper,0.13824333876411973
+Tom Phillips,Victor Pasmore,0.09528300407131812
+Tom Phillips,Stanley William Hayter,0.06880074667795597
+Tom Phillips,Howard Hodgkin,0.0871065649888307
+Tom Phillips,Graham Sutherland,0.06662950392322359
+Kiki Smith,Jim Dine,0.10277214625438189
+Kiki Smith,James Rosenquist,0.08420340151177859
+Kiki Smith,Robert Rauschenberg,0.11472835099904796
+Kiki Smith,Sam Francis,0.14246652922986192
+Kiki Smith,Robert Motherwell,0.10124754847857109
+Kiki Smith,Alexander Calder,0.12139654065563443
+Kiki Smith,Howard Hodgkin,0.09483402189807455
+Kiki Smith,Elisabeth Frink,0.09131276256973307
+Kiki Smith,Paula Rego,0.07135049668842945
+Kiki Smith,Jasper Johns,0.07568820171448708
+George Catlin,James Abbott McNeill Whistler,0.11038458061534766
+George Catlin,James Gillray,0.11292111937197674
+George Catlin,Pierre-Auguste Renoir,0.11879944206593904
+George Catlin,Henri de Toulouse-Lautrec,0.08976379882356375
+George Catlin,Thomas Hart Benton,0.0746902846024651
+George Catlin,Graham Sutherland,0.06880880222183054
+George Catlin,Henry Moore,0.13242717866216608
+George Catlin,Alexander Calder,0.11249160426894804
+George Catlin,Henri Matisse,0.09693151850887703
+George Catlin,Georges Braque,0.0827816708588859
+Paul Cézanne,Pierre-Auguste Renoir,0.15398953325498022
+Paul Cézanne,Henri de Toulouse-Lautrec,0.10140711637228288
+Paul Cézanne,James Abbott McNeill Whistler,0.09198667624367879
+Paul Cézanne,Henri Matisse,0.11406698152167889
+Paul Cézanne,Georges Braque,0.08665794761170152
+Paul Cézanne,Marc Chagall,0.1934696365043451
+Paul Cézanne,Louis Icart,0.07573140017388023
+Paul Cézanne,James Gillray,0.07537318048109964
+Paul Cézanne,Sonia Delaunay,0.05646020934052898
+Paul Cézanne,Graham Sutherland,0.0508573184958238
+Jennifer Bartlett,Bridget Riley,0.09377125169915371
+Jennifer Bartlett,Tom Wesselmann,0.09102936072139953
+Jennifer Bartlett,Patrick Caulfield,0.09993118036173469
+Jennifer Bartlett,Jim Dine,0.09627233504984202
+Jennifer Bartlett,Donald Sultan,0.07911721908785312
+Jennifer Bartlett,Victor Pasmore,0.10274803196221531
+Jennifer Bartlett,Robert Motherwell,0.10069842043650197
+Jennifer Bartlett,James Rosenquist,0.07794348590006907
+Jennifer Bartlett,Terry Frost,0.11507980828618503
+Jennifer Bartlett,John Piper,0.14340890649504565
+Gilbert and George,Connor Brothers,0.13133356756794992
+Gilbert and George,Takashi Murakami,0.13287865612901828
+Gilbert and George,Tracey Emin,0.1254277543380587
+Gilbert and George,Laurence Stephen Lowry,0.14610345606842082
+Gilbert and George,Damien Hirst,0.11754544031869248
+Gilbert and George,Patrick Hughes,0.06330608950742557
+Gilbert and George,Peter Blake,0.09575406068390799
+Gilbert and George,Christo and Jeanne-Claude,0.06821297921495927
+Gilbert and George,Eduardo Paolozzi,0.06298555193750034
+Gilbert and George,Richard Hamilton,0.0564524442340667
+Gary Hume,Patrick Caulfield,0.13467654497626075
+Gary Hume,Peter Blake,0.1358980957244142
+Gary Hume,Terry Frost,0.12292297440755288
+Gary Hume,John Hoyland,0.07794738693947541
+Gary Hume,David Shrigley,0.10128205442904982
+Gary Hume,John Piper,0.1349687163085911
+Gary Hume,Victor Pasmore,0.08486232280977904
+Gary Hume,Eduardo Paolozzi,0.06225624471419028
+Gary Hume,Howard Hodgkin,0.06749543263922647
+Gary Hume,Tracey Emin,0.07769022705146009
+Piero Dorazio,John Hoyland,0.09031999049527557
+Piero Dorazio,John Piper,0.16029356726780056
+Piero Dorazio,Terry Frost,0.1213516040623531
+Piero Dorazio,Victor Pasmore,0.10333791928108482
+Piero Dorazio,Graham Sutherland,0.07260435332443803
+Piero Dorazio,Eduardo Paolozzi,0.07498055361043164
+Piero Dorazio,Elisabeth Frink,0.08777994216904969
+Piero Dorazio,Henry Moore,0.13492288028534166
+Piero Dorazio,Paula Rego,0.0684938577854414
+Piero Dorazio,Rufino Tamayo,0.08591533171878349
+Joel-Peter Witkin,Ansel Adams,0.09364051329883503
+Joel-Peter Witkin,Jim Dine,0.10018386019712353
+Joel-Peter Witkin,Tom Wesselmann,0.08038939775992261
+Joel-Peter Witkin,Robert Rauschenberg,0.1060611347384434
+Joel-Peter Witkin,Sam Francis,0.13892213637762918
+Joel-Peter Witkin,Wayne Thiebaud,0.07038220371914418
+Joel-Peter Witkin,Robert Motherwell,0.09726689790887659
+Joel-Peter Witkin,Jasper Johns,0.07258656239346586
+Joel-Peter Witkin,Alexander Calder,0.11371820502808223
+Joel-Peter Witkin,Roy Lichtenstein,0.12684908857847743
+Josef Herman,Eduardo Paolozzi,0.10980994284010727
+Josef Herman,Graham Sutherland,0.09138560931378642
+Josef Herman,John Hoyland,0.08565003114578625
+Josef Herman,Stanley William Hayter,0.08198913734834315
+Josef Herman,Henry Moore,0.15240801234897336
+Josef Herman,John Piper,0.14028880983145517
+Josef Herman,Terry Frost,0.10830538246447521
+Josef Herman,Elisabeth Frink,0.08482501139968453
+Josef Herman,Howard Hodgkin,0.08272331785467175
+Josef Herman,Paula Rego,0.06261474545271695
+Wilhelmina Barns-Graham,Terry Frost,0.1678589205551826
+Wilhelmina Barns-Graham,Victor Pasmore,0.12193985805629917
+Wilhelmina Barns-Graham,John Piper,0.16731484082982562
+Wilhelmina Barns-Graham,John Hoyland,0.07536142429480912
+Wilhelmina Barns-Graham,Patrick Caulfield,0.09521121943804395
+Wilhelmina Barns-Graham,Peter Blake,0.10004161969776473
+Wilhelmina Barns-Graham,Eduardo Paolozzi,0.06472196371723839
+Wilhelmina Barns-Graham,Howard Hodgkin,0.07595045486797256
+Wilhelmina Barns-Graham,Paula Rego,0.0559335875183251
+Wilhelmina Barns-Graham,David Shrigley,0.07566611102453881
+Yousuf Karsh,Ansel Adams,0.1000494378543505
+Yousuf Karsh,Paula Rego,0.07108925020289553
+Yousuf Karsh,Elisabeth Frink,0.08578482223938405
+Yousuf Karsh,Victor Pasmore,0.09542561276696165
+Yousuf Karsh,Howard Hodgkin,0.08865185129001699
+Yousuf Karsh,John Piper,0.13524510820615743
+Yousuf Karsh,Rufino Tamayo,0.08724262495907353
+Yousuf Karsh,Terry Frost,0.10503366876525314
+Yousuf Karsh,Henry Moore,0.12661335684037384
+Yousuf Karsh,Alexander Calder,0.1048642668755334
+Francesco Clemente,Jim Dine,0.10704750604228759
+Francesco Clemente,Tracey Emin,0.12888895552601637
+Francesco Clemente,Paula Rego,0.08061073703206331
+Francesco Clemente,Howard Hodgkin,0.1017922003349205
+Francesco Clemente,James Rosenquist,0.08348791943034241
+Francesco Clemente,Rufino Tamayo,0.10045223907518845
+Francesco Clemente,John Hoyland,0.07791332413058849
+Francesco Clemente,Terry Frost,0.12135992026856954
+Francesco Clemente,Elisabeth Frink,0.09398031668929067
+Francesco Clemente,Victor Pasmore,0.10446688147073267
+Sam Gilliam,Tom Wesselmann,0.10628401946597921
+Sam Gilliam,Donald Sultan,0.09337877116892855
+Sam Gilliam,Bridget Riley,0.08735982602747004
+Sam Gilliam,Patrick Caulfield,0.0952722779800546
+Sam Gilliam,Robert Rauschenberg,0.1062565301266295
+Sam Gilliam,Jim Dine,0.09248466473702481
+Sam Gilliam,James Rosenquist,0.07506782916623202
+Sam Gilliam,Roy Lichtenstein,0.12266250289647236
+Sam Gilliam,Robert Motherwell,0.09032280302356539
+Sam Gilliam,John Piper,0.1309107754076436
+Christopher Brown,James Rosenquist,0.10064142779911155
+Christopher Brown,Jim Dine,0.1203417233830072
+Christopher Brown,Sam Francis,0.15312848563352882
+Christopher Brown,Paula Rego,0.0746560292285379
+Christopher Brown,Rufino Tamayo,0.09532886194059516
+Christopher Brown,Robert Motherwell,0.09873983547129152
+Christopher Brown,Robert Rauschenberg,0.10387811060439112
+Christopher Brown,Alexander Calder,0.10858614768478211
+Christopher Brown,Elisabeth Frink,0.08158544377241271
+Christopher Brown,Wayne Thiebaud,0.06311393448234202
+Michael Kenna,Paula Rego,0.07626329009839095
+Michael Kenna,Henry Moore,0.14462861729324689
+Michael Kenna,Elisabeth Frink,0.09199057753329794
+Michael Kenna,Terry Frost,0.11180130172249082
+Michael Kenna,Victor Pasmore,0.09655039833108825
+Michael Kenna,John Piper,0.13884123825810754
+Michael Kenna,Howard Hodgkin,0.08874270592965851
+Michael Kenna,Tracey Emin,0.10681776159174554
+Michael Kenna,Graham Sutherland,0.06832855252677043
+Michael Kenna,Ansel Adams,0.07603555671520307
+Pat Steir,Jim Dine,0.12436505476022326
+Pat Steir,Robert Motherwell,0.12866930596437787
+Pat Steir,Sam Francis,0.17684590084841395
+Pat Steir,James Rosenquist,0.0946911033225573
+Pat Steir,Wayne Thiebaud,0.08436061081912927
+Pat Steir,Robert Rauschenberg,0.10441645789552585
+Pat Steir,Jasper Johns,0.07092996774620415
+Pat Steir,Ed Ruscha,0.07744581934813363
+Pat Steir,Richard Diebenkorn,0.07307860715061991
+Pat Steir,Tom Wesselmann,0.06519717214481491
+Lisa Gray,James Rosenquist,0.09323166329796076
+Lisa Gray,Christo and Jeanne-Claude,0.09802998052660333
+Lisa Gray,John Hoyland,0.08730701850376617
+Lisa Gray,Jim Dine,0.10546631113671277
+Lisa Gray,Paula Rego,0.07907197334947506
+Lisa Gray,Eduardo Paolozzi,0.08380802686277108
+Lisa Gray,Graham Sutherland,0.07918432646267562
+Lisa Gray,Terry Frost,0.12279024929690151
+Lisa Gray,Elisabeth Frink,0.09679602127011909
+Lisa Gray,John Piper,0.1543144292930147
+"Elling William ""Bill"" Gollings",Louis Icart,0.11134187368988169
+"Elling William ""Bill"" Gollings",Christopher Richard Wynne Nevinson ARA,0.0949287047385073
+"Elling William ""Bill"" Gollings",Paula Rego,0.08212816121927594
+"Elling William ""Bill"" Gollings",Ansel Adams,0.09219673237318221
+"Elling William ""Bill"" Gollings",Victor Pasmore,0.10917152733790836
+"Elling William ""Bill"" Gollings",Rufino Tamayo,0.10037488453639647
+"Elling William ""Bill"" Gollings",Henry Moore,0.14924050316325188
+"Elling William ""Bill"" Gollings",Stanley William Hayter,0.07630199610437852
+"Elling William ""Bill"" Gollings",Georges Braque,0.09332278739038755
+"Elling William ""Bill"" Gollings",Elisabeth Frink,0.09099282944683007
+Walter Sickert,James Abbott McNeill Whistler,0.10909463803412969
+Walter Sickert,Christopher Richard Wynne Nevinson ARA,0.09858106865699993
+Walter Sickert,Stanley William Hayter,0.08670881676443935
+Walter Sickert,Henry Moore,0.15558989411683055
+Walter Sickert,Victor Pasmore,0.11118170655165706
+Walter Sickert,Paula Rego,0.07716742115244145
+Walter Sickert,Louis Icart,0.09149362115968038
+Walter Sickert,Graham Sutherland,0.07780894690118678
+Walter Sickert,Pierre-Auguste Renoir,0.10296298400681718
+Walter Sickert,Elisabeth Frink,0.08941090265581775
+André Kertész,Ansel Adams,0.1374936392133783
+André Kertész,Thomas Hart Benton,0.08260620880989014
+André Kertész,Alexander Calder,0.13088089945183057
+André Kertész,Paula Rego,0.07355170926296563
+André Kertész,Henry Moore,0.14225902929429585
+André Kertész,Christopher Richard Wynne Nevinson ARA,0.0781039008749304
+André Kertész,Wayne Thiebaud,0.07113418289406087
+André Kertész,Jim Dine,0.09351431291642086
+André Kertész,Rufino Tamayo,0.09270651556834666
+André Kertész,Robert Motherwell,0.0977496017138807
+Le Corbusier (Charles-Edouard Jeanneret),Sonia Delaunay,0.09271586058566814
+Le Corbusier (Charles-Edouard Jeanneret),Georges Braque,0.1081769310083642
+Le Corbusier (Charles-Edouard Jeanneret),Marc Chagall,0.2085694816900191
+Le Corbusier (Charles-Edouard Jeanneret),Henri Matisse,0.09277080816432205
+Le Corbusier (Charles-Edouard Jeanneret),Henry Moore,0.11730988258916555
+Le Corbusier (Charles-Edouard Jeanneret),Graham Sutherland,0.06048244810599826
+Le Corbusier (Charles-Edouard Jeanneret),Alexander Calder,0.09855418074017093
+Le Corbusier (Charles-Edouard Jeanneret),Rufino Tamayo,0.07644282002342714
+Le Corbusier (Charles-Edouard Jeanneret),Elisabeth Frink,0.07211255870566491
+Le Corbusier (Charles-Edouard Jeanneret),Howard Hodgkin,0.07286502838719965
+Bambi,Patrick Caulfield,0.12191029445514963
+Bambi,David Shrigley,0.11140844279231243
+Bambi,Terry Frost,0.12168559466711872
+Bambi,Peter Blake,0.11357474645915427
+Bambi,John Piper,0.14435226261950185
+Bambi,John Hoyland,0.07195146921579057
+Bambi,Victor Pasmore,0.09404124578717382
+Bambi,Howard Hodgkin,0.08535495732598214
+Bambi,Julian Opie,0.061197033216279284
+Bambi,Elisabeth Frink,0.07452395346153727
+Peter Milton,Stanley William Hayter,0.09718611123674796
+Peter Milton,James Rosenquist,0.09815856026400459
+Peter Milton,Jim Dine,0.11825214477571476
+Peter Milton,Paula Rego,0.08667324996678055
+Peter Milton,Victor Pasmore,0.12073278737671582
+Peter Milton,John Hoyland,0.0869256806435331
+Peter Milton,Elisabeth Frink,0.1034437434931721
+Peter Milton,Graham Sutherland,0.08172294438717469
+Peter Milton,Rufino Tamayo,0.10351707908560324
+Peter Milton,Howard Hodgkin,0.10338769877055315
+Georg Baselitz,Paula Rego,0.08103133838562372
+Georg Baselitz,Victor Pasmore,0.10901288827840214
+Georg Baselitz,Elisabeth Frink,0.09681141709434647
+Georg Baselitz,Howard Hodgkin,0.09988385438485828
+Georg Baselitz,Rufino Tamayo,0.09930676067755068
+Georg Baselitz,Henry Moore,0.14741974537536365
+Georg Baselitz,Wayne Thiebaud,0.07424574005733851
+Georg Baselitz,Terry Frost,0.11994876319010415
+Georg Baselitz,Ansel Adams,0.08429408837476982
+Georg Baselitz,Louis Icart,0.08804540418164258
+Oskar Kokoschka,Thomas Hart Benton,0.08694643022870929
+Oskar Kokoschka,Graham Sutherland,0.08349423456537788
+Oskar Kokoschka,Alexander Calder,0.1340281286514233
+Oskar Kokoschka,Henry Moore,0.1552820665419704
+Oskar Kokoschka,Elisabeth Frink,0.09580827352667735
+Oskar Kokoschka,Rufino Tamayo,0.09851637804029482
+Oskar Kokoschka,Georges Braque,0.08595848363859189
+Oskar Kokoschka,Sonia Delaunay,0.0710333056924211
+Oskar Kokoschka,John Piper,0.13055069099122013
+Oskar Kokoschka,Paula Rego,0.05838200812331383
+Jesús Rafael Soto,Bridget Riley,0.11179916258445247
+Jesús Rafael Soto,Patrick Caulfield,0.10777979209226887
+Jesús Rafael Soto,John Piper,0.14496351623350517
+Jesús Rafael Soto,Peter Blake,0.109669118762645
+Jesús Rafael Soto,Victor Pasmore,0.09893314874560585
+Jesús Rafael Soto,Terry Frost,0.1088121742128083
+Jesús Rafael Soto,Donald Sultan,0.07242063645575313
+Jesús Rafael Soto,Tom Wesselmann,0.07009730891839834
+Jesús Rafael Soto,David Shrigley,0.09181040768796433
+Jesús Rafael Soto,Howard Hodgkin,0.08371473430659854
+Gary Ratushniak,Sybil Andrews,0.08243364489080998
+Gary Ratushniak,Jim Dine,0.09461334966920056
+Gary Ratushniak,Terry Frost,0.11275670151447606
+Gary Ratushniak,David Shrigley,0.09844512919237584
+Gary Ratushniak,Paula Rego,0.06861646560109115
+Gary Ratushniak,Elisabeth Frink,0.08536630969464959
+Gary Ratushniak,Tracey Emin,0.1063113580527911
+Gary Ratushniak,Henry Moore,0.13108988119266507
+Gary Ratushniak,Howard Hodgkin,0.08722887289597206
+Gary Ratushniak,John Piper,0.13313828729596852
+Ethel Spowers,Sybil Andrews,0.09750683024048253
+Ethel Spowers,Ansel Adams,0.07057169993700008
+Ethel Spowers,Christopher Richard Wynne Nevinson ARA,0.06634496777879231
+Ethel Spowers,Roy Lichtenstein,0.11440658902792705
+Ethel Spowers,Wayne Thiebaud,0.05904681485863504
+Ethel Spowers,Henri Matisse,0.08683030750527153
+Ethel Spowers,David Hockney,0.13767063715916528
+Ethel Spowers,Marc Chagall,0.16083347632637404
+Ethel Spowers,Andy Warhol,0.13576696399651614
+Ethel Spowers,Keith Haring,0.07102171316983594
+George Hurrell,Ansel Adams,0.10037631982008932
+George Hurrell,Jim Dine,0.10797211299846013
+George Hurrell,Alexander Calder,0.1288981320310259
+George Hurrell,James Rosenquist,0.0817754943582174
+George Hurrell,Robert Rauschenberg,0.11170267254765667
+George Hurrell,Thomas Hart Benton,0.0780628578939937
+George Hurrell,Elisabeth Frink,0.09125598366129595
+George Hurrell,Graham Sutherland,0.06986570919721664
+George Hurrell,John Piper,0.1373588025803209
+George Hurrell,Robert Motherwell,0.09273191491172321
+Robin Tanner,Stanley William Hayter,0.09323298911876507
+Robin Tanner,Christopher Richard Wynne Nevinson ARA,0.09254089270539997
+Robin Tanner,Paula Rego,0.08211039041362193
+Robin Tanner,Henry Moore,0.15578295954131258
+Robin Tanner,Louis Icart,0.09082876108127853
+Robin Tanner,Victor Pasmore,0.10756780028336729
+Robin Tanner,Graham Sutherland,0.07637053842574339
+Robin Tanner,Elisabeth Frink,0.09196982955174361
+Robin Tanner,Eduardo Paolozzi,0.07362868658750293
+Robin Tanner,John Piper,0.1359671522912646
+John Walker,Eduardo Paolozzi,0.10589832451392664
+John Walker,John Hoyland,0.09656934762935733
+John Walker,Stanley William Hayter,0.08276884263492502
+John Walker,Terry Frost,0.12045785345008488
+John Walker,Graham Sutherland,0.07130716954031954
+John Walker,Peter Blake,0.10815491836037505
+John Walker,John Piper,0.13976370111635464
+John Walker,Howard Hodgkin,0.0891195050351996
+John Walker,Victor Pasmore,0.09513655745207156
+John Walker,David Shrigley,0.09082378026738566
+Allan D'Arcangelo,Patrick Caulfield,0.11194615848680033
+Allan D'Arcangelo,Victor Vasarely,0.11445125443108509
+Allan D'Arcangelo,Donald Sultan,0.08187752003012926
+Allan D'Arcangelo,John Hoyland,0.07566770819853474
+Allan D'Arcangelo,Peter Blake,0.11465483758880152
+Allan D'Arcangelo,Terry Frost,0.11841453897758679
+Allan D'Arcangelo,John Piper,0.14898261081737302
+Allan D'Arcangelo,Victor Pasmore,0.09779638835405977
+Allan D'Arcangelo,James Rosenquist,0.06914168270375802
+Allan D'Arcangelo,Tom Wesselmann,0.06706730041187145
+Invader,David Shrigley,0.10246284729796301
+Invader,Damien Hirst,0.127355016082337
+Invader,Julian Opie,0.06698209824552775
+Invader,Patrick Hughes,0.067107672924731
+Invader,Howard Hodgkin,0.08523598192538717
+Invader,Tracey Emin,0.10274910297106418
+Invader,Marc Chagall,0.18480970040271733
+Invader,Keith Haring,0.08411926753361865
+Invader,Georges Braque,0.08123456922040256
+Invader,Peter Blake,0.0979437433962514
+Yozo Hamaguchi,Stanley William Hayter,0.09824487122249057
+Yozo Hamaguchi,Paula Rego,0.08839857756855944
+Yozo Hamaguchi,Victor Pasmore,0.11865748842451278
+Yozo Hamaguchi,Louis Icart,0.09491344373874978
+Yozo Hamaguchi,Elisabeth Frink,0.10021159036615505
+Yozo Hamaguchi,Henry Moore,0.154257464854942
+Yozo Hamaguchi,Graham Sutherland,0.0792570534690317
+Yozo Hamaguchi,Howard Hodgkin,0.09694044390521266
+Yozo Hamaguchi,John Hoyland,0.0740173432158055
+Yozo Hamaguchi,Rufino Tamayo,0.09510172323454054
+Leon Kossoff,Stanley William Hayter,0.10699537056646727
+Leon Kossoff,Eduardo Paolozzi,0.0929143003915677
+Leon Kossoff,Paula Rego,0.0863228146654164
+Leon Kossoff,Victor Pasmore,0.11544371390804467
+Leon Kossoff,John Hoyland,0.08192407901457881
+Leon Kossoff,Howard Hodgkin,0.09837393932808754
+Leon Kossoff,Graham Sutherland,0.07597255996709842
+Leon Kossoff,Terry Frost,0.11943964847582114
+Leon Kossoff,Henry Moore,0.1406811402263158
+Leon Kossoff,Elisabeth Frink,0.08193243345660228
+Jean-Michel Basquiat,Keith Haring,0.11858562461595464
+Jean-Michel Basquiat,Andy Warhol,0.21738586681160185
+Jean-Michel Basquiat,Roy Lichtenstein,0.14494525437108632
+Jean-Michel Basquiat,Banksy,0.14140769926859253
+Jean-Michel Basquiat,Donald Sultan,0.06843468973868469
+Jean-Michel Basquiat,Julian Opie,0.062425332548216673
+Jean-Michel Basquiat,Jasper Johns,0.061656025763980965
+Jean-Michel Basquiat,Tom Wesselmann,0.0591753609638817
+Jean-Michel Basquiat,Bridget Riley,0.06041754507272336
+Jean-Michel Basquiat,Richard Diebenkorn,0.06556660084527728
+André Villers,Eduardo Paolozzi,0.10169082854460308
+André Villers,Julian Opie,0.08549226195397713
+André Villers,Georges Braque,0.11026433695500579
+André Villers,Louis Icart,0.1006910596434691
+André Villers,Pierre-Auguste Renoir,0.12086576535508568
+André Villers,John Hoyland,0.08629949975986255
+André Villers,Henri de Toulouse-Lautrec,0.09261343088035481
+André Villers,Graham Sutherland,0.08460423080795468
+André Villers,Stanley William Hayter,0.08579176487309323
+André Villers,Terry Frost,0.13168682122659403
+Théophile Alexandre Steinlen,Henri de Toulouse-Lautrec,0.1146936086447783
+Théophile Alexandre Steinlen,Henri Matisse,0.12419439525770068
+Théophile Alexandre Steinlen,Marc Chagall,0.22612723502746396
+Théophile Alexandre Steinlen,Pierre-Auguste Renoir,0.1093275834081692
+Théophile Alexandre Steinlen,Georges Braque,0.09299994400432428
+Théophile Alexandre Steinlen,Sonia Delaunay,0.06196074252118277
+Théophile Alexandre Steinlen,Louis Icart,0.06475911955790399
+Théophile Alexandre Steinlen,James Abbott McNeill Whistler,0.05977538087142055
+Théophile Alexandre Steinlen,Graham Sutherland,0.05285374456362799
+Théophile Alexandre Steinlen,Henry Moore,0.09330824614342834
+Stanley Anderson RA RE,Eduardo Paolozzi,0.09489667410338481
+Stanley Anderson RA RE,Stanley William Hayter,0.08584044580267194
+Stanley Anderson RA RE,Henry Moore,0.1519197175963066
+Stanley Anderson RA RE,Graham Sutherland,0.07605043943763598
+Stanley Anderson RA RE,Victor Pasmore,0.10317164497207121
+Stanley Anderson RA RE,Terry Frost,0.11613398725517123
+Stanley Anderson RA RE,Paula Rego,0.06970120907942869
+Stanley Anderson RA RE,John Hoyland,0.07112938920938693
+Stanley Anderson RA RE,Howard Hodgkin,0.09079443412643097
+Stanley Anderson RA RE,John Piper,0.14036205841751154
+Eric Ravilious,Graham Sutherland,0.07857111528716829
+Eric Ravilious,Julian Opie,0.0739963666461536
+Eric Ravilious,Eduardo Paolozzi,0.07968711886544617
+Eric Ravilious,Henri de Toulouse-Lautrec,0.08280268690278689
+Eric Ravilious,Henri Matisse,0.11040664441809325
+Eric Ravilious,Pierre-Auguste Renoir,0.10594699646839362
+Eric Ravilious,Henry Moore,0.14205377183588536
+Eric Ravilious,David Hockney,0.1767499465883798
+Eric Ravilious,Richard Hamilton,0.07034508949256187
+Eric Ravilious,James Abbott McNeill Whistler,0.07944026349513111
+Leon Underwood,Stanley William Hayter,0.0943447292455012
+Leon Underwood,Eduardo Paolozzi,0.0922182415823396
+Leon Underwood,Henry Moore,0.15273901631807396
+Leon Underwood,Graham Sutherland,0.07839712949003358
+Leon Underwood,John Hoyland,0.07567239566524711
+Leon Underwood,Terry Frost,0.11489341669142357
+Leon Underwood,Paula Rego,0.06911437910356981
+Leon Underwood,John Piper,0.14100601583892586
+Leon Underwood,Victor Pasmore,0.09729121939916173
+Leon Underwood,Elisabeth Frink,0.0843234566657236
+Imogen Cunningham,Ansel Adams,0.14622671103509108
+Imogen Cunningham,Christopher Richard Wynne Nevinson ARA,0.0794477947449527
+Imogen Cunningham,Alexander Calder,0.12203442509582405
+Imogen Cunningham,Thomas Hart Benton,0.07597665527762673
+Imogen Cunningham,Jim Dine,0.09424568260981575
+Imogen Cunningham,Louis Icart,0.084189572532525
+Imogen Cunningham,Henry Moore,0.13776738039612035
+Imogen Cunningham,Paula Rego,0.06920519474367823
+Imogen Cunningham,Georges Braque,0.08865873109451619
+Imogen Cunningham,Robert Rauschenberg,0.10224785246984985
+Peter Alexander,Elisabeth Frink,0.09567718091736345
+Peter Alexander,Howard Hodgkin,0.09791171175089179
+Peter Alexander,Graham Sutherland,0.07482583911307833
+Peter Alexander,Richard Diebenkorn,0.08372883173085723
+Peter Alexander,Jim Dine,0.09196002037255564
+Peter Alexander,Robert Motherwell,0.09761402304082668
+Peter Alexander,Paula Rego,0.0685459112660389
+Peter Alexander,David Hockney,0.16911441737604643
+Peter Alexander,Henry Moore,0.1321465612818568
+Peter Alexander,Rufino Tamayo,0.08847550315048475
+Gerald Leslie Brockhurst,Stanley William Hayter,0.08394261106390444
+Gerald Leslie Brockhurst,Graham Sutherland,0.07752273215937933
+Gerald Leslie Brockhurst,Henry Moore,0.1467079376448244
+Gerald Leslie Brockhurst,Elisabeth Frink,0.08895071089194334
+Gerald Leslie Brockhurst,Paula Rego,0.06963952634561824
+Gerald Leslie Brockhurst,Victor Pasmore,0.0973907397940157
+Gerald Leslie Brockhurst,Christopher Richard Wynne Nevinson ARA,0.0736822207269717
+Gerald Leslie Brockhurst,David Hockney,0.15504361742752773
+Gerald Leslie Brockhurst,Howard Hodgkin,0.0813571372967693
+Gerald Leslie Brockhurst,John Piper,0.12576276664904584
+Fernando Botero,Takashi Murakami,0.13066639467043453
+Fernando Botero,Connor Brothers,0.10717306354278551
+Fernando Botero,Robert Rauschenberg,0.10654957246266704
+Fernando Botero,Laurence Stephen Lowry,0.14425277282370275
+Fernando Botero,Tracey Emin,0.11059241030161594
+Fernando Botero,Damien Hirst,0.12583973921851252
+Fernando Botero,Christo and Jeanne-Claude,0.07624745682180288
+Fernando Botero,Richard Hamilton,0.06304504108804505
+Fernando Botero,Patrick Hughes,0.06258855559053629
+Fernando Botero,Howard Hodgkin,0.0730449934798974
+André Masson,Sonia Delaunay,0.11702402010714179
+André Masson,Georges Braque,0.13080038549197015
+André Masson,Graham Sutherland,0.08103143271687754
+André Masson,Henry Moore,0.14836688967167888
+André Masson,Victor Vasarely,0.10935843051022989
+André Masson,Louis Icart,0.08770175803617802
+André Masson,Rufino Tamayo,0.09320710739693946
+André Masson,Elisabeth Frink,0.0895254223618036
+André Masson,John Hoyland,0.07189302174588566
+André Masson,Stanley William Hayter,0.07109153196129508
+Gene Davis,John Piper,0.15961645315196832
+Gene Davis,Alexander Calder,0.13077096961226045
+Gene Davis,James Rosenquist,0.08170458371878919
+Gene Davis,Tom Wesselmann,0.07727736506935254
+Gene Davis,Terry Frost,0.115477688280671
+Gene Davis,Patrick Caulfield,0.09286984755150136
+Gene Davis,Jim Dine,0.09161644887861323
+Gene Davis,Robert Rauschenberg,0.10360441068978683
+Gene Davis,Thomas Hart Benton,0.07250357102634716
+Gene Davis,Donald Sultan,0.07455866202070995
+Iain MacNab PROI RE,Sybil Andrews,0.10597409542299233
+Iain MacNab PROI RE,Henry Moore,0.14692375123993648
+Iain MacNab PROI RE,Terry Frost,0.11572855208781344
+Iain MacNab PROI RE,Elisabeth Frink,0.09087508581125764
+Iain MacNab PROI RE,Graham Sutherland,0.07174607423570055
+Iain MacNab PROI RE,John Piper,0.1433860489303141
+Iain MacNab PROI RE,Paula Rego,0.0697388290582999
+Iain MacNab PROI RE,Howard Hodgkin,0.09082001809318031
+Iain MacNab PROI RE,Victor Pasmore,0.0966918272565965
+Iain MacNab PROI RE,Patrick Hughes,0.06811571786390876
+George Grosz,Henry Moore,0.14726343920415058
+George Grosz,Graham Sutherland,0.07577005617713285
+George Grosz,Elisabeth Frink,0.09357933851015743
+George Grosz,Georges Braque,0.09424282011087762
+George Grosz,Thomas Hart Benton,0.07656461761827904
+George Grosz,Alexander Calder,0.12167899380616079
+George Grosz,Ansel Adams,0.08226883425972317
+George Grosz,Rufino Tamayo,0.09378511297940335
+George Grosz,John Piper,0.14439442345402426
+George Grosz,Paula Rego,0.07045236388009112
+Garry Winogrand,Ansel Adams,0.16205771755458398
+Garry Winogrand,Jim Dine,0.10133938586633721
+Garry Winogrand,Wayne Thiebaud,0.07248445814131227
+Garry Winogrand,Alexander Calder,0.12171229040037748
+Garry Winogrand,Robert Rauschenberg,0.10581090459725867
+Garry Winogrand,Roy Lichtenstein,0.1316167617810961
+Garry Winogrand,Paula Rego,0.06914699632730151
+Garry Winogrand,Jasper Johns,0.07357809539049312
+Garry Winogrand,Christopher Richard Wynne Nevinson ARA,0.07487952191222581
+Garry Winogrand,Elisabeth Frink,0.08737386802901378
+Bruce Nauman,Sam Francis,0.22252179396814603
+Bruce Nauman,Ellsworth Kelly,0.09654159990537167
+Bruce Nauman,Robert Motherwell,0.12209151368055647
+Bruce Nauman,James Rosenquist,0.09215931816246209
+Bruce Nauman,Ed Ruscha,0.08863159091061105
+Bruce Nauman,Frank Stella,0.07974584993279057
+Bruce Nauman,Jasper Johns,0.07068251610128781
+Bruce Nauman,Jim Dine,0.08522527518294645
+Bruce Nauman,Robert Rauschenberg,0.08039232650225088
+Bruce Nauman,Rufino Tamayo,0.062008215653577003
+Leonor Fini,Rufino Tamayo,0.12553674285520164
+Leonor Fini,Graham Sutherland,0.08936511633642169
+Leonor Fini,Henry Moore,0.16561072803491034
+Leonor Fini,Elisabeth Frink,0.10366313591013074
+Leonor Fini,James Rosenquist,0.08396599694621798
+Leonor Fini,Alexander Calder,0.12922326926486644
+Leonor Fini,Paula Rego,0.06836252161689504
+Leonor Fini,Sonia Delaunay,0.07266963058147062
+Leonor Fini,Jim Dine,0.08971566077204761
+Leonor Fini,Thomas Hart Benton,0.07188719768183782
+Robert Doisneau,Georges Braque,0.1099059752546494
+Robert Doisneau,Ansel Adams,0.09209000062305173
+Robert Doisneau,Marc Chagall,0.223477624711233
+Robert Doisneau,Louis Icart,0.08857603040065085
+Robert Doisneau,Henri Matisse,0.11016627620486863
+Robert Doisneau,Sonia Delaunay,0.07392306547874497
+Robert Doisneau,Christopher Richard Wynne Nevinson ARA,0.06511328602704347
+Robert Doisneau,Paula Rego,0.05695965357916297
+Robert Doisneau,Elisabeth Frink,0.0718910829704091
+Robert Doisneau,Henry Moore,0.10789700475018588
+Frank Weston Benson,Stanley William Hayter,0.10786712492681974
+Frank Weston Benson,Eduardo Paolozzi,0.08909919894293779
+Frank Weston Benson,Henry Moore,0.16260112031324994
+Frank Weston Benson,Graham Sutherland,0.0838831332623399
+Frank Weston Benson,Thomas Hart Benton,0.08325859986571646
+Frank Weston Benson,Victor Pasmore,0.11044030277931043
+Frank Weston Benson,Georges Braque,0.09954486692511567
+Frank Weston Benson,James Abbott McNeill Whistler,0.0874526787820435
+Frank Weston Benson,Jim Dine,0.10017443312801551
+Frank Weston Benson,Paula Rego,0.07567854107445109
+Kiyoshi Saito,Sybil Andrews,0.08101751562091301
+Kiyoshi Saito,Jim Dine,0.09641465803782921
+Kiyoshi Saito,Georges Braque,0.09027722828770476
+Kiyoshi Saito,Graham Sutherland,0.07130489332055436
+Kiyoshi Saito,Terry Frost,0.1115540856677719
+Kiyoshi Saito,Elisabeth Frink,0.08748041916474651
+Kiyoshi Saito,Henry Moore,0.1344424619532717
+Kiyoshi Saito,John Piper,0.13836277545858588
+Kiyoshi Saito,David Shrigley,0.09481743394096495
+Kiyoshi Saito,Victor Pasmore,0.09432852854765769
+Édouard Manet,Pierre-Auguste Renoir,0.1451670207600572
+Édouard Manet,James Abbott McNeill Whistler,0.10795592979354411
+Édouard Manet,Henri de Toulouse-Lautrec,0.09044404152324764
+Édouard Manet,James Gillray,0.09585066341934127
+Édouard Manet,Henri Matisse,0.10510154214846705
+Édouard Manet,Louis Icart,0.08029121941654437
+Édouard Manet,Georges Braque,0.0797328409358515
+Édouard Manet,Marc Chagall,0.17633503918869026
+Édouard Manet,Christopher Richard Wynne Nevinson ARA,0.060959064229661276
+Édouard Manet,Ansel Adams,0.05816263858459533
+William Russell Flint RA RSW PRWS,Stanley William Hayter,0.10034391234484773
+William Russell Flint RA RSW PRWS,Henry Moore,0.16557271446817193
+William Russell Flint RA RSW PRWS,Graham Sutherland,0.08171807254347134
+William Russell Flint RA RSW PRWS,Eduardo Paolozzi,0.08477763652146299
+William Russell Flint RA RSW PRWS,Paula Rego,0.07861035045139653
+William Russell Flint RA RSW PRWS,Victor Pasmore,0.1027395627682441
+William Russell Flint RA RSW PRWS,Louis Icart,0.08460071730340064
+William Russell Flint RA RSW PRWS,John Hoyland,0.07157464289745702
+William Russell Flint RA RSW PRWS,Elisabeth Frink,0.08885006631425417
+William Russell Flint RA RSW PRWS,John Piper,0.14121232438729367
+Max Yavno,Ansel Adams,0.1218310754928638
+Max Yavno,Jim Dine,0.10176454252282408
+Max Yavno,James Rosenquist,0.08096084733284739
+Max Yavno,Alexander Calder,0.12419337435103599
+Max Yavno,Paula Rego,0.073121349450193
+Max Yavno,Thomas Hart Benton,0.07657854675784206
+Max Yavno,Robert Rauschenberg,0.1078456426561534
+Max Yavno,Henry Moore,0.14121046173452417
+Max Yavno,Elisabeth Frink,0.09088231044869238
+Max Yavno,Christo and Jeanne-Claude,0.08161184925302377
+Alice Neel,Alexander Calder,0.2210932230674149
+Alice Neel,Thomas Hart Benton,0.08360659734884393
+Alice Neel,Rufino Tamayo,0.1013128274296387
+Alice Neel,James Rosenquist,0.07848829545767075
+Alice Neel,Sam Francis,0.13657508323974224
+Alice Neel,Jim Dine,0.08586077452009526
+Alice Neel,Robert Motherwell,0.08630076925962538
+Alice Neel,Robert Rauschenberg,0.0893131101657508
+Alice Neel,Ellsworth Kelly,0.05701078094333984
+Alice Neel,Jasper Johns,0.06043853856787819
+O. Winston Link,Ansel Adams,0.13208616185928349
+O. Winston Link,Alexander Calder,0.13072669184302765
+O. Winston Link,Jim Dine,0.09600660040960315
+O. Winston Link,Paula Rego,0.0721860012558855
+O. Winston Link,Tom Wesselmann,0.0768962856218064
+O. Winston Link,Robert Rauschenberg,0.10625312530356232
+O. Winston Link,Sam Francis,0.1379061200353045
+O. Winston Link,Wayne Thiebaud,0.06993704203164498
+O. Winston Link,Rufino Tamayo,0.09096177758349612
+O. Winston Link,Elisabeth Frink,0.08704019405638595
+Vija Celmins,Wayne Thiebaud,0.09070739136895747
+Vija Celmins,Frank Stella,0.09168746121475486
+Vija Celmins,Robert Motherwell,0.11195152284228511
+Vija Celmins,Ed Ruscha,0.09427739138971165
+Vija Celmins,Jasper Johns,0.08077655065777763
+Vija Celmins,Tom Wesselmann,0.08027390035338909
+Vija Celmins,Roy Lichtenstein,0.1406142576554652
+Vija Celmins,Ellsworth Kelly,0.07316938550747759
+Vija Celmins,Jim Dine,0.09602158245780218
+Vija Celmins,Sam Francis,0.14052055655237933
+Edward Wadsworth,Sybil Andrews,0.090307741387574
+Edward Wadsworth,Christopher Richard Wynne Nevinson ARA,0.08234116660396729
+Edward Wadsworth,Henri de Toulouse-Lautrec,0.08268905521969284
+Edward Wadsworth,Ansel Adams,0.08445703035409352
+Edward Wadsworth,Henri Matisse,0.10993360272118813
+Edward Wadsworth,James Abbott McNeill Whistler,0.08265101388277005
+Edward Wadsworth,Pierre-Auguste Renoir,0.1005688584536543
+Edward Wadsworth,Julian Opie,0.06855484667101114
+Edward Wadsworth,David Hockney,0.16800230429650828
+Edward Wadsworth,Henry Moore,0.13049438040954042
+Michael Craig-Martin,Patrick Caulfield,0.12098040448552407
+Michael Craig-Martin,Terry Frost,0.1345357359155728
+Michael Craig-Martin,Peter Blake,0.12525547544527663
+Michael Craig-Martin,John Piper,0.1584834584696161
+Michael Craig-Martin,Victor Pasmore,0.09843131475174524
+Michael Craig-Martin,David Shrigley,0.09599914589139326
+Michael Craig-Martin,John Hoyland,0.06838830637009358
+Michael Craig-Martin,Howard Hodgkin,0.08119328670063942
+Michael Craig-Martin,Elisabeth Frink,0.066830153843206
+Michael Craig-Martin,Eduardo Paolozzi,0.04990271812693293
+Camille Pissarro,Pierre-Auguste Renoir,0.16276810492628482
+Camille Pissarro,Henri de Toulouse-Lautrec,0.0983280110889911
+Camille Pissarro,James Abbott McNeill Whistler,0.08853056448363374
+Camille Pissarro,Henri Matisse,0.10998367669166685
+Camille Pissarro,Georges Braque,0.0868125571464343
+Camille Pissarro,Marc Chagall,0.18873071508552663
+Camille Pissarro,Louis Icart,0.07560097012251768
+Camille Pissarro,James Gillray,0.07355246825056982
+Camille Pissarro,Sonia Delaunay,0.059213137943917304
+Camille Pissarro,Ansel Adams,0.056479794260457745
+Christopher Wool,Christo and Jeanne-Claude,0.10045215599722343
+Christopher Wool,Julian Opie,0.07906677456475447
+Christopher Wool,Connor Brothers,0.10693074996230947
+Christopher Wool,Robert Rauschenberg,0.10880180447362003
+Christopher Wool,Takashi Murakami,0.11049335747745714
+Christopher Wool,Keith Haring,0.09196454143932101
+Christopher Wool,Tracey Emin,0.11092964831939517
+Christopher Wool,Richard Hamilton,0.06861778552281801
+Christopher Wool,David Shrigley,0.09631656343317406
+Christopher Wool,Damien Hirst,0.12642661880992717
+Gino Severini,Henry Moore,0.1622490761558331
+Gino Severini,Graham Sutherland,0.08205189549756149
+Gino Severini,Thomas Hart Benton,0.08049544951483537
+Gino Severini,Alexander Calder,0.1273112394072834
+Gino Severini,Rufino Tamayo,0.09746809145807758
+Gino Severini,Elisabeth Frink,0.09382977112120758
+Gino Severini,Georges Braque,0.08356963334928706
+Gino Severini,John Piper,0.12837819688591268
+Gino Severini,Sonia Delaunay,0.06478780501409069
+Gino Severini,Howard Hodgkin,0.07985884159591096
+Milton Avery,Wayne Thiebaud,0.09289486949253827
+Milton Avery,Jim Dine,0.11952719921037011
+Milton Avery,Robert Motherwell,0.11402302093202323
+Milton Avery,Ansel Adams,0.09105564209532618
+Milton Avery,James Rosenquist,0.085460875978581
+Milton Avery,Thomas Hart Benton,0.07860494455949706
+Milton Avery,Henry Moore,0.14554088853939506
+Milton Avery,Robert Rauschenberg,0.10818217259158634
+Milton Avery,Georges Braque,0.0926225102574701
+Milton Avery,Paula Rego,0.07208787634321254
+Ilya Bolotowsky,Patrick Caulfield,0.10937544387476768
+Ilya Bolotowsky,Victor Vasarely,0.11239076192392972
+Ilya Bolotowsky,Donald Sultan,0.08129257575715026
+Ilya Bolotowsky,Tom Wesselmann,0.0796223282550099
+Ilya Bolotowsky,John Piper,0.15131853200536935
+Ilya Bolotowsky,Terry Frost,0.11648065530282134
+Ilya Bolotowsky,Bridget Riley,0.078318796349066
+Ilya Bolotowsky,Victor Pasmore,0.09871190315290736
+Ilya Bolotowsky,Peter Blake,0.10483297643555047
+Ilya Bolotowsky,John Hoyland,0.06765602694342798
+Masami Teraoka,Jim Dine,0.1042328535970069
+Masami Teraoka,Howard Hodgkin,0.09994813259983164
+Masami Teraoka,Rufino Tamayo,0.09943560967923916
+Masami Teraoka,John Piper,0.14859270049078
+Masami Teraoka,Terry Frost,0.11680576898315218
+Masami Teraoka,Elisabeth Frink,0.09111272270000802
+Masami Teraoka,James Rosenquist,0.07524307812659238
+Masami Teraoka,Victor Pasmore,0.09690231429861584
+Masami Teraoka,Robert Rauschenberg,0.10052204429444511
+Masami Teraoka,Paula Rego,0.06720477523032879
+Red Grooms,Jim Dine,0.13175733465009065
+Red Grooms,James Rosenquist,0.10104822352481746
+Red Grooms,Ed Ruscha,0.09735179706199265
+Red Grooms,Jasper Johns,0.08717371586580089
+Red Grooms,Robert Motherwell,0.10910197071744149
+Red Grooms,Sam Francis,0.14893125120461542
+Red Grooms,Robert Rauschenberg,0.09701419916267813
+Red Grooms,Alexander Calder,0.10884393530203924
+Red Grooms,Wayne Thiebaud,0.051304008085013314
+Red Grooms,Keith Haring,0.06747356442551068
+Diego Rivera,Alexander Calder,0.13841663949761365
+Diego Rivera,Thomas Hart Benton,0.08595917359383334
+Diego Rivera,Rufino Tamayo,0.09654607191396018
+Diego Rivera,Henry Moore,0.12572106401489194
+Diego Rivera,Marc Chagall,0.18430407854548594
+Diego Rivera,Elisabeth Frink,0.08026325205051997
+Diego Rivera,Sonia Delaunay,0.06631794901854501
+Diego Rivera,Georges Braque,0.07917284059461768
+Diego Rivera,Ansel Adams,0.06681254121445312
+Diego Rivera,Howard Hodgkin,0.07648638955607913
+Paul Jenkins,Alexander Calder,0.14446595276450858
+Paul Jenkins,James Rosenquist,0.09268985774160818
+Paul Jenkins,Jim Dine,0.09950756574497227
+Paul Jenkins,Thomas Hart Benton,0.07383000366207174
+Paul Jenkins,Graham Sutherland,0.06940478436495115
+Paul Jenkins,Elisabeth Frink,0.08579365562598461
+Paul Jenkins,Sam Francis,0.128620991480993
+Paul Jenkins,Robert Rauschenberg,0.09684724502826302
+Paul Jenkins,Rufino Tamayo,0.08400557903319952
+Paul Jenkins,Henry Moore,0.12483436455344786
+Rachel Whiteread,David Shrigley,0.1181558914024247
+Rachel Whiteread,Terry Frost,0.13068879938723219
+Rachel Whiteread,Tracey Emin,0.12039223641906246
+Rachel Whiteread,Howard Hodgkin,0.09857564907194552
+Rachel Whiteread,John Hoyland,0.07329564330214175
+Rachel Whiteread,Eduardo Paolozzi,0.07265984322532636
+Rachel Whiteread,Peter Blake,0.10233379516451596
+Rachel Whiteread,Victor Pasmore,0.09308247738464381
+Rachel Whiteread,John Piper,0.1290781272811243
+Rachel Whiteread,Paula Rego,0.06173753736158288
+Don Hong-Oai,Ansel Adams,0.10732477537213529
+Don Hong-Oai,Paula Rego,0.07536550053573784
+Don Hong-Oai,Elisabeth Frink,0.09320225332567923
+Don Hong-Oai,Howard Hodgkin,0.09181106405754803
+Don Hong-Oai,Patrick Hughes,0.07031788808479862
+Don Hong-Oai,Henry Moore,0.13270897113247956
+Don Hong-Oai,John Piper,0.13768706642704312
+Don Hong-Oai,Victor Pasmore,0.09530475924762892
+Don Hong-Oai,Rufino Tamayo,0.08835768112723738
+Don Hong-Oai,Terry Frost,0.10792004068971196
+Ceri Richards,Eduardo Paolozzi,0.10273268667062994
+Ceri Richards,John Hoyland,0.08849387766499717
+Ceri Richards,Graham Sutherland,0.08281256489063214
+Ceri Richards,Henry Moore,0.15570867783602554
+Ceri Richards,Stanley William Hayter,0.07904757332572716
+Ceri Richards,John Piper,0.14529064413635154
+Ceri Richards,Terry Frost,0.11423070022237819
+Ceri Richards,Elisabeth Frink,0.08347563172708973
+Ceri Richards,Paula Rego,0.06528258388676837
+Ceri Richards,Howard Hodgkin,0.08292505963940021
+Eve Arnold,Christo and Jeanne-Claude,0.10313278010724335
+Eve Arnold,Robert Rauschenberg,0.11963134187406278
+Eve Arnold,Patrick Hughes,0.08169383312494176
+Eve Arnold,Ansel Adams,0.08936181574661554
+Eve Arnold,Richard Hamilton,0.07613257129715266
+Eve Arnold,Jim Dine,0.10117141142410832
+Eve Arnold,Eduardo Paolozzi,0.08129898819252776
+Eve Arnold,Tracey Emin,0.12078954026783155
+Eve Arnold,Peter Blake,0.11515604193404587
+Eve Arnold,Takashi Murakami,0.11163167603147028
+John Steuart Curry,Thomas Hart Benton,0.12386029782790675
+John Steuart Curry,Alexander Calder,0.15810747862285068
+John Steuart Curry,Henry Moore,0.14171432455368202
+John Steuart Curry,Graham Sutherland,0.07274068121063086
+John Steuart Curry,Jim Dine,0.0937053014740795
+John Steuart Curry,James Rosenquist,0.0770839409328632
+John Steuart Curry,Elisabeth Frink,0.08887076304507673
+John Steuart Curry,Georges Braque,0.08951449124811293
+John Steuart Curry,Rufino Tamayo,0.08638836835954279
+John Steuart Curry,Jasper Johns,0.06801435272525462
+Kyffin Williams,Eduardo Paolozzi,0.10274465733749666
+Kyffin Williams,Graham Sutherland,0.07717885215414597
+Kyffin Williams,Stanley William Hayter,0.0751508410053501
+Kyffin Williams,John Hoyland,0.07344192371242918
+Kyffin Williams,Henry Moore,0.1353543650477183
+Kyffin Williams,Tracey Emin,0.10729140560996475
+Kyffin Williams,Terry Frost,0.10833992331308315
+Kyffin Williams,Howard Hodgkin,0.087744755718698
+Kyffin Williams,Peter Blake,0.10148685643313936
+Kyffin Williams,John Piper,0.13126641966797456
+Robert Mapplethorpe,Ansel Adams,0.1198430036535043
+Robert Mapplethorpe,Tom Wesselmann,0.08393190789675169
+Robert Mapplethorpe,Alexander Calder,0.1303441426927496
+Robert Mapplethorpe,Jim Dine,0.10018888335741126
+Robert Mapplethorpe,Robert Rauschenberg,0.11095384523685309
+Robert Mapplethorpe,Roy Lichtenstein,0.137984250469854
+Robert Mapplethorpe,Wayne Thiebaud,0.07251503766977713
+Robert Mapplethorpe,Donald Sultan,0.07617816084077682
+Robert Mapplethorpe,Paula Rego,0.07015585821554475
+Robert Mapplethorpe,Robert Motherwell,0.09790490996677742
+Joseph Beuys,Tracey Emin,0.11051671734001092
+Joseph Beuys,John Piper,0.14110770344749352
+Joseph Beuys,Terry Frost,0.11064258913686024
+Joseph Beuys,John Hoyland,0.06986725699929153
+Joseph Beuys,Elisabeth Frink,0.0866294826987251
+Joseph Beuys,Howard Hodgkin,0.08974282094556141
+Joseph Beuys,Rufino Tamayo,0.08937953599487566
+Joseph Beuys,Takashi Murakami,0.1026854503338201
+Joseph Beuys,Victor Pasmore,0.09523702856419618
+Joseph Beuys,Peter Blake,0.10419141453916539
+Marcel Duchamp,James Abbott McNeill Whistler,0.09251036223893526
+Marcel Duchamp,Pierre-Auguste Renoir,0.11166550736237506
+Marcel Duchamp,Thomas Hart Benton,0.07708726657428197
+Marcel Duchamp,Henry Moore,0.14308012302375073
+Marcel Duchamp,Graham Sutherland,0.0741610182272621
+Marcel Duchamp,Howard Hodgkin,0.09593204888773602
+Marcel Duchamp,Robert Rauschenberg,0.1079368836831741
+Marcel Duchamp,Ansel Adams,0.08214676295934382
+Marcel Duchamp,Keith Haring,0.09528415724490194
+Marcel Duchamp,Alexander Calder,0.12019586979823903
+George Elbert Burr,Louis Icart,0.11657341517377703
+George Elbert Burr,James Abbott McNeill Whistler,0.10389909409254446
+George Elbert Burr,Stanley William Hayter,0.09208722358387506
+George Elbert Burr,Henry Moore,0.15766812750458703
+George Elbert Burr,Paula Rego,0.07907787131025985
+George Elbert Burr,Victor Pasmore,0.10999214480134238
+George Elbert Burr,Graham Sutherland,0.07868023724124386
+George Elbert Burr,Ansel Adams,0.08665244321423067
+George Elbert Burr,Thomas Hart Benton,0.07970393102949663
+George Elbert Burr,Georges Braque,0.09566551204864311
+Stephen Buckley,Eduardo Paolozzi,0.10058738654529491
+Stephen Buckley,John Hoyland,0.08800574359442577
+Stephen Buckley,Graham Sutherland,0.08007050757506551
+Stephen Buckley,Stanley William Hayter,0.07949098298229595
+Stephen Buckley,Peter Blake,0.10944232101010319
+Stephen Buckley,John Piper,0.13877791056118788
+Stephen Buckley,Terry Frost,0.10822941070625769
+Stephen Buckley,Elisabeth Frink,0.08437103406260174
+Stephen Buckley,Henry Moore,0.12803720595701823
+Stephen Buckley,Howard Hodgkin,0.08298749700574916
+Kees van Dongen,Marc Chagall,0.2045808068948575
+Kees van Dongen,Henry Moore,0.13430648976363296
+Kees van Dongen,Henri Matisse,0.10007904763841084
+Kees van Dongen,Graham Sutherland,0.06826236203521492
+Kees van Dongen,Alexander Calder,0.10990501217113786
+Kees van Dongen,Georges Braque,0.0837152443865042
+Kees van Dongen,Elisabeth Frink,0.08161366229569182
+Kees van Dongen,Ansel Adams,0.07088862864198718
+Kees van Dongen,Rufino Tamayo,0.08069843805279137
+Kees van Dongen,Henri de Toulouse-Lautrec,0.06595030811977132
+Philip Guston,Sam Francis,0.19742514083271284
+Philip Guston,Ellsworth Kelly,0.08803395552404536
+Philip Guston,Robert Motherwell,0.11170392861245323
+Philip Guston,Jasper Johns,0.07911121846742371
+Philip Guston,Alexander Calder,0.12191533771348356
+Philip Guston,James Rosenquist,0.07866522949305847
+Philip Guston,Ed Ruscha,0.07384520754009782
+Philip Guston,Rufino Tamayo,0.08101604456122363
+Philip Guston,Jim Dine,0.08038513591434747
+Philip Guston,Robert Rauschenberg,0.08789880134115381
+Anthony Gross,Stanley William Hayter,0.14978419854622085
+Anthony Gross,Eduardo Paolozzi,0.0852306676974523
+Anthony Gross,John Hoyland,0.07727697184512733
+Anthony Gross,Paula Rego,0.07215268494546384
+Anthony Gross,Victor Pasmore,0.10112948602415682
+Anthony Gross,Graham Sutherland,0.07067248774183553
+Anthony Gross,Henry Moore,0.1361675261382233
+Anthony Gross,Terry Frost,0.10742018021564272
+Anthony Gross,John Piper,0.12184919422037403
+Anthony Gross,Howard Hodgkin,0.07831660262550323
+James Crable,John Hoyland,0.0857619345644017
+James Crable,James Rosenquist,0.08741106441013553
+James Crable,Terry Frost,0.12351006930226588
+James Crable,Graham Sutherland,0.07755518288200146
+James Crable,Victor Pasmore,0.10722987782708787
+James Crable,Eduardo Paolozzi,0.08044649435918316
+James Crable,Robert Rauschenberg,0.11200472636633975
+James Crable,Jim Dine,0.09861813581781405
+James Crable,John Piper,0.15308495834584565
+James Crable,Paula Rego,0.07437755612492496
+Erich Heckel,Sybil Andrews,0.07936865258589593
+Erich Heckel,Ansel Adams,0.08744260788861878
+Erich Heckel,Georges Braque,0.09630423455760337
+Erich Heckel,Jim Dine,0.09619882796625234
+Erich Heckel,Henri Matisse,0.10805688498861549
+Erich Heckel,Henry Moore,0.14305897188334396
+Erich Heckel,Elisabeth Frink,0.09227267593812727
+Erich Heckel,Graham Sutherland,0.07388439625928926
+Erich Heckel,Christopher Richard Wynne Nevinson ARA,0.07852313620246688
+Erich Heckel,John Piper,0.14488961172978662
+Maurice de Vlaminck,Georges Braque,0.13722701670494106
+Maurice de Vlaminck,Sonia Delaunay,0.08020466630493078
+Maurice de Vlaminck,Henri Matisse,0.11120651314063197
+Maurice de Vlaminck,Marc Chagall,0.2114480553401039
+Maurice de Vlaminck,Graham Sutherland,0.05972860057570007
+Maurice de Vlaminck,Pierre-Auguste Renoir,0.08262872048191824
+Maurice de Vlaminck,Henry Moore,0.11305919444874446
+Maurice de Vlaminck,Louis Icart,0.06833453601906596
+Maurice de Vlaminck,Victor Vasarely,0.07958730373036049
+Maurice de Vlaminck,Thomas Hart Benton,0.056575393253603064
