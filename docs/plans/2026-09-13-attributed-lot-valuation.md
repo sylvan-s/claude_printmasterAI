@@ -611,7 +611,49 @@ block that does not parse to a plain object, so it reads as absent; `applyObserv
 prior appearances and a sell-through below 50%; A0793/64's re-run converted "sold 1 of 2" into a
 -40% cut citing that clause. It now says what the measurement supports and what it does not.
 
+### The two leaking clauses, fixed by moving the verdict into code (2026-09-14)
+
+Stating a threshold in the prompt and leaving the model to apply it does not work. On Bonhams
+32240 (Hockney, Old Rinkrank) Stage 3 wrote "with only 2 prior appearances, this is ordinary
+auction noise rather than a measured signal (base rates require 3+ appearances)" and took 10%
+off anyway, and took a further 15% for "Condition uncertainty ... Stage 1a did not run", which
+clause G already forbade. Both clauses had changed the model's language without changing its
+behaviour.
+
+The fix follows ADR-0018's rule: decide in code, let the model judge over the answer.
+- `liquidityVerdict()` computes the cohort test and the block now carries a line reading
+  `MEASURED SIGNAL: YES` or `NO`, with the reason and, on NO, an explicit "take NO liquidity
+  adjustment; an adjustment whose evidence cites this history is invalid".
+- `conditionEvidenceLines()` lists what the catalogue and the appraiser's notes actually say
+  about condition, states that Stage 1a is off by design rather than missing, and closes the
+  door on deducting for the absence of an examination.
+- Clause D now says "obey the verdict line", not "here is the threshold". Clause G points at
+  the condition section. A new clause H governs both: UNCERTAINTY IS NOT A DISCOUNT — read each
+  adjustment's own evidence back, and if it rests on something you could not check rather than
+  something you found, its magnitude is 0% and it belongs in evidenceAgainst.
+
+Re-run of the same lot, same anchor, same comps: the liquidity adjustment is gone entirely and
+appears in evidenceAgainst as "measured signal is NO, so no adjustment applied"; the condition
+cut fell from -15% to -5%, and the -5% is now a priced catalogue FACT (framed, where the
+comparable was unframed, so the verso cannot be inspected) rather than a hedge. Stage 3 also
+emits an explicit 0% line for the absence of examination. The published range did not move
+(GBP 1,800-2,600), so this bought honesty in the reasoning rather than a different number.
+Cost rose from $0.18 to $0.28 on the longer block and fuller reasoning.
+
 Observed, not yet acted on:
+- The evidence tree's dimension check is AXIS-STRICT and reads a transposed pair as a
+  divergence. Bonhams prints the Hockney plate as 238 x 275 mm, the graph stores 23.8 x 27.3
+  cm, and `dimsAgree` in attributed_lot.ts correctly calls those the same measurement — but the
+  tree's own check fired, which forced Scenario 2 and a Stage 2b search the routing rule exists
+  to avoid (~$0.14), and still leaves a residual -3% "verification divergence" adjustment after
+  Stage 2b itself identified the transposition. Fixing it means making
+  `classifyDimensionMatch` transposition-tolerant, which touches the two-pass tree and its 119
+  tests.
+- An upcoming lot ALREADY INGESTED into the graph is excluded by saleId + lotNumber, and the
+  Bonhams ingest stores preview lots as lotNumber 0 (no number is parseable from a preview
+  URL). Keying the claim on the Bonhams internal id missed it, and the lot counted its own
+  not-yet-sold record as a failed appearance (1/3 rather than 1/2). Exclusion should also match
+  on a normalised listing URL, or the claim should carry the graph's own key.
 - Stage 3's own reasoning is where a thin signal now reappears as a large adjustment (A0793/64's
   -40% liquidity cut). The evidence block states thresholds; the prompt has to keep saying which
   side of them the lot sits on.

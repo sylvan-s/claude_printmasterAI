@@ -9,7 +9,7 @@ import {
   mergeClaimIntoAppraiserInput, verifyAttributedLot, routeAttributedLot, synthesizeAttributionResult,
   buildAttributedLotValuationBlock, describeCompDifferences, lotPriceAttrs, primaryDimension, emptyAppraiserInput,
   namesCompatible, workTitleFromImageMatch, deriveMisattributionRisk,
-  sameArtist, divergenceSignalUsable, compAgeYears,
+  sameArtist, divergenceSignalUsable, compAgeYears, liquidityVerdict, conditionEvidenceLines,
   type CatalogueAttribution, type WorkResolution,
 } from "../../src/appraisal/attributed_lot";
 import type { TriageResult, Stage1dResult, VisualExtractionResult } from "../../src/types";
@@ -126,7 +126,7 @@ console.log("Stage 3 block + comp differences");
   ok("block says 2b skipped", block.includes("Stage 2b SKIPPED"));
   ok("block lists the comp difference as a fact", block.includes("signature hand vs lot unsigned"));
   const lowLiq = buildAttributedLotValuationBlock({ claim, verification: v, routing: routeAttributedLot(v, 2), comps, workFacts: { ...facts, sellThrough: { sold: 1, unsold: 3 } } });
-  ok("liquidity warning under 50% on 3+", lowLiq.includes("Prior sell-through under 50%"));
+  ok("liquidity warning under 50% on 3+", lowLiq.includes("MEASURED SIGNAL: YES"));
   eq("primaryDimension prefers image/plate", primaryDimension(claim.dimensions)?.kind, "plate");
 }
 
@@ -198,6 +198,31 @@ console.log("divergenceSignalUsable — a lone stale comp is not a signal");
   const b = buildAttributedLotValuationBlock({ claim, verification: v2, routing: routeAttributedLot(v2, 1), comps: { comparables: [old as any], summary: { count: 1, tierCounts: { same_work: 1, same_artist_technique: 0, same_artist: 0 }, medianGBP: 845, medianHammerGBP: 650, medianSameWorkHammerGBP: 650, minGBP: 845, maxGBP: 845, earliestSale: "2017-03-22", latestSale: "2017-03-22" }, coverageNote: "" }, workFacts: facts });
   ok("a lone 2017 comp is labelled NOT a directional signal", /NOT a directional signal/.test(b));
   ok("and the comp is still shown", /2017-03-22 Bonhams hammer 650/.test(b));
+}
+
+console.log("liquidityVerdict — the block carries the verdict, not the threshold");
+{
+  const L = (sold: number, unsold: number) => liquidityVerdict({ sold, unsold });
+  eq("3+ appearances under 50% is the measured cohort", [L(1, 3).applies, /MEASURED SIGNAL: YES/.test(L(1, 3).line)], [true, true]);
+  eq("exactly at 50% on 4 is not", [L(2, 2).applies, /MEASURED SIGNAL: NO/.test(L(2, 2).line)], [false, true]);
+  eq("2 appearances at 50% is not (the Bonhams 32240 case)", L(1, 1).applies, false);
+  ok("and it says why, and forbids the adjustment", /below the 3 the base rates were measured on/.test(L(1, 1).line) && /Take NO liquidity adjustment/.test(L(1, 1).line));
+  eq("one unsold appearance alone is not", L(0, 1).applies, false);
+  eq("no history at all is not a signal either", [L(0, 0).applies, /coverage fact/.test(L(0, 0).line)], [false, true]);
+  ok("a 6-appearance 33% work IS the cohort", L(2, 4).applies);
+}
+
+console.log("conditionEvidenceLines — facts priced, absence never deducted");
+{
+  const lines = conditionEvidenceLines({ ...claim, editionNote: "the full sheet, framed" }, null).join("\n");
+  ok("names the catalogue wording it found", /the full sheet/.test(lines) && /framed/.test(lines));
+  ok("says Stage 1a is off by design", /OFF on this path BY DESIGN/.test(lines));
+  ok("forbids the absent-examination discount", /take NO adjustment for the absence of a hands-on examination/i.test(lines));
+  ok("redirects uncertainty", /belongs in confidence, evidenceAgainst and whatWouldChangeIt/.test(lines));
+  const withNotes = conditionEvidenceLines(claim, { ...emptyAppraiserInput(), conditionClaims: [{ claim: "light toning to the margins", status: "hypothesis", sourceExcerpt: "x" }] }).join("\n");
+  ok("carries the appraiser's condition claims", /light toning to the margins \[hypothesis\]/.test(withNotes));
+  const bare = conditionEvidenceLines({ artist: "X" }, null).join("\n");
+  ok("says so when the catalogue is silent", /nothing about condition beyond the medium line/.test(bare));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

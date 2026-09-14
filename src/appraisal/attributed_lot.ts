@@ -602,6 +602,62 @@ export function describeCompDifferences(lot: PriceAttrs, comp: AuctionComparable
   return out;
 }
 
+/** Prior appearances needed before the measured unsold base rates apply at all. */
+export const LIQUIDITY_MIN_APPEARANCES = 3;
+
+/**
+ * Does this work's auction history meet the bar the liquidity base rates were measured at?
+ *
+ * The rates ("41-52% of such lots go unsold against 22-32% otherwise") came from works with
+ * THREE OR MORE prior appearances and a sell-through BELOW 50%. Stating the threshold in the
+ * prompt and leaving the model to apply it does not work: on Bonhams 32240 it wrote "with only
+ * 2 prior appearances, this is ordinary auction noise rather than a measured signal (base rates
+ * require 3+ appearances)" and then took 10% off anyway. So the verdict is computed here and
+ * the block carries the ANSWER, not the rule.
+ */
+export function liquidityVerdict(sellThrough: { sold: number; unsold: number } | null | undefined): {
+  applies: boolean; n: number; rate: number | null; line: string;
+} {
+  const st = sellThrough;
+  const n = st ? st.sold + st.unsold : 0;
+  if (!st || n === 0) {
+    return { applies: false, n: 0, rate: null, line: `LIQUIDITY: no prior auction appearance of this work is recorded in the graph. MEASURED SIGNAL: NO — there is no history to read, which is a coverage fact and NOT evidence that the work is hard to sell. Take no liquidity adjustment.` };
+  }
+  const rate = st.sold / n;
+  const pc = Math.round(rate * 100);
+  const head = `LIQUIDITY: this work appeared at auction ${n} time${n === 1 ? "" : "s"} before; sold ${st.sold}, unsold ${st.unsold} (${pc}% sell-through).`;
+  if (n >= LIQUIDITY_MIN_APPEARANCES && rate < 0.5) {
+    return { applies: true, n, rate, line: `${head} MEASURED SIGNAL: YES — ${n} appearances at under 50% puts this work in the cohort where 41-52% of lots go unsold, against a 22-32% base rate. Hold the lowEstimate at or below the anchor and name this as the reason.` };
+  }
+  const why = n < LIQUIDITY_MIN_APPEARANCES
+    ? `${n} prior appearance${n === 1 ? "" : "s"} is below the ${LIQUIDITY_MIN_APPEARANCES} the base rates were measured on`
+    : `${pc}% sell-through is at or above the 50% the base rates were measured below`;
+  return { applies: false, n, rate, line: `${head} MEASURED SIGNAL: NO — ${why}. This is ordinary auction noise. Take NO liquidity adjustment: an adjustment whose evidence cites this history is invalid. Put the history in evidenceAgainst instead.` };
+}
+
+/**
+ * What the lot's condition evidence actually is, and what may not be deducted for.
+ *
+ * Stage 1a is off on this path by design, and the model kept converting that into a 10-20%
+ * discount ("Condition uncertainty ... Stage 1a did not run"). The house set its estimate
+ * without a hands-on report from us either, so the anchor already carries that state; taking it
+ * off again double-counts. The block therefore states the condition FACTS and closes the door.
+ */
+export function conditionEvidenceLines(claim: CatalogueAttribution, appraiserInput?: AppraiserInputResult | null): string[] {
+  const out: string[] = [];
+  const stated: string[] = [];
+  const note = claim.editionNote ?? "";
+  for (const phrase of ["framed", "unframed", "the full sheet", "trimmed", "laid down", "mounted"]) {
+    if (new RegExp(`\\b${phrase}\\b`, "i").test(`${note} ${claim.medium ?? ""}`)) stated.push(phrase);
+  }
+  const claims = (appraiserInput?.conditionClaims ?? []).map((c) => `${c.claim} [${c.status}]`);
+  out.push(`CONDITION EVIDENCE (Stage 1a, the visual extraction agent, is OFF on this path BY DESIGN — it is not missing, and the catalogue states what it would have read):`);
+  out.push(`    catalogue wording: ${stated.length ? stated.join(", ") : "nothing about condition beyond the medium line"}`);
+  out.push(`    appraiser condition notes: ${claims.length ? claims.join("; ") : "none supplied"}`);
+  out.push(`    Price the facts above — "framed" and "the full sheet" and any defect named are each worth a named adjustment. But take NO adjustment for the absence of a hands-on examination, for Stage 1a not running, or for an unpublished condition report: the house priced this lot without a report from you too, so the anchor already reflects that. An adjustment whose evidence cites the lack of examination is invalid. Uncertainty about condition belongs in confidence, evidenceAgainst and whatWouldChangeIt, never in the number.`);
+  return out;
+}
+
 /** The fitted multipliers that bear on THIS lot's attributes, as reference lines. */
 export function describeProfileForLot(profile: ArtistPriceProfile, lot: PriceAttrs): string[] {
   const out: string[] = [];
@@ -628,8 +684,10 @@ export function buildAttributedLotValuationBlock(input: {
   workFacts: WorkFacts | null;
   /** The artist's log-linear price profile (plan step 6). Rendered as REFERENCE, never applied. */
   profile?: ArtistPriceProfile | null;
+  /** Stage 1c's extraction, for the condition claims the catalogue carried. */
+  appraiserInput?: AppraiserInputResult | null;
 }): string {
-  const { claim, verification: v, routing, comps, workFacts, profile } = input;
+  const { claim, verification: v, routing, comps, workFacts, profile, appraiserInput } = input;
   const lines: string[] = [];
   lines.push(`ATTRIBUTED-LOT EVIDENCE (the catalogue's own claim, verified against the knowledge graph in code):`);
   lines.push(`  Lot: ${[claim.house, claim.saleId ? `sale ${claim.saleId}` : null, claim.lotNumber != null ? `lot ${claim.lotNumber}` : null, claim.saleDate ? `(${claim.saleDate})` : null].filter(Boolean).join(" ") || "unspecified"}`);
@@ -690,13 +748,8 @@ export function buildAttributedLotValuationBlock(input: {
     lines.push(`    How to use it: as DIRECTION and MAGNITUDE reference for the adjustments you name (signature, edition size, sheet size, process). Measured 2026-09-13 on 654 lots: multiplying same-work comps by these factors did NOT beat the raw comp median (MAE(log) 0.40->0.44 Roseberys, 0.53->0.57 Forum), so never apply them as arithmetic to a comp or to the anchor; cite them in valuationReasoning.adjustments as the evidence for a direction.`);
   }
 
-  const st = workFacts?.sellThrough;
-  if (st && st.sold + st.unsold > 0) {
-    const n = st.sold + st.unsold, rate = st.sold / n;
-    lines.push(`  LIQUIDITY: this work appeared at auction ${n} time(s) before; sold ${st.sold}, unsold ${st.unsold} (${Math.round(rate * 100)}% sell-through).${n >= 3 && rate < 0.5 ? " Prior sell-through under 50% on 3+ appearances: 41-52% of such lots then go unsold (base 22-32%) — keep the LOW estimate protective and say so." : ""}`);
-  } else {
-    lines.push(`  LIQUIDITY: no prior auction appearances of this work recorded in the graph.`);
-  }
+  lines.push(`  ${liquidityVerdict(workFacts?.sellThrough).line}`);
+  lines.push(`  ${conditionEvidenceLines(claim, appraiserInput).join("\n    ")}`);
   return lines.join("\n");
 }
 

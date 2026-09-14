@@ -3772,7 +3772,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     const t3 = Date.now();
     emit({ stage: "stage3", status: "start", message: "Synthesising an evidence-based estimate…", percent: 82 });
     console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
-    const block = buildAttributedLotValuationBlock({ claim, verification, routing, comps, workFacts, profile });
+    const block = buildAttributedLotValuationBlock({ claim, verification, routing, comps, workFacts, profile, appraiserInput });
     const valuation = await this.runStage3Valuation(
       vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput, canonical,
       { workIds: work?.workIds ?? [], untilDate: claim.saleDate ?? null, block, systemSuffix: VALUATION_ATTRIBUTED_LOT_SUFFIX },
