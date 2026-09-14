@@ -896,13 +896,44 @@ production: the house arrives as `institutionName` from the graph and `auctionHo
 2b, and sale ids and lot numbers arrive as numbers from the graph where the text helper only
 accepted strings — so the graph side formed no key at all and matching was URL-only.
 
+### Stage 2b was being TOLD to copy the graph's comps (2026-09-14)
+
+The 89-of-90 duplication was not the model going wrong. STEP 7 of the specialist prompt said, of
+the records `query_ackg_comparables` returns: "record them in auctionComps like any other comp
+(listingUrl, priceAmount, priceCurrency "GBP" and priceBasis "premium_inclusive" all come
+straight off the record)". It was doing exactly as instructed, and Stage 3 — which queries that
+same corpus itself under ADR-0016 — then saw each sale twice.
+
+STEP 7 now says the opposite: read the graph's records, do NOT copy them, `auctionComps` is for
+sales the graph did not return, and an empty array is the correct answer when the graph already
+covers the artist. The schema description says the same, so the instruction survives a model
+that skims the prompt.
+
+The search-budget clause took two attempts. The first said skip comp searches when the graph
+returned "any same_work record, or three or more priced records at any tier", and A0793/530
+ignored it and searched three times — correctly, as it turned out. It had 31 same-artist records
+and no same_work, and same-artist records do not answer the question a same-work record answers
+(within-2x 50% against 80%). The rule now keys on same_work ALONE, and says so with the tier
+accuracies, so a large tier-3 count is not mistaken for coverage.
+
+Measured on two lots:
+
+| | A0793/530 (no same_work) | A0793/251 (10 same_work) |
+|---|---|---|
+| comps reported | 6 -> 1 | 5 -> 1 |
+| Stage 2b output tokens | 4,208 -> 3,148 (-25%) | — |
+| web searches | 4, correctly (nothing to skip) | 1, and spent on the edition format, not comps |
+| valuation | 320-480 -> 280-420 | 800-1600 -> 800-1400 |
+
+**Honest limits.** The output saving is real (-25% on the lot measured) but total cost was flat,
+because on 530 the searches were legitimate. And the search-skip clause will fire less often
+than it looks: the routing rule sends lots to Stage 2b *precisely because* same-work comps are
+missing. Across nine observed routings, seven cited "no same-work comps in the graph" and only
+two reached Stage 2b for another reason alone. So the skip applies mainly to lots that came for
+a verification divergence or a Scenario 2/4/5, as A0793/251 did. The copying fix applies to all
+of them; the search fix to a minority.
+
 Observed, not yet acted on:
-- Stage 2b is still ASKED for comps (specialist prompt STEP 8, up to 2 searches) on lots where
-  the graph already covers the artist. Given 1% net-new, that budget and the output tokens it
-  produces are close to pure waste: output is 44% of this stage's cost. Telling it to report
-  only sales `query_ackg_comparables` did NOT return would cut the largest cost line and make
-  the write-back's job meaningful. Not done here because it changes what the stage is asked for,
-  which deserves its own measurement rather than a same-day edit.
 ### Liquidity: the SIZE bounded on measurement, not judgement (2026-09-14)
 
 Stage 3 took -60% for liquidity on a work with ONE prior unsold appearance. It obeyed the

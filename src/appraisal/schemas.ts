@@ -450,7 +450,7 @@ export const SPECIALIST_ATTRIBUTION_SCHEMA = {
     },
     auctionComps: {
       type: Type.ARRAY,
-      description: "2–3 verified auction comps collected during Stage 2b research. Empty array if none found.",
+      description: "Auction sales found on the WEB that the knowledge graph did NOT already hold. Never a copy of a query_ackg_comparables record — Stage 3 queries that corpus itself and a copied record reaches the valuation twice, once as a graph record and once as an apparently independent finding. An EMPTY ARRAY is the correct and expected answer whenever the graph already covers the artist, and is not a failure to find anything.",
       items: {
         type: Type.OBJECT,
         properties: {
