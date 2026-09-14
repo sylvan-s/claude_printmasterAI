@@ -66,18 +66,24 @@ function ridgeFit(X: number[][], y: number[], alpha = 1.0, penalizedFrom = 1): n
   return solve(XtX, Xty);
 }
 
-interface FlagRow { key: string; artist: string; title: string; saleDate: string; hammer: number; residual: number; flaggedUnderpriced: boolean }
+interface FlagRow {
+  key: string; artist: string; title: string; saleDate: string; hammer: number; residual: number; flaggedUnderpriced: boolean;
+  technique: string | null; signed: boolean | null; editionSize: number | null; areaCm2: number | null; bestTier: string; house: string;
+}
 
-function loadBlendRows(path: string, house: 0 | 1): { X: number[]; y: number; key: string; artist: string; title: string; saleDate: string; hammer: number }[] {
+function loadBlendRows(path: string, house: 0 | 1): { X: number[]; y: number; key: string; artist: string; title: string; saleDate: string; hammer: number; technique: string | null; signed: boolean | null; editionSize: number | null; areaCm2: number | null; bestTier: string; house: string }[] {
   const out: ReturnType<typeof loadBlendRows> = [];
   for (const line of readFileSync(path, "utf8").split("\n").filter(Boolean)) {
     const r = JSON.parse(line);
     if (r.error || !r.sold || !r.hammer || r.hammer <= 0 || !r.blend?.inputs?.priors) continue;
     const inputs = r.blend.inputs as BlendInputs;
     const priorsMu = inputs.priors!.mu;
+    const area = r.widthCm && r.heightCm ? r.widthCm * r.heightCm : null;
     out.push({
       X: [1, priorsMu, house], y: ln(r.hammer), key: `${(r.canonicalArtist ?? r.artist).trim().toLowerCase()}|${normalizeTitleKey(r.title ?? "")}`,
       artist: r.canonicalArtist ?? r.artist, title: r.title, saleDate: r.saleDate, hammer: r.hammer,
+      technique: r.technique ?? null, signed: r.signed ?? null, editionSize: r.editionSize ?? null, areaCm2: area,
+      bestTier: r.bestTier ?? "none", house: house ? "Roseberys London" : "Bonhams",
     });
   }
   return out;
@@ -151,7 +157,10 @@ function main() {
   const flagged: FlagRow[] = roseberysRows.map((r) => {
     const predicted = coef[0] + coef[1] * r.X[1] + coef[2] * 1;
     const residual = r.y - predicted;
-    return { key: r.key, artist: r.artist, title: r.title, saleDate: r.saleDate, hammer: r.hammer, residual, flaggedUnderpriced: residual < 0 };
+    return {
+      key: r.key, artist: r.artist, title: r.title, saleDate: r.saleDate, hammer: r.hammer, residual, flaggedUnderpriced: residual < 0,
+      technique: r.technique, signed: r.signed, editionSize: r.editionSize, areaCm2: r.areaCm2, bestTier: r.bestTier, house: r.house,
+    };
   });
   const underpriced = flagged.filter((f) => f.flaggedUnderpriced);
   console.log(`\nRoseberys sold lots with a priors profile: ${flagged.length}; flagged underpriced (hammer < Roseberys-adjusted fair price): ${underpriced.length} (${pct(underpriced.length, flagged.length)})`);
@@ -198,6 +207,33 @@ function main() {
   for (const { f, o } of sortedUnder.slice(0, 10)) {
     console.log(`  ${f.artist.slice(0, 22).padEnd(23)} / ${f.title.slice(0, 26).padEnd(27)} £${f.hammer.toFixed(0).padStart(7)} -> ${o.house?.slice(0, 4)} ${o.ratio!.toFixed(2)}x  (${o.gapDays?.toFixed(0)}d later, model said x${Math.exp(-f.residual).toFixed(2)} more than it hammered for)`);
   }
+
+  // ── does anything characterise the >=2x winners vs. the rest of the flagged, checkable pool? ──
+  const checkable = underpriced.map((f) => ({ f, o: outcomeFor(f) })).filter((x) => x.o.found);
+  const bigWin = checkable.filter((x) => x.o.ratio! >= 2);
+  const rest = checkable.filter((x) => x.o.ratio! < 2);
+  console.log(`\n── What distinguishes the >=2x winners (n=${bigWin.length}) from the rest of the flagged, checkable pool (n=${rest.length})? ──`);
+  const med = (xs: number[]) => median(xs);
+  const compare = (label: string, pick: (x: (typeof checkable)[number]) => number | null) => {
+    const w = bigWin.map(pick).filter((v): v is number => v != null), r = rest.map(pick).filter((v): v is number => v != null);
+    if (!w.length || !r.length) { console.log(`  ${label}: insufficient data`); return; }
+    console.log(`  ${label.padEnd(28)} winners median ${med(w).toFixed(2).padStart(8)}   rest median ${med(r).toFixed(2).padStart(8)}   (n=${w.length} vs ${r.length})`);
+  };
+  compare("flagged hammer (£, log)", (x) => ln(x.f.hammer));
+  compare("model mispricing (log x)", (x) => -x.f.residual);
+  compare("gap to next sale (days)", (x) => x.o.gapDays);
+  compare("edition size", (x) => x.f.editionSize);
+  compare("sheet area (cm²)", (x) => x.f.areaCm2);
+  const share = (label: string, pick: (x: (typeof checkable)[number]) => boolean) => {
+    const w = bigWin.filter(pick).length, r = rest.filter(pick).length;
+    console.log(`  ${label.padEnd(28)} winners ${pct(w, bigWin.length).padStart(4)}   rest ${pct(r, rest.length).padStart(4)}`);
+  };
+  share("signed", (x) => x.f.signed === true);
+  share("had a same-work comp (tier 1)", (x) => x.f.bestTier === "same_work");
+  share("next sale at Bonhams", (x) => x.o.house === "Bonhams");
+  share("next sale within 180 days", (x) => (x.o.gapDays ?? 9999) <= 180);
+  console.log(`\n  Artists among the >=2x winners: ${[...new Set(bigWin.map((x) => x.f.artist))].join(", ")}`);
+  console.log(`  Techniques among the >=2x winners: ${[...new Set(bigWin.map((x) => x.f.technique).filter(Boolean))].join(", ") || "not captured for these rows"}`);
 
   console.log(`\nNB: "same nominal work" across appearances is very likely a DIFFERENT physical impression`);
   console.log(`    of one edition, not the identical sheet re-consigned.`);

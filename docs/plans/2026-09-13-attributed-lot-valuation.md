@@ -1055,6 +1055,37 @@ Jonas Wood 1.75x, L.S. Lowry 1.68x→Bonhams, Ed Ruscha 1.63x, Wayne Thiebaud 1.
 moved specifically to Bonhams and did well, the concrete shape of the user's strategy, though
 the small overall count (39) means genuine opportunities of this shape look real but scarce.
 
+**Addendum 2026-09-14 (final, pattern check) — what distinguishes the >=2x winners from the
+rest of the flagged, checkable pool?** User: thin seam is acceptable for a side-hustle-scale
+strategy, but a median 1.08x outcome isn't exciting on its own — is there a predictable pattern
+among the big winners specifically? `priors_undervaluation_screen.ts` extended to compare the
+>=2x cohort (n=11, 5-year window) against the rest of the checkable flagged pool (n=53) on
+price band, model-mispricing size, edition size, sheet area, signature, tier-1 comp presence,
+destination house, and gap to the next sale.
+
+**Nothing about the lot's own attributes distinguishes the winners** — hammer level, edition
+size, sheet area, signed share, tier-1 comp presence, even the SIZE of the model's own
+mispricing estimate are all statistically indistinguishable between the two groups (medians
+within a few percent of each other).
+
+**One thing does, clearly: TIME.** Winners' median gap to the next sale was 612 days (~20
+months) against 197 days for the rest — winners resurfaced within 180 days only 9% of the time,
+against 47% for non-winners. The pattern in this data is closer to the opposite of a quick
+flip: the big wins took patience, not speed.
+
+**Artist composition is not random, with a caveat that can't be resolved with what's built.**
+The 11 winners are Banksy, Antony Gormley, Louise Bourgeois, Damien Hirst, David Shrigley, Keith
+Haring, Lynn Chadwick, Barry Flanagan, Richard Hamilton, Patrick Hughes, Jay Rosenblum — postwar
+British sculpture and contemporary pop/street-adjacent names, a segment with genuinely strong,
+broad market appreciation over the years this corpus spans. Cannot currently separate "this
+specific lot was mispriced and corrected" from "this artist's whole market rose and any piece
+would have ridden it" — that confound is open, not resolved.
+
+**Practical read**: the flag's own mispricing size does not predict which lot wins. What
+associates with a real win is buying in a market segment with independent upward momentum and
+holding well over a year, not the size of the discount or the lot's physical attributes.
+Sample is small (n=11) — a lead, not a proven rule.
+
 ## Step 2 built (2026-09-13) — the attributed-lot entry path
 
 `src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method
