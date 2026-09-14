@@ -623,6 +623,43 @@ macro-F1 and the flat 21-way model by +0.11, and nearly double the number of pro
 system is entitled to name. Drypoint remains a family-level answer, as the research note
 predicted for accent-only, worn-burr labels.
 
+#### Drypoint by period and by label type (2026-09-14) — the burr-wear prediction holds
+
+`technique_ml/drypoint_period_split.py`, `artifacts/drypoint_period_split.json`. The hierarchical
+drypoint head (etching-only vs etching±drypoint, pooled DINOv2-L tiles from the full shards:
+5,204 images, 831 artists, 1,389 drypoint positives) is trained artist-grouped 5-fold on all
+periods and its out-of-fold predictions are scored by `ConceptualWork.dateCreated_year` (60% of
+works dated; the auction corpus is 940 post-1860 drypoint images to 65 pre-1860) and by label
+type. Artist-bootstrap 5–95% in brackets.
+
+| Subset | n (pos) | F1 | AUROC |
+|---|---:|---:|---:|
+| all | 5,204 (1,389) | 0.424 [0.38–0.47] | 0.753 [0.72–0.78] |
+| **pre-1860** | 242 (65) | 0.148 [0.03–0.26] | **0.598 [0.47–0.70]** |
+| **post-1860** | 2,946 (872) | 0.445 [0.39–0.50] | **0.753 [0.71–0.79]** |
+| undated | 2,016 (452) | 0.451 [0.40–0.51] | 0.772 [0.74–0.81] |
+| pure drypoint vs etching-only | 4,451 (636) | 0.356 | **0.804 [0.77–0.84]** |
+| etching+drypoint (accent) vs etching-only | 4,568 (753) | 0.285 | **0.721 [0.68–0.76]** |
+| trained on post-1860 only, scored post-1860 | 2,946 (872) | 0.409 | 0.754 [0.72–0.79] |
+
+Three findings, each matching the research note (§2.1, §5 item 8):
+
+1. **Pre-1860 drypoint is at chance** (AUROC 0.60, interval reaching 0.47): impressions from
+   before steel-facing carry little or no burr, and the label cannot be read from the surface.
+   Post-1860 editions, where burr survives, are where the signal lives.
+2. **Accent labels are the weaker half of the class.** Pure drypoints rank at 0.80, "etching
+   and drypoint" at 0.72 — a drypoint accent occupies a few tiles of an etching and the pooled
+   feature dilutes it.
+3. **Excluding pre-1860 lots from training changes nothing** (0.754 vs 0.753): they are
+   unpredictable, not harmful.
+
+Consequence for the product: the drypoint answer is period-conditioned. For post-1860 works the
+model can offer "etching, with drypoint" as a moderate-confidence suggestion (AUROC ~0.75–0.80);
+for pre-1860 works it should say "intaglio (etching); drypoint not determinable from the
+surface" and defer to catalogue evidence. A drypoint accent on an etching will remain the
+hardest case at 40 mm tiles; it is the one place a finer tile scale or a specialist trained
+on pure drypoints only might still pay, and it is not pursued further in this ADR.
+
 ### Phase 5 — product implication
 
 `predict_technique.py` receives a user photograph of unknown scale, which cannot be placed
