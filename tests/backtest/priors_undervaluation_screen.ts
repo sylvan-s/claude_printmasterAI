@@ -38,7 +38,9 @@ import { normalizeTitleKey, isLowInformationTitle, type BlendInputs } from "../.
 const ln = Math.log;
 const median = (xs: number[]): number => { const s = [...xs].sort((a, b) => a - b); return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2; };
 const pct = (k: number, n: number) => (n ? `${((100 * k) / n).toFixed(0)}%` : "n/a");
-const WITHIN_DAYS = 365;
+const argv = process.argv.slice(2);
+const arg = (n: string, d: string) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i + 1] : d; };
+const WITHIN_DAYS = Number(arg("within-days", "365"));
 
 // ── stage 1: fit the 2-factor (priors, house) fair-value model on the blend sample ────────────
 function solve(A: number[][], b: number[]): number[] {
