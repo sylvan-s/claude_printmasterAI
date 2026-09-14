@@ -852,6 +852,42 @@ vs the earlier +0.039/+0.040; Roseberys vs Bonhams: -0.115 vs the earlier -0.117
 consistent with the earlier check that recent-history lots are too small a share of any sample
 (under 6%) to be driving the main house-residual findings either way.
 
+**Addendum 2026-09-14 (final, direct test) — does switching houses escape the re-listing
+discount?** User hypothesis: an unsold-then-repriced lot is a distressed-sale signal, so waiting
+roughly a year and consigning the next attempt to Bonhams instead of Roseberys should recover
+the ~30% cut plus the general house-tier premium. `cross_house_relist_report.ts` tests this
+directly — same (artist, normalizeTitleKey(title)) grouping as the same-house version, but
+walking consecutive appearances ACROSS Roseberys and Bonhams (Forum excluded, no dates —
+task_7cae1bb7) and splitting by whether the venue changed.
+
+| Route after an unsold Roseberys lot | Median next estimate | 95% CI (artist-clustered bootstrap) |
+|---|---:|---|
+| Re-offered at Roseberys again | ×0.71 | [0.70×, 0.71×] |
+| Consigned to Bonhams instead | ×1.00 | [0.80×, 1.37×] |
+| Difference (log), Bonhams route minus Roseberys route | | [+0.122, +0.648] — excludes 0 |
+
+The discount is house-specific, not a repricing of the object: Bonhams shows no measurable
+inheritance of a Roseberys failure, and the gap from staying at Roseberys is real despite the
+small (n=37) Bonhams-route sample, because the comparison side is pinned tightly by 1,215
+same-house pairs. In 46% of Roseberys→Bonhams cases the next estimate came in ABOVE the failed
+one, against 6% for same-house relists — some of the general Bonhams tier riding along, not just
+the cut being erased.
+
+**Timing looks secondary to venue.** Splitting the Roseberys→Bonhams cohort by gap length, even
+the ≤180-day bucket (n=23, too thin to lean on alone) already shows no discount — the effect
+looks tied to which house sees the failure, not how long has passed.
+
+**Asymmetric, not a general "any switch clears the record" rule.** The reverse direction —
+Bonhams unsold → next Roseberys — DOES carry a real discount (×0.80, n=85), smaller than
+staying at Bonhams (×0.70) but not zero. Consistent with the smaller house tracking the larger
+one's results more than the reverse; not tested directly.
+
+**Same caveat as the earlier cross-house flip discussion**: a matched "same work" across houses
+is very likely a different physical impression of one edition, not the identical sheet
+re-consigned. This measures how the EDITION's estimate behaves across a venue switch after a
+failure, not that a specific purchased copy would realize this exact effect. Buyer's premium and
+Bonhams's own seller's commission are not in these numbers.
+
 ## Step 2 built (2026-09-13) — the attributed-lot entry path
 
 `src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method
