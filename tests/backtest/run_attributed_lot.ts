@@ -1,10 +1,16 @@
 /**
- * The attributed-lot entry path on ONE Roseberys lot, from its URL (or sale + lot number):
+ * The attributed-lot entry path.
+ *
+ * Two ways in. `--claim <file.json>` takes ANY house's lot as a hand-built CatalogueAttribution
+ * plus an image URL, which is the entry the use case actually describes (a lot URL and a
+ * picture) and the only way to reach a house the project has no fetcher for — Bonhams,
+ * Christie's, a dealer's page. Everything else here is the Roseberys convenience path:
  * fetch the lot, parse the house's own header into a CatalogueAttribution, download the
  * primary image, run AttributedLotAppraiser, and store result.json + report.html under
  * tests/backtest/output/<sale>_<lot>_attrpath/ in the same shape the hammer report reads
  * (`npm run report:hammer -- --suffix _attrpath`).
  *
+ *   npm run backtest:attributed-lot -- --claim /tmp/hockney.json
  *   npm run backtest:attributed-lot -- --url https://www.roseberys.co.uk/bidding/A0785-.../1-...
  *   npm run backtest:attributed-lot -- --sale A0785 --lot 1 [--method claude-4stage-attributed]
  *   npm run backtest:attributed-lot -- --sale A0793 --random 10 --seed 7 --dry-run     # pick + graph-side facts, NO model calls
@@ -44,12 +50,13 @@ import { parseDescription, type ParsedLot } from "../../benchmark/src/roseberys/
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_METHOD = "claude-4stage-attributed";
 
-interface Args { url?: string; sale?: string; lot?: string; lots: string[]; random: number; seed: number; dryRun: boolean; screen: boolean; concurrency: number; minRatio: number; method: string; vea: boolean; stage3Model?: string }
+interface Args { claimFile?: string; url?: string; sale?: string; lot?: string; lots: string[]; random: number; seed: number; dryRun: boolean; screen: boolean; concurrency: number; minRatio: number; method: string; vea: boolean; stage3Model?: string }
 function parseArgs(argv: string[]): Args {
   const a: Args = { method: DEFAULT_METHOD, vea: false, lots: [], random: 0, seed: 1, dryRun: false, screen: false, concurrency: 6, minRatio: 1.25 };
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i];
-    if (x === "--url") a.url = argv[++i];
+    if (x === "--claim") a.claimFile = argv[++i];
+    else if (x === "--url") a.url = argv[++i];
     else if (x === "--sale") a.sale = argv[++i];
     else if (x === "--lot") a.lot = argv[++i];
     else if (x === "--lots") a.lots = argv[++i].split(",").map((t) => t.trim()).filter(Boolean);
@@ -70,6 +77,7 @@ function parseArgs(argv: string[]): Args {
     if (!m) { console.error(`Could not read sale code and lot number from URL: ${a.url}`); process.exit(1); }
     a.sale = m[1]; a.lot = m[2];
   }
+  if (a.claimFile) return a;
   if (a.lot) a.lots = [a.lot];
   if (a.screen) { if (!a.sale) { console.error("--screen needs --sale <code>"); process.exit(1); } return a; }
   if (!a.sale || (!a.lots.length && !a.random)) { console.error("Usage: --url <roseberys lot url> | --sale <code> (--lot <n> | --lots a,b,c | --random N [--seed S]) [--dry-run] [--method <id>] [--stage3-model <m>] [--vea]"); process.exit(1); }
@@ -214,8 +222,77 @@ function reportScreen(rows: ScreenRow[], minRatio: number) {
   console.log(`\ncoverage: artist node ${rows.filter((r) => r.canonical).length}/${rows.length}  work resolved ${rows.filter((r) => r.basis).length}  same-work comps ${priced.length}  signal usable ${priced.filter((r) => r.signal.usable).length}`);
 }
 
+/**
+ * A lot from any house, described by hand. The JSON is a CatalogueAttribution (see
+ * src/appraisal/attributed_lot.ts) plus `imageUrl`, and optionally the four Stage 1c note
+ * fields. Nothing here is parsed out of a page: the caller is asserting what the catalogue
+ * says, which is exactly the claim the path is built to verify rather than trust.
+ */
+interface ClaimFile extends CatalogueAttribution {
+  imageUrl: string;
+  inscribedMarksNotes?: string;
+  provenanceNotes?: string;
+  conditionNotes?: string;
+  catalogueNotes?: string;
+}
+
+async function runFromClaimFile(args: Args) {
+  const cf = JSON.parse(readFileSync(args.claimFile!, "utf8")) as ClaimFile;
+  if (!cf.artist?.trim()) throw new Error("the claim file names no artist");
+  if (!cf.imageUrl) throw new Error("the claim file has no imageUrl");
+  const { imageUrl: imgUrl, inscribedMarksNotes, provenanceNotes, conditionNotes, catalogueNotes, ...claim } = cf;
+  console.log(`[Attributed lot] ===== ${claim.house ?? "?"} ${claim.saleId ?? "?"} lot ${claim.lotNumber ?? "?"} =====`);
+  console.log(`[Attributed lot] claim: ${JSON.stringify({ ...claim, sourceExcerpt: undefined })}`);
+  const { base64, mimeType } = await downloadImageBase64(imgUrl);
+
+  const baseConfig = appraiserConfigs.find((c) => c.id === args.method);
+  if (!baseConfig) throw new Error(`Unknown method "${args.method}"`);
+  const config: AppraisalMethodConfig = {
+    ...baseConfig, attributedLotPath: true, enableVisualSearch: false, enableEmbeddingMatch: true,
+    skipVea: !args.vea, ...(args.stage3Model ? { stage3Model: args.stage3Model } : {}),
+  };
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
+  const appraiser = new AttributedLotAppraiser(config, ai);
+
+  const input: AppraisalInput = {
+    imageBase64: base64, mimeType, currency: claim.estimateCurrency || "GBP",
+    inscribedMarksNotes, provenanceNotes, conditionNotes, catalogueNotes,
+    catalogueAttribution: claim,
+  };
+  resetUsage();
+  const t0 = Date.now();
+  const report = await appraiser.appraise(input);
+  const elapsedS = ((Date.now() - t0) / 1000).toFixed(1);
+  printUsageSummary();
+  const usage = usageSummary();
+  const est = report.auctionEstimate;
+  console.log(`\n[Attributed lot] ${elapsedS}s, $${usage.totalUsd.toFixed(4)} — Stage 2b ${report.attributedLot?.routing.stage2bSkipped ? "SKIPPED" : "ran"}; verification ${report.attributedLot?.verification.verdict}`);
+  console.log(`[Valuation] app ${est?.lowEstimate}-${est?.highEstimate} ${est?.currency} vs catalogue ${claim.estimateLow}-${claim.estimateHigh}`);
+  const r = est?.valuationReasoning;
+  if (r) {
+    console.log(`[Reasoning] anchor: ${r.anchor} (${r.anchorValue})`);
+    for (const a of r.adjustments ?? []) console.log(`[Reasoning]   ${a.direction} ${a.magnitude} — ${a.factor}: ${a.evidence}`);
+    console.log(`[Reasoning] confidence: ${r.confidence}`);
+  }
+  const lotId = `${(claim.house ?? "lot").replace(/[^a-z0-9]+/gi, "")}-${claim.saleId ?? "x"}-${claim.lotNumber ?? "x"}_attrpath`;
+  const outDir = `${__dirname}/output/${slugify(lotId)}`;
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(`${outDir}/result.json`, JSON.stringify({
+    lotId, lotUrl: claim.lotUrl, method: config.id, entryPath: "attributed-lot/claim-file",
+    attributionProvided: true, catalogueAttribution: claim, tokenUsage: usage, elapsedSeconds: Number(elapsedS),
+    stage1aVeaRun: !!args.vea, stage3Model: config.stage3Model ?? null,
+    attributedLot: report.attributedLot, report,
+    appraiserInputNotes: { inscribedMarksNotes: inscribedMarksNotes ?? null, provenanceNotes: provenanceNotes ?? null, conditionNotes: conditionNotes ?? null, catalogueNotes: catalogueNotes ?? null },
+  }, null, 2));
+  writeFileSync(`${outDir}/image.txt`, imgUrl);
+  console.log(`[Attributed lot] wrote ${outDir}/result.json`);
+  await closeDriver();
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  if (args.claimFile) return runFromClaimFile(args);
   const auction = await resolveSaleRef(args.sale!);
   if (!auction) throw new Error(`Could not resolve sale "${args.sale}"`);
   console.log(`[Attributed lot] sale ${auction.saleCode} (auction_id ${auction.auctionId})`);
