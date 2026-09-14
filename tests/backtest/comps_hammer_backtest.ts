@@ -47,6 +47,8 @@
  *   npx tsx tests/backtest/comps_hammer_backtest.ts --source both --limit 2000 --seed 7
  *   npx tsx tests/backtest/comps_hammer_backtest.ts --summary-only tests/backtest/comps_hammer/forum.jsonl
  *
+ *   npx tsx tests/backtest/comps_hammer_backtest.ts --source roseberys --limit 2500 --seed 11 --resolve-work --blend --out tests/backtest/comps_hammer/roseberys_n2500_blend.jsonl
+ *
  * Writes one JSON line per lot to tests/backtest/comps_hammer/<name>.jsonl (gitignored;
  * --resume skips lots already present) and prints the summary.
  */
@@ -65,6 +67,8 @@ import {
   adjustmentBetween,
   priceAttrsOfComparable,
   priceAttrsOfLot,
+  priorsModelPrediction,
+  type BlendInputs,
   type ComparablesResult,
   type WorkIdentityBasis,
   type ArtistPriceProfile,
@@ -103,6 +107,11 @@ const STRATIFY = has("stratify");
  *  over the attributes that differ from the lot (signature, proof, edition, size, process —
  *  never house) and score the adjusted median against the raw one on the same lots. */
 const ADJUST = has("adjust");
+/** Plan step 8: record the blend witnesses' inputs per lot — every same-work hammer with its
+ *  date, tier 2/3 medians, the priors model evaluated on the lot's own attributes (sale-year
+ *  effect added back), sell-through — so tests/backtest/blend_gate.ts can fit and score the
+ *  deterministic blend offline. Adds one profile read per artist and one attrs read per lot. */
+const BLEND = has("blend");
 /** Edition bands: unsigned book plates and portfolio sheets sit in the hundreds; signed
  *  editions in the tens. Boundaries chosen on the Picasso etching split (2026-09-13). */
 const editionBand = (n: number | null | undefined): string => (n == null || n <= 0 ? "unknown" : n <= 50 ? "<=50" : n <= 150 ? "51-150" : ">150");
@@ -257,6 +266,8 @@ interface Row extends Lot {
     /** Median |log multiplier| — how much the adjustment actually moved the comps. */
     medianAbsLogAdj: number; differingAttrs: Record<string, number>; unknownColumns: string[];
   } | null;
+  /** --blend: the witness inputs for price_blend.ts, plus where the lot's attributes came from. */
+  blend?: { inputs: BlendInputs; lotAttrsSource: "graph" | "csv" | "none"; priorsUnknownColumns: string[] } | null;
   /** How the lot was resolved to a work (only when --resolve-work). */
   workIdentity?: { basis: WorkIdentityBasis | null; ids: number; ambiguousAt: WorkIdentityBasis | null; matchedName: string | null };
   error?: string;
@@ -399,6 +410,26 @@ async function processLot(lot: Lot): Promise<Row> {
         base.adjusted = null;
       }
     }
+    if (BLEND) {
+      const profile = await priceProfile(id.canonical);
+      const fromGraph = profile ? await lotAttrsFromGraph(lot) : null;
+      const lotAttrs = fromGraph ?? priceAttrsOfLot({ text: [lot.medium, lot.editionNote].filter(Boolean).join(", "), techniques: base.technique ? [base.technique] : null, signed: lot.signed, editionSize: lot.editionSize, widthCm: lot.widthCm, heightCm: lot.heightCm });
+      const pred = profile ? priorsModelPrediction(lotAttrs, profile, { saleDate: lot.saleDate, house: lot.source === "roseberys" ? "Roseberys London" : "Forum Auctions" }) : null;
+      const t2 = tierStat(c, "same_artist_technique"), t3 = tierStat(c, "same_artist");
+      base.blend = {
+        inputs: {
+          saleDate: lot.saleDate, house: lot.source,
+          estimate: lot.lowEst > 0 && lot.highEst > 0 ? { lowGBP: lot.lowEst, highGBP: lot.highEst } : null,
+          sameWork: c.comparables.filter((x) => x.tier === "same_work" && x.hammerPriceGBP != null && x.hammerPriceGBP > 0).map((x) => ({ hammerGBP: x.hammerPriceGBP!, saleDate: x.saleDate })),
+          sameArtistTechnique: t2.n > 0 && t2.medianHammer != null ? { n: t2.n, medianHammerGBP: t2.medianHammer } : null,
+          sameArtist: t3.n > 0 && t3.medianHammer != null ? { n: t3.n, medianHammerGBP: t3.medianHammer } : null,
+          priors: pred && profile ? { mu: pred.mu, basis: profile.basis, earlierSales: profile.earlierSales, contributions: pred.contributions } : null,
+          sellThrough: null,
+        },
+        lotAttrsSource: fromGraph ? "graph" : profile ? "csv" : "none",
+        priorsUnknownColumns: pred?.unknownColumns ?? [],
+      };
+    }
     base.tiers = {
       same_work: tierStat(c, "same_work"),
       same_artist_technique: tierStat(c, "same_artist_technique"),
@@ -411,6 +442,7 @@ async function processLot(lot: Lot): Promise<Row> {
       const key = normalizeTitleKey(lot.title).slice(0, 24);
       if (key) base.sellThrough = await sellThrough(id.canonical, key, lot, sinceDate);
     }
+    if (base.blend) base.blend.inputs.sellThrough = base.sellThrough;
   } catch (err: any) {
     base.error = String(err?.message ?? err);
   }
@@ -477,6 +509,10 @@ function summarize(rows: Row[]) {
   const b = byBest(resolved);
   console.log(`  best tier reached (resolved lots) : same_work ${b.same_work} (${pct(b.same_work, resolved.length)})  same_artist_technique ${b.sat} (${pct(b.sat, resolved.length)})  same_artist ${b.sa} (${pct(b.sa, resolved.length)})  none ${b.none} (${pct(b.none, resolved.length)})`);
   console.log(`  same_work with >=3 pre-sale comps : ${resolved.filter((r) => r.tiers.same_work.n >= 3).length}`);
+  const bl = resolved.filter((r) => r.blend);
+  if (bl.length) {
+    console.log(`  blend inputs (--blend)            : ${bl.length} lots; priors model on ${bl.filter((r) => r.blend!.inputs.priors).length} (attrs from graph ${bl.filter((r) => r.blend!.lotAttrsSource === "graph").length}); same-work hammers on ${bl.filter((r) => r.blend!.inputs.sameWork.length).length}  -> score with npm run backtest:blend-gate`);
+  }
   const wi = resolved.filter((r) => r.workIdentity);
   if (wi.length) {
     const byBasis: Record<string, { lots: number; withComps: number }> = {};

@@ -74,6 +74,10 @@ export interface ArtistPriceProfile {
   referenceLevels: Record<string, string>;
   /** Training medians of the continuous terms, used when a side's edition/area is unknown. */
   continuousMedians: Record<string, number>;
+  /** Pooled sale-year effects (log) the level was deflated by, keyed by year. A from-scratch
+   *  prediction adds the effect for the lot's sale year back on (build_priors.predict); years
+   *  after the training cut carry 0. */
+  yearEffects: Record<string, number>;
 }
 
 export interface PriceAdjustment {
@@ -215,7 +219,7 @@ OPTIONAL MATCH (a)-[r:PRICE_NEIGHBOUR {run: a.priceElasticitiesRun}]->(b:Artist)
 WITH a, run, collect({name: b.name, weight: r.weight}) AS nbs
 RETURN a.name AS name, a.priceLevelLog AS level, a.priceElasticities AS vec,
        a.priceEarlierSales AS earlier, a.priceElasticitiesBasis AS basis, a.priceElasticitiesRun AS run,
-       run.elasticityColumns AS cols, run.referenceLevels AS refs, run.continuousMedians AS meds, nbs
+       run.elasticityColumns AS cols, run.referenceLevels AS refs, run.continuousMedians AS meds, run.yearEffects AS years, nbs
 ORDER BY a.priceEarlierSales DESC
 LIMIT 1
 `;
@@ -226,7 +230,7 @@ WITH a ORDER BY CASE WHEN a.dateBorn_year IS NULL THEN 1 ELSE 0 END, a.name LIMI
 MATCH (run:PricingModelRun)
 WITH a, run ORDER BY run.builtAt DESC LIMIT 1
 RETURN a.name AS name, a.nationality AS nationality, a.dateBorn_year AS born, run.id AS run,
-       run.elasticityColumns AS cols, run.referenceLevels AS refs, run.continuousMedians AS meds,
+       run.elasticityColumns AS cols, run.referenceLevels AS refs, run.continuousMedians AS meds, run.yearEffects AS years,
        run.segmentDefaults AS segments
 `;
 
@@ -276,6 +280,7 @@ export async function queryArtistPriceProfile(canonicalName: string | null | und
         segment: null,
         referenceLevels: parseJson<Record<string, string>>(r.get("refs"), {}),
         continuousMedians: parseJson<Record<string, number>>(r.get("meds"), {}),
+        yearEffects: parseJson<Record<string, number>>(r.get("years"), {}),
       };
     }
 
@@ -300,6 +305,7 @@ export async function queryArtistPriceProfile(canonicalName: string | null | und
       segment: picked.key,
       referenceLevels: parseJson<Record<string, string>>(r.get("refs"), {}),
       continuousMedians: parseJson<Record<string, number>>(r.get("meds"), {}),
+      yearEffects: parseJson<Record<string, number>>(r.get("years"), {}),
     };
   } catch (err: any) {
     console.warn(`[queryArtistPriceProfile] failed for "${name}": ${err.message}`);

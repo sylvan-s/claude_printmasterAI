@@ -53,6 +53,7 @@ const profile: ArtistPriceProfile = {
   segment: null,
   referenceLevels: { signature: "unsigned", proof: "numbered", edition_band: "76-150", area_band: "400-900", process: "lithograph", house: "Bonhams" },
   continuousMedians: { edition_log: LN(100), area_log: LN(600) },
+  yearEffects: {},
 };
 
 // ── multipliersFrom: per-doubling for the continuous terms ───────────────────

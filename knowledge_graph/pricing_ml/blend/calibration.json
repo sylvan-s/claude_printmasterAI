@@ -1,0 +1,121 @@
+{
+  "version": "BLEND-1.0",
+  "fittedAt": "2026-09-14T12:49:45.059Z",
+  "fittedOn": "tests/backtest/comps_hammer/roseberys_n2500_blend.jsonl (1714 sold lots)",
+  "witnesses": {
+    "estimate": {
+      "df": 5,
+      "byKey": {
+        "roseberys": {
+          "bias": -0.2231435513142097,
+          "sigma": 0.3308326291784473,
+          "n": 1714
+        },
+        "all": {
+          "bias": -0.2231435513142097,
+          "sigma": 0.3308326291784473,
+          "n": 1714
+        }
+      }
+    },
+    "same_work": {
+      "df": 5,
+      "byKey": {
+        "1": {
+          "bias": -0.13483178347455116,
+          "sigma": 0.5440913494869524,
+          "n": 196
+        },
+        "2": {
+          "bias": -0.07707533991362858,
+          "sigma": 0.3995581059931418,
+          "n": 71
+        },
+        "all": {
+          "bias": -0.09531017980432477,
+          "sigma": 0.4598356967032729,
+          "n": 374
+        },
+        "3+": {
+          "bias": -0.07410797215372167,
+          "sigma": 0.44107580503252847,
+          "n": 107
+        }
+      }
+    },
+    "same_artist_technique": {
+      "df": 5,
+      "byKey": {
+        "all": {
+          "bias": -0.1855109098406551,
+          "sigma": 0.7200356078671633,
+          "n": 1930
+        }
+      }
+    },
+    "same_artist": {
+      "df": 5,
+      "byKey": {
+        "all": {
+          "bias": -0.2231435513142097,
+          "sigma": 1.0001284637445425,
+          "n": 2040
+        }
+      }
+    },
+    "priors_model": {
+      "df": 5,
+      "byKey": {
+        "shrunk": {
+          "bias": -0.0012981310216555464,
+          "sigma": 0.5753251208272457,
+          "n": 1056
+        },
+        "all": {
+          "bias": -0.09756808350784052,
+          "sigma": 0.711930788258074,
+          "n": 1714
+        },
+        "segment": {
+          "bias": -0.8885785669963369,
+          "sigma": 0.8806083612087257,
+          "n": 415
+        },
+        "prior": {
+          "bias": 8.881784197001252e-16,
+          "sigma": 0.5922774002465221,
+          "n": 243
+        }
+      }
+    }
+  },
+  "regimes": {
+    "with_estimate": {
+      "weights": {
+        "estimate": 3,
+        "same_work": 1.5,
+        "same_artist_technique": 0,
+        "same_artist": 0,
+        "priors_model": 1.5
+      },
+      "temperature": 3,
+      "fitLots": 1714,
+      "fitMaeLog": 0.30294535121709953,
+      "fitCoverage80": 0.7911318553092183
+    },
+    "no_estimate": {
+      "weights": {
+        "estimate": 0,
+        "same_work": 2,
+        "same_artist_technique": 0.5,
+        "same_artist": 0.25,
+        "priors_model": 2
+      },
+      "temperature": 2,
+      "fitLots": 1714,
+      "fitMaeLog": 0.5508750023737481,
+      "fitCoverage80": 0.7870478413068844
+    }
+  },
+  "divergenceThreshold": 0.5
+}

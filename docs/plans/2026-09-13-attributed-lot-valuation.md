@@ -653,6 +653,79 @@ whether tier 2/3 stay in the pool or are display-only once measured; the prompt 
 Stage 3 — that is a wiring change to live price predictions and is not started until the gate
 passes and is agreed separately.
 
+## Step 8 built and gated (2026-09-14) — the blend ties the estimate and does not yet clear the no-estimate gate cross-house
+
+**Built.** `src/appraisal/knowledge_graph/price_blend.ts` (pure; 53 unit tests,
+`npm run test:price-blend`): witnesses from `BlendInputs`, `priorsModelPrediction` (the
+artist's log-linear model on the lot's own attributes with the sale-year effect added back —
+`ArtistPriceProfile` now carries `yearEffects`), a 601-point grid posterior over log price with
+Student-t witnesses and a kernel density for same-work comps, the hurdle, the divergence list,
+and `fitBlendCalibration` (bias + sigma per witness per key; pool weights by coordinate descent
+on MAE(log) of the posterior median, constrained never to drop a lot's only witness; a
+temperature for 80% coverage). `comps_hammer_backtest.ts --blend` records the witness inputs
+per lot (one profile read per artist, one attrs read per lot; 0.28–0.35 s/lot). `blend_gate.ts`
+fits on one file and scores on another in ~22 s, zero LLM, zero graph. The calibration JSON
+lives at `knowledge_graph/pricing_ml/blend/calibration.json` (README beside it). Nothing in
+Stage 3 reads any of it.
+
+**Runs.** `--source {roseberys,forum} --limit 2500 --seed 11 --resolve-work --blend`:
+Roseberys 1,714 sold lots with inputs (17 no profile), Forum 1,504 (5). Every resolved artist
+gets a priors witness (segment default as the floor); same-work hammers on 481 / 404 lots.
+
+**Fitted on Roseberys.** Estimate bias ×0.80, sigma 0.33. Same-work sigma 0.54 / 0.40 / 0.44
+at n = 1 / 2 / 3+. Tier 2 sigma 0.72, tier 3 1.00. Priors model: shrunk and prior bases
+unbiased (sigma 0.58), segment basis ×0.41 (sigma 0.88) — the segment default over-prices thin
+artists by 2.4x. Weights with estimate {estimate 3, same_work 1.5, priors 1.5, tiers 0};
+without {same_work 2, priors 2, tier 2 0.5, tier 3 0.25}.
+
+**Gate, fit Roseberys → score Forum (artist-cluster bootstrap, 424 artists, 1,000 draws):**
+
+| regime | baseline | blend | verdict |
+|---|---|---|---|
+| with estimate (n=1,504) | midpoint × 0.82: MAE(log) 0.277, 90% within 2x | 0.288, 90%, 80% interval covers 82% [79, 84] | MAE +0.011 [+0.006, +0.016] — a real, small LOSS; with the priors witness weighted 0 it is +0.001 [−0.002, +0.004], a tie |
+| no estimate (n=1,504) | best single de-biased witness: 0.802, 57% | 0.778, 58%, covers 62% [58, 65], geo 1.445 | MAE −0.024 [−0.069, +0.016] — not significant; coverage FAILS |
+
+**Why the no-estimate regime fails cross-house, and the two runs that show it.** On Forum the
+blend and the priors witness both read ~1.45x high (geo). Re-fitting the priors bias on Forum
+gives ×0.71 (shrunk) and ×0.22 (segment) against ×1.00 / ×0.41 on Roseberys: Forum sells at
+a lower level than the model's Bonhams reference house, and Forum is a house the model never
+saw (`house_Forum Auctions` is in every lot's `priorsUnknownColumns`), so nothing in the
+Roseberys fit can carry the offset over. Tier 2/3 comps show the same thing in the same
+direction (geo 1.12 / 1.41 on Forum, ~1.0 in-sample) because a Forum lot's comps are Bonhams
+sales. That is the like-for-like house effect of step 7 arriving as a witness bias.
+
+| direction | with-estimate blend vs midpoint × 0.82 | no-estimate blend vs best single | 80% coverage (no est.) |
+|---|---|---|---|
+| Roseberys → Forum (the gate) | 0.288 vs 0.277 (loses; ties without priors) | 0.778 vs 0.802 | 62% |
+| Forum → Roseberys | 0.307 vs 0.310 (tie) | 0.636 vs 0.719 | 85% |
+| Forum half A → Forum half B (within house) | 0.267 vs 0.266 (tie) | 0.670 vs 0.747 | 84% |
+
+Within-house and in the reverse direction the no-estimate blend beats the best single witness
+by 0.08 log with coverage inside the 75–85% band. Split by the best evidence a lot has (Forum
+→ Forum): same-work n≥3 0.397 vs 0.397, n=1–2 0.429 vs 0.459, tier 2 only 0.624 vs 0.731, tier
+3 only 0.941 vs 1.036, priors only 1.034. The priors witness is what carries the gain: with it
+weighted 0 the blend is worse on every tier (tier 3 only 1.52 vs 1.04 cross-house).
+
+**Verdict.** With an estimate: the blend adds nothing to estimate × 0.82, and the fitted
+Roseberys weights make it slightly worse — consistent with step 1 and the Picasso test; the
+right with-estimate weight for the priors witness is 0. The interval and the divergence flag
+are the useful outputs there: coverage 82% out of sample, and flagged lots (a >0.5 log gap
+between witnesses) carry MAE 0.331 vs 0.210 unflagged on Forum, Spearman 0.26 — the
+identity-check signal, now in code. Without an estimate: the blend is the best number we have
+and its interval is honest *within a house*; across houses it inherits the house-level offset
+of every witness, and the gate as written (fit Roseberys, score Forum) fails on coverage. The
+blend is not wired into Stage 3.
+
+**What would clear it.** Key every witness's bias by the LOT'S house as well as its own key —
+which is step 7's house effect measured as a witness bias per house, and needs hammer lots from
+the house the lot will sell at (Roseberys and Forum both have them; a user's own object needs
+the house it would sell at chosen, and the report should say so). The segment-basis priors
+witness needs its own sigma floor or a lower weight (×0.41 bias with sigma 0.88 is a
+plausibility band, not a price). Age of the latest same-work comp was not used as a key. None
+of this is started.
+
+**Compute.** Two 2,500-lot harness runs ≈ 12 min each; a gate fit + score ≈ 22 s; $0.
+
 ## Step 2 built (2026-09-13) — the attributed-lot entry path
 
 `src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method

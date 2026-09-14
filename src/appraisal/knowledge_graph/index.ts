@@ -11,6 +11,8 @@ export { queryArtistDinoFloor } from "./artist_dino_floor.js";
 export { queryArtistPriceProfile, adjustmentBetween, editionBand, areaBand, periodOf, nationalityGroup, segmentKey, pickSegmentDefault, multipliersFrom } from "./artist_price_profile.js";
 export type { ArtistPriceProfile, PriceAttrs, PriceAdjustment, PriceProfileBasis, SignatureClass, ProofClass, EditionBand, AreaBand } from "./artist_price_profile.js";
 export { priceAttrsOfComparable, priceAttrsOfLot, signatureClass, proofClass, editionSizeOf, dimsCm, primaryProcess, PROCESSES } from "./price_attrs.js";
+export { blendPrices, blendWitnesses, calibratedWitnesses, rawWitnesses, priorsModelPrediction, fitBlendCalibration, defaultCalibration, hurdleFrom, crpsOnGrid, sameWorkBand, WITNESS_SOURCES } from "./price_blend.js";
+export type { BlendInputs, BlendCalibration, BlendRegime, PriceBlend, PriceWitness, PriceContribution, WitnessSource, FitRow } from "./price_blend.js";
 export { queryWorkFacts } from "./query_work_facts.js";
 export { writeResearchComps, queryResearchComps, gateComp, researchCompId, normaliseSaleDate, WRITEABLE_WORK_BASES } from "./write_research_comps.js";
 export type { WriteResearchCompsInput, WriteResearchCompsResult, ResearchComp, CompGateResult, CompRejection, RecordedPriceBasis } from "./write_research_comps.js";
