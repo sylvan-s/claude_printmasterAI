@@ -1,6 +1,6 @@
 """
 PrintMasterAI — ADR-0019 Phase 2: tile embeddings at a fixed physical scale.
-Version: TECHML-PHASE2-EXTRACT-1.3
+Version: TECHML-PHASE2-EXTRACT-1.4
 
 Runs on a rented GPU box (or locally on MPS for smoke tests) from a manifest written by
 export_phase2_manifest.py. Needs no graph access — only the manifest, network access to
@@ -208,6 +208,7 @@ def main():
     ap.add_argument("--limit", type=int)
     ap.add_argument("--shard-size", type=int, default=500)
     ap.add_argument("--workers", type=int, default=16, help="preprocessing processes (fetch + localise + tiles)")
+    ap.add_argument("--task-timeout", type=float, default=600, help="seconds before an in-flight image is abandoned")
     ap.add_argument("--device", default=None)
     args = ap.parse_args()
 
@@ -231,8 +232,45 @@ def main():
     writer = ShardWriter(args.out_dir, args.shard_size)
     fail_log = open(os.path.join(args.out_dir, "failures.jsonl"), "a")
     t0, n_ok, n_fail, n_fine = time.time(), 0, 0, 0
-    with pool:
-        for i, (row, meta, res, err) in enumerate(pool.map(prepare, rows, chunksize=2)):
+
+    # Unordered consumption with a sliding window and a per-task watchdog. The first
+    # full-corpus run stalled for 77 minutes on one task that never returned (a worker hung
+    # with no timeout — requests' timeouts do not cover DNS resolution), and ordered map()
+    # blocked every later result behind it. Here a task older than --task-timeout is
+    # abandoned (logged as a failure; the hung worker keeps its slot, the rest continue).
+    window = args.workers * 3
+    pending = {}            # future -> (row, submit_time)
+    it = iter(rows)
+    done_n = 0
+    def submit_more():
+        while len(pending) < window:
+            try:
+                row = next(it)
+            except StopIteration:
+                return
+            pending[pool.submit(prepare, row)] = (row, time.time())
+    submit_more()
+    while pending:
+        finished = [f for f in pending if f.done()]
+        if not finished:
+            stale = [f for f, (_, ts) in pending.items() if time.time() - ts > args.task_timeout]
+            for f in stale:
+                row, _ = pending.pop(f)
+                f.cancel()
+                n_fail += 1; done_n += 1
+                fail_log.write(json.dumps({"imageId": row["imageId"], "hiresUrl": row["hiresUrl"],
+                                           "reason": f"abandoned after {args.task_timeout}s (worker hung)"}) + "\n")
+                fail_log.flush()
+                print(f"  abandoned {row['imageId']} after {args.task_timeout}s", flush=True)
+            submit_more()
+            time.sleep(0.5)
+            continue
+        for f in finished:
+            row, _ = pending.pop(f)
+            try:
+                _, meta, res, err = f.result()
+            except Exception as e:
+                meta, res, err = None, None, f"{type(e).__name__}: {str(e)[:160]}"
             if err is None:
                 try:
                     out = {}
@@ -247,13 +285,17 @@ def main():
                 n_fail += 1
                 fail_log.write(json.dumps({"imageId": row["imageId"], "hiresUrl": row["hiresUrl"], "reason": err}) + "\n")
                 fail_log.flush()
-            if (i + 1) % 100 == 0:
-                rate = (i + 1) / (time.time() - t0)
-                print(f"  {i + 1}/{len(rows)}  ok={n_ok} fine={n_fine} failed={n_fail}  {rate:.2f} img/s  "
-                      f"eta {(len(rows) - i - 1) / max(rate, 1e-6) / 60:.0f} min", flush=True)
+            done_n += 1
+            if done_n % 100 == 0:
+                rate = done_n / (time.time() - t0)
+                print(f"  {done_n}/{len(rows)}  ok={n_ok} fine={n_fine} failed={n_fail}  {rate:.2f} img/s  "
+                      f"eta {(len(rows) - done_n) / max(rate, 1e-6) / 60:.0f} min", flush=True)
+        submit_more()
     writer.flush()
     fail_log.close()
-    print(f"done: {n_ok} extracted ({n_fine} with fine scale), {n_fail} failed, {time.time() - t0:.0f}s")
+    print(f"done: {n_ok} extracted ({n_fine} with fine scale), {n_fail} failed, {time.time() - t0:.0f}s", flush=True)
+    pool.shutdown(wait=False, cancel_futures=True)   # a hung worker must not keep the process alive
+    os._exit(0)
 
 
 if __name__ == "__main__":
