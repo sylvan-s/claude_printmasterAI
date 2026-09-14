@@ -560,21 +560,31 @@ test artists have images at ≥ 5 px/mm, giving 4,587 test images; train 18,172 
 artists (the old train fold plus 1,307 artists ingested since); labels the same 21 techniques.
 `artifacts/two_stage_tiles.json`. Artist-balanced, single split as in the original protocol.
 
-| | 2026-09-07 (stored 224 px embedding) | Tile features (this ADR) |
+| | 2026-09-07 (stored 224 px embedding) | Tile features (this ADR), artist-bootstrap 5–95% |
 |---|---|---|
-| Family macro-F1 (6 families) | 0.558 | **0.662** |
-| Flat 21-way macro-F1 | 0.275 | **0.389** |
+| Family macro-F1 (6 families) | 0.558 | **0.662 [0.606–0.705]** |
+| Flat 21-way macro-F1 | 0.275 | **0.389 [0.352–0.414]** |
 | Techniques passing the escalation gate | 7 / 21 | **13 / 21** |
 
-Stage A per family (F1 / AUROC): Photographic 0.93 / 0.99, Intaglio 0.81 / 0.91, Planographic
-0.65 / 0.89, Screen 0.63 / 0.95, Relief 0.58 / 0.89, Other (collage) 0.37 / 0.84.
+Intervals are an artist-level bootstrap (500 resamples of the held-out artists) on the single
+comparable split; the 2026-09-07 figures were never given intervals, so the comparison is
+point-vs-interval. Neither interval reaches down to the old point estimate.
 
-Stage B, within-family test F1 / AUROC for the emitted techniques: etching 0.82 / 0.78,
-engraving 0.62 / 0.84, aquatint 0.59 / 0.80, photogravure 0.67 / 0.98 (n=47), gelatin silver
-0.93 / 0.91, lithograph 0.93 / 0.81, woodcut 0.80 / 0.85, wood engraving 0.77 / 0.95, linocut
-0.56 / 0.92, letterpress 0.75 / 0.94 (n=24), embossing 0.57 / 0.94 (n=26), screenprint via
-Stage A. Not emitted: drypoint (gate 0.41 vs bar 0.45; test 0.38 / 0.79), mezzotint (n=24),
-monotype, platinum, chromogenic, collage.
+Stage A per family, F1 [5–95%] / AUROC [5–95%]: Photographic 0.93 [0.91–0.95] / 0.99,
+Intaglio 0.81 [0.78–0.84] / 0.91 [0.89–0.93], Planographic 0.65 [0.61–0.69] / 0.89,
+Screen 0.63 [0.55–0.70] / 0.95, Relief 0.58 [0.49–0.65] / 0.89, Other (collage, n=45)
+0.37 [0.06–0.58] / 0.84.
+
+Stage B, within-family test F1 [5–95%] / AUROC for the emitted techniques: etching 0.82
+[0.79–0.85] / 0.78, engraving 0.62 [0.53–0.71] / 0.84, aquatint 0.59 [0.54–0.64] / 0.80,
+photogravure 0.67 [0.47–0.82] / 0.98 (n=47), gelatin silver 0.93 [0.91–0.95] / 0.91,
+lithograph 0.93 [0.91–0.95] / 0.81, woodcut 0.80 [0.73–0.85] / 0.85, wood engraving 0.77
+[0.64–0.87] / 0.95, linocut 0.56 [0.34–0.70] / 0.92, letterpress 0.75 [0.58–0.87] / 0.94
+(n=24), embossing 0.57 [0.36–0.73] / 0.94 (n=26), screenprint via Stage A. Not emitted:
+drypoint (gate 0.41 vs bar 0.45; test 0.38 [0.29–0.46] / 0.79), mezzotint (n=24, F1 interval
+0.14–0.58), monotype, platinum, chromogenic, collage. The small-n relief and photogravure
+passes are real but their F1 intervals span 0.2–0.35; they are "emitted, wide" rather than
+settled.
 
 Read with these cautions:
 
@@ -582,8 +592,7 @@ Read with these cautions:
   original evaluation warned about, at the class the ADR already flags as a label problem. It
   should be treated as not emitted until the Phase 3 halftone audit fixes its labels.
 - Several newly emitted relief/intaglio techniques rest on small test counts (24–80 images);
-  their gate passes are real but their F1s carry wide intervals. Artist-bootstrap intervals on
-  this split are the next addition.
+  their gate passes are real but their F1 intervals are 0.2–0.35 wide (above).
 - The test images are the held-out artists' images at ≥ 5 px/mm, not the identical image set
   the 2026-09-07 model was scored on; the artists are the same, the resolution filter is new.
 

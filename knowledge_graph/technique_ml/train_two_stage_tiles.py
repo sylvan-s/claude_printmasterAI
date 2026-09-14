@@ -1,7 +1,7 @@
 """
 PrintMasterAI — ADR-0019 Phase 4: the two-stage family → process model on tile features,
 scored on the SAME held-out artists as the 2026-09-07 model.
-Version: TECHML-TWOSTAGE-TILES-1.0
+Version: TECHML-TWOSTAGE-TILES-1.1
 
 Rebuilds `train_two_stage.py`'s design — Stage A names the process family, Stage B names the
 process only where a specialist cleared the escalation gate on validation artists it never
@@ -33,7 +33,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from analyze_confusions import FAMILY  # noqa: E402
 from dataset import artist_eval_weights, cap_per_artist  # noqa: E402
-from train_tile_head import fit, load, weighted_ap, weighted_auroc, weighted_f1  # noqa: E402
+from train_tile_head import bootstrap_artists, fit, load, weighted_ap, weighted_auroc, weighted_f1  # noqa: E402
 from train_two_stage import gate_score, split_validation_by_artist  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -57,6 +57,26 @@ def macro_f1(Y, pred_bin, groups):
     return float(np.mean([weighted_f1(Y[:, c], pred_bin[:, c].astype(np.float32), w, 0.5) for c in range(Y.shape[1])]))
 
 
+
+def boot_macro_f1(Y, pred_bin, groups, n_boot=500, seed=13):
+    """Artist-bootstrap 5/50/95 of the artist-balanced macro-F1 of hard decisions."""
+    rng = np.random.default_rng(seed)
+    uniq, inv = np.unique(groups, return_inverse=True)
+    by = [np.where(inv == a)[0] for a in range(len(uniq))]
+    vals = []
+    for _ in range(n_boot):
+        pick = rng.integers(0, len(uniq), len(uniq))
+        idx = np.concatenate([by[a] for a in pick])
+        g = np.concatenate([np.full(len(by[a]), i) for i, a in enumerate(pick)])
+        vals.append(macro_f1(Y[idx], pred_bin[idx], g))
+    return [float(x) for x in np.percentile(vals, [5, 50, 95])]
+
+
+def ci(bs, c, m):
+    """[lo, hi] from bootstrap_artists output for class c, metric m (0 F1, 1 AP, 2 AUROC)."""
+    return [round(float(bs[c, m, 0]), 3), round(float(bs[c, m, 2]), 3)]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--shards", required=True)
@@ -66,6 +86,7 @@ def main():
     ap.add_argument("--per-artist-cap", type=int, default=40)
     ap.add_argument("--epochs", type=int, default=40)
     ap.add_argument("--seed", type=int, default=13)
+    ap.add_argument("--n-boot", type=int, default=500)
     ap.add_argument("--device", default=None)
     ap.add_argument("--out", default=os.path.join(HERE, "artifacts", "two_stage_tiles.json"))
     args = ap.parse_args()
@@ -116,8 +137,13 @@ def main():
                   "AUROC": weighted_auroc(Yf[test_mask, fi], pf_test[:, fi], wte), "n_test": int(Yf[test_mask, fi].sum())}
         print(f"  {f:<13} n={fam[f]['n_test']:5d}  F1 {fam[f]['F1']:.3f}  AP {fam[f]['AP']:.3f}  AUROC {fam[f]['AUROC']:.3f}")
     fam_macro = float(np.mean([v["F1"] for v in fam.values()]))
-    print(f"  artist-balanced family macro-F1 {fam_macro:.4f}   (2026-09-07 stored-embedding model: 0.558)")
-    results["stage_a"] = {"per_family": fam, "macro_f1": fam_macro}
+    bs_f = bootstrap_artists(Yf[test_mask], pf_test, groups[test_mask], thr_f, args.n_boot, args.seed)
+    for fi, f in enumerate(families):
+        fam[f]["F1_ci"], fam[f]["AP_ci"], fam[f]["AUROC_ci"] = ci(bs_f, fi, 0), ci(bs_f, fi, 1), ci(bs_f, fi, 2)
+        print(f"    {f:<13} F1 [{fam[f]['F1_ci'][0]:.2f}–{fam[f]['F1_ci'][1]:.2f}]  AUROC [{fam[f]['AUROC_ci'][0]:.2f}–{fam[f]['AUROC_ci'][1]:.2f}]")
+    fam_macro_ci = boot_macro_f1(Yf[test_mask], fam_bin, groups[test_mask], args.n_boot, args.seed)
+    print(f"  artist-balanced family macro-F1 {fam_macro:.4f}  bootstrap 5–95% [{fam_macro_ci[0]:.3f}–{fam_macro_ci[2]:.3f}]   (2026-09-07 stored-embedding model: 0.558)")
+    results["stage_a"] = {"per_family": fam, "macro_f1": fam_macro, "macro_f1_ci_5_50_95": fam_macro_ci}
 
     # ---------------------------------------------------------------- Stage B: specialists + gate
     print("\nStage B — process within family (gate: bootstrap-20th-percentile within-family F1 ≥ "
@@ -152,6 +178,7 @@ def main():
         ps_tune, ps_gate, ps_te = pred_s(Z[sub_tune]), pred_s(Z[sub_gate]), pred_s(Z[sub_te])
         thr_s = tune_thresholds(Ys[sub_tune], ps_tune, artist_eval_weights(groups[sub_tune]))
         wsg, wst = artist_eval_weights(groups[sub_gate]), artist_eval_weights(groups[sub_te])
+        bs_s = bootstrap_artists(Ys[sub_te], ps_te, groups[sub_te], thr_s, args.n_boot, args.seed) if sub_te.sum() >= 20 else None
         for k, c in enumerate(usable):
             point, lower = gate_score(Ys[sub_gate][:, k], (ps_gate[:, k] >= thr_s[k]).astype(np.float32), groups[sub_gate], seed=args.seed)
             emitted = lower >= args.escalation_bar
@@ -159,7 +186,9 @@ def main():
             auc_te = weighted_auroc(Ys[sub_te][:, k], ps_te[:, k], wst)
             tech[labels[c]] = {"family": f, "gate_point": round(point, 4), "gate_lower": round(lower, 4), "emitted": bool(emitted),
                                "within_family_F1_test": round(f1_te, 4), "within_family_AUROC_test": round(auc_te, 4),
-                               "n_test_in_family": int(Ys[sub_te][:, k].sum())}
+                               "n_test_in_family": int(Ys[sub_te][:, k].sum()),
+                               "F1_ci": ci(bs_s, k, 0) if bs_s is not None else None,
+                               "AUROC_ci": ci(bs_s, k, 2) if bs_s is not None else None}
             if emitted:
                 # two-stage decision on the whole test set: family said yes AND specialist said yes
                 te_rows = np.nonzero(test_mask)[0]
@@ -168,14 +197,16 @@ def main():
                 spec_idx = np.nonzero(sub_te[test_mask])[0]
                 spec[spec_idx] = ps_te[:, k] >= thr_s[k]
                 two_stage_pred[te_rows, c] = fam_yes & spec
+            t = tech[labels[c]]
             print(f"  {f:<13} {labels[c]:<26} gate {lower:.2f} ({'emitted' if emitted else 'family only'})  "
-                  f"within-family test F1 {f1_te:.3f} AUROC {auc_te:.3f} (n={int(Ys[sub_te][:, k].sum())})")
+                  f"within-family test F1 {f1_te:.3f} {t['F1_ci'] or ''} AUROC {auc_te:.3f} {t['AUROC_ci'] or ''} (n={int(Ys[sub_te][:, k].sum())})")
         for c in set(cols) - set(usable):
             tech[labels[c]] = {"family": f, "emitted": False, "reason": f"< {MIN_SPECIALIST_POSITIVES} training positives"}
     flat_two_stage = macro_f1(Y[test_mask], two_stage_pred[test_mask], groups[test_mask])
+    flat_two_stage_ci = boot_macro_f1(Y[test_mask], two_stage_pred[test_mask], groups[test_mask], args.n_boot, args.seed)
     emitted = [l for l, v in tech.items() if v.get("emitted")]
     print(f"\n  emitted techniques ({len(emitted)}/{len(labels)}): {emitted}")
-    print(f"  flat 21-way artist-balanced macro-F1 of the two-stage decisions (non-emitted = never predicted): {flat_two_stage:.4f}")
+    print(f"  flat 21-way artist-balanced macro-F1 of the two-stage decisions (non-emitted = never predicted): {flat_two_stage:.4f} [{flat_two_stage_ci[0]:.3f}–{flat_two_stage_ci[2]:.3f}]")
 
     # ---------------------------------------------------------------- flat 21-way head, for the 0.275 comparison
     pred_flat = fit("pooled", Z[train_mask], None, None, Y[train_mask], wtr, Z.shape[1], args.epochs, args.seed, device)
@@ -183,10 +214,13 @@ def main():
     pt = pred_flat(Z[test_mask])
     per = {l: float(weighted_f1(Y[test_mask, c], pt[:, c], wte, thr_flat[c])) for c, l in enumerate(labels)}
     flat_macro = float(np.mean(list(per.values())))
-    print(f"  flat 21-way head, artist-balanced macro-F1 {flat_macro:.4f}   (2026-09-07 stored-embedding model: 0.275)")
+    flat_macro_ci = boot_macro_f1(Y[test_mask], pt >= thr_flat, groups[test_mask], args.n_boot, args.seed)
+    print(f"  flat 21-way head, artist-balanced macro-F1 {flat_macro:.4f}  bootstrap 5–95% [{flat_macro_ci[0]:.3f}–{flat_macro_ci[2]:.3f}]   (2026-09-07 stored-embedding model: 0.275)")
     print("  " + "  ".join(f"{l[:12]} {v:.2f}" for l, v in sorted(per.items(), key=lambda kv: -kv[1])))
     results.update({"stage_b": tech, "emitted": emitted, "flat_macro_f1_two_stage": flat_two_stage,
-                    "flat_head": {"macro_f1": flat_macro, "per_technique_f1": per}, "elapsed_s": round(time.time() - t0)})
+                    "flat_macro_f1_two_stage_ci_5_50_95": flat_two_stage_ci,
+                    "flat_head": {"macro_f1": flat_macro, "macro_f1_ci_5_50_95": flat_macro_ci, "per_technique_f1": per},
+                    "n_boot": args.n_boot, "elapsed_s": round(time.time() - t0)})
     json.dump(results, open(args.out, "w"), indent=2)
     print(f"\nwrote {args.out} ({time.time() - t0:.0f}s)")
 
