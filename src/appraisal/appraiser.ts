@@ -51,6 +51,7 @@ import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
 import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery, queryArtistDinoFloor, resolveWorkIdentity } from "./knowledge_graph/index.js";
 import { assessComps, formatCompStorability, partitionCitedComps, describeUncitedComps, dropWebCompsAlreadyInGraph, type CompStorabilityReport } from "./comp_storability.js";
+import { assessStage2bResearch, stage2bResearchFailed, type Stage2bGateResult } from "./stage2b_gate.js";
 import { sanitizeSearchQuery, filterExcludedResults, hasRef, type ExcludedListingRef } from "./search_scope.js";
 import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
@@ -217,6 +218,10 @@ export interface AppraisalMethodConfig {
    *  documented_fact, is verified against the graph, and Stage 2b runs only when routing
    *  says so. Requires stage2aModel. */
   attributedLotPath?: boolean;
+  /** Gated Stage 2b: run stage2bModel first and REDO the stage on this model when the cheap
+   *  attempt returns something unverifiable (src/appraisal/stage2b_gate.ts). Unset = no
+   *  gating, which is the behaviour every existing method keeps. */
+  stage2bEscalationModel?: string;
   /** Attributed-lot path: do not run Stage 1a at all (a "not run" VEA stub goes downstream).
    *  The catalogue already states technique, signature, edition, dimensions and condition, and
    *  a vision model reading a catalogued image is a leakage surface. */
@@ -3821,6 +3826,8 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
 
     let attr: AttributionResearchResult;
     let researchCompWrite: Awaited<ReturnType<typeof writeResearchComps>> | null = null;
+    let stage2bGate: (Stage2bGateResult & { firstModel: string; escalatedTo: string | null }) | null = null;
+    let stage2bModelUsed = stage2bModel;
     if (routing.stage2bSkipped) {
       emit({ stage: "stage2b", status: "done", message: "Specialist research skipped — catalogue attribution verified against the graph", percent: 80 });
       attr = synthesizeAttributionResult({ claim, canonicalArtist: canonical, verification, workFacts, triage: triageResult });
@@ -3828,11 +3835,43 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
       const t2b = Date.now();
       emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
       console.log(`[Timing] Stage 2b (Specialist) starting — model: ${stage2bModel}`);
-      attr = await this.runStage2bSpecialist(
-        vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing,
+      const excludeRef = { house: claim.house, saleId: claim.saleId, lotNumber: claim.lotNumber, listingUrl: claim.lotUrl };
+      const run2b = (model: string) => this.runStage2bSpecialist(
+        vea, triageResult, model, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing,
         // A production attributed lot has a listing too; the guard is not a testing feature.
-        { house: claim.house, saleId: claim.saleId, lotNumber: claim.lotNumber, listingUrl: claim.lotUrl },
+        excludeRef,
       );
+      // Gated Stage 2b: the cheap model first, redone on the stronger one when what came back
+      // cannot be checked — or when nothing came back at all. See stage2b_gate.ts for what
+      // "cannot be checked" means and why it is about verifiability rather than effort.
+      const escalationModel = this.config.stage2bEscalationModel;
+      const gated = !!escalationModel && escalationModel !== stage2bModel;
+      let firstFailure: unknown = null;
+      try {
+        attr = await run2b(stage2bModel);
+      } catch (err) {
+        // Without an escalation model this is unchanged behaviour: the lot fails as before.
+        if (!gated) throw err;
+        firstFailure = err;
+        attr = undefined as unknown as AttributionResearchResult;
+      }
+      if (gated) {
+        const gate = firstFailure
+          ? stage2bResearchFailed(firstFailure)
+          : assessStage2bResearch(attr, {
+              searches: webSearchUsage().searches,
+              graphSameWorkComps: comps?.summary.tierCounts.same_work ?? 0,
+            });
+        stage2bGate = { ...gate, firstModel: stage2bModel, escalatedTo: gate.escalate ? escalationModel : null };
+        if (gate.escalate) {
+          console.log(`[Attributed lot] Stage 2b ESCALATING ${stage2bModel} -> ${escalationModel}: ${gate.detail}`);
+          emit({ stage: "stage2b", status: "start", message: "Re-running specialist research on a stronger model…", percent: 60 });
+          attr = await run2b(escalationModel);
+          stage2bModelUsed = escalationModel;
+        } else {
+          console.log(`[Attributed lot] Stage 2b gate PASSED on ${stage2bModel}: ${gate.detail}`);
+        }
+      }
       // ADR-0007's comps slice: the realised prices Stage 2b just found are otherwise used
       // once and discarded. Write-back is deterministic post-processing, never a tool the
       // model chooses to call, and it cannot fail the lot.
@@ -3861,13 +3900,13 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     report.stage2aResult = triageResult;
     const mid = claim.estimateLow && claim.estimateHigh ? (claim.estimateLow + claim.estimateHigh) / 2 : null;
     report.attributedLot = {
-      claim, verification, routing, researchCompWrite,
+      claim, verification, routing, researchCompWrite, stage2bGate,
       compsSummary: comps?.summary ?? null,
       sellThrough: workFacts?.sellThrough ?? null,
       driftAnchor: mid ? mid * ESTIMATE_DRIFT : null,
     };
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
-    report.modelUsed = `Attributed-lot [S1: ${this.config.skipVea ? "skip" : stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${routing.stage2bSkipped ? "skipped" : stage2bModel} | S3: ${stage3Model}]`;
+    report.modelUsed = `Attributed-lot [S1: ${this.config.skipVea ? "skip" : stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${routing.stage2bSkipped ? "skipped" : stage2bModelUsed}${stage2bGate?.escalatedTo ? ` (escalated from ${stage2bGate.firstModel})` : ""} | S3: ${stage3Model}]`;
     report.promptVersion = "attributed-lot";
     return report;
   }
@@ -4118,7 +4157,11 @@ export const appraiserConfigs: AppraisalMethodConfig[] = [
     provider: "anthropic",
     stage1Model: "claude-opus-4-8",
     stage2aModel: "claude-haiku-4-5",
-    stage2bModel: "claude-sonnet-4-6",
+    // Gated Stage 2b (2026-09-14): Haiku researches first and Sonnet redoes the stage only when
+    // the cheap attempt returns something that cannot be checked — see stage2b_gate.ts. Measured
+    // at $0.04 against $0.157 for the stage, so this pays while escalation stays under ~75%.
+    stage2bModel: "claude-haiku-4-5",
+    stage2bEscalationModel: "claude-sonnet-4-6",
     stage3Model: "claude-haiku-4-5",
     // No vision and no Gemini visual search on this path: the catalogue states what they would
     // read, and both are leakage surfaces on a catalogued image (2026-09-13 decision).

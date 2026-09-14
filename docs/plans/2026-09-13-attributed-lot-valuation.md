@@ -933,6 +933,50 @@ two reached Stage 2b for another reason alone. So the skip applies mainly to lot
 a verification divergence or a Scenario 2/4/5, as A0793/251 did. The copying fix applies to all
 of them; the search fix to a minority.
 
+### Gated Stage 2b: Haiku researches, Sonnet redoes it when the result cannot be checked (2026-09-14)
+
+`src/appraisal/stage2b_gate.ts`, live on `claude-4stage-attributed` only — every other method is
+untouched and ungated. Haiku 4.5 runs the stage; code then judges what came back and re-runs it
+on Sonnet 4.6 if it fails.
+
+**The gate is about VERIFIABILITY, not effort.** The obvious signal was search count, since both
+measured Haiku failures made exactly one search. But STEP 7 now tells Stage 2b to skip comp
+searches when the graph holds a same_work record, so a single search can be correct and diligent
+— gating on effort would punish the model for obeying an instruction added the same day. What
+never becomes acceptable is an unverifiable claim:
+
+| reason | what it catches |
+|---|---|
+| `uncited_comp` | a price with no page behind it — the measured fabrication signature |
+| `uncited_catalogue_raisonne` | the same failure in another field, which ADR-0007 already refuses to write |
+| `no_search_despite_gap` | zero searches when the graph holds no same_work sale: the job was not attempted |
+| `research_failed` | the cheap attempt threw and returned no report at all |
+
+That fourth reason came from the gate's own first live run. Haiku ended its turn on A0793/420
+with a prose summary instead of the required JSON, the parser raised, and the lot died. Under
+gating that must not happen: an unusable result is the strongest escalation signal there is. The
+first attempt is now caught, and without an escalation model configured the error still
+propagates exactly as before.
+
+**Live, two lots:**
+
+| lot | outcome | cost | against Sonnet-only |
+|---|---|---|---|
+| A0793/316 Chagall | PASSED on Haiku — 8 comps, all cited, 3 searches | $0.094 | ~$0.18, so 48% saved |
+| A0793/420 Sherman | ESCALATED — zero searches with no same_work sale | $0.194 | ~$0.18, so ~8% penalty |
+
+That is the shape of the trade: a pass saves about half, an escalation costs the wasted cheap
+attempt. Stage 2b is about $0.04 on Haiku and $0.157 on Sonnet, so gated cost is
+0.04 + E x 0.157 and it pays while the escalation rate E stays under about 75%. The 4-lot model
+comparison put E at 50%; two live gated lots is not a rate, and the real one will only be known
+after a batch.
+
+**What this does NOT claim.** Haiku is not established as safe at Stage 2b — the measurement said
+the opposite. The gate is a containment: it lets the cheap model do the work it can do and
+catches, deterministically and from the output alone, the cases where it cannot. Every escalation
+reason is recorded in `report.attributedLot.stage2bGate` with the model that failed, so the rate
+is measurable from stored runs rather than assumed.
+
 Observed, not yet acted on:
 ### Liquidity: the SIZE bounded on measurement, not judgement (2026-09-14)
 

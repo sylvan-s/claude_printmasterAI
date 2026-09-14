@@ -805,6 +805,9 @@ export interface AttributedLotReport {
   routing: AttributedLotRouting;
   /** ADR-0007 comps write-back outcome, when Stage 2b ran. Null when it did not. */
   researchCompWrite?: { written: number; skipped: { reason: string; listingUrl?: string | null; title?: string | null }[]; refusedBatch: string | null } | null;
+  /** Gated Stage 2b (src/appraisal/stage2b_gate.ts): what the cheap model's research was judged
+   *  on, and whether the stage was redone on a stronger one. Null when gating is off. */
+  stage2bGate?: { escalate: boolean; reasons: string[]; detail: string; firstModel: string; escalatedTo: string | null } | null;
   compsSummary: ComparablesResult["summary"] | null;
   sellThrough: WorkFacts["sellThrough"] | null;
   driftAnchor: number | null;
