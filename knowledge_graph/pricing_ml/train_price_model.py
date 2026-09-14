@@ -263,11 +263,16 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     out["posthumous_work"] = wy.apply(lambda y: int(y > 1973) if pd.notna(y) else -1)
     out["sale_year"] = pd.to_datetime(df["saleDate"]).dt.year + pd.to_datetime(df["saleDate"]).dt.dayofyear / 365.0
     out["house"] = df["house"].fillna("unknown")
+    if "clipSubject" in df.columns:
+        conf = df["clipSubjectConfident"].astype(str)
+        out["subject"] = np.where(conf == "True", df["clipSubject"].astype(str), "unclassified")
+    else:
+        out["subject"] = "unclassified"
     return out
 
 
 CATEGORICAL = ["tech_family", "process", "signature", "proof", "edition_band", "area_band", "condition", "catalogue",
-               "publisher", "paper", "work_decade", "house"]
+               "publisher", "paper", "work_decade", "house", "subject"]
 
 
 def encode(feat: pd.DataFrame, cats=None):
@@ -363,7 +368,7 @@ def main():
 
     ATTR = ["tech_family", "process", "signature", "proof", "edition_band", "edition_log", "area_band", "area_log", "max_side",
             "condition", "n_defects"] + [c for c in feat.columns if c.startswith("def_")] + \
-           ["catalogue", "has_citation", "publisher", "paper", "book_or_set", "work_year", "work_decade", "posthumous_work", "sale_year", "house"]
+           ["catalogue", "has_citation", "publisher", "paper", "book_or_set", "work_year", "work_decade", "posthumous_work", "sale_year", "house", "subject"]
     PRIOR = ["work_prior_log", "work_prior_n", "work_prior_basis"]
     # Native estimates at the sale-date rate. estimateLowGBP/HighGBP are the hammer in GBP on
     # Bonhams records (API quirk) and must not be used as an estimate.
@@ -409,6 +414,7 @@ def main():
         "technique": ["tech_family", "process"], "signature": ["signature", "proof"], "condition": ["condition", "n_defects"] + [c for c in feat.columns if c.startswith("def_")],
         "citation": ["catalogue", "has_citation"], "edition size": ["edition_band", "edition_log"], "dimensions": ["area_band", "area_log", "max_side"],
         "work prior": PRIOR, "publisher/paper": ["publisher", "paper"], "work year": ["work_year", "work_decade", "posthumous_work"], "sale year/house": ["sale_year", "house"],
+        "subject (CLIP)": ["subject"],
     }
     base_cols = ATTR + PRIOR
     Xb, _ = encode(feat[base_cols])
@@ -436,7 +442,7 @@ def main():
         # multiplier relative to the reference level, holding the other attributes fixed.
         eff_cols = {"signature": "unsigned", "proof": "numbered", "edition_band": "76-150", "area_band": "400-900",
                     "condition": "unknown", "catalogue": "none", "publisher": "other", "paper": "other", "process": "lithograph",
-                    "work_decade": "1960s", "house": "Bonhams"}
+                    "work_decade": "1960s", "house": "Bonhams", "subject": "genre_scene"}
         parts = []
         for c, ref in eff_cols.items():
             d = pd.get_dummies(feat[c].astype(str), prefix=c, dtype=float)

@@ -65,6 +65,7 @@ knowledge_graph/auction_cellA_backup_*.json
 knowledge_graph/cat_variant_backup_*.json
 knowledge_graph/artist_pairs_presnapshot_*.json
 knowledge_graph/price_priors_presnapshot_*.json
+knowledge_graph/_snapshots/
 knowledge_graph/artist_band_b_held.csv
 knowledge_graph/artist_ulan_report_session1.csv
 knowledge_graph/artist_verification_report.csv

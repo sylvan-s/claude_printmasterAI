@@ -209,6 +209,72 @@ python3 knowledge_graph/check_price_priors_fresh.py
 npm run test:price-profile
 ```
 
+## Image subject (CLIP zero-shot): mostly an artist proxy, not an independent price driver (2026-09-14)
+
+Question: does the pictured subject (portrait, nude, landscape, animal, still life, religious/
+mythological, genre scene, abstract, surreal, comic/satirical — a 10-category taxonomy agreed
+with the user) move the hammer, controlling for the other attributes above?
+
+`../clip_subject_classifier.py` classifies every `DigitalImage.clipImageEmbedding` (already
+stored by the various `*_embed_images.py` writers, no re-embedding needed) by cosine similarity
+to CLIP TEXT embeddings of each category's prompts, writing `clipSubject` / `clipSubjectMargin`
+/ `clipSubjectConfident` (margin = top-1 minus top-2 cosine, confident iff >= 0.02) /
+`clipSubjectRun`. Run `CLIP-SUBJECT-1.0@2026-09-14T09:05:09Z`: 97,374 images classified, 35.1%
+confident. Prompts were tuned once against a 155-image title-keyword pilot: raw top-1 agreement
+65.2%, rising to 85.1% at margin >= 0.02 (48% coverage) and 100% at margin >= 0.05 (12%
+coverage, small n). Animal and comic/satirical stayed weaker even after tuning — largely
+monochrome 19th-c./old-master engravings genuinely ambiguous between categories (a skull study
+vs. an animal; a satirical crowd scene vs. a genre scene) and out of CLIP's native photographic
+training distribution.
+
+`export_sales.py` now joins `clipSubject`/`clipSubjectMargin`/`clipSubjectConfident` onto each
+sale via its Impression's DigitalImage. 13,855 of 48,847 priced sales (28%) get a confident
+label. `train_price_model.py --effects` treats `subject` like any other categorical (reference
+level `genre_scene`, non-confident rows coded `unclassified`).
+
+**Raw market-wide effect looks large**: religious/portrait command the least discount vs.
+genre_scene, landscape/abstract the most (x0.62–x0.92 spread) — but the drop-one ablation on
+the ML model shows removing subject changes test MAE by 0.000: it adds no incremental
+predictive power once the other attributes are in. The reason: subject is heavily confounded
+with **which artist** made the work (comic_satirical is 36% James Gillray; genre_scene's
+reference bucket of 341 is dominated by Cartier-Bresson/Doisneau/Winogrand — street
+photographers, a different market entirely, not painters/printmakers) and artist identity is
+already known to be the dominant price driver ([[project-hammer-backtest-findings]]-style: the
+estimate/artist beats attributes 2x over).
+
+**The clean test**: restrict to the 7 artists whose own confidently-labelled sales span >= 3
+subjects at >= 15 sales each (Picasso, Warhol, Hockney, Moore, Matisse, Piper, Dalí — 1,276
+rows) and add artist dummies alongside subject, technique, signature, edition and size. Most
+subject effects collapse to ~1.0x (nude x0.99, religious x1.00, still_life x0.97, animal x1.02
+vs. portrait) — indistinguishable from no effect once you know who made it. Two exceptions
+survive, tentatively (small n): abstract compositions x0.54 and comic/satirical x0.61, even
+within the same artist's output. But per-artist breakdowns of those same subjects **don't agree
+in direction** — Picasso's still lifes sell at x0.80 of his portraits, Hockney's at x1.88 — the
+same "multipliers are artist-specific, don't pool" pattern already found for signature/edition/
+technique now holds for subject too.
+
+**Conclusion: don't treat subject as a universal pricing lever.** If it matters, it's an
+artist-specific effect, not a market constant — consistent with how technique/signature/edition
+elasticities are already handled per-artist in the priors system above.
+
+**Update 2026-09-14 (later, PRICING-PRIORS-1.2): added anyway, but only the 3 categories that
+survived artist control.** `build_priors.py` now includes three independent 0/1 elasticity
+columns — `subject_is_abstract`, `subject_is_comic_satirical`, `subject_is_surreal` (1 iff
+`clipSubjectConfident` and that category, 0 for every other confident subject AND for
+unclassified) — fit with the exact same per-artist-Ridge-then-neighbour-shrinkage machinery as
+every other column, which is architecturally the clean within-artist test already, since each
+artist's own fit never mixes in another artist's rows. The other 7 subject categories were
+deliberately left out: their effect was artist identity in disguise, not a printmaking subject
+effect, and adding them would just give a false sense of precision. 36 elasticity columns now
+(was 33), 81/745 artists have an own-fitted abstract coefficient (n>=3 confident sales), 33 for
+comic_satirical, 20 for surreal — most artists get the neighbour-shrunk value. Market-wide
+segment default (`any|any`): abstract x0.91, comic_satirical x0.91, surreal x1.23 — much more
+moderate than the naive unconditional market read (x0.64-0.67), consistent with the
+artist-controlled robustness check above. Run `PRICING-PRIORS-1.2@2026-09-14T09:30:19Z`,
+`check_price_priors_fresh.py` and `npm run test:price-profile` both pass. `artist_price_profile.
+ts`'s `adjustmentBetween` does not read these columns yet (its dims list is still signature/
+proof/edition_band/area_band/process) — a natural follow-up once Stage 3 wiring is revisited.
+
 ## Next
 
 Rarity/state words (rare, unique, one of N, state, proof aside from the edition) as features;

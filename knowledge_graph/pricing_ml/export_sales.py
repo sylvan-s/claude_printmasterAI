@@ -49,10 +49,12 @@ WHERE ($artist IS NULL OR a.name = $artist)
 OPTIONAL MATCH (i)-[:USES_TECHNIQUE]->(t:Technique)
 OPTIONAL MATCH (i)-[:PRINTED_ON]->(p:Paper)
 OPTIONAL MATCH (cw)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
+OPTIONAL MATCH (img:DigitalImage)-[:SHOWS]->(i)
 WITH a, s, i, er, cw,
      collect(DISTINCT t.name) AS techniques,
      collect(DISTINCT p.name) AS papers,
-     collect(DISTINCT CASE WHEN ce IS NULL THEN null ELSE cr.numberingPrefix + ' ' + ce.number END) AS citations
+     collect(DISTINCT CASE WHEN ce IS NULL THEN null ELSE cr.numberingPrefix + ' ' + ce.number END) AS citations,
+     collect(img)[0] AS img
 RETURN a.name AS artist, a.ulanUrl AS artistUlan, a.nationality AS artistNationality,
        a.dateBorn_year AS artistBorn, a.dateDied_year AS artistDied, s.id AS sourceId, s.institutionName AS house, s.saleId AS saleId, s.lotNumber AS lotNumber,
        substring(s.saleDate, 0, 10) AS saleDate, s.listingUrl AS listingUrl,
@@ -65,7 +67,8 @@ RETURN a.name AS artist, a.ulanUrl AS artistUlan, a.nationality AS artistNationa
        i.signed AS signed, i.copyType AS copyType,
        er.declaredSize AS editionSize,
        i.plateDimensions AS plateDims, i.imageDimensions AS imageDims, i.sheetDimensions AS sheetDims,
-       techniques, papers, [c IN citations WHERE c IS NOT NULL] AS citations
+       techniques, papers, [c IN citations WHERE c IS NOT NULL] AS citations,
+       img.clipSubject AS clipSubject, img.clipSubjectMargin AS clipSubjectMargin, img.clipSubjectConfident AS clipSubjectConfident
 ORDER BY saleDate
 """
 
@@ -73,7 +76,7 @@ FIELDS = [
     "artist", "artistUlan", "artistNationality", "artistBorn", "artistDied", "sourceId", "house", "saleId", "lotNumber", "saleDate", "listingUrl", "hammerGBP", "realisedGBP",
     "estimateLow", "estimateHigh", "fxRateToGBP", "estimateLowGBP", "estimateHighGBP", "currency", "workId", "workName", "workYear", "impressionId",
     "sourceTitle", "rawMedium", "signed", "copyType", "editionSize", "plateDims", "imageDims", "sheetDims",
-    "techniques", "papers", "citations",
+    "techniques", "papers", "citations", "clipSubject", "clipSubjectMargin", "clipSubjectConfident",
 ]
 
 

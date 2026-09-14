@@ -1,7 +1,23 @@
 """
 PrintMasterAI — a database of price-feature elasticities per artist, with priors from similar
 artists where an artist's own sales are too few to estimate them.
-Version: PRICING-PRIORS-1.1
+Version: PRICING-PRIORS-1.2
+
+1.2 (2026-09-14) adds three CLIP-subject indicator columns: subject_is_abstract,
+subject_is_comic_satirical, subject_is_surreal (1 iff DigitalImage.clipSubject is that category
+AND clipSubjectConfident, else 0 -- see clip_subject_classifier.py and the README section "Image
+subject (CLIP zero-shot)"). Market-wide, subject looked like a big price driver, but a drop-one
+ablation and an artist-controlled regression showed it was mostly a proxy for WHICH ARTIST made
+the piece (comic_satirical was 36% James Gillray). The one thing that DID survive controlling
+for artist identity, on the 7 artists whose own sales span enough subjects to test it (Picasso,
+Warhol, Hockney, Moore, Matisse, Piper, Dali): abstract and comic/satirical still carried a
+same-artist discount (x0.54, x0.61 vs. a portrait by the same hand); surreal was inconclusive in
+that small sample (x1.22, n=23) but included here since it was the third candidate the user
+wanted priced in and per-artist shrinkage is exactly the tool for "maybe real, thin data" bets.
+The other 7 subject categories (portrait, nude, landscape, animal, still_life, religious_
+mythological, genre_scene) are NOT added as elasticity columns: their effect collapsed to ~1.0x
+once artist was controlled for, so a market-wide "genre_scene reference" column would mostly
+encode which artists happen to shoot street photography, not a printmaking subject effect.
 
 The transfer test (transfer_test.py) showed the multipliers are artist-specific: a signed
 premium of x2.2 for Picasso and x1.5 for Rembrandt, an edition-size effect that INVERTS between
@@ -68,6 +84,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REFS = {"signature": "unsigned", "proof": "numbered", "edition_band": "76-150", "area_band": "400-900",
         "process": "lithograph", "house": "Bonhams"}
 CONT = ["edition_log", "area_log"]
+# Independent 0/1 flags, not a one-hot family with a dropped reference: "is this confidently
+# classified as subject X" vs. "everything else" (other confident subjects AND unclassified
+# both code to 0). See the 1.2 changelog note above for why only these three.
+SUBJECT_FLAGS = {"subject_is_abstract": "abstract", "subject_is_comic_satirical": "comic_satirical", "subject_is_surreal": "surreal"}
+BINARY = list(SUBJECT_FLAGS.keys())
 MIN_LEVEL_ROWS = 3        # an artist's own coefficient for a level is trusted only with this many rows on it
 MIN_OWN = 15              # below this many earlier sales an artist gets the prior outright
 MIN_DESC = 5              # below this many earlier sales there is no per-artist entry at all (segment default)
@@ -85,18 +106,22 @@ def design(feat: pd.DataFrame, columns=None):
         d = d.drop(columns=[f"{c}_{ref}"], errors="ignore")
         parts.append(d)
     cont = pd.DataFrame({c: feat[c] for c in CONT}, index=feat.index)
-    X = pd.concat(parts + [cont], axis=1)
+    binary = pd.DataFrame({c: feat[c] for c in BINARY}, index=feat.index)
+    X = pd.concat(parts + [cont, binary], axis=1)
     if columns is not None:
         X = X.reindex(columns=columns, fill_value=0.0)
     return X
 
 
 def level_support(feat_rows: pd.DataFrame, columns):
-    """How many rows carry each dummy (continuous terms: rows with a value)."""
+    """How many rows carry each dummy (continuous terms: rows with a value; binary flags: rows
+    where the flag is 1, i.e. confidently that subject)."""
     out = {}
     for col in columns:
         if col in CONT:
             out[col] = int(feat_rows[col].notna().sum())
+        elif col in BINARY:
+            out[col] = int(feat_rows[col].sum())
         else:
             c = next(k for k in REFS if col.startswith(k + "_"))
             lvl = col[len(c) + 1:]
@@ -128,6 +153,9 @@ def descriptors(df_a: pd.DataFrame, feat_a: pd.DataFrame, ydefl_a: pd.Series) ->
         "share_relief": float(feat_a["tech_family"].eq("relief").mean()),
         "share_photomech": float(feat_a["tech_family"].eq("photomechanical").mean()),
         "share_ap": float((feat_a["proof"] == "artist_proof").mean()),
+        "share_abstract": float(feat_a["subject_is_abstract"].mean()),
+        "share_comic_satirical": float(feat_a["subject_is_comic_satirical"].mean()),
+        "share_surreal": float(feat_a["subject_is_surreal"].mean()),
         "median_work_year": float(wy.median()) if len(wy) else float("nan"),
         "born": float(born.median()) if len(born) else float("nan"),
         "share_bonhams": float((df_a["house"] == "Bonhams").mean()),
@@ -208,6 +236,8 @@ def main():
     df = df[~df["rawMedium"].fillna("").str.lower().str.contains(r"\bthe book\b|the complete set|set of \d|portfolio of|\(vol\)")]
     df = df[df["artist"].notna()].reset_index(drop=True)
     feat = build_features(df)
+    for col, cat in SUBJECT_FLAGS.items():
+        feat[col] = (feat["subject"] == cat).astype(float)
     y = np.log(df["hammerGBP"].astype(float))
     train = (df["saleDate"] < args.cut).values
     test = ~train
@@ -344,7 +374,7 @@ def main():
     # 5. write the priors database
     os.makedirs(args.out_dir, exist_ok=True)
     built_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    db = {"version": "PRICING-PRIORS-1.1", "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
+    db = {"version": "PRICING-PRIORS-1.2", "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
           "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
           "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),
           "reference_levels": REFS, "elasticity_columns": cols, "year_effects": year_eff, "continuous_medians": med,
@@ -392,7 +422,7 @@ def main():
             own = f"{math.exp(x['own']):.2f}(n={x['own_support']})" if x["own"] is not None else "-"
             return f"{col}: own {own} prior {math.exp(x['prior']):.2f} -> {math.exp(x['value']):.2f}"
         print(f"  {a} (earlier sales {db['artists'][a]['earlier_sales']}; neighbours: {', '.join(f'{b} {w:.2f}' for b, w in nb)})")
-        for col in ["signature_hand", "edition_band_>300", "edition_band_<=30", "process_screenprint", "process_etching"]:
+        for col in ["signature_hand", "edition_band_>300", "edition_band_<=30", "process_screenprint", "process_etching"] + BINARY:
             if col in e:
                 print("     " + show(col))
         print(f"     area per doubling x{math.exp(e['area_log']['value'] * math.log(2)):.2f}   edition per doubling x{math.exp(e['edition_log']['value'] * math.log(2)):.2f}")
