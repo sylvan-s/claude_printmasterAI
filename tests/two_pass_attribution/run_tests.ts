@@ -17,6 +17,8 @@ import {
   KOEUVRE_DISCRIMINATING_MIN,
   classifyImpression,
   classifyDimensionMatch,
+  dimsMatchEitherAxis,
+  dimsWithinTolerance,
   classifyTechniqueMatch,
   techniqueFamily,
   classifyTwoPass,
@@ -1178,6 +1180,65 @@ test("VEA halt short-circuits both passes -> not_attributed, Scenario 6, even wi
   assert.equal(r.pass2Ran, false);
   assert.equal(r.workIdentification, null);
   assert.equal(r.scenario, Scenario.LowSignalEverywhere);
+});
+
+// ── Transposed axes (2026-09-14) ──────────────────────────────────────────────
+// Catalogues disagree about whether a printed size is width x height or height x width, and
+// so do the records in the graph. Measured on Bonhams 32240: the catalogue's Hockney plate of
+// 238 x 275 mm against the graph's 273 x 238 mm produced a DIVERGENT verdict, which forced
+// Scenario 2 and a specialist search the routing rule exists to avoid.
+
+test("a transposed pair is the same measurement, and says so", () => {
+  const d = classifyDimensionMatch({
+    observedSource: "appraiser", workIsIntaglio: true,
+    observedPlateMm: { w: 275, h: 238 }, cataloguePlateMm: { w: 238, h: 273 },
+  } as any);
+  assert.equal(d.match, "true");
+  assert.equal(d.axes, "transposed");
+  assert.match(d.note, /WIDTH AND HEIGHT SWAPPED/);
+  // Direction describes the object, not the recording error.
+  assert.equal(d.direction, "equal");
+});
+
+test("axes stated consistently are never reported as transposed", () => {
+  const d = classifyDimensionMatch({
+    observedSource: "appraiser", workIsIntaglio: true,
+    observedPlateMm: { w: 238, h: 275 }, cataloguePlateMm: { w: 238, h: 273 },
+  } as any);
+  assert.equal(d.match, "true");
+  assert.equal(d.axes, "as_stated");
+  assert.doesNotMatch(d.note, /SWAPPED/);
+});
+
+test("a genuinely different size still diverges in either orientation", () => {
+  const d = classifyDimensionMatch({
+    observedSource: "appraiser", workIsIntaglio: true,
+    observedPlateMm: { w: 400, h: 500 }, cataloguePlateMm: { w: 238, h: 273 },
+  } as any);
+  assert.equal(d.match, "false");
+  assert.equal(d.axes, "as_stated");
+  // The reported difference is the direct comparison, not the flattering one.
+  assert.match(d.note, /observed 400x500mm vs catalogue 238x273mm/);
+});
+
+test("the swap is tried only after the direct comparison fails", () => {
+  // Both orientations would fit a near-square object; the direct one must win.
+  const r = dimsMatchEitherAxis({ w: 200, h: 202 }, { w: 202, h: 200 }, 0.05, 2);
+  assert.equal(r.within, true);
+  assert.equal(r.transposed, false);
+});
+
+test("dimsWithinTolerance stays axis-strict for callers that discriminate between works", () => {
+  // Stage 2a's title tie-break depends on this: tolerating the swap there promotes
+  // "Spinning Man V" over "Spinning Man VII".
+  assert.equal(dimsWithinTolerance({ w: 275, h: 238 }, { w: 238, h: 273 }, 0.03, 2).within, false);
+  assert.equal(dimsMatchEitherAxis({ w: 275, h: 238 }, { w: 238, h: 273 }, 0.03, 2).within, true);
+});
+
+test("UNASSESSABLE carries a null axes rather than a missing field", () => {
+  const d = classifyDimensionMatch({ observedSource: "none" } as any);
+  assert.equal(d.match, "UNASSESSABLE");
+  assert.equal(d.axes, null);
 });
 
 console.log(`\n${passed} passed, ${failed} failed\n`);

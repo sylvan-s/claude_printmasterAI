@@ -1506,13 +1506,19 @@ export interface DimensionComparison {
   comparedOn: "plate" | "image" | "sheet" | null;
   direction: "larger" | "smaller" | "equal" | null; // observed vs catalogue
   severity: "within_tolerance" | "minor" | "material" | null;
+  /** Which orientation matched. "transposed" means the two sides agree once width and height
+   *  are swapped — a recording convention difference, not a different object. Null when no
+   *  comparison was possible. */
+  axes: "as_stated" | "transposed" | null;
   note: string;
 }
 
 /** The tolerance test on its own, so anything that needs to know "would the tree call these
  *  the same size?" asks the tree rather than reimplementing the arithmetic. Stage 2a's
  *  query plan uses it to break ties between near-identically-titled works; a second copy
- *  there would let the tie-break choose a row the tree then rejects. */
+ *  there would let the tie-break choose a row the tree then rejects.
+ *
+ *  AXIS-STRICT. Most callers want `dimsMatchEitherAxis` below. */
 export function dimsWithinTolerance(
   obs: { w: number; h: number },
   cat: { w: number; h: number },
@@ -1529,6 +1535,45 @@ export function dimsWithinTolerance(
   };
 }
 
+/**
+ * The same tolerance test, tried in both orientations.
+ *
+ * Catalogues do not agree on whether a printed size is width x height or height x width, and
+ * neither do the records in the graph, which hold whatever string the source published. So a
+ * transposed pair is overwhelmingly a recording convention difference rather than a different
+ * object, and treating it as a divergence is expensive: on Bonhams 32240 (Hockney, Old
+ * Rinkrank) the catalogue's plate of 238 x 275 mm against the graph's 23.8 x 27.3 cm — the
+ * same measurement, swapped — produced a DIVERGENT verdict, which forced Scenario 2 and a
+ * specialist web search the routing rule exists to avoid, and left a residual downward
+ * adjustment even after that search identified the transposition itself.
+ *
+ * The swap is only ever tried AFTER the direct comparison fails, so a lot whose axes are
+ * stated consistently is never described as transposed. `transposed` is returned rather than
+ * hidden: a match found only by swapping is worth seeing in the trace, and it is the one case
+ * where a genuine 20x30 / 30x20 pair of DIFFERENT works could slip through. The tree never
+ * rests a verdict on this signal alone.
+ *
+ * NOT for choosing between candidates. Stage 2a's title tie-break stays axis-strict, because
+ * there the question is which of several near-identically-titled siblings this is, and the
+ * axes are exactly what separates them — measured on A0793/113, tolerating the swap there
+ * promotes "Spinning Man V" over "Spinning Man VII". Verification tolerates a convention
+ * difference; discrimination must not.
+ */
+export function dimsMatchEitherAxis(
+  obs: { w: number; h: number },
+  cat: { w: number; h: number },
+  pct: number,
+  mmFloor: number,
+): { within: boolean; relMax: number; transposed: boolean } {
+  const direct = dimsWithinTolerance(obs, cat, pct, mmFloor);
+  if (direct.within) return { ...direct, transposed: false };
+  const swapped = dimsWithinTolerance(obs, { w: cat.h, h: cat.w }, pct, mmFloor);
+  if (swapped.within) return { ...swapped, transposed: true };
+  // Neither orientation fits: report the direct comparison, which is the one the reader
+  // expects to see, rather than the flattering one.
+  return { ...direct, transposed: false };
+}
+
 function compareDims(
   obs: { w: number; h: number },
   cat: { w: number; h: number },
@@ -1540,15 +1585,18 @@ function compareDims(
   const dw = obs.w - cat.w;
   const dh = obs.h - cat.h;
   const effPct = scaledCaveat ? Math.max(pct, 0.18) : pct; // VEA-scaled: widen to swallow ±15-20% noise
-  const { within, relMax } = dimsWithinTolerance(obs, cat, effPct, mmFloor);
-  const direction = dw + dh > 0.5 ? "larger" : dw + dh < -0.5 ? "smaller" : "equal";
+  const { within, relMax, transposed } = dimsMatchEitherAxis(obs, cat, effPct, mmFloor);
+  // Direction describes the object, so on a transposed match it is read against the swapped
+  // catalogue pair; otherwise "larger"/"smaller" would describe the recording error.
+  const direction = transposed ? "equal" : dw + dh > 0.5 ? "larger" : dw + dh < -0.5 ? "smaller" : "equal";
   const severity = within ? "within_tolerance" : relMax < DIM_MATERIAL_PCT ? "minor" : "material";
   return {
     match: within ? "true" : "false",
     comparedOn: on,
     direction,
     severity,
-    note: `${on}: observed ${obs.w}x${obs.h}mm vs catalogue ${cat.w}x${cat.h}mm (rel diff ${(relMax * 100).toFixed(1)}%, tol ${(effPct * 100).toFixed(0)}%/${mmFloor}mm${scaledCaveat ? ", VEA-scaled" : ""}) -> ${within ? "within" : severity}`,
+    axes: transposed ? "transposed" : "as_stated",
+    note: `${on}: observed ${obs.w}x${obs.h}mm vs catalogue ${cat.w}x${cat.h}mm (rel diff ${(relMax * 100).toFixed(1)}%, tol ${(effPct * 100).toFixed(0)}%/${mmFloor}mm${scaledCaveat ? ", VEA-scaled" : ""}) -> ${within ? "within" : severity}${transposed ? " — matched with WIDTH AND HEIGHT SWAPPED: the two sources record the axes in opposite order, which is a cataloguing convention and not a size difference" : ""}`,
   };
 }
 
@@ -1556,7 +1604,7 @@ function compareDims(
  *  measurement or without a like-for-like pair. */
 export function classifyDimensionMatch(d: DimensionEvidence): DimensionComparison {
   if (d.observedSource === "none")
-    return { match: "UNASSESSABLE", comparedOn: null, direction: null, severity: null, note: "no usable observed dimension (Stage 1c silent, no VEA scale reference)" };
+    return { match: "UNASSESSABLE", comparedOn: null, direction: null, severity: null, axes: null, note: "no usable observed dimension (Stage 1c silent, no VEA scale reference)" };
   const scaled = d.observedSource === "vea_scaled";
   if (d.workIsIntaglio && d.observedPlateMm && d.cataloguePlateMm)
     return compareDims(d.observedPlateMm, d.cataloguePlateMm, TAU_DIM_PLATE_PCT, TAU_DIM_PLATE_MM, "plate", scaled);
@@ -1573,6 +1621,7 @@ export function classifyDimensionMatch(d: DimensionEvidence): DimensionCompariso
     comparedOn: null,
     direction: null,
     severity: null,
+    axes: null,
     note: "no like-for-like dimension pair (nothing stated on one side, or different kinds)",
   };
 }

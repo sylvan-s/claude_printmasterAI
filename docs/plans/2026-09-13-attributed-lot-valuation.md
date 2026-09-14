@@ -640,15 +640,40 @@ emits an explicit 0% line for the absence of examination. The published range di
 (GBP 1,800-2,600), so this bought honesty in the reasoning rather than a different number.
 Cost rose from $0.18 to $0.28 on the longer block and fuller reasoning.
 
+### The dimension check: transposition-tolerant for VERIFICATION, axis-strict for DISCRIMINATION (2026-09-14)
+
+`dimsMatchEitherAxis` tries the swap only AFTER the direct comparison fails, returns
+`transposed`, and `DimensionComparison` gained an `axes` field so a swapped match is visible
+in the trace rather than silent. `compareDims` uses it; a transposed match reports direction
+"equal", because "larger"/"smaller" would be describing the recording error rather than the
+object.
+
+Stage 2a's title tie-break deliberately does NOT use it, and the test suite is what established
+that. Switching the tie-break to either-axis broke three committed cases: on A0793/113 it
+promoted "Spinning Man V" over "Spinning Man VII", because V's catalogued pair is the observed
+one transposed. The two callers ask different questions. Verification asks "is this lot the
+work it claims to be?", where a swapped pair is a cataloguing convention and tolerating it
+avoids a false divergence. The tie-break asks "WHICH of these near-identically-titled siblings
+is it?", and there the axes are the discriminator. Tolerating the swap there would hand the
+tree the wrong work, which is worse than the problem the tolerance fixes.
+
+Re-run of Bonhams 32240, the lot that exposed it. The fix cascaded further than the dimension
+cell: the tree's `later_edition` impression verdict had been resting on the dimension mismatch,
+so it cleared too.
+
+| run | routing | verification | adjustments | range | cost |
+|---|---|---|---|---|---|
+| 1. wrong exclusion key | 2b ran, Scenario 2 | divergent | -12% liquidity, -15% condition, -5% dims | 1,800-2,600 | $0.242 |
+| 2. key fixed | 2b ran, Scenario 2 | divergent | -15% condition, -10% liquidity | 1,800-2,600 | $0.179 |
+| 3. clauses D/G/H moved into code | 2b ran, Scenario 2 | divergent | -5% framing, -3% dims | 1,800-2,600 | $0.284 |
+| 4. dimension check fixed | **2b SKIPPED**, Scenario 3 | **verified** | **none** | 1,800-2,600 | **$0.053** |
+
+The range never moved across all four. Every fix bought correctness of reasoning and a 5x cost
+reduction, not a different number — which is the honest reading: this lot was always going to
+be priced off its anchor and its one same-work comp, and the adjustments were noise the
+pipeline was generating about itself.
+
 Observed, not yet acted on:
-- The evidence tree's dimension check is AXIS-STRICT and reads a transposed pair as a
-  divergence. Bonhams prints the Hockney plate as 238 x 275 mm, the graph stores 23.8 x 27.3
-  cm, and `dimsAgree` in attributed_lot.ts correctly calls those the same measurement — but the
-  tree's own check fired, which forced Scenario 2 and a Stage 2b search the routing rule exists
-  to avoid (~$0.14), and still leaves a residual -3% "verification divergence" adjustment after
-  Stage 2b itself identified the transposition. Fixing it means making
-  `classifyDimensionMatch` transposition-tolerant, which touches the two-pass tree and its 119
-  tests.
 - An upcoming lot ALREADY INGESTED into the graph is excluded by saleId + lotNumber, and the
   Bonhams ingest stores preview lots as lotNumber 0 (no number is parseable from a preview
   URL). Keying the claim on the Bonhams internal id missed it, and the lot counted its own
