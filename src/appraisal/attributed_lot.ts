@@ -606,6 +606,29 @@ export function describeCompDifferences(lot: PriceAttrs, comp: AuctionComparable
 export const LIQUIDITY_MIN_APPEARANCES = 3;
 
 /**
+ * How far a liquidity finding may move the NUMBER, as a fraction of the anchor.
+ *
+ * Poor liquidity answers two different questions and the pipeline kept conflating them:
+ *   - will it sell?  A work that has never cleared goes unsold 41% of the time against a 30%
+ *     base (n=158). That is real, and it belongs in the LOW estimate and in confidence.
+ *   - if it sells, what does it make?  Measured on the same 941 lots, restricted to those that
+ *     then SOLD: a never-cleared work hammers at 0.750 of the printed midpoint (median, n=92)
+ *     against 0.857 for a work that has sold before (n=559). The anchor already carries the
+ *     market's 0.82 drift, so the residual price effect against the anchor is 0.750/0.82 =
+ *     0.915, i.e. about -9%. Per house: Roseberys 0.750 vs 0.833 (n=76), Forum 0.827 vs 0.870
+ *     (n=16, thin).
+ *
+ * So the measured price effect is roughly -9%, and this cap of 15% is its outer edge with slack
+ * for a lot where the concern is unusually acute. It exists because Stage 3 took -60% on a work
+ * with ONE prior unsold appearance (A0793/420, 2026-09-14) — obeying the direction and inventing
+ * the magnitude, the same pattern as the clauses corrected earlier that day. Stating a direction
+ * without a size is an invitation to make one up.
+ */
+export const LIQUIDITY_MAX_PRICE_ADJUSTMENT = 0.15;
+/** The measured central effect, quoted to Stage 3 so the cap is not the only anchor it sees. */
+export const LIQUIDITY_TYPICAL_PRICE_ADJUSTMENT = 0.09;
+
+/**
  * Does this work's auction history carry a measured warning about clearing?
  *
  * Measured 2026-09-14 on the 941 backtest lots that had any prior history of the same work,
@@ -640,11 +663,15 @@ export function liquidityVerdict(sellThrough: { sold: number; unsold: number } |
   const rate = st.sold / n;
   const pc = Math.round(rate * 100);
   const head = `LIQUIDITY: this work appeared at auction ${n} time${n === 1 ? "" : "s"} before; sold ${st.sold}, unsold ${st.unsold} (${pc}% sell-through).`;
+  const sizing =
+    ` TWO SEPARATE EFFECTS, and they must not be merged into one cut. (a) RISK OF NOT SELLING is elevated — that belongs in a protective lowEstimate, held at or below the anchor, and in your confidence rating. ` +
+    `(b) THE PRICE IT MAKES WHEN IT DOES SELL moves far less: measured on the same lots, a work like this hammers at 0.750 of the printed midpoint against 0.857 for one that has sold before, and since the anchor already carries the 0.82 market drift the residual effect against the anchor is about -${Math.round(LIQUIDITY_TYPICAL_PRICE_ADJUSTMENT * 100)}%. ` +
+    `CAP: a liquidity adjustment may not exceed -${Math.round(LIQUIDITY_MAX_PRICE_ADJUSTMENT * 100)}% of the anchor. A larger cut is not supported by the measurement, whatever the history looks like — if you believe the lot is worth materially less than that, the reason is something other than liquidity and must be named as that other thing.`;
   if (st.sold === 0) {
-    return { applies: true, n, rate, limb: "never_sold", line: `${head} MEASURED SIGNAL: YES — this work has NEVER cleared at auction. Measured on 941 lots: works with no prior sale go unsold 41% of the time against a 30% base, and the count of failed attempts barely matters (41% after one, 40% after two or more). Hold the lowEstimate at or below the anchor and name this as the reason. Note also what the house itself did with its estimate across those attempts, if the block shows it.` };
+    return { applies: true, n, rate, limb: "never_sold", line: `${head} MEASURED SIGNAL: YES — this work has NEVER cleared at auction. Measured on 941 lots: works with no prior sale go unsold 41% of the time against a 30% base, and the count of failed attempts barely matters (41% after one, 40% after two or more).${sizing} Note also what the house itself did with its estimate across those attempts, if the block shows it.` };
   }
   if (n >= LIQUIDITY_MIN_APPEARANCES && rate < 0.5) {
-    return { applies: true, n, rate, limb: "thin_record", line: `${head} MEASURED SIGNAL: YES — ${n} appearances at under 50%, having sold at least once, is the cohort where 48% of lots go unsold against a 30% base (n=50). Hold the lowEstimate at or below the anchor and name this as the reason.` };
+    return { applies: true, n, rate, limb: "thin_record", line: `${head} MEASURED SIGNAL: YES — ${n} appearances at under 50%, having sold at least once, is the cohort where 48% of lots go unsold against a 30% base (n=50).${sizing}` };
   }
   const why = n < LIQUIDITY_MIN_APPEARANCES
     ? `it has sold before, and ${n} prior appearance${n === 1 ? "" : "s"} is below the ${LIQUIDITY_MIN_APPEARANCES} the thin-record cohort was measured on`

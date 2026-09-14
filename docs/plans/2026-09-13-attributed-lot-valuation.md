@@ -858,11 +858,47 @@ on the way out, telling the model the budget is spent and to record what is unre
 than guess it. Stage 2a's loop was already correct.
 
 Observed, not yet acted on:
-- Stage 3 took -60% for liquidity on that same run, on a work with ONE prior unsold appearance.
-  The never-sold limb is measured at 41% unsold against a 30% base, which justifies holding the
-  low estimate at or below the anchor, not a 60% cut. Same over-application pattern as the
-  clauses fixed on 2026-09-14: the model obeys the direction and invents the magnitude. The
-  block states the direction; it does not bound the size.
+### Liquidity: the SIZE bounded on measurement, not judgement (2026-09-14)
+
+Stage 3 took -60% for liquidity on a work with ONE prior unsold appearance. It obeyed the
+direction and invented the magnitude — the same pattern as the clauses corrected earlier that
+day, and for the same reason: the block stated a direction without a size.
+
+The fix was to measure the size. Poor liquidity answers two questions that had been merged into
+one cut, and they carry very different weights. On the 941 backtest lots with prior history:
+
+| | n | then unsold | of those that SOLD: hammer / printed midpoint |
+|---|---:|---:|---:|
+| all lots with history | 941 | 30% | 0.833 median |
+| **never cleared** | **158** | **41%** | **0.750 (n=92)** |
+| sold at least once | 783 | 28% | 0.857 (n=559) |
+
+So the RISK is real and large (41% against 30%), and the PRICE effect is real and small: 0.750
+against 0.857 is -12.5% relative to a work that has sold, and since the anchor already carries
+the market's 0.82 drift the residual against the anchor is 0.750/0.82 = 0.915, about **-9%**.
+Per house, Roseberys 0.750 vs 0.833 (n=76) and Forum 0.827 vs 0.870 (n=16, thin).
+
+`LIQUIDITY_TYPICAL_PRICE_ADJUSTMENT` = 0.09 and `LIQUIDITY_MAX_PRICE_ADJUSTMENT` = 0.15. The
+verdict line now separates the two effects explicitly — risk into a protective lowEstimate and
+into confidence, price into a capped adjustment — and says where a larger cut must go instead:
+"if you believe the lot is worth materially less than that, the reason is something other than
+liquidity and must be named as that other thing". Without that escape hatch a real concern gets
+loaded onto the wrong factor.
+
+Re-run of A0793/420, the lot that produced the -60%:
+
+| | before | after |
+|---|---|---|
+| liquidity price adjustment | -60% | **-9%**, quoting the measurement |
+| unsold risk | folded into the same cut | separate "protective floor" line on the lowEstimate |
+| estimate | 1,200-2,400 | **2,400-3,600** (anchor 3,280, catalogue 3,000-5,000) |
+
+The midpoint now sits at 0.91 of the anchor, which is the measured effect exactly. Two other
+adjustments came back "none (already priced in anchor)" for edition size and signature — clause
+H declining to double-count what the house's estimate already reflects.
+
+Honest caveat: the bound moves the valuation TOWARD the house, which is more defensible rather
+than automatically more accurate. The 23 September hammer decides that.
 - An upcoming lot ALREADY INGESTED into the graph is excluded by saleId + lotNumber, and the
   Bonhams ingest stores preview lots as lotNumber 0 (no number is parseable from a preview
   URL). Keying the claim on the Bonhams internal id missed it, and the lot counted its own

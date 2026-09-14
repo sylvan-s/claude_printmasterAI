@@ -10,6 +10,7 @@ import {
   buildAttributedLotValuationBlock, describeCompDifferences, lotPriceAttrs, primaryDimension, emptyAppraiserInput,
   namesCompatible, workTitleFromImageMatch, deriveMisattributionRisk,
   sameArtist, divergenceSignalUsable, compAgeYears, liquidityVerdict, conditionEvidenceLines,
+  LIQUIDITY_MAX_PRICE_ADJUSTMENT, LIQUIDITY_TYPICAL_PRICE_ADJUSTMENT,
   type CatalogueAttribution, type WorkResolution,
 } from "../../src/appraisal/attributed_lot";
 import type { TriageResult, Stage1dResult, VisualExtractionResult } from "../../src/types";
@@ -219,6 +220,27 @@ console.log("liquidityVerdict — two measured limbs, and the block carries the 
   eq("exactly 50% on 4", L(2, 2).applies, false);
   eq("sold every time", L(3, 0).applies, false);
   eq("no history at all is a coverage fact, not a signal", [L(0, 0).applies, /coverage fact/.test(L(0, 0).line)], [false, true]);
+}
+
+console.log("liquidityVerdict — the SIZE is bounded, not just the direction");
+{
+  // Stage 3 took -60% on a work with one prior unsold appearance, obeying the direction and
+  // inventing the magnitude. The measurement says the price effect is about -9%: a never-cleared
+  // work hammers at 0.750 of the printed midpoint against 0.857 for one that has sold, and the
+  // anchor already carries the 0.82 drift, so 0.750/0.82 = 0.915 against the anchor.
+  eq("the cap is the outer edge of the measurement, not a round guess", [LIQUIDITY_TYPICAL_PRICE_ADJUSTMENT, LIQUIDITY_MAX_PRICE_ADJUSTMENT], [0.09, 0.15]);
+  ok("the typical effect is well inside the cap", LIQUIDITY_TYPICAL_PRICE_ADJUSTMENT < LIQUIDITY_MAX_PRICE_ADJUSTMENT);
+  for (const [label, l] of [["never sold", liquidityVerdict({ sold: 0, unsold: 1 })], ["thin record", liquidityVerdict({ sold: 1, unsold: 3 })]] as const) {
+    ok(`${label}: separates whether it sells from what it makes`, /TWO SEPARATE EFFECTS/.test(l.line) && /RISK OF NOT SELLING/.test(l.line) && /THE PRICE IT MAKES/.test(l.line));
+    ok(`${label}: states the cap`, /CAP: a liquidity adjustment may not exceed -15%/.test(l.line));
+    ok(`${label}: quotes the measured central effect`, /about -9%/.test(l.line));
+    ok(`${label}: puts the risk in the low estimate, not the midpoint`, /protective lowEstimate/.test(l.line));
+    // The escape hatch has to exist, or the model loads a real concern onto the wrong factor.
+    ok(`${label}: says where a bigger cut must go instead`, /must be named as that other thing/.test(l.line));
+  }
+  // A lot with NO signal must not carry the sizing language at all — there is nothing to size.
+  const none = liquidityVerdict({ sold: 1, unsold: 1 });
+  ok("no signal, no cap talk", !/CAP:/.test(none.line) && /Take NO liquidity adjustment/.test(none.line));
 }
 
 console.log("conditionEvidenceLines — facts priced, absence never deducted");
