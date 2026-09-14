@@ -238,6 +238,31 @@ Decisions taken from it:
 - Streaming, resumable, rate-limited, same `User-Agent` and politeness as the existing
   ingests. No image cache.
 
+#### Phase 1 result (backfill completed 2026-09-14)
+
+All 107,937 `DigitalImage` nodes carry `hiresUrl`, native pixel dimensions, `pxPerMm` (where
+the impression has a catalogue dimension) and `resolutionTier`. Per host:
+
+| Host | Checked | fine (≥10) | process (5–10) | family (<5) | no dims | dead | median px/mm |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Bonhams (images2) | 33,097 | 5,154 | 11,907 | 15,287 | 456 | 293 | 5.2 |
+| Bonhams (images1) | 20,480 | 3,067 | 7,465 | 8,644 | 1,298 | 6 | 5.3 |
+| Roseberys + Forum (S3 `xlarge`) | 20,706 | 5,256 | 9,365 | 3,353 | 2,726 | 6 | 7.5 |
+| Pompidou / navigart | 20,938 | 135 | 959 | 17,780 | 2,064 | 0 | 1.9 |
+| Tate | 10,208 | 47 | 403 | 9,449 | 309 | 0 | 1.5 |
+| British Museum (`mid_`) | 2,507 | 281 | 727 | 1,487 | 12 | 0 | 4.1 |
+
+So 41,770 labelled images sit at ≥ 5 px/mm (the fine-grain tiers), overwhelmingly auction
+photography; the museum sources are family-tier almost entirely. The 306 dead links are
+Bonhams CDN paths that also fail in the daily embed job. The full Phase 2 manifest
+(`export_phase2_manifest.py --min-tier process --artist-cap 40`, all techniques) holds
+**28,822 images / 3,498 artists**: fine 8,434 / process 20,388; Bonhams 18,381, Forum 4,526,
+Roseberys 3,610, Skinner 729, Tate 444, BM 373, French museums ~750; etching 7,600,
+lithograph 6,023, screenprint 4,253, aquatint 3,145, gelatin silver 3,064, drypoint 1,937,
+offset lithograph 1,528, woodcut 1,395, engraving 1,176, linocut 635, wood engraving 399,
+mezzotint 162. A family-tier manifest (Tate + Pompidou at native scale, for the family head
+only) is a separate, later decision.
+
 ### Phase 2 — feature extraction at scale (revised 2026-09-13)
 
 - The encoder, pooling and tile scales are whatever Phase 0b selected. Where the fine scale
