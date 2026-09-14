@@ -887,6 +887,58 @@ interval — the liquidity coefficient itself doesn't inherit the reference-hous
 that made the Bonhams HOUSE-residual reading unreliable, since it isn't measuring a house
 effect at all — but that run hasn't been done.
 
+**Addendum 2026-09-14 (later still) — the re-listing discount, confirmed directly, and a real
+graph defect found along the way.** The Roseberys correction: my pooled liquidity dummies
+(previous addendum) asked whether a work's AGGREGATE sell-through history correlates with
+today's estimate and found nothing. That's a different, coarser question than what Roseberys
+described — a SEQUENTIAL practice, discount the next listing after a specific failure — and the
+dummy design cannot see it. `tests/backtest/relist_discount_report.ts` tests the sequential
+claim directly: for every work with 2+ dated, estimated appearances at the same house, walk
+consecutive pairs and measure the estimate-midpoint change, split by whether the earlier
+appearance sold.
+
+**Graph defect found first.** Querying the graph directly returned ZERO "previous unsold"
+Roseberys pairs — implausible against Roseberys's own ~30%+ measured unsold rate. Checked
+directly: every one of 3,846 unsold Roseberys `SourceRecord`s has `estimateLowGBP`/`HighGBP`
+NULL in the graph, while the source catalogue (`benchmark/data/all-prints/catalogue.csv`) has a
+usable estimate on 5,164 of 5,170 unsold rows (99.9%). The estimate is only reaching the graph
+for SOLD Roseberys lots — an ingest defect, not a source-data gap. Not fixed here (out of scope
+for this session); flagged as a follow-up task. Worth checking whether the same condition
+affects any other Roseberys field written only on the sold path.
+
+**Routed around it** by reading the same local catalogue `comps_hammer_backtest.ts`'s
+`loadRoseberys()` already uses, grouping by an EXACT `(artist, normalizeTitleKey(title))` key —
+no fuzzy matching — as the work-identity substitute for a resolved `ConceptualWork` id.
+
+**Result — the practice is real, at both houses, and matches what Roseberys said almost
+exactly:**
+
+| | Bonhams (graph) | Roseberys (catalogue, graph bypassed) |
+|---|---|---|
+| Previous UNSOLD → next estimate, median | ×0.71 (−29%) | ×0.71 (−29%) |
+| …restricted to a ≤180-day gap (the closest reading of "next auction") | ×0.70 (−30%), 51% cut ≥30% | ×0.68 (−32%), 53% cut ≥30% |
+| …restricted to a >365-day gap | ×0.83 (−17%), 37% cut ≥30% | ×0.92 (−8%), 26% cut ≥30% |
+| Previous SOLD → next estimate (baseline drift), median | ×1.00 (0%) | ×1.00 (0%) |
+
+The discount is real, sequential, concentrated at short gaps (consistent with "the next
+auction" specifically, not a slow market drift), and absent when the prior appearance sold —
+the baseline-drift row is flat at every cut, which is the clean control the pooled dummy test
+lacked. "Up to 30%" matches the short-gap median almost exactly at both houses. Roseberys is
+not unusual here; Bonhams runs the same practice at close to the same size.
+
+**Why the earlier pooled-dummy result and this one are both correct, about different things.**
+The prior addendum's null result stands as stated: a work's AGGREGATE sell-through rate over a
+10-year window does not measurably move a lot's estimate today. This result shows something
+narrower and stronger: a SPECIFIC recent failure does move the very next listing's number, by a
+large and consistent amount, and that effect washes out once folded into a coarse "ever
+failed" flag averaged across appearances that may be years apart. The estimate model isn't
+liquidity-blind — it was asked the wrong-shaped question.
+
+**Caveat carried over from the cross-house flip discussion**: consecutive appearances of the
+"same work" may be different physical impressions of the same edition, not the identical sheet
+re-consigned by the same owner. A short gap between an unsold appearance and the next one at
+the SAME house is the closest signal available without individual-copy tracking, not proof.
+
 **Addendum 2026-09-14 — Roseberys vs Bonhams, and a confound the Forum comparison didn't have.**
 Bonhams has no local catalogue CSV like Roseberys/Forum (`benchmark/data/bonhams/` was empty);
 `tests/backtest/_pull_bonhams_catalogue.ts` reads it back out of the graph instead (52,155 dated
