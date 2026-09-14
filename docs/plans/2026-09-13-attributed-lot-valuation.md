@@ -973,6 +973,49 @@ short one worth a human/expert look, rather than treating a flagged lot as a buy
 own. The genuine edge this graph cannot supply is exactly the connoisseurship (condition,
 rarity, state) a specialist brings to the shortlist.
 
+**Addendum 2026-09-14 (final, methodological correction) — a cleaner undervaluation test, and
+why "sold under estimate then flipped to Bonhams" doesn't confirm the thesis on its own.** User
+correction: hammer/estimate at ONE sale is contaminated by same-sale bidding psychology — a
+buyer at a visibly distressed sale can rationally bid low regardless of the object's true worth,
+so a low hammer is consistent with both "worth little" and "genuinely undervalued." Proposed a
+cleaner test: a work that sold BELOW its own estimate at one auction, then sold again — much
+higher — later the same year, at a sale whose price wasn't set by anyone reacting to the first
+one. `repeat_sale_correction_report.ts` tests this directly on the combined Roseberys+Bonhams
+catalogue (hammer prices on both sides, unlike the earlier estimate-only repeat-sale checks),
+next SOLD appearance of the same nominal work within 365 days, control group = sold at/above
+estimate.
+
+| Cohort | Median next/first hammer | 95% CI |
+|---|---:|---|
+| Sold UNDER estimate → next sale | ×1.04 | [1.00×, 1.07×] |
+| Sold AT/ABOVE estimate → next sale (control) | ×0.91 | [0.89×, 0.92×] |
+
+A real, non-overlapping-CI difference between the two cohorts. But a robustness check trimming
+the most extreme jumps (>10x, almost certainly different print generations of a famous edition
+— the top-10 list is dominated by Dorothea Lange, Ansel Adams, Chagall, all heavily reproduced —
+caught under one loose title key) moved NEITHER median at all, because medians are already
+robust to a handful of outliers by construction. That check does not rule out **regression to
+the mean**: if "sold under estimate" partly reflects an unusually low draw against noisy
+edition-matching rather than genuine mispricing, the next observation would drift back toward
+the average with zero real economic story required — and that produces exactly this shape
+(cheap cohort drifts up, expensive cohort drifts down). Not resolved by anything built so far.
+
+**The number that actually answers the user's specific strategy — buy cheap at Roseberys, sell
+at Bonhams — using this cleaner criterion:**
+
+| | n | Median | 95% CI |
+|---|---:|---:|---|
+| Roseberys (sold under estimate) → Bonhams | 31 | ×1.00 | [0.78×, 1.25×] |
+
+Dead-center breakeven, wide interval, no edge either direction. Contrasted against the earlier
+cross-house finding (`cross_house_relist_report.ts`): Roseberys UNSOLD → Bonhams showed a real,
+significant recovery (×1.00 vs staying at Roseberys ×0.71, CI on the difference excludes 0).
+Read together: what's recoverable by switching houses looks specific to escaping the UNSOLD
+stigma — an institutional-memory effect the new house doesn't share — not a general tendency for
+merely cheaply-sold lots to be undervalued. The distressed (unsold, relisted) case is the one
+this data actually supports; a lot that simply sold under estimate without failing outright
+shows no comparable cross-house recovery at this sample size (n=31).
+
 ## Step 2 built (2026-09-13) — the attributed-lot entry path
 
 `src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method
