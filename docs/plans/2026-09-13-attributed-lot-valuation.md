@@ -1016,6 +1016,45 @@ merely cheaply-sold lots to be undervalued. The distressed (unsold, relisted) ca
 this data actually supports; a lot that simply sold under estimate without failing outright
 shows no comparable cross-house recovery at this sample size (n=31).
 
+**Addendum 2026-09-14 (final, precise definition) — "underpriced" = hammer below priors fair
+value net of the Roseberys factor; how many later sold much higher?** User's precise
+specification: hammer at Roseberys < priors-model fair price, less the Roseberys relative price
+factor. `priors_undervaluation_screen.ts`: fits `log(hammer) ~ priors_mu + house_is_roseberys`
+(deliberately only these two terms, matching the definition exactly) on the pooled blend sample,
+flags Roseberys sold lots below that prediction, then searches the FULL Roseberys+Bonhams
+catalogue for a later sold appearance of the same nominal work at either house within 365 days.
+
+**A methodological wrinkle surfaced before the outcome question could be answered cleanly.** The
+fitted Roseberys factor on HAMMER came out at ×1.02 — essentially nothing, against ×0.51–×0.90
+measured elsewhere this session. Cause: the stored `priors_mu` (from `priorsModelPrediction`,
+called with the lot's own actual house) already applies a PER-ARTIST Roseberys coefficient for
+any artist with enough Roseberys-specific sales to support one fitted in `build_priors.py` — so
+most of the house discount is already embedded in "priors fair price" before this script's
+separate aggregate term gets a chance to explain anything. The resulting flag is closer to
+"hammer below this artist's own house-aware fair value" than a literal two-step generic-fair-
+value-minus-one-factor calculation — arguably more precise (per-artist where the data supports
+it), but not quite what was asked for verbatim. Flagged rather than silently absorbed.
+
+**Result**, 798 of 1,714 Roseberys sold lots (47%) flagged underpriced by this definition:
+
+| | Flagged underpriced | Not flagged (control) |
+|---|---:|---:|
+| Had a later sold appearance (either house) within 365 days | 39 (5%) | 105 (11%) |
+| Median next-sale ratio, when found | 1.00× | 0.91× |
+| Sold ≥1.5× higher | 28% | 10% |
+| Sold ≥2× higher | 13% | 5% |
+
+Median flat, but the right tail is real and roughly triples the control's rate of a big win —
+consistent with the earlier weak-but-real correlation finding, not the null. Sample is thin (39
+testable cases), so treat the tail percentages as suggestive. Base rate of even having a
+checkable outcome is low (5%) — most flagged lots simply don't reappear within a year.
+
+Top-10 flagged lots by later-sale jump (Louise Bourgeois 3.38x, Keith Haring 3.24x→Bonhams,
+Patrick Hughes 2.89x, David Shrigley 2.08x→Bonhams, Damien Hirst 2.00x, Whistler 1.80x→Bonhams,
+Jonas Wood 1.75x, L.S. Lowry 1.68x→Bonhams, Ed Ruscha 1.63x, Wayne Thiebaud 1.55x) — 4 of 10
+moved specifically to Bonhams and did well, the concrete shape of the user's strategy, though
+the small overall count (39) means genuine opportunities of this shape look real but scarce.
+
 ## Step 2 built (2026-09-13) — the attributed-lot entry path
 
 `src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method
