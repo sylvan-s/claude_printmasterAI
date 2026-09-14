@@ -7,7 +7,7 @@ encoder at 518px, and resolution alone is worth nothing. **Amended 2026-09-13** 
 physical-cue research in [`docs/research/intaglio-technique-visual-cues-2026-09-13.md`](../research/intaglio-technique-visual-cues-2026-09-13.md):
 a Phase 0b (encoder head-to-head and a finer tile scale, in the existing harness) is inserted
 before Phase 1, and Phases 1–4 are revised as marked. **Phase 0b done 2026-09-13**: DINOv3
-ViT-L/16 selected, CLS pooling kept, fine scale kept via a per-scale head (results below).
+ViT-L/16 selected — **withdrawn 2026-09-14 in favour of DINOv2-L** (see "Encoder decision, re-made" under Phase 4); CLS pooling kept; fine scale dropped after the pilot.
 Phase 1 is next; nothing after 0b is started.
 
 The printmaking-technique classifier ([`knowledge_graph/technique_ml/`](../../knowledge_graph/technique_ml/README.md))
@@ -504,6 +504,27 @@ MIL; no fine-scale concatenation) stand. The decisions that rested on the confou
 figures (the size of the tiling effect, DINOv3 over DINOv2, the fine-scale subset result) are
 reopened and must be re-measured on the pilot manifest with a class × institution cross-tab
 and the source probe reported alongside.
+
+#### Encoder decision, re-made on clean evidence (2026-09-14) — DINOv2-L
+
+DINOv2-L tile shards were extracted for the same 4,959-image pilot manifest
+(`data/tiles_pilot_dinov2/`, RTX A6000 pod, ~$0.30) and scored with the same pooled head,
+folds and intervals as the DINOv3 shards (`artifacts/enc_dinov2_*.json`, `enc_dinov3_*.json`).
+The class × institution cross-tab is balanced for every class (no institution owns a class;
+e.g. drypoint positives Bonhams 311 / Forum 270 / Roseberys 81 against proportional negatives).
+
+| AUROC, pooled MLP | DINOv3 ViT-L/16 | DINOv2-L |
+|---|---|---|
+| Aquatint, 4-way / hierarchical | 0.833 ± 0.026 / 0.822 ± 0.023 | 0.839 ± 0.033 / 0.824 ± 0.018 |
+| Drypoint, 4-way / hierarchical | 0.785 ± 0.062 / 0.790 ± 0.045 | 0.787 ± 0.052 / 0.793 ± 0.019 |
+| Engraving, 4-way | 0.893 ± 0.037 | 0.873 ± 0.028 |
+| Source-institution probe (majority 0.384) | 0.757 | **0.630** |
+
+The two encoders tie on every technique within a fold-SD. DINOv2-L's features are markedly
+less institution-identifiable (0.63 vs 0.76 against the same 0.38 majority), it is ungated and
+Apache-2.0, and it is the encoder the ACKG already uses for Stage 1d. **Phase 2's encoder is
+DINOv2-L**; the Phase 0b selection of DINOv3 rested on the host-confounded drypoint figure and
+is withdrawn. The DINOv3 shards are kept for reference only.
 
 ### Phase 5 — product implication
 
