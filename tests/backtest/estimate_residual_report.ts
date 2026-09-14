@@ -84,9 +84,41 @@ function bootstrapCI(rows: Rich[], stat: (rs: Rich[]) => number, draws = 500): [
   return [vals[Math.floor(0.025 * (vals.length - 1))], vals[Math.floor(0.975 * (vals.length - 1))]];
 }
 
-function reportResiduals(label: string, rows: Rich[], model: ReturnType<typeof fitEstimateModel>) {
+/** Artist-clustered bootstrap CI on every coefficient of a model refit on the resampled rows —
+ *  same resampling as bootstrapCI, but refits (ALPHA-regularised) rather than reading a point
+ *  statistic off a fixed model, so it answers "is this coefficient distinguishable from 0",
+ *  not just "how much does the residual move." */
+function bootstrapCoefCI(rows: Rich[], draws = 300): { lo: number[]; hi: number[] } {
+  const byArtist = new Map<string, Rich[]>();
+  for (const r of rows) (byArtist.get(r.artist) ?? byArtist.set(r.artist, []).get(r.artist)!).push(r);
+  const clusters = [...byArtist.values()];
+  let seed = 29; const rnd = () => { seed = (seed * 48271) % 2147483647; return seed / 2147483647; };
+  const p = ESTIMATE_MODEL_COLUMNS.length;
+  const draws_: number[][] = Array.from({ length: p }, () => []);
+  for (let b = 0; b < draws; b++) {
+    const sample: Rich[] = []; for (let i = 0; i < clusters.length; i++) sample.push(...clusters[Math.floor(rnd() * clusters.length)]);
+    const m = fitEstimateModel(sample, ALPHA);
+    for (let i = 0; i < p; i++) draws_[i].push(m.coef[i]);
+  }
+  const lo: number[] = [], hi: number[] = [];
+  for (let i = 0; i < p; i++) {
+    const s = [...draws_[i]].sort((a, b) => a - b);
+    lo.push(s[Math.floor(0.025 * (s.length - 1))]); hi.push(s[Math.floor(0.975 * (s.length - 1))]);
+  }
+  return { lo, hi };
+}
+
+function reportResiduals(label: string, rows: Rich[], model: ReturnType<typeof fitEstimateModel>, withCoefCI = false) {
   console.log(`\n── ${label} ──`);
   console.log(`  columns: ${model.columns.map((c, i) => `${c}=${model.coef[i].toFixed(3)}`).join("  ")}`);
+  if (withCoefCI) {
+    const ci = bootstrapCoefCI(rows);
+    console.log(`  coefficient 95% CIs (artist-clustered bootstrap, ${rows.length} rows):`);
+    for (let i = 0; i < model.columns.length; i++) {
+      const sig = ci.lo[i] > 0 || ci.hi[i] < 0 ? "  <- excludes 0" : "";
+      console.log(`    ${model.columns[i].padEnd(30)} [${ci.lo[i].toFixed(3)}, ${ci.hi[i].toFixed(3)}]${sig}`);
+    }
+  }
   const res = residualsByHouse(rows, model);
   for (const r of res) {
     const rowsForHouse = rows.filter((x) => x.house === r.house);
@@ -103,7 +135,7 @@ function main() {
 
   // 1. Pooled fit, no house term -> residual by house (the headline number).
   const pooled = fitEstimateModel(rows, ALPHA);
-  reportResiduals("1. Pooled fit (no house term) — residual by house", rows, pooled);
+  reportResiduals("1. Pooled fit (no house term) — residual by house", rows, pooled, true);
 
   // 2. Cross-house transfer: does the SAME coefficient vector explain the other house's estimates?
   const A = rows.filter((r) => r.house === "A"), B = rows.filter((r) => r.house === "B");

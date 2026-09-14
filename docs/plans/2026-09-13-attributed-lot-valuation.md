@@ -847,6 +847,46 @@ present. Flow:
 
 Not built: a Forum URL fetcher (Roseberys only), and a UI field for the claim.
 
+**Addendum 2026-09-14 (later) — does the printed estimate respond to a track record of no
+sales?** `liquidityVerdict` (attributed_lot.ts) established a real, measured effect on the
+OUTCOME: a never-sold work goes unsold 41% of the time against a 30% base, and hammers at 0.750
+of the midpoint against 0.857 when it does sell. Nobody had checked whether that history is
+already reflected in the house's PRINTED number, as opposed to only showing up after the fact.
+`estimate_model.ts` gained `liquidityLimb` (a local mirror of `liquidityVerdict`'s three-way
+classification — never-sold, thin-record, sold-before-healthy, against a "no prior history"
+reference) as three added dummies, reusing the sell-through data already saved in the `--blend`
+files (no new harness run needed). `estimate_residual_report.ts` gained a coefficient-level
+artist-clustered bootstrap CI, not just the house-residual CI it already had.
+
+**Result (Roseberys ∪ Forum pool, 4,957 lots, 95% CI):**
+
+| Track record | Coefficient | 95% CI |
+|---|---:|---|
+| Never sold before | +0.096 | [-0.069, 0.258] — includes 0 |
+| Thin record (≥3 appearances, <50% sold) | -0.002 | [-0.201, 0.240] — includes 0 |
+| Sold before, healthy rate | +0.073 | [-0.032, 0.181] — includes 0 |
+
+None of the three are distinguishable from zero. The point estimate for never-sold even runs
+slightly positive, the opposite of what a "houses shade the number down for a bad track record"
+story would predict — but the interval easily contains zero, so this is not evidence of a
+positive effect either, just an absence of a detectable one either direction.
+
+**Reading.** The house's printed estimate appears liquidity-blind, at least at a sample size
+and comp-window this model can resolve. The measured 41%-unsold / 0.750×-midpoint effect from
+`liquidityVerdict` operates entirely on the OUTCOME side — whether bidders show up and what
+they pay — not on the house's own opening number. That sharpens the causal diagram: liquidity
+history is not a fifth input into "house estimate," it sits downstream of it, acting directly
+on hammer (and specifically on P(sells), which is exactly how `price_blend.ts`'s hurdle already
+treats it, kept separate from the price distribution rather than folded into any witness's
+mean — this result is independent support for that design choice, not the reason for it).
+
+**Caveat.** The CIs are wide (MAD on the estimate residual is ~0.5, comparable to the residual
+noise floor everywhere else in this model), so this is "no effect detected at this sample size
+and these two houses," not "proven zero." Pooling in Bonhams's rows too would sharpen the
+interval — the liquidity coefficient itself doesn't inherit the reference-house circularity
+that made the Bonhams HOUSE-residual reading unreliable, since it isn't measuring a house
+effect at all — but that run hasn't been done.
+
 **Addendum 2026-09-14 — Roseberys vs Bonhams, and a confound the Forum comparison didn't have.**
 Bonhams has no local catalogue CSV like Roseberys/Forum (`benchmark/data/bonhams/` was empty);
 `tests/backtest/_pull_bonhams_catalogue.ts` reads it back out of the graph instead (52,155 dated

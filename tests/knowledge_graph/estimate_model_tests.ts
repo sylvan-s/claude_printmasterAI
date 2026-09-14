@@ -8,6 +8,7 @@ import {
   fitEstimateModel,
   predictLogEstimate,
   residualsByHouse,
+  liquidityLimb,
   ESTIMATE_MODEL_COLUMNS,
   type EstimateFitRow,
 } from "../../src/appraisal/knowledge_graph/estimate_model";
@@ -32,13 +33,57 @@ const inputs = (over: Partial<BlendInputs> = {}): BlendInputs => ({
 
 // ── estimateFeaturesOf ───────────────────────────────────────────────────────
 {
-  eq("no evidence: intercept only, everything else 0", estimateFeaturesOf(inputs()).row, [1, 0, 0, 0, 0, 0, 0, 0, 0]);
+  eq("no evidence, no sell-through: intercept only, everything else 0", estimateFeaturesOf(inputs()).row, [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   const f = estimateFeaturesOf(inputs({ sameWork: [{ hammerGBP: 500, saleDate: null }], priors: { mu: LN(600), basis: "shrunk", earlierSales: 20, contributions: [] } }));
-  eq("columns line up with ESTIMATE_MODEL_COLUMNS", ESTIMATE_MODEL_COLUMNS, ["intercept", "same_work_present", "same_work_value", "same_artist_technique_present", "same_artist_technique_value", "same_artist_present", "same_artist_value", "priors_model_present", "priors_model_value"]);
+  eq("columns line up with ESTIMATE_MODEL_COLUMNS", ESTIMATE_MODEL_COLUMNS, ["intercept", "same_work_present", "same_work_value", "same_artist_technique_present", "same_artist_technique_value", "same_artist_present", "same_artist_value", "priors_model_present", "priors_model_value", "liquidity_never_sold", "liquidity_thin_record", "liquidity_sold_before_healthy"]);
   close("same_work value is the log of the (single) comp", f.row[2], LN(500));
   eq("same_work present flag set", f.row[1], 1);
   eq("tier 2/3 absent", [f.row[3], f.row[5]], [0, 0]);
   close("priors value is its raw mu", f.row[8], LN(600));
+  eq("no sell-through data: all liquidity dummies 0 (reference level)", f.row.slice(9), [0, 0, 0]);
+}
+
+// ── liquidityLimb ────────────────────────────────────────────────────────────
+{
+  eq("no history", liquidityLimb(null), "no_history");
+  eq("zero appearances", liquidityLimb({ sold: 0, unsold: 0 }), "no_history");
+  eq("never sold, one attempt", liquidityLimb({ sold: 0, unsold: 1 }), "never_sold");
+  eq("never sold, several attempts", liquidityLimb({ sold: 0, unsold: 5 }), "never_sold");
+  eq("thin record: 3+ appearances, under 50%", liquidityLimb({ sold: 1, unsold: 3 }), "thin_record");
+  eq("sold before, only 2 appearances (below the thin-record threshold)", liquidityLimb({ sold: 1, unsold: 1 }), "sold_before_healthy");
+  eq("sold before, healthy rate", liquidityLimb({ sold: 3, unsold: 1 }), "sold_before_healthy");
+  const g = estimateFeaturesOf(inputs({ sellThrough: { sold: 0, unsold: 2 } }));
+  eq("estimateFeaturesOf sets the never_sold dummy", g.row.slice(9), [1, 0, 0]);
+  const h = estimateFeaturesOf(inputs({ sellThrough: { sold: 1, unsold: 4 } }));
+  eq("estimateFeaturesOf sets the thin_record dummy", h.row.slice(9), [0, 1, 0]);
+  const k = estimateFeaturesOf(inputs({ sellThrough: { sold: 5, unsold: 1 } }));
+  eq("estimateFeaturesOf sets the sold_before_healthy dummy", k.row.slice(9), [0, 0, 1]);
+}
+
+// ── does the fit recover a planted liquidity effect on the ESTIMATE? ───────────────────────────
+{
+  let seed = 23; const noise = () => { seed = (seed * 48271) % 2147483647; return (seed / 2147483647 - 0.5) * 2; };
+  // Planted truth: log(estimate) = 5 + 0.5*priors_value, MINUS 0.2 when never_sold, MINUS 0.1
+  // when thin_record, no effect for sold_before_healthy or no_history (both reference-equivalent
+  // here since sold_before_healthy's coefficient should come out near 0 too).
+  const rows: { features: ReturnType<typeof estimateFeaturesOf>; logEstimateMid: number }[] = [];
+  const limbs: ("no_history" | "never_sold" | "thin_record" | "sold_before_healthy")[] = ["no_history", "never_sold", "thin_record", "sold_before_healthy"];
+  for (let i = 0; i < 600; i++) {
+    const prVal = 5 + (i % 17) * 0.1;
+    const limb = limbs[i % 4];
+    const sellThrough = limb === "no_history" ? null : limb === "never_sold" ? { sold: 0, unsold: 1 + (i % 3) } : limb === "thin_record" ? { sold: 1, unsold: 3 + (i % 3) } : { sold: 4 + (i % 3), unsold: 1 };
+    const inp = inputs({ priors: { mu: prVal, basis: "shrunk", earlierSales: 20, contributions: [] }, sellThrough });
+    const features = estimateFeaturesOf(inp);
+    const penalty = limb === "never_sold" ? -0.2 : limb === "thin_record" ? -0.1 : 0;
+    const y = 5 + 0.5 * prVal + penalty + 0.03 * noise();
+    rows.push({ features, logEstimateMid: y });
+  }
+  const model = fitEstimateModel(rows, 0.01);
+  const nsCol = ESTIMATE_MODEL_COLUMNS.indexOf("liquidity_never_sold"), trCol = ESTIMATE_MODEL_COLUMNS.indexOf("liquidity_thin_record"), shCol = ESTIMATE_MODEL_COLUMNS.indexOf("liquidity_sold_before_healthy");
+  close("recovers the planted never_sold penalty", model.coef[nsCol], -0.2, 0.1);
+  close("recovers the planted thin_record penalty", model.coef[trCol], -0.1, 0.1);
+  close("sold_before_healthy comes out near 0 (same as the reference)", model.coef[shCol], 0, 0.08);
+  ok("never_sold is a bigger discount than thin_record, as planted", model.coef[nsCol] < model.coef[trCol]);
 }
 
 // ── fitEstimateModel / predictLogEstimate: recovers a known linear relationship ───────────────
