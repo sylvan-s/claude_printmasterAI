@@ -534,6 +534,125 @@ of each house's drift. Tests whether the like-for-like house effect (Roseberys �
 Bonhams) is an arbitrage or a selection artefact. Needed before the house effect is used in a
 verdict.
 
+### 8. Deterministic Bayesian price blend — the priors model, the comps and the estimate as witnesses
+
+**Logged 2026-09-14. Not built. Gated on the same hammer lots as step 1.**
+
+**Why.** Stage 3 today anchors on estimate × `ESTIMATE_DRIFT` (0.82) and hands the comps, the
+liquidity verdict and the price profile to Sonnet as prose; the model writes the number. Three
+things are wrong with that. The number is not reproducible run to run. The 745-artist priors
+layer (step 6) contributes nothing numeric after its gate failed as a *correction to comps*.
+And there is no answer at all when the lot has no printed estimate — the user's own object, a
+dealer price, a private sale — which is the case the product exists for.
+
+**Decision.** Every price source becomes a witness that emits a distribution over
+`log(hammer GBP)`. A deterministic combiner multiplies the witnesses' densities (after
+de-biasing) into one posterior, reports the median, an 80% interval, and the sale
+probability, and writes down each witness's contribution. Sonnet's job at Stage 3 shrinks to
+narration of a table it did not compute: the priors model's additive log-contributions, the
+comps and the attributes on which they differ, the sale probability, and the divergence
+between witnesses. It never touches a number.
+
+**Witnesses and where their inputs already exist.**
+
+| Witness | Mean in log space | Spread source | Measured MAE(log) → sigma (≈ MAE × 1.25 for Gaussian residuals) |
+|---|---|---|---:|
+| House estimate | log(midpoint) + log(0.82) | step-1 residual, per house | 0.24–0.28 → ~0.33 |
+| Same-work comps (`ComparableTier` = `same_work`, `queryAuctionComparables`) | log of hammer medians, FX at sale date | repeat-sale model, see below | 0.40–0.50 at n≥3 → ~0.56 |
+| Tier 2/3 comps (`same_artist_technique`, `same_artist`) | log median | own backtest residual (wide) | not yet measured on hammer; treat as a band |
+| Priors model (`queryArtistPriceProfile`, `Artist.priceLevelLog` + `priceElasticities`) | level + Σ elasticity × attribute | per-`PriceProfileBasis` residual from `build_priors.py` | shrunk 0.60–0.69, prior 0.69, segment untested → ~0.80 / 0.86 |
+
+Relative precision (1/sigma²) with all four present is roughly 9 : 3 : <1 : 1.5. With an
+estimate, the posterior is mostly the estimate — that is what the step-1 and Picasso results
+already say, and the blend must not lose to it. Without an estimate the priors + comps ARE the
+answer, and that is the regime the gate is really about.
+
+**Four corrections to the naive product, each with its fix.**
+
+1. *The witnesses are correlated.* The house saw the same comps we did, so estimate and comps
+   share error and multiplying nominal precisions double-counts it. The weights are therefore
+   NOT the nominal 1/sigma²: fit them on the hammer lots by minimising log score (equivalently
+   regress log hammer on the de-biased witness means), calibrate on Roseberys, test on Forum as
+   the cross-house holdout. This is a linear opinion pool with learned weights — the
+   "attributes + prior + estimate" row at 0.358 vs 0.340 lost precisely because it was not.
+2. *Comps spread must depend on the evidence.* Same-work: sigma² = tau² + s²/n, where tau is
+   the between-sale dispersion of the SAME work (measured from the repeat-sale pairs — step 7
+   supplies it; until then use the n≥3 residual as the floor) and s²/n shrinks with the number
+   of comps. Comp age widens sigma (`compAgeYears`, `LONE_COMP_MAX_AGE_YEARS` as the existing
+   cut). Tier 2/3 get their own, much wider, backtest residual and so act as the plausibility
+   band they already are, with no prompt language needed.
+3. *Liquidity is a hurdle, not a shift.* Never-sold works go unsold 41% vs a 30% base
+   (`liquidityVerdict`); that is P(sells), not a lower price. Report P(sells) and the price
+   distribution conditional on selling separately. Do not fold the 9–15%
+   (`LIQUIDITY_TYPICAL/MAX_PRICE_ADJUSTMENT`) into the mean; keep it, if at all, as its own
+   witness with its measured spread.
+4. *Gaussian tails are too thin.* The Picasso misses were "one of four recorded impressions"
+   and a rare aquatint. Evaluate the product on a fixed grid over log-price (e.g. 400 points,
+   log 10 GBP to log 10M GBP) instead of closed form: still deterministic, negligible cost,
+   Student-t witnesses drop in, and the same-work witness can be a kernel density over the
+   actual comp prices rather than one Gaussian — signed and unsigned impressions of one plate
+   stay bimodal instead of averaging to a price nobody paid.
+
+**Why the priors model belongs here after failing the step-6 gate.** The gate applied
+artist-level elasticities as a *correction to same-work comps* and the size elasticity
+mis-priced because a different sheet is usually a different edition. As a separate witness the
+same failure is contained: with strong same-work comps the model's wide sigma gives it a small
+weight; without comps it is the best from-scratch number we have (71% within 2x on Picasso,
+0.691 vs 0.774 median on the 5–14-sales band). Log-linear is the right model here and not
+CatBoost: at 5–40 sales per artist a tree model has nothing to learn, and the log-linear
+contributions are exactly additive (coefficient × attribute), so the explanation table is free
+and exact rather than an approximate SHAP.
+
+**Contract (proposed, `src/appraisal/knowledge_graph/price_blend.ts`, pure, no I/O).**
+
+```ts
+interface PriceWitness {
+  source: "estimate" | "same_work" | "same_artist_technique" | "same_artist" | "priors_model";
+  mu: number;            // log GBP, bias already removed
+  sigma: number;         // calibrated, not nominal
+  weight: number;        // fitted pool weight, 0..1; 0 drops the witness
+  df?: number;           // Student-t degrees of freedom; undefined = Gaussian
+  samples?: number[];    // log GBP; when set the witness is a KDE over these, mu/sigma are summary only
+  basis: string;         // human-readable: "n=4 same-work sales, latest 2024-11", "shrunk fit, 37 earlier sales"
+  contributions?: { term: string; logEffect: number }[];  // priors model only: level, per-attribute terms
+}
+interface PriceBlend {
+  grid: { logPrice: number; density: number }[];
+  medianGBP: number; p10GBP: number; p90GBP: number;
+  pSells: number | null;                // hurdle, from liquidityVerdict; null when no history
+  witnesses: (PriceWitness & { effectiveWeight: number })[];
+  divergence: { a: string; b: string; logGap: number }[];   // pairs > 0.5 apart: the identity-check flag
+}
+function blendPrices(witnesses: PriceWitness[], hurdle: { pSells: number } | null): PriceBlend
+```
+
+The divergence list is the feature that caught Ai Weiwei "Cats (Pink)" and Shrigley "I hate
+humans" — both were identity errors visible as estimate-vs-comps gaps, and it becomes a coded
+flag rather than something the model has to notice.
+
+**Calibration artefact.** One committed JSON per fit (`pricing_ml/blend/`), the pattern of
+`priors/`: per-witness bias, sigma by regime (house, tier, n-band, basis), pool weights, the
+lot set and seed it was fitted on. Stage 3 reads it; nothing in the pipeline writes it. Goes
+stale on the same events as the priors (`check_price_priors_fresh.py` extends to cover it).
+
+**Gate (zero LLM spend).** Extend `tests/backtest/comps_hammer_backtest.ts` with `--blend`,
+same lots and seed as step 3 (`--source {forum|roseberys} --limit 2500 --seed 11 --resolve-work`),
+fit on Roseberys, score on Forum. Two regimes, one table:
+
+| regime | baseline | blend must |
+|---|---|---|
+| estimate present | estimate × 0.82 (MAE(log) 0.24–0.28, 93% within 2x) | not lose on MAE(log) or within-2x; 80% interval covers 75–85% of hammers; CRPS ≤ baseline's Gaussian |
+| estimate withheld | best single witness (same-work n≥3 ≈ 0.40–0.50; priors model ≈ 0.69 when no comps) | beat it on MAE(log); coverage 75–85%; report the split by best tier reached |
+
+Also report, per regime: MAE(log) with and without the priors witness (its marginal value),
+the fitted pool weights, and Spearman of the divergence flag against absolute error (does the
+flag point at the lots the blend gets wrong).
+
+**Not decided here.** Whether the house effect enters as a witness bias (waits on step 7);
+whether tier 2/3 stay in the pool or are display-only once measured; the prompt rewrite for
+Stage 3 — that is a wiring change to live price predictions and is not started until the gate
+passes and is agreed separately.
+
 ## Step 2 built (2026-09-13) — the attributed-lot entry path
 
 `src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method
