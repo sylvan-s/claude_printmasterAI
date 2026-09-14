@@ -888,6 +888,47 @@ re-consigned. This measures how the EDITION's estimate behaves across a venue sw
 failure, not that a specific purchased copy would realize this exact effect. Buyer's premium and
 Bonhams's own seller's commission are not in these numbers.
 
+**Addendum 2026-09-14 (final, closing) — weighing the four drivers of a Roseberys estimate.**
+Every earlier addendum in this step measured one driver at a time, in differently-specced
+regressions, so their sizes were never directly comparable. `estimate_driver_weights.ts` puts
+all four in ONE pooled Roseberys+Bonhams model (Forum excluded — no dates): priors and market
+comps exactly as `estimate_model.ts` derives them, the re-listing penalty as the recency
+rebuild derives it, and — new — an explicit `house_is_roseberys` dummy, so the house discount
+is a first-class term instead of an unexplained residual. R² = 0.571.
+
+LMG/Shapley decomposition of R² across the four driver groups (averaged over all 24 orderings,
+the standard fair way to split credit among correlated predictors — exact for a linear model):
+
+| Driver | Share of R² | Coefficient |
+|---|---:|---:|
+| Bonhams-calibrated priors | 53% | +0.66 |
+| Market comparisons | 37% | same_work +0.33, tier 2 +0.16, tier 3 +0.08 |
+| House discount (Roseberys vs Bonhams) | 9% | −0.11 (×0.90) |
+| Re-listing penalty | 1% | −0.35 (×0.70, matches the pairwise measurement) |
+
+**Variance share and per-lot magnitude are different questions, and the last two drivers are
+exactly where they diverge.** House discount's variance share is small only because it's
+CONSTANT — it shifts every Roseberys lot by the same ×0.90, so there is no cross-lot variation
+left for it to explain; its actual size (−0.11) is close to the earlier, independently-measured
+house-residual reading (−0.115 to −0.117 across the no-house-term specs), a consistency check
+that holds. Re-listing's variance share is small only because it's RARE (fires on ~5% of lots)
+— its coefficient when it fires (−0.35) is nearly as large as the priors model's own dominant
+coefficient and matches `relist_discount_report.ts`'s direct pairwise measurement almost
+exactly (×0.70 vs ×0.70/×0.71).
+
+**Reading, stated as two separate questions rather than one number:**
+- "Why does one Roseberys estimate differ from another?" — priors and comps do essentially all
+  the work; house discount and re-listing barely register, because one never varies and the
+  other rarely fires.
+- "Why does a Roseberys number sit below what Bonhams-calibrated evidence alone implies?" — the
+  house discount (universal, ~10%) and, for the minority of relisted lots, the re-listing
+  penalty (~30%, the single largest per-lot effect in the model) are what's doing that.
+  Priors and comps are the baseline being discounted from, not discounts themselves.
+
+R² = 0.571 also means 43% of Roseberys estimate variation is still unexplained by these four
+drivers — condition, rarity, state, and specialist judgement not captured anywhere in this
+model, consistent with the residual noise found throughout this whole plan step.
+
 ## Step 2 built (2026-09-13) — the attributed-lot entry path
 
 `src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method
