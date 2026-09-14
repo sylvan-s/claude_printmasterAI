@@ -52,6 +52,7 @@ import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_
 import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery, queryArtistDinoFloor, resolveWorkIdentity } from "./knowledge_graph/index.js";
 import { assessComps, formatCompStorability, partitionCitedComps, describeUncitedComps, dropWebCompsAlreadyInGraph, type CompStorabilityReport } from "./comp_storability.js";
 import { assessStage2bResearch, stage2bResearchFailed, type Stage2bGateResult } from "./stage2b_gate.js";
+import { shouldNudgeForSearch, SEARCH_NUDGE_TEXT } from "./stage2b_nudge.js";
 import { sanitizeSearchQuery, filterExcludedResults, hasRef, type ExcludedListingRef } from "./search_scope.js";
 import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
@@ -322,6 +323,60 @@ function parseCleanJson(text: string): any {
   }
 
   throw new SyntaxError("No valid JSON object found in response");
+}
+
+/**
+ * One corrective turn when Stage 2b ends on prose instead of the schema.
+ *
+ * `parseCleanJson` already repairs malformed JSON — fences, unary plus, trailing commas, a
+ * JSON object embedded in prose. What it cannot repair is a reply containing no JSON at all,
+ * which is the shape actually measured: on A0793 lot 289 Haiku ended its turn with a markdown
+ * summary opening "**Critical finding**", and on the Cindy Sherman lot with the same.
+ *
+ * Before this, that raised and the gate escalated the whole stage to Sonnet under
+ * `research_failed` — a full re-run, every search repeated, for a model that had done the work
+ * and formatted the answer wrongly. Two of the eight escalations measured across the backtest
+ * logs were exactly this. Asking the same model once more costs one round against a prefix that
+ * is already cached, and it still has all its own research in context.
+ *
+ * Only ONE re-ask. A model that cannot produce the schema when asked twice, pointed at the
+ * parser's own complaint, is the case escalation is held in reserve for — so the original error
+ * is what propagates on a second failure, and the gate's verdict is unchanged.
+ */
+async function reaskForJson(
+  messages: any[],
+  lastAssistantContent: any,
+  post: (msgs: any[], forceFinal: boolean) => Promise<any>,
+  originalErr: any,
+  label: string,
+): Promise<any> {
+  console.warn(`[4-Stage] Stage 2b ${label}: no JSON in the reply (${originalErr?.message}) — re-asking once`);
+  const retryMessages = [
+    ...messages,
+    { role: "assistant", content: lastAssistantContent },
+    {
+      role: "user",
+      content: [{
+        type: "text",
+        text:
+          "That reply could not be parsed: " + String(originalErr?.message ?? originalErr) + ".\n" +
+          "Do not research further and do not change any finding. Restate the SAME conclusions as " +
+          "a single valid JSON object matching the schema you were given. Output the object only — " +
+          "no prose, no markdown, no code fence. Start with { and end with }.",
+      }],
+    },
+  ];
+  const retryData = await post(retryMessages, true);
+  const blocks = (retryData.content || []).filter((b: any) => b.type === "text");
+  const text = blocks[blocks.length - 1]?.text as string;
+  try {
+    const parsed = parseCleanJson(text);
+    console.log(`[4-Stage] Stage 2b ${label}: re-ask recovered the schema — escalation avoided`);
+    return parsed;
+  } catch {
+    console.error(`[4-Stage] Stage 2b ${label}: re-ask still unparseable (first 300):`, text?.slice(0, 300));
+    throw new Error(`Failed to parse ${label} JSON output: ${originalErr?.message ?? originalErr}`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1321,6 +1376,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
      *  search — see search_scope.ts. Distinct from testingExcludeSourceListing above, which is
      *  prose for the model and only ever set by a harness. */
     excludeRef?: ExcludedListingRef | null,
+    /** True when the graph returned NO same-work sale for this lot, i.e. finding a comparable
+     *  on the open web was the job. Drives the one in-loop nudge below; see it for why. */
+    researchGap?: boolean,
   ): Promise<any> {
     const compatBaseUrl = anthropicCompatBaseUrl(modelName);
     const apiKey = compatBaseUrl
@@ -1411,6 +1469,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const messages: any[] = [{ role: "user", content: userText }];
     const MAX_ROUNDS = 4;
     let data: any = null;
+    // Searches this run actually executed, and whether the one nudge below has been spent.
+    let searchesMade = 0;
+    let nudged = false;
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
       data = await post(messages, false);
@@ -1420,7 +1481,39 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       }
 
       const clientToolUses = (data.content || []).filter((b: any) => b.type === "tool_use");
-      if (clientToolUses.length === 0) break; // done — either end_turn text, or only server-resolved web search
+      if (clientToolUses.length === 0) {
+        // ONE NUDGE BEFORE GIVING UP ON THE CHEAP MODEL.
+        //
+        // Six of the eight escalations in the backtest logs read "no web search was made, and
+        // the graph holds no same-work sale" — the cheap model queried the graph, found nothing,
+        // and wrote its report anyway. The gate catches that afterwards and re-runs the entire
+        // stage on Sonnet, which is the expensive remedy for a model that simply did not try.
+        //
+        // Here it is still mid-conversation: the prefix is cached, its graph results are in
+        // context, and it has rounds left. Telling it once that the search was the job converts
+        // a "did not try" into an attempt at the price of one round. If it declines anyway, the
+        // gate is unchanged and still escalates — this only removes the cases where asking was
+        // enough. Guarded to one nudge, and only while a round remains to act on it.
+        // `searchesMade` counts CLIENT web_search calls. Under Anthropic's server-side tool the
+        // search never passes through this loop, so the counter would read zero however much the
+        // model searched, and the nudge would accuse a diligent model of silence. The
+        // attributed-lot path sets clientWebSearch, so this costs it nothing.
+        if (useClientSearch &&
+            shouldNudgeForSearch({ researchGap: !!researchGap, searchesMade, nudged, round, maxRounds: MAX_ROUNDS })) {
+          nudged = true;
+          console.log("[4-Stage] Stage 2b: no web search yet and the graph holds no same-work sale — nudging once");
+          messages.push({ role: "assistant", content: data.content });
+          messages.push({
+            role: "user",
+            content: [{
+              type: "text",
+              text: SEARCH_NUDGE_TEXT,
+            }],
+          });
+          continue;
+        }
+        break; // done — either end_turn text, or only server-resolved web search
+      }
 
       messages.push({ role: "assistant", content: data.content });
       const toolResults = await Promise.all(
@@ -1447,6 +1540,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
             // to police. A search query is a line of text the model wrote; it is not a size
             // risk worth trading that for.
             if (removed.length) console.log(`[4-Stage] Stage 2b search scope: removed ${removed.join(", ")} from "${asked}"`);
+            searchesMade++;
             const raw = await tavilySearch(q, { maxResults: SEARCH_MAX_RESULTS });
             const { results, dropped } = filterExcludedResults(raw.results, excludeRef);
             if (dropped.length) console.log(`[4-Stage] Stage 2b search scope: dropped ${dropped.length} result(s) for this lot's own listing (${dropped.map((d) => d.url).join(", ")})`);
@@ -1522,7 +1616,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       console.log("[4-Stage] web-search raw response (first 500):", lastText?.slice(0, 500));
       console.log("[4-Stage] web-search raw response (last 300):", lastText?.slice(-300));
       try { return parseCleanJson(lastText); } catch (err: any) {
-        throw new Error(`Failed to parse web-search JSON output: ${err.message}`);
+        return await reaskForJson(messages, data.content, post, err, "web-search");
       }
     }
 
@@ -1566,7 +1660,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       return parsed;
     } catch (err: any) {
       console.error("[4-Stage] Failed to parse web-search JSON. Full raw text:", lastText);
-      throw new Error(`Failed to parse ASA JSON output: ${err.message}`);
+      return await reaskForJson(messages, finalData.content, post, err, "ASA");
     }
   }
 
@@ -3080,6 +3174,9 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
      *  attributed-lot path from the catalogue claim, and on a harness run from the excluded
      *  listing string — a production lot has one just as a backtest lot does. */
     excludeRef?: ExcludedListingRef | null,
+    /** True when the graph holds no same-work sale for this lot. Forwarded to the search loop,
+     *  which uses it to nudge a silent cheap model once before the gate escalates the stage. */
+    researchGap?: boolean,
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
@@ -3127,7 +3224,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
     const result: AttributionResearchResult = isClaude(stage2bModel) || anthropicCompatBaseUrl(stage2bModel)
-      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing, triage.artistAttribution?.artistIdentity ?? null, excludeRef ?? refFromExcludedListing(testingExcludeSourceListing))
+      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing, triage.artistAttribution?.artistIdentity ?? null, excludeRef ?? refFromExcludedListing(testingExcludeSourceListing), researchGap)
       : await this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
     await this.persistCatalogueRaisonneFinding(result);
     // Phase 0 of the comps write-back is a measurement, not a feature: nothing is written,
@@ -3882,10 +3979,15 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
       emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
       console.log(`[Timing] Stage 2b (Specialist) starting — model: ${stage2bModel}`);
       const excludeRef = { house: claim.house, saleId: claim.saleId, lotNumber: claim.lotNumber, listingUrl: claim.lotUrl };
+      // The same condition the gate judges silence against (stage2b_gate.ts, SILENT ON A REAL
+      // GAP), handed to the model's own loop so it can be told mid-run rather than replaced
+      // afterwards. Zero same-work comps means finding a comparable WAS the task.
+      const researchGap = (comps?.summary.tierCounts.same_work ?? 0) === 0;
       const run2b = (model: string) => this.runStage2bSpecialist(
         vea, triageResult, model, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing,
         // A production attributed lot has a listing too; the guard is not a testing feature.
         excludeRef,
+        researchGap,
       );
       // Gated Stage 2b: the cheap model first, redone on the stronger one when what came back
       // cannot be checked — or when nothing came back at all. See stage2b_gate.ts for what

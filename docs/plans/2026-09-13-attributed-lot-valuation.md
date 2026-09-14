@@ -1141,3 +1141,49 @@ front of Stage 3.
 
 The dates are recoverable: 6,228 records span only 57 distinct `saleId` values,
 and each sale's date is on its Forum listing page. Logged, not swept.
+
+## Stage 2b: ask the cheap model before replacing it (2026-09-14)
+
+Across the backtest logs Stage 2b escalated Haiku → Sonnet eight times. Six read
+"no web search was made, and the graph holds no same-work sale" — the model
+called the graph tools, got nothing, and wrote its report anyway. The other two
+were replies containing no JSON at all. In every case a full Sonnet re-run was
+bought to replace a cheap run that was one turn from being usable.
+
+Two changes, both in `src/appraisal/appraiser.ts`:
+
+**In-loop search nudge** (`src/appraisal/stage2b_nudge.ts`). When the loop is
+about to finalise with zero searches and the graph holds no same-work sale, it
+pushes one turn saying the search was the job. This happens mid-conversation:
+prefix cached, graph results still in context, rounds remaining. Capped at one
+nudge, and only while a round remains to act on it. Guarded to the client-side
+search path — `searchesMade` cannot see Anthropic's server-side tool, so
+elsewhere it would accuse a diligent model of silence.
+
+**Re-ask on unparseable output.** `parseCleanJson` repairs malformed JSON but
+cannot repair a reply with no JSON in it, which is the measured shape. Instead
+of raising, the model is asked once to restate the same findings as the schema.
+
+Neither softens the gate. `assessStage2bResearch` judges what was produced on
+unchanged terms; the nudge demands `unresolvedQuestions` over a price, so it
+cannot be satisfied by inventing the comparable it asked for.
+
+Measured on the three lots that previously escalated, one per failure mode:
+
+| lot | before | after | change | escalated |
+|---|---|---|---|---|
+| 164 | $0.2433 | $0.1125 | −54% | yes → no |
+| 426 | $0.1341 | $0.0848 | −37% | yes → no |
+| 289 | $0.2722 | $0.0960 | −65% | yes → no |
+| total | $0.6496 | $0.2933 | −55% | 3/3 → 0/3 |
+
+The nudge fired on all three and each then searched 4–5 times; the re-ask was
+never needed, because a model that searches also returns the schema. The gate
+passed all three with every comp cited.
+
+Accuracy held or improved. Lot 164 reproduced Sonnet's £280–420 exactly at half
+the cost. Lot 426 moved £520–750 → £550–850, nearer its £700–1,000 catalogue.
+Lot 289 moved £45–90 → £250–450 against £300–500: nudged Haiku found real cited
+comps, so Stage 3 was no longer left with the single £29.24 outlier. That
+removes the bad input, not the unbounded-adjustment defect above, which is
+still open.
