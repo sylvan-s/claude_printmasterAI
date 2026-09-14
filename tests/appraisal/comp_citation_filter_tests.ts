@@ -8,7 +8,7 @@
  *
  *   npm run test:comp-citation
  */
-import { partitionCitedComps, describeUncitedComps } from "../../src/appraisal/comp_storability";
+import { partitionCitedComps, describeUncitedComps, dropWebCompsAlreadyInGraph } from "../../src/appraisal/comp_storability";
 import type { Stage2bComp } from "../../src/appraisal/comp_storability";
 
 let passed = 0, failed = 0;
@@ -70,6 +70,44 @@ console.log("describeUncitedComps — the omission is reported, never silent");
   const many = describeUncitedComps(Array.from({ length: 9 }, (_, i) => ({ artworkTitle: `w${i}` })));
   ok("a long list is capped rather than flooding the prompt", (many.match(/"w\d"/g) ?? []).length === 6);
   ok("an untitled comp still gets named as such", describeUncitedComps([{ priceAmount: 100 }]).includes('"untitled"'));
+}
+
+console.log("dropWebCompsAlreadyInGraph — one sale must not arrive twice wearing two hats");
+{
+  // Measured across 24 stored lots: 80 of 106 web comps were the same sale as an ACKG comp in
+  // the SAME prompt, and on many lots every one was. The web copy is usually premium-inclusive
+  // where the graph copy is hammer, so a duplicate reads as corroboration on a different basis.
+  const graph = [
+    { institutionName: "Bonhams", saleId: "32236", lotNumber: 108, listingUrl: "https://www.bonhams.com/auction/32236/lot/108/snigger/" },
+    { institutionName: "Roseberys London", saleId: "A0785", lotNumber: 1, listingUrl: null },
+  ];
+  const web = [
+    { artworkTitle: "Snigger", auctionHouse: "Bonhams", saleId: "32236", lotNumber: "108", listingUrl: "https://www.bonhams.com/auction/32236/lot/108/snigger/" },
+    { artworkTitle: "Something else", auctionHouse: "Phillips", saleId: "UK1", lotNumber: "9", listingUrl: "https://www.phillips.com/detail/x/9" },
+  ];
+  const r = dropWebCompsAlreadyInGraph(web, graph);
+  eq("the duplicate goes, the new one stays", [r.kept.length, r.duplicates.length], [1, 1]);
+  eq("and it is the genuinely new sale that survives", r.kept[0].artworkTitle, "Something else");
+
+  // Matched on the URL even when the house string differs in punctuation or case.
+  const byUrl = dropWebCompsAlreadyInGraph(
+    [{ artworkTitle: "x", auctionHouse: "BONHAMS UK", saleId: null, lotNumber: null, listingUrl: "http://bonhams.com/auction/32236/lot/108/snigger" }], graph);
+  eq("URL match ignores scheme, www and case", byUrl.duplicates.length, 1);
+
+  // Matched on house + sale + lot when the graph record carries no URL.
+  const byTriple = dropWebCompsAlreadyInGraph(
+    [{ artworkTitle: "y", auctionHouse: "Roseberys London", saleId: "A0785", lotNumber: "1", listingUrl: "https://example.com/other" }], graph);
+  eq("house + sale + lot match", byTriple.duplicates.length, 1);
+
+  // A house and a lot with no sale identifies nothing — do not guess.
+  const partial = dropWebCompsAlreadyInGraph(
+    [{ artworkTitle: "z", auctionHouse: "Bonhams", saleId: null, lotNumber: "108", listingUrl: null }], graph);
+  eq("an incomplete key is never treated as a match", partial.duplicates.length, 0);
+
+  eq("no graph comps, nothing dropped", dropWebCompsAlreadyInGraph(web, []).duplicates.length, 0);
+  eq("no web comps, nothing to do", dropWebCompsAlreadyInGraph([], graph).kept.length, 0);
+  eq("a different lot in the same sale is NOT a duplicate",
+     dropWebCompsAlreadyInGraph([{ artworkTitle: "w", auctionHouse: "Bonhams", saleId: "32236", lotNumber: "109", listingUrl: null }], graph).duplicates.length, 0);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -50,7 +50,7 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
 import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery, queryArtistDinoFloor, resolveWorkIdentity } from "./knowledge_graph/index.js";
-import { assessComps, formatCompStorability, partitionCitedComps, describeUncitedComps, type CompStorabilityReport } from "./comp_storability.js";
+import { assessComps, formatCompStorability, partitionCitedComps, describeUncitedComps, dropWebCompsAlreadyInGraph, type CompStorabilityReport } from "./comp_storability.js";
 import { sanitizeSearchQuery, filterExcludedResults, hasRef, type ExcludedListingRef } from "./search_scope.js";
 import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
@@ -3258,12 +3258,20 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     // A price Stage 2b cannot point at a URL for is not a comparable — its own prompt says so,
     // and this is where that is enforced. See partitionCitedComps for the measurement that
     // prompted it. The raw result keeps every comp for audit; only the PROMPT is filtered.
-    const { cited: webComps, uncited: uncitedComps } = partitionCitedComps((attr as any).auctionComps);
+    const { cited, uncited: uncitedComps } = partitionCitedComps((attr as any).auctionComps);
     if (uncitedComps.length) {
       console.log(`[Stage 3 comps] withholding ${uncitedComps.length} uncited Stage 2b comp(s) from the valuation: ${uncitedComps.map((c) => `"${c.artworkTitle ?? "untitled"}"${typeof c.priceAmount === "number" ? ` @ ${c.priceAmount}` : ""}`).join(", ")}`);
     }
+    // The same sale must not arrive twice wearing two hats. See dropWebCompsAlreadyInGraph.
+    const { kept: webComps, duplicates: dupComps } = dropWebCompsAlreadyInGraph(cited, ackgComps?.comparables ?? []);
+    if (dupComps.length) {
+      console.log(`[Stage 3 comps] dropping ${dupComps.length} Stage 2b comp(s) already present as ACKG records: ${dupComps.map((c) => `"${c.artworkTitle ?? "untitled"}" (${c.auctionHouse ?? "?"} ${c.saleId ?? "?"}/${c.lotNumber ?? "?"})`).join(", ")}`);
+    }
     const hasWebComps = webComps.length > 0;
-    const withheldNote = uncitedComps.length ? `\n${describeUncitedComps(uncitedComps)}` : "";
+    const dupNote = dupComps.length
+      ? `\n${dupComps.length} further web finding(s) were dropped as DUPLICATES of records already listed above — the same sale, found again on the web. They are not extra evidence and must not be read as corroboration.`
+      : "";
+    const withheldNote = (uncitedComps.length ? `\n${describeUncitedComps(uncitedComps)}` : "") + dupNote;
     const webCompsBlock = hasWebComps
       ? `\n\nSECONDARY — STAGE 2b WEB-RESEARCH COMPS (free-text findings, unverified, every one carrying a citation URL; use only to corroborate or to fill gaps the ACKG set leaves):\n${JSON.stringify(webComps)}${withheldNote}`
       : `\n\nSECONDARY — STAGE 2b WEB-RESEARCH COMPS: none usable.${withheldNote || " Stage 2b returned no web comps at all."}`;

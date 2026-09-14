@@ -857,7 +857,52 @@ live, and so hit a latent bug Sonnet had been walking past. Every pending call i
 on the way out, telling the model the budget is spent and to record what is unresolved rather
 than guess it. Stage 2a's loop was already correct.
 
+### Stage 2b's comps are the graph's own comps, found again (2026-09-14)
+
+Verifying the widened write-back against real Stage 2b output turned up something larger. On the
+Bonhams Baldessari lot, 3 of 4 comps passed every gate and then ALL THREE were rejected as
+already in the graph — `bonhams-32236-108-record`, `bonhams-22259-143-record`,
+`bonhams-25796-120-record`. Measured across every stored attributed-path run:
+
+| | |
+|---|---:|
+| comps returned by Stage 2b | 106 |
+| passing the write-back gates | 90 |
+| **already in the graph as ingested records** | **89** |
+| genuinely new price data | **1** |
+
+The graph holds 38,663 sold Bonhams lots plus Roseberys and Skinner, so for any well-covered
+artist a house page the web surfaces is already ingested by construction. Stage 2b's comp
+research yields about 1% net-new price data, and the write-back built today consequently has
+almost nothing to write. That is the write-back's dedupe gate doing its job, and it is also a
+statement about where this stage's value actually lies: the catalogue raisonné, the series
+context, the MoMA record, the edition structure — not the prices.
+
+**And the duplicates were reaching the valuation as corroboration.** Stage 3 receives two comp
+blocks: the ACKG's records, which it is told to anchor on, and Stage 2b's findings, which it is
+told to use "to corroborate". Across 24 stored lots, **80 of 106 web comps (75%) were the same
+sale as an ACKG comp in the SAME prompt**, and on many lots every one was (4/4, 5/5, 7/7). The
+model cannot tell they are one sale; the web copy is usually premium-inclusive where the ACKG
+copy is hammer. One sale therefore arrived as two independent data points on two different price
+bases, which is precisely what breaks anchoring.
+
+`dropWebCompsAlreadyInGraph` removes them at the Stage 3 boundary, matching on listing URL or on
+house + sale + lot together (a house and a lot with no sale identifies nothing and is left
+alone). What is dropped is named in the log and reported to Stage 3 as duplicates that "must not
+be read as corroboration". Verified live on A0793/530, where 6 of 7 were dropped.
+
+Two bugs the tests caught rather than review, both of which would have silently under-matched in
+production: the house arrives as `institutionName` from the graph and `auctionHouse` from Stage
+2b, and sale ids and lot numbers arrive as numbers from the graph where the text helper only
+accepted strings — so the graph side formed no key at all and matching was URL-only.
+
 Observed, not yet acted on:
+- Stage 2b is still ASKED for comps (specialist prompt STEP 8, up to 2 searches) on lots where
+  the graph already covers the artist. Given 1% net-new, that budget and the output tokens it
+  produces are close to pure waste: output is 44% of this stage's cost. Telling it to report
+  only sales `query_ackg_comparables` did NOT return would cut the largest cost line and make
+  the write-back's job meaningful. Not done here because it changes what the stage is asked for,
+  which deserves its own measurement rather than a same-day edit.
 ### Liquidity: the SIZE bounded on measurement, not judgement (2026-09-14)
 
 Stage 3 took -60% for liquidity on a work with ONE prior unsold appearance. It obeyed the
