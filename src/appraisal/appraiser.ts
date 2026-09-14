@@ -58,7 +58,7 @@ import type { StyleConsistencyEvidence } from "./two_pass_attribution";
 import { getImageEmbeddings } from "./embedding_client.js";
 import { techniqueFamily } from "./two_pass_attribution";
 import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../shared/text_extraction";
-import { queryWorkFacts, queryArtistPriceProfile, type WorkFacts, type ComparablesResult, type ArtistPriceProfile } from "./knowledge_graph/index.js";
+import { queryWorkFacts, queryArtistPriceProfile, writeResearchComps, type WorkFacts, type ComparablesResult, type ArtistPriceProfile } from "./knowledge_graph/index.js";
 import { mapTechniqueToAckgVocabulary as mapClaimTechnique } from "./stage2a_query_plan";
 import { VALUATION_ATTRIBUTED_LOT_SUFFIX } from "./prompts";
 import {
@@ -3596,6 +3596,34 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
   private activeClaim: CatalogueAttribution | null = null;
   private activeCanonical: string | null = null;
 
+  /**
+   * ADR-0007's auction-comp slice. Runs after Stage 2b, writes nothing the gates in
+   * write_research_comps.ts do not admit, and never throws — a write-back failure must not
+   * cost a valuation that has already been produced.
+   */
+  private async persistResearchComps(
+    attr: AttributionResearchResult, canonical: string | null, work: WorkResolution | null, claim: CatalogueAttribution,
+  ): Promise<Awaited<ReturnType<typeof writeResearchComps>> | null> {
+    const comps = (attr as any)?.auctionComps;
+    if (!Array.isArray(comps) || !comps.length || !canonical) return null;
+    try {
+      const r = await writeResearchComps({
+        comps,
+        canonicalArtistName: canonical,
+        conceptualWorkIds: work?.workIds ?? [],
+        workBasis: work?.basis ?? null,
+        originatingAppraisalId: [claim.house, claim.saleId, claim.lotNumber].filter((x) => x != null).join("-") || claim.lotUrl || "unknown",
+        attributionLevel: (attr as any)?.attributionConclusion?.attributionLevel ?? null,
+      });
+      if (r.refusedBatch) console.log(`[Attributed lot] comps write-back: batch refused — ${r.refusedBatch}`);
+      else console.log(`[Attributed lot] comps write-back: ${r.written} written, ${r.skipped.length} skipped${r.skipped.length ? ` (${[...new Set(r.skipped.map((s) => s.reason))].join("; ")})` : ""}`);
+      return r;
+    } catch (err: any) {
+      console.warn(`[Attributed lot] comps write-back failed: ${err?.message ?? err}`);
+      return null;
+    }
+  }
+
   protected overrideEvidenceCells(ev: EvidenceAgentOutput, _appraiserInput?: AppraiserInputResult): EvidenceAgentOutput {
     const claim = this.activeClaim;
     if (!claim || !ev.artistEvidence) return ev;
@@ -3758,6 +3786,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     console.log(`[Attributed lot] routing: Stage 2b ${routing.stage2bSkipped ? "SKIPPED" : "RUNS"} — ${routing.reason}`);
 
     let attr: AttributionResearchResult;
+    let researchCompWrite: Awaited<ReturnType<typeof writeResearchComps>> | null = null;
     if (routing.stage2bSkipped) {
       emit({ stage: "stage2b", status: "done", message: "Specialist research skipped — catalogue attribution verified against the graph", percent: 80 });
       attr = synthesizeAttributionResult({ claim, canonicalArtist: canonical, verification, workFacts, triage: triageResult });
@@ -3770,6 +3799,10 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
         // A production attributed lot has a listing too; the guard is not a testing feature.
         { house: claim.house, saleId: claim.saleId, lotNumber: claim.lotNumber, listingUrl: claim.lotUrl },
       );
+      // ADR-0007's comps slice: the realised prices Stage 2b just found are otherwise used
+      // once and discarded. Write-back is deterministic post-processing, never a tool the
+      // model chooses to call, and it cannot fail the lot.
+      researchCompWrite = await this.persistResearchComps(attr, canonical, work, claim);
       console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
       emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
     }
@@ -3794,7 +3827,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     report.stage2aResult = triageResult;
     const mid = claim.estimateLow && claim.estimateHigh ? (claim.estimateLow + claim.estimateHigh) / 2 : null;
     report.attributedLot = {
-      claim, verification, routing,
+      claim, verification, routing, researchCompWrite,
       compsSummary: comps?.summary ?? null,
       sellThrough: workFacts?.sellThrough ?? null,
       driftAnchor: mid ? mid * ESTIMATE_DRIFT : null,

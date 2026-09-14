@@ -776,6 +776,8 @@ export interface AttributedLotReport {
   claim: CatalogueAttribution;
   verification: AttributedLotVerification;
   routing: AttributedLotRouting;
+  /** ADR-0007 comps write-back outcome, when Stage 2b ran. Null when it did not. */
+  researchCompWrite?: { written: number; skipped: { reason: string; listingUrl?: string | null; title?: string | null }[]; refusedBatch: string | null } | null;
   compsSummary: ComparablesResult["summary"] | null;
   sellThrough: WorkFacts["sellThrough"] | null;
   driftAnchor: number | null;

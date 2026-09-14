@@ -154,10 +154,47 @@ the remaining variance surface").
 **Gate:** the stability protocol (5 fixtures x 4 reps, then the 10 unseen pool lots) — the
 stable-lot count should rise and agreement should approach 100% on the tree half.
 
-### 5. Comps write-back (ADR-0007) stays gated on Phase 0
+### 5. Comps write-back (ADR-0007) — BUILT 2026-09-14, hammer basis only
 
-`src/appraisal/comp_storability.ts` measures whether Stage 2b comps are storable (key, numeric
-price, hammer-vs-premium basis). Until it reports, do not build the write-back.
+Phase 0 reported: on the first attributed lots to reach it, `comp_storability` scored 4/4
+storable on key and price and 0/4 on hammer basis — every comp came back premium-inclusive.
+The write-back was built anyway, with that as the load-bearing gate rather than a reason not
+to start, because the alternative is discarding a hammer comp on the day one appears.
+
+`src/appraisal/knowledge_graph/write_research_comps.ts`. One SourceRecord per comp, linked
+straight to the ConceptualWork:
+
+    (:SourceRecord {sourceType:'agent_research', reliabilityTier:'agent_derived'})
+       -[:PRICES]->(:ConceptualWork)  and  -[:ATTRIBUTED_TO]->(:Artist)
+
+No Impression and no EditionRun are created. An ingested auction record hangs off an Impression
+because the catalogue describes a specific sheet; a web result says a sale of THIS WORK happened
+at a price and does not say which edition run. Inventing an Impression would assert the thing we
+did not learn. That shape is also the containment: `queryAuctionComparables` walks
+ConceptualWork -> EditionRun -> Impression <- SourceRecord and filters `sourceType = 'auction'`,
+so these rows are structurally unreachable from it and cannot become silent peers of Bonhams
+data. `queryResearchComps` is a separate, opt-in read (ADR-0007 Decision 4).
+
+Seven gates, each from a specific failure: hammer basis only (ADR-0016; a premium figure
+written as hammer is the 25-30% error repair_bonhams undid across 39,914 rows); a citation URL
+(ADR-0007 Decision 3, and it is the dedupe key); a numeric price and a currency code; a sale
+date and a house; the artist MATCHed never MERGEd (ADR-0007 Decision 5); the work resolved on an
+UNAMBIGUOUS EXACT basis only — exact_title / citation / citation_and_title, never the
+stripped-title or typo-tolerant levels, because the no-fuzzy rule is about writes; and the sale
+not already in the graph by URL or house+sale+lot. GBP is set only for GBP-native prices;
+everything else is left to `backfill_fx_gbp.py`, which owns sale-date FX.
+
+Verified end to end 2026-09-14 against the live graph with a synthetic record, since no real
+hammer-basis comp has appeared yet: the write lands and reads back; a comp whose sale is already
+ingested is skipped naming the existing record (`bonhams-32236-108-record`); a re-run is
+idempotent on the deterministic id; `queryAuctionComparables` cannot see the written row; and
+all four batch refusals fire (read-side work basis, attribution below probable, work unresolved,
+artist absent). The synthetic record was deleted; the graph holds no agent_research
+SourceRecords. On the live Baldessari lot: 0 written, 4 skipped, all `basis_not_hammer`.
+
+Two bugs the tests caught rather than review: `Date.parse("23 June 2026")` plus `toISOString()`
+wrote 2026-06-22 under BST, and V8 accepted "summer 2026" as a date. Dates are now formatted
+from local components and a string naming no day is refused.
 
 ## Step 1 result (2026-09-13) — the gate did not pass the way the plan assumed
 
