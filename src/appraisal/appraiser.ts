@@ -1479,11 +1479,27 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     // (web_search) with no client action needed. Either way, finalise: keep tools defined
     // (Anthropic requires consistent tool schemas across a conversation) but force no more
     // calls, and ask for pure JSON.
+    //
+    // EVERY tool_use must be answered, including on the way out. The loop exits with the
+    // model's last turn still holding a pending tool call whenever the round budget runs out
+    // mid-call, and pushing that assistant turn followed by a bare text instruction leaves an
+    // orphan the API rejects outright: "tool_use ids were found without tool_result blocks
+    // immediately after". Found 2026-09-14 while measuring Haiku at this stage — Haiku calls
+    // more tools per round than Sonnet and so reaches the budget with one live, which is why
+    // a latent bug in the exit path only ever showed up under the cheaper model.
     messages.push({ role: "assistant", content: data.content });
+    const pending = (data.content || []).filter((b: any) => b.type === "tool_use");
     messages.push({
       role: "user",
-      content: "Now output your final answer as a single valid JSON object only. No prose, no markdown, no explanation. Start with { and end with }.",
+      content: [
+        ...pending.map((b: any) => ({
+          type: "tool_result", tool_use_id: b.id,
+          content: `Not run: the research budget for this lot is spent (${MAX_ROUNDS} rounds). Answer from what you already have, and record anything still unresolved in unresolvedQuestions rather than guessing it.`,
+        })),
+        { type: "text", text: "Now output your final answer as a single valid JSON object only. No prose, no markdown, no explanation. Start with { and end with }." },
+      ],
     });
+    if (pending.length) console.log(`[4-Stage] Stage 2b: round budget spent with ${pending.length} tool call(s) pending — answered and finalising`);
 
     const finalData = await post(messages, true);
     const finalTextBlocks = finalData.content?.filter((b: any) => b.type === "text") || [];

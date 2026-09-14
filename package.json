@@ -25,6 +25,7 @@
     "test:price-profile": "tsx tests/knowledge_graph/price_profile_tests.ts",
     "test:price-attrs": "tsx tests/knowledge_graph/price_attrs_tests.ts",
     "test:research-comps": "tsx tests/knowledge_graph/research_comps_tests.ts",
+    "compare:stage2b": "tsx tests/backtest/compare_stage2b_models.ts",
     "test:attributed-lot": "tsx tests/appraisal/attributed_lot_tests.ts",
     "test:search-scope": "tsx tests/appraisal/search_scope_tests.ts",
     "backtest:attributed-lot": "tsx tests/backtest/run_attributed_lot.ts",

@@ -781,6 +781,67 @@ descriptions use, with `&amp;` decoded LAST so an escaped entity stays literal. 
 re-run: artist coverage 263/268 -> 267/268, works resolved 141 -> 142. The one genuine miss left
 is Rachel Jones, who is not in the graph.
 
+### Stage 2b: Haiku measured against Sonnet (2026-09-14) — REJECTED as configured
+
+Four lots, both arms, same code, $1.13 of a $2 budget. `npm run compare:stage2b` scores research
+BEHAVIOUR rather than prose: did it search, does every figure carry a URL, do those URLs resolve
+when HEAD-requested, does it agree on artist/level/catalogue, and does it record what it could
+not find. A citation that 404s is the signature of a fabricated source and is the number that
+decides this.
+
+| | Sonnet 4.6 | Haiku 4.5 |
+|---|---:|---:|
+| cost per lot | $0.196 | $0.069 (65% less) |
+| seconds per lot | ~166 | ~106 |
+| Stage 2b calls, 4 lots | 15 | 9 |
+| comps returned / storable | 21 / 17 | 11 / 8 |
+| citations live | 23/24 | 9/10 |
+| unresolved questions recorded | 15 | 18 |
+| artist agreement | — | 4/4 same |
+| final estimate | — | identical on 2, near on 2 |
+
+Cheaper, faster, agrees on WHO, and honestly records more of what it could not resolve. And it
+is still not safe here, because the failures are not spread evenly — they correlate with
+under-searching, and when it under-searches it fills the gap instead of leaving it empty.
+
+- **A0793/530 (Nick Smith), the GOOD failure.** One search, zero comps, and unresolved questions
+  naming the gap ("Auction market data for Nick Smith giclée prints"). Sonnet found six cited,
+  live comps. Haiku found nothing and said so, which is safe and merely worse.
+- **A0793/420 (Cindy Sherman), the DISQUALIFYING one.** One search, then three comps with NO URL
+  and basis "unknown" — "Untitled Film Still #96" at Bonhams London £1,875, "Untitled
+  (Centerfolds)" at Sotheby's £2,400, "Untitled (History Portraits)" at Christie's £3,200. These
+  are the artist's most famous series at small-print prices; a Tavily check for each returns only
+  generic artist pages. Re-run to test reproducibility: one search again, two comps again with no
+  URL and unknown basis, and **the same £1,875 attached to a different title**. That recurring
+  figure is the tell — the numbers are being generated, not recalled or retrieved.
+
+This is the exact failure ADR-0006/ADR-0016 recorded for qwen3-max: accept the search tool, make
+a token call, answer from parametric memory. It is why Stage 2b is on Sonnet at all, and the
+measurement says the reason still holds.
+
+**The containment worked, and that is the other finding.** All three uncited comps scored 0
+storable and the write-back rejected every one, so nothing reached the graph. But they DID reach
+Stage 3's prompt as "Stage 2b web-research comps". The citation requirement is enforced at
+write-back and not at the point where comps enter the valuation. The estimates happened to match
+here, which is luck, not design. **Filtering uncited comps before Stage 3 sees them is worth
+doing whatever model runs 2b** — the specialist prompt already says "a price you cannot point at
+a URL for is not a verified comparable", and nothing enforces it.
+
+Not a flat no: on 2 of 4 lots (Chagall, Baldessari) Haiku searched 3-4 times and produced cited,
+live, storable comps agreeing with Sonnet. It is unreliable rather than incapable, and the
+unreliability is legible in the run (search count, citation rate). A gated design — Haiku first,
+escalate to Sonnet when the search count or citation rate falls short — is measurable from here,
+and would be the way to bank the 65% without the exposure. Two mild concerns for that design:
+Haiku called "definitive" where Sonnet said "probable" on 2 of 4, and was less specific on the
+catalogue raisonné (Cramer vs "Vollard; Cramer bk. 30").
+
+**Found while measuring:** Stage 2b's exit path pushed the model's final turn while a tool call
+was still pending, leaving an orphan the API rejects ("tool_use ids were found without
+tool_result blocks"). Haiku calls more tools per round, reaches the 4-round budget with one
+live, and so hit a latent bug Sonnet had been walking past. Every pending call is now answered
+on the way out, telling the model the budget is spent and to record what is unresolved rather
+than guess it. Stage 2a's loop was already correct.
+
 Observed, not yet acted on:
 - An upcoming lot ALREADY INGESTED into the graph is excluded by saleId + lotNumber, and the
   Bonhams ingest stores preview lots as lotNumber 0 (no number is parseable from a preview
