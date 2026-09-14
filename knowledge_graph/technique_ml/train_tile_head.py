@@ -264,6 +264,15 @@ def evaluate(d, classes, kinds, k, seed, epochs, device, out_path, lr=5e-4, args
     results = {"n_images": len(Y), "n_artists": len(set(groups)), "n_fine": int(d["HF"].sum()),
                "positives": {c: int(Y[:, i].sum()) for i, c in enumerate(classes)}, "models": {}}
     print(f"{len(Y)} images, {len(set(groups))} artists, fine-scale {int(d['HF'].sum())}, positives {results['positives']}")
+    # class x institution cross-tab: the confound check that the Phase 0 sample never had.
+    insts = sorted(set(d["inst"].tolist()))
+    print("  class x institution (positives per institution / negatives per institution):")
+    xtab = {}
+    for c, cname in enumerate(classes):
+        row = {i: (int(((d["inst"] == i) & (Y[:, c] == 1)).sum()), int(((d["inst"] == i) & (Y[:, c] == 0)).sum())) for i in insts}
+        xtab[cname] = row
+        print(f"    {cname[:10]:10s} " + "  ".join(f"{i[:9]}:{p}/{n}" for i, (p, n) in row.items()))
+    results["class_by_institution"] = xtab
     for kind in kinds:
         X, M, S = build_inputs(d, kind)
         oof = np.zeros_like(Y)

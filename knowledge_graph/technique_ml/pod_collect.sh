@@ -2,12 +2,12 @@
 # Copy the extraction shards off the pod as a tar stream (no rsync dependency), verify them
 # locally, and ONLY THEN print SAFE-TO-TERMINATE. Never terminates anything itself.
 set -u
-HOST=$1; PORT=$2; DEST=${3:-$HOME/PycharmProjects/claude_printmasterAI-deepdive/knowledge_graph/technique_ml/data/tiles_pilot}
+HOST=$1; PORT=$2; DEST=${3:-$HOME/PycharmProjects/claude_printmasterAI-deepdive/knowledge_graph/technique_ml/data/tiles_pilot}; REMOTE=${4:-tiles}
 KEY=$HOME/.ssh/runpod_ed25519
 mkdir -p "$DEST"
 echo "--- streaming tiles/ from pod"
-ssh -i "$KEY" -p "$PORT" -o BatchMode=yes root@$HOST "cd /root/phase2/phase2_bundle && tar czf - tiles extract.log" | tar xzf - -C "$DEST" --strip-components=0 || { echo "COPY FAILED"; exit 1; }
-[ -d "$DEST/tiles" ] && { mv "$DEST"/tiles/* "$DEST"/ && rmdir "$DEST/tiles"; }
+ssh -i "$KEY" -p "$PORT" -o BatchMode=yes root@$HOST "cd /root/phase2/phase2_bundle && tar czf - $REMOTE extract.log" | tar xzf - -C "$DEST" --strip-components=0 || { echo "COPY FAILED"; exit 1; }
+[ -d "$DEST/$REMOTE" ] && { mv "$DEST"/$REMOTE/* "$DEST"/ && rmdir "$DEST/$REMOTE"; }
 du -sh "$DEST"; ls "$DEST" | head -20
 echo "--- verify"
 ~/PycharmProjects/claude_printmasterAI/knowledge_graph/venv-embeddings/bin/python - "$DEST" <<'PY' 2>&1 | grep -v -i warn
