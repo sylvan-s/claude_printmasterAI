@@ -847,6 +847,50 @@ present. Flow:
 
 Not built: a Forum URL fetcher (Roseberys only), and a UI field for the claim.
 
+**Addendum 2026-09-14 — Roseberys vs Bonhams, and a confound the Forum comparison didn't have.**
+Bonhams has no local catalogue CSV like Roseberys/Forum (`benchmark/data/bonhams/` was empty);
+`tests/backtest/_pull_bonhams_catalogue.ts` reads it back out of the graph instead (52,155 dated
+lots with a valid estimate) and `comps_hammer_backtest.ts --source bonhams` now runs the same
+harness against it. Re-running the estimate-residual report with Bonhams as house B:
+
+| | Roseberys | Forum (first run) | Bonhams |
+|---|---|---|---|
+| Pooled-model residual, 95% CI | **-0.117** [-0.163, -0.073] (×0.89) | -0.117 [-0.191, -0.041] (×0.89) | **+0.015** [-0.018, 0.051] — not significant |
+
+Roseberys's residual FLIPPED from not-significant (paired against Forum) to significantly
+negative (paired against Bonhams) — the same house, two different verdicts, because the
+comparison house changed. That is the tell: this isn't measuring Roseberys in isolation, it's
+measuring Roseberys relative to whichever house is in the pool.
+
+**Why, and why Bonhams is not a clean comparison house for this model.** `build_priors.py`'s
+`REFS` sets `"house": "Bonhams"` — Bonhams is the priors model's own reference level, so
+`house_Bonhams`'s coefficient is 0 by construction and every other house's coefficient is
+measured relative to it. Bonhams also supplies the large majority of the hammer-priced rows
+the priors model and the same-work/tier comps corpus were built from (ADR-0016: 38,663 of
+48,078 dated comps). So a near-zero Bonhams residual here is close to tautological — the
+"provenance/comps" witness is itself substantially built FROM Bonhams sales — while Forum has
+no realised prices at all and isn't a reference level for anything, making it the honest
+out-of-population test the first run actually was. The Roseberys-vs-Bonhams gap mostly
+reproduces the already-known house-level pricing tier ([[project_pricing_model_findings]]:
+Roseberys ×0.36–0.95 of Bonhams, pooled ×0.51) rather than isolating a new "house incentive net
+of evidence" signal the way the Forum comparison did.
+
+**One number from the cross-house transfer survives that caveat.** Roseberys's own fitted
+relationship, applied to Bonhams's lots, predicts them almost exactly (residual +0.022 — closer
+to zero than Roseberys predicting its own training data, -0.078, which is ordinary log-price
+skew, not a fitting error). Bonhams's own fitted relationship, applied to Roseberys's lots,
+misses badly (-0.219, worse than the pooled estimate). That asymmetry doesn't depend on which
+house is the reference level — it says the way Roseberys weighs evidence when writing an
+estimate is compatible with Bonhams' price levels, but not the reverse, which is a real,
+if modest, piece of evidence beyond the already-known house tier.
+
+**Practical conclusion:** this model isolates a genuine house-specific estimate-setting effect
+only when compared against a house that isn't itself baked into the evidence side of the
+regression. Forum qualifies; Bonhams doesn't, and any third house added later needs the same
+check before its residual is read as "house incentive" rather than "distance from the
+reference house by construction."
+
+
 ### Decisions taken on the path (2026-09-13, evening)
 
 - **Stage 1a and 1b are OFF on the attributed method.** The catalogue states technique, signature,

@@ -81,7 +81,7 @@ import { mapTechniqueToAckgVocabulary } from "../../src/appraisal/stage2a_query_
 const argv = process.argv.slice(2);
 const arg = (n: string, d?: string) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i + 1] : d; };
 const has = (n: string) => argv.includes(`--${n}`);
-const SOURCE = (arg("source", "forum") as "roseberys" | "forum" | "both");
+const SOURCE = (arg("source", "forum") as "roseberys" | "forum" | "bonhams" | "both");
 const SALES = arg("sales")?.split(",").map((s) => s.trim()).filter(Boolean) ?? null;
 const LIMIT = Number(arg("limit", "0"));
 const SEED = Number(arg("seed", "1"));
@@ -158,7 +158,7 @@ function readCsv(path: string): Record<string, string>[] {
 }
 
 interface Lot {
-  source: "roseberys" | "forum";
+  source: "roseberys" | "forum"; // "bonhams" lots are tagged source:"roseberys" (see loadBonhams) — house identity travels separately, see BONHAMS_HOUSE below
   saleId: string;
   lotNumber: number;
   saleDate: string;
@@ -187,6 +187,12 @@ interface Lot {
   heightCm: number | null;
 }
 const numOrNull = (v: string | undefined) => (Number(v) > 0 ? Number(v) : null);
+/** Populated in main() when --source bonhams is used, so processLot can tag blend inputs with
+ *  the real house even though loadBonhams() reuses the "roseberys" Lot shape. */
+const BONHAMS_HOUSE = new Set<string>();
+/** The graph's real institutionName for a lot — needed for LOT_ATTRS and priorsModelPrediction's
+ *  house term, since loadBonhams() reuses the "roseberys" Lot shape (see BONHAMS_HOUSE above). */
+const houseName = (lot: Lot): string => (BONHAMS_HOUSE.has(lot.saleId) ? "Bonhams" : lot.source === "roseberys" ? "Roseberys London" : "Forum Auctions");
 
 function loadRoseberys(): Lot[] {
   const dates = JSON.parse(readFileSync("knowledge_graph/roseberys_sale_dates.json", "utf8")).sales as Record<string, { saleDate: string }>;
@@ -215,6 +221,46 @@ function loadRoseberys(): Lot[] {
       signed: r.signed === "yes" ? true : r.signed === "no" ? false : null,
       editionSize: Number(r.edition_size) > 0 ? Number(r.edition_size) : null,
       editionNote: r.edition_note?.trim() || null, widthCm: numOrNull(r.width_cm), heightCm: numOrNull(r.height_cm),
+    });
+  }
+  return out;
+}
+
+/** Bonhams has no separate pre-ingest catalogue CSV (unlike Roseberys/Forum) — its data only
+ *  exists already-ingested in the graph, so this reads back the export written by
+ *  tests/backtest/_pull_bonhams_catalogue.ts rather than a scraped catalogue. Self-match
+ *  exclusion (excludeSaleLot/excludeListingUrl in queryAuctionComparables) still applies, so a
+ *  Bonhams lot cannot value itself off its own realised price — but Bonhams is ~80% of the
+ *  graph's dated corpus, so a Bonhams lot's comps are overwhelmingly OTHER Bonhams sales
+ *  (legitimate: a valuer would see them) rather than a genuinely cross-house test. Premium
+ *  ratio is measured per-sale exactly as for Roseberys, since priceRealisedGBP is populated. */
+function loadBonhams(): Lot[] {
+  const rows = JSON.parse(readFileSync("benchmark/data/bonhams/catalogue.json", "utf8")) as {
+    artist: string; title: string | null; rawMedium: string | null; saleId: string; lotNumber: number | null; saleDate: string;
+    lowEst: number | null; highEst: number | null; sold: boolean; hammer: number | null; realised: number | null; listingUrl: string | null;
+    signed: boolean | null; editionSize: number | null; plateDims: string | null; imageDims: string | null; sheetDims: string | null;
+  }[];
+  const ratios: Record<string, number[]> = {};
+  for (const r of rows) if (r.sold && r.hammer && r.hammer > 0 && r.realised && r.realised > 0) (ratios[r.saleId] ??= []).push(r.realised / r.hammer);
+  const premium: Record<string, number> = {};
+  for (const [k, v] of Object.entries(ratios)) { v.sort((a, b) => a - b); premium[k] = v[Math.floor(v.length / 2)]; }
+  const dimsCm = (s: string | null): { widthCm: number | null; heightCm: number | null } => {
+    const m = s?.match(/([\d.]+)\s*x\s*([\d.]+)\s*cm/i);
+    return m ? { widthCm: Number(m[1]), heightCm: Number(m[2]) } : { widthCm: null, heightCm: null };
+  };
+  const out: Lot[] = [];
+  for (const r of rows) {
+    if (!r.artist || !r.lotNumber) continue;
+    const dims = dimsCm(r.sheetDims ?? r.imageDims ?? r.plateDims);
+    out.push({
+      source: "roseberys", // reuses the "roseberys"-shaped Lot; distinguished via a synthetic house tag below
+      saleId: r.saleId, lotNumber: r.lotNumber, saleDate: r.saleDate,
+      artistRaw: r.artist, artist: cleanArtist(r.artist), qualifier: "certain",
+      title: unesc(r.title ?? "").trim(), medium: r.rawMedium ?? "", lowEst: r.lowEst ?? 0, highEst: r.highEst ?? 0,
+      sold: r.sold, hammer: r.hammer && r.hammer > 0 ? r.hammer : null, realised: r.realised && r.realised > 0 ? r.realised : null,
+      premiumRatio: premium[r.saleId] ?? 1.25, premiumBasis: premium[r.saleId] ? "measured" : "assumed",
+      listingUrl: r.listingUrl, catalogueRefs: null, signed: r.signed ?? null, editionSize: r.editionSize ?? null,
+      editionNote: null, widthCm: dims.widthCm, heightCm: dims.heightCm,
     });
   }
   return out;
@@ -329,7 +375,7 @@ LIMIT 1`;
 async function lotAttrsFromGraph(lot: Lot): Promise<PriceAttrs | null> {
   const s = getDriver().session({ database: getDatabase() });
   try {
-    const r = await s.run(LOT_ATTRS, { saleId: lot.saleId, lotNumber: lot.lotNumber, house: lot.source === "roseberys" ? "Roseberys London" : "Forum Auctions" });
+    const r = await s.run(LOT_ATTRS, { saleId: lot.saleId, lotNumber: lot.lotNumber, house: houseName(lot) });
     const rec = r.records[0]; if (!rec) return null;
     const n = (v: any) => (v == null ? null : typeof v === "number" ? v : v.toNumber?.() ?? null);
     return priceAttrsOfComparable({
@@ -414,11 +460,11 @@ async function processLot(lot: Lot): Promise<Row> {
       const profile = await priceProfile(id.canonical);
       const fromGraph = profile ? await lotAttrsFromGraph(lot) : null;
       const lotAttrs = fromGraph ?? priceAttrsOfLot({ text: [lot.medium, lot.editionNote].filter(Boolean).join(", "), techniques: base.technique ? [base.technique] : null, signed: lot.signed, editionSize: lot.editionSize, widthCm: lot.widthCm, heightCm: lot.heightCm });
-      const pred = profile ? priorsModelPrediction(lotAttrs, profile, { saleDate: lot.saleDate, house: lot.source === "roseberys" ? "Roseberys London" : "Forum Auctions" }) : null;
+      const pred = profile ? priorsModelPrediction(lotAttrs, profile, { saleDate: lot.saleDate, house: houseName(lot) }) : null;
       const t2 = tierStat(c, "same_artist_technique"), t3 = tierStat(c, "same_artist");
       base.blend = {
         inputs: {
-          saleDate: lot.saleDate, house: lot.source,
+          saleDate: lot.saleDate, house: BONHAMS_HOUSE.has(lot.saleId) ? "bonhams" : lot.source,
           estimate: lot.lowEst > 0 && lot.highEst > 0 ? { lowGBP: lot.lowEst, highGBP: lot.highEst } : null,
           sameWork: c.comparables.filter((x) => x.tier === "same_work" && x.hammerPriceGBP != null && x.hammerPriceGBP > 0).map((x) => ({ hammerGBP: x.hammerPriceGBP!, saleDate: x.saleDate })),
           sameArtistTechnique: t2.n > 0 && t2.medianHammer != null ? { n: t2.n, medianHammerGBP: t2.medianHammer } : null,
@@ -696,6 +742,7 @@ async function main() {
   let lots: Lot[] = [];
   if (SOURCE === "roseberys" || SOURCE === "both") lots.push(...loadRoseberys());
   if (SOURCE === "forum" || SOURCE === "both") lots.push(...loadForum());
+  if (SOURCE === "bonhams") { const bh = loadBonhams(); for (const l of bh) BONHAMS_HOUSE.add(l.saleId); lots.push(...bh); }
   if (SALES) lots = lots.filter((l) => SALES.includes(l.saleId));
   if (!INCLUDE_QUALIFIED) lots = lots.filter((l) => l.qualifier === "certain");
   if (SOLD_ONLY) lots = lots.filter((l) => l.sold && l.hammer);
