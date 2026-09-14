@@ -757,6 +757,30 @@ prohibition is usually describing a real signal badly. Clause H stopped the mode
 discounts from uncertainty; it could not stop it reaching for a fact the rule wrongly excluded.
 Measure the threshold before forbidding what falls outside it.
 
+### Two smaller defects, fixed 2026-09-14
+
+**A preview lot counted itself as a failed appearance.** The sale under appraisal is never
+evidence about itself, and matching on sale + lot number does not enforce that: the Bonhams
+ingest stores a preview lot with `lotNumber` 0 because no number is parseable from a preview
+URL, so a claim keyed on the house's internal id (6181803) missed its own record. Measured on
+Bonhams 32240: sell-through read 1/3 instead of 1/2 and Stage 3 took 12% off for it.
+`queryWorkFacts` and `queryAuctionComparables` gained an opt-in `excludeSaleId` that drops
+EVERY record of a sale, and the attributed path passes the claim's sale. Verified live: 1/3 ->
+1/2, while the same-work comp from the June sale correctly survives. Deliberately opt-in rather
+than derived from `excludeSaleLot`, because the backtest scores PAST sales where another lot in
+the same sale is legitimate evidence, and widening it there would move measured results.
+
+**Four of five unresolved artists were an HTML entity, not a graph gap.** `htmlToLines` decoded
+a hand-written allowlist of nine accented letters, and the two that mattered were not on it, so
+"Salvador Dal&iacute;" and "Andr&eacute; Bic&acirc;t" reached `resolveArtistIdentity` with the
+entity intact and matched nothing — though Dalí has 990 works in the graph. A partial decoder is
+worse than none: what survives is a plausible-looking string that silently fails every exact
+match downstream. Replaced with `decodeHtmlEntities` in `src/shared/text_extraction.ts`: the
+full Latin-1 letter set, decimal and hex numeric references, and the punctuation auction
+descriptions use, with `&amp;` decoded LAST so an escaped entity stays literal. A0793 screen
+re-run: artist coverage 263/268 -> 267/268, works resolved 141 -> 142. The one genuine miss left
+is Rachel Jones, who is not in the graph.
+
 Observed, not yet acted on:
 - An upcoming lot ALREADY INGESTED into the graph is excluded by saleId + lotNumber, and the
   Bonhams ingest stores preview lots as lotNumber 0 (no number is parseable from a preview

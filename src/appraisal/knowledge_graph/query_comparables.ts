@@ -131,6 +131,9 @@ export interface ComparablesParams {
   excludeListingUrl?: string | null;
   /** Backtest circularity guard — drop a specific sale/lot pair. */
   excludeSaleLot?: { saleId: string; lotNumber: number } | null;
+  /** Exclude EVERY record of this sale. See queryWorkFacts.excludeSaleId for why sale + lot
+   *  number is not sufficient on a preview lot, and why this is opt-in. */
+  excludeSaleId?: string | null;
   limit?: number;
 }
 
@@ -154,7 +157,8 @@ WHERE src.sourceType = 'auction'
   AND ($sinceDate IS NULL OR src.saleDate >= $sinceDate)
   AND ($untilDate IS NULL OR substring(src.saleDate, 0, 10) < $untilDate)
   AND ($excludeListingUrl IS NULL OR src.listingUrl IS NULL OR src.listingUrl <> $excludeListingUrl)
-  AND ($excludeSaleId IS NULL OR NOT (src.saleId = $excludeSaleId AND src.lotNumber = $excludeLotNumber))
+  AND ($excludeLotSaleId IS NULL OR NOT (src.saleId = $excludeLotSaleId AND src.lotNumber = $excludeLotNumber))
+  AND ($excludeWholeSaleId IS NULL OR src.saleId IS NULL OR src.saleId <> $excludeWholeSaleId)
 OPTIONAL MATCH (imp)-[:USES_TECHNIQUE]->(t:Technique)
 WITH cw, src, er, imp, collect(DISTINCT t.name) AS techniques
 // Tier must be decided HERE, not after LIMIT. Ordering by saleDate alone and tiering in
@@ -275,8 +279,9 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
       sinceDate: params.sinceDate ?? null,
       untilDate: params.untilDate ?? null,
       excludeListingUrl: params.excludeListingUrl ?? null,
-      excludeSaleId: params.excludeSaleLot?.saleId ?? null,
+      excludeLotSaleId: params.excludeSaleLot?.saleId ?? null,
       excludeLotNumber: params.excludeSaleLot ? neo4j.int(params.excludeSaleLot.lotNumber) : null,
+      excludeWholeSaleId: params.excludeSaleId?.trim() || null,
       limit: neo4j.int(limit),
     });
 

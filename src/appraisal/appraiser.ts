@@ -3759,7 +3759,9 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
             }
           }
         }
-        if (wi.workIds.length) workFacts = await queryWorkFacts(wi.workIds, { excludeSaleLot: saleLot, untilDate: claim.saleDate ?? null });
+        // The sale under appraisal is never evidence about itself — and on a preview lot the
+        // sale+lot key alone misses, because the ingest stores no usable lot number.
+        if (wi.workIds.length) workFacts = await queryWorkFacts(wi.workIds, { excludeSaleLot: saleLot, excludeSaleId: claim.saleId ?? null, untilDate: claim.saleDate ?? null });
         comps = await queryAuctionComparables({
           artistName: canonical,
           conceptualWorkIds: wi.workIds,
@@ -3769,6 +3771,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
           untilDate: claim.saleDate ?? null,
           excludeListingUrl,
           excludeSaleLot: saleLot,
+          excludeSaleId: claim.saleId ?? null,
           limit: STAGE3_COMPS_LIMIT,
         });
         console.log(`[Attributed lot] comps: same_work ${comps.summary.tierCounts.same_work}, same_artist_technique ${comps.summary.tierCounts.same_artist_technique}, same_artist ${comps.summary.tierCounts.same_artist}${comps.summary.medianSameWorkHammerGBP != null ? `; same-work median hammer ${comps.summary.medianSameWorkHammerGBP.toFixed(0)} GBP` : ""}`);

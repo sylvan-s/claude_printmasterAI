@@ -34,8 +34,9 @@ MATCH (cw:ConceptualWork) WHERE cw.id IN $ids
 MATCH (cw)-[:PRINTED_AS]->(er:EditionRun)-[:INCLUDES]->(i:Impression)
 OPTIONAL MATCH (s:SourceRecord)-[:DOCUMENTS]->(i)
 WITH cw, er, i, s
-WHERE $excludeSaleId IS NULL OR s IS NULL OR s.saleId IS NULL
-   OR NOT (s.saleId = $excludeSaleId AND s.lotNumber = $excludeLotNumber)
+WHERE (s IS NULL OR s.saleId IS NULL
+       OR ($excludeLotSaleId IS NULL OR NOT (s.saleId = $excludeLotSaleId AND s.lotNumber = $excludeLotNumber)))
+  AND (s IS NULL OR s.saleId IS NULL OR $excludeWholeSaleId IS NULL OR s.saleId <> $excludeWholeSaleId)
 OPTIONAL MATCH (i)-[:USES_TECHNIQUE]->(t:Technique)
 WITH cw, er, i, s, collect(DISTINCT t.name) AS techs
 RETURN collect(DISTINCT cw.name) AS names,
@@ -70,15 +71,34 @@ function dedupeDims(strs: unknown[]): [number, number][] {
 
 export async function queryWorkFacts(
   workIds: string[],
-  opts: { excludeSaleLot?: { saleId: string; lotNumber: number } | null; untilDate?: string | null } = {},
+  opts: {
+    excludeSaleLot?: { saleId: string; lotNumber: number } | null;
+    /**
+     * Exclude EVERY record of this sale, not just the one lot.
+     *
+     * The sale under appraisal is never evidence about itself, and matching on sale + lot
+     * number is not enough to enforce that. Bonhams ingests a preview lot with lotNumber 0
+     * because no number is parseable from a preview URL, so a claim keyed on the house's
+     * internal id missed its own record and counted this lot as a failed prior appearance
+     * (measured on Bonhams 32240: sell-through read 1/3 instead of 1/2, and Stage 3 took 12%
+     * off for it). A sibling lot of the same work in the same sale is the same problem.
+     *
+     * Deliberately opt-in rather than derived from excludeSaleLot: the backtest harness scores
+     * PAST sales where another lot in the same sale is legitimate evidence, and silently
+     * widening the exclusion there would move measured results.
+     */
+    excludeSaleId?: string | null;
+    untilDate?: string | null;
+  } = {},
 ): Promise<WorkFacts | null> {
   if (!workIds.length) return null;
   const session = getDriver().session({ database: getDatabase() });
   try {
     const res = await session.run(QUERY, {
       ids: workIds,
-      excludeSaleId: opts.excludeSaleLot?.saleId ?? null,
+      excludeLotSaleId: opts.excludeSaleLot?.saleId ?? null,
       excludeLotNumber: opts.excludeSaleLot ? neo4j.int(opts.excludeSaleLot.lotNumber) : null,
+      excludeWholeSaleId: opts.excludeSaleId?.trim() || null,
       untilDate: opts.untilDate ?? null,
     });
     const r = res.records[0];
