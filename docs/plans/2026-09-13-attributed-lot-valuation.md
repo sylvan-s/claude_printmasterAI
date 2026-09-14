@@ -819,13 +819,28 @@ This is the exact failure ADR-0006/ADR-0016 recorded for qwen3-max: accept the s
 a token call, answer from parametric memory. It is why Stage 2b is on Sonnet at all, and the
 measurement says the reason still holds.
 
-**The containment worked, and that is the other finding.** All three uncited comps scored 0
-storable and the write-back rejected every one, so nothing reached the graph. But they DID reach
-Stage 3's prompt as "Stage 2b web-research comps". The citation requirement is enforced at
-write-back and not at the point where comps enter the valuation. The estimates happened to match
-here, which is luck, not design. **Filtering uncited comps before Stage 3 sees them is worth
-doing whatever model runs 2b** — the specialist prompt already says "a price you cannot point at
-a URL for is not a verified comparable", and nothing enforces it.
+**The containment worked, and that is the other finding — now closed.** All three uncited comps
+scored 0 storable and the write-back rejected every one, so nothing reached the graph. But they
+DID reach Stage 3's prompt as "Stage 2b web-research comps": the citation requirement was
+enforced at write-back and not at the point where comps enter the valuation, and the estimates
+matching was luck rather than design.
+
+`partitionCitedComps` now splits Stage 2b's comps at the Stage 3 boundary and only cited ones
+are rendered into the prompt. The gate is the CITATION alone — price basis is the write-back's
+concern, because a stored price in the wrong field is unrepairable, whereas for READING a cited
+comp with an unstated basis is still real evidence. Over-filtering here would discard findings
+that are true.
+
+What is withheld is REPORTED rather than swallowed, to the log and to Stage 3 itself: a stage
+that found five figures and could cite two is telling you something about the quality of that
+research, and the valuation should be able to see it. The raw ASA result keeps every comp for
+audit; only the prompt is filtered.
+
+Verified live on the lot that exposed it (A0793/420, Haiku): 2 comps returned, both uncited,
+both withheld, `[Stage 3 comps] withholding 2 uncited Stage 2b comp(s)`. Note that this run
+produced "Untitled Film Still #96" at GBP 1,875 for the THIRD time across three runs — the same
+title at the same price, still with no URL. Whatever that number is, it is not coming from a
+search.
 
 Not a flat no: on 2 of 4 lots (Chagall, Baldessari) Haiku searched 3-4 times and produced cited,
 live, storable comps agreeing with Sonnet. It is unreliable rather than incapable, and the
@@ -843,6 +858,11 @@ on the way out, telling the model the budget is spent and to record what is unre
 than guess it. Stage 2a's loop was already correct.
 
 Observed, not yet acted on:
+- Stage 3 took -60% for liquidity on that same run, on a work with ONE prior unsold appearance.
+  The never-sold limb is measured at 41% unsold against a 30% base, which justifies holding the
+  low estimate at or below the anchor, not a 60% cut. Same over-application pattern as the
+  clauses fixed on 2026-09-14: the model obeys the direction and invents the magnitude. The
+  block states the direction; it does not bound the size.
 - An upcoming lot ALREADY INGESTED into the graph is excluded by saleId + lotNumber, and the
   Bonhams ingest stores preview lots as lotNumber 0 (no number is parseable from a preview
   URL). Keying the claim on the Bonhams internal id missed it, and the lot counted its own

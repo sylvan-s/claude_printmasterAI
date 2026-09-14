@@ -137,6 +137,46 @@ export function assessComp(comp: Stage2bComp): CompAssessment {
   };
 }
 
+/**
+ * Split Stage 2b's comps into the ones Stage 3 may see and the ones it may not.
+ *
+ * The specialist prompt already states the rule — "Every figure you take from here must be
+ * attributable to one of the returned URLs; a price you cannot point at a URL for is not a
+ * verified comparable" — and until now nothing enforced it at the valuation boundary. The
+ * write-back gates on a citation, so an uncited comp could never reach the graph, but it
+ * reached Stage 3's prompt unchallenged. Measured 2026-09-14 while comparing Stage 2b models:
+ * Haiku returned three comps with no URL and no stated basis, naming Cindy Sherman's most
+ * famous series at small-print prices, and on a re-run produced the same GBP 1,875 against a
+ * different title. Those numbers were generated, not retrieved, and the only thing standing
+ * between them and a valuation was luck.
+ *
+ * The gate is the CITATION alone, deliberately. Price basis is the write-back's concern
+ * (a stored price in the wrong field is unrepairable); for reading, a cited comp with an
+ * unstated basis is still real evidence and Stage 3 is told to treat the basis as unknown.
+ * Over-filtering here would discard findings that are true.
+ *
+ * The dropped count is returned rather than swallowed, because a stage that found five figures
+ * and could cite two is telling you something about the quality of that research, and Stage 3
+ * should be able to see it.
+ */
+export function partitionCitedComps(comps: unknown): { cited: Stage2bComp[]; uncited: Stage2bComp[] } {
+  if (!Array.isArray(comps)) return { cited: [], uncited: [] };
+  const cited: Stage2bComp[] = [], uncited: Stage2bComp[] = [];
+  for (const c of comps as Stage2bComp[]) (isUsableUrl(c?.listingUrl) ? cited : uncited).push(c);
+  return { cited, uncited };
+}
+
+/** One line naming what was withheld and why, for the Stage 3 prompt and the run log. */
+export function describeUncitedComps(uncited: Stage2bComp[]): string {
+  if (!uncited.length) return "";
+  const named = uncited
+    .map((c) => `"${text(c.artworkTitle) || "untitled"}"${text(c.auctionHouse) ? ` (${text(c.auctionHouse)})` : ""}${typeof c.priceAmount === "number" ? ` at ${c.priceAmount}` : ""}`)
+    .slice(0, 6)
+    .join(", ");
+  return `${uncited.length} further web finding(s) were WITHHELD from you because they carry no citation URL: ${named}. ` +
+    `A price with no page behind it is not a comparable, and a research step that produces several of them is itself a signal that its findings are thin — weigh the rest accordingly.`;
+}
+
 export function assessComps(comps: unknown): CompStorabilityReport {
   const list: Stage2bComp[] = Array.isArray(comps) ? comps : [];
   const report: CompStorabilityReport = {
