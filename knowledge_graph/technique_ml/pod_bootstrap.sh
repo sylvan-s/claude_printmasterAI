@@ -5,8 +5,8 @@
 # launch under nohup. Collect with pod_collect.sh; terminate ONLY after SAFE-TO-TERMINATE.
 :
 set -a; source ~/PycharmProjects/claude_printmasterAI/.env 2>/dev/null; set +a; set -u
-HOST=$1; PORT=$2; KEY=$HOME/.ssh/runpod_ed25519   # usage: pod_bootstrap.sh <ip> <port> <bundle.tar.gz> [model] [out-dir]
-MODEL=${4:-facebook/dinov3-vitl16-pretrain-lvd1689m}; OUTDIR=${5:-tiles}
+HOST=$1; PORT=$2; KEY=$HOME/.ssh/runpod_ed25519   # usage: pod_bootstrap.sh <ip> <port> <bundle.tar.gz> [model] [out-dir] [manifest]
+MODEL=${4:-facebook/dinov2-large}; OUTDIR=${5:-tiles}; MANIFEST=${6:-phase2_pilot_intaglio.jsonl}
 BUNDLE=${3:?bundle.tar.gz path}
 pod() { ssh -i "$KEY" -p "$PORT" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o BatchMode=yes root@$HOST "$@"; }
 echo "--- ssh + gpu"
@@ -29,4 +29,4 @@ pod "mkdir -p /root/phase2 && cd /root/phase2 && tar xzf /root/phase2_bundle.tar
 echo "--- token"
 tr -d '\n' < ~/.cache/huggingface/token | pod "umask 077; cat > /root/.hf_token; wc -c < /root/.hf_token" || exit 1
 echo "--- launch"
-pod 'cd /root/phase2/phase2_bundle && (OMP_NUM_THREADS=1 HF_TOKEN=$(cat /root/.hf_token) nohup python technique_ml/extract_tile_embeddings.py --manifest phase2_pilot_intaglio.jsonl --out-dir '"$OUTDIR"' --model '"$MODEL"' --workers $(nproc) > /root/phase2/phase2_bundle/extract.log 2>&1 < /dev/null &); sleep 30; tail -3 /root/phase2/phase2_bundle/extract.log; pgrep -f "^python technique_ml" >/dev/null && echo RUNNING || echo NOT-RUNNING'
+pod 'cd /root/phase2/phase2_bundle && (OMP_NUM_THREADS=1 HF_TOKEN=$(cat /root/.hf_token) nohup python technique_ml/extract_tile_embeddings.py --manifest '"$MANIFEST"' --out-dir '"$OUTDIR"' --model '"$MODEL"' --workers $(nproc) > /root/phase2/phase2_bundle/extract.log 2>&1 < /dev/null &); sleep 30; tail -3 /root/phase2/phase2_bundle/extract.log; pgrep -f "^python technique_ml" >/dev/null && echo RUNNING || echo NOT-RUNNING'
