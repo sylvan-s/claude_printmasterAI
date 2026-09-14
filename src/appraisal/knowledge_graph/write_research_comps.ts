@@ -1,5 +1,5 @@
 /**
- * Stage 2b comps write-back — ADR-0007's auction-comp slice, hammer basis only.
+ * Stage 2b comps write-back — ADR-0007's auction-comp slice.
  *
  * Every realised price Stage 2b finds on the web is used for one appraisal and thrown away.
  * The same work researched next month is researched from scratch. This makes those findings
@@ -30,11 +30,26 @@
  *
  * THE GATES, in the order they are applied. Each one exists because of a specific failure:
  *
- *   1. basis === "hammer".  The graph's comparables are hammer-anchored (ADR-0016). A
- *      premium-inclusive figure written as though it were hammer overstates by 25-30%, which
- *      is the class of error repair_bonhams_price_realised.py had to undo across 39,914 rows.
- *      Measured on the first lots to reach this code, every comp came back premium_inclusive,
- *      so this gate rejects nearly everything today. That is the gate working, not failing.
+ *   1. a DETERMINATE basis — "hammer" or "premium_inclusive", never "unknown".
+ *
+ *      The first cut of this module admitted hammer only, and that was wrong. It conflated two
+ *      different things: putting a premium-inclusive figure in the HAMMER field, which is the
+ *      25-30% error repair_bonhams_price_realised.py had to undo across 39,914 rows, and
+ *      RECORDING a premium-inclusive figure as what it is, which is what every ingested record
+ *      already does. The SourceRecord schema has carried both since the start —
+ *      hammerPrice/hammerPriceGBP/hammerBasis alongside priceRealised/priceRealisedGBP — so the
+ *      honest thing is to write each number into the field that matches its basis. The old gate
+ *      threw away every comp on the first lots to reach it (4 of 4) for no safety gain.
+ *
+ *      What stays refused is "unknown". A number whose basis nobody stated cannot go in either
+ *      field without a guess, and a guess is unrepairable later because nothing records which
+ *      rows were guessed. The record also carries `priceBasisRecorded` explicitly, so a reader
+ *      never has to infer the basis from which field happens to be populated.
+ *
+ *      A premium-recorded comp leaves hammer NULL rather than dividing by an assumed premium.
+ *      Stage 3 anchors on hammer (ADR-0016), so such a row contributes nothing to a hammer
+ *      median — which is correct: it is evidence about what a buyer paid, not about the fall of
+ *      the hammer, and the house's own premium schedule is not known here.
  *   2. a citation URL.  ADR-0007 Decision 3: a finding with nothing behind it is an assertion,
  *      not a record. No URL, no write, and the URL is also the dedupe key.
  *   3. a numeric price and a currency.  ADR-0016 records a real hammerPrice field reading
@@ -61,8 +76,10 @@ import type { WorkIdentityBasis } from "./work_identity.js";
 /** The identity levels a WRITE may rest on. Read-side levels are deliberately absent. */
 export const WRITEABLE_WORK_BASES: readonly WorkIdentityBasis[] = ["exact_title", "citation", "citation_and_title"];
 
+export type RecordedPriceBasis = "hammer" | "premium_inclusive";
+
 export type CompRejection =
-  | "basis_not_hammer" | "no_citation_url" | "no_numeric_price" | "no_currency"
+  | "basis_unknown" | "no_citation_url" | "no_numeric_price" | "no_currency"
   | "no_sale_date" | "no_auction_house" | "sold_in_broader_lot";
 
 export interface CompGateResult {
@@ -70,7 +87,7 @@ export interface CompGateResult {
   reason: CompRejection | null;
   /** Normalised, only when ok. */
   value: {
-    listingUrl: string; house: string; saleDate: string; hammer: number; currency: string;
+    listingUrl: string; house: string; saleDate: string; price: number; basis: RecordedPriceBasis; currency: string;
     saleId: string | null; lotNumber: number | null; title: string | null; technique: string | null;
   } | null;
 }
@@ -113,12 +130,14 @@ export function normaliseSaleDate(raw: string | null | undefined): string | null
  */
 export function gateComp(c: Stage2bComp): CompGateResult {
   const fail = (reason: CompRejection): CompGateResult => ({ ok: false, reason, value: null });
-  if (c.priceBasis !== "hammer") return fail("basis_not_hammer");
+  const basis: RecordedPriceBasis | null =
+    c.priceBasis === "hammer" ? "hammer" : c.priceBasis === "premium_inclusive" ? "premium_inclusive" : null;
+  if (!basis) return fail("basis_unknown");
   if (c.wasSoldInBroaderLot === true) return fail("sold_in_broader_lot");
   const listingUrl = c.listingUrl?.trim();
   if (!listingUrl || !/^https?:\/\//i.test(listingUrl)) return fail("no_citation_url");
-  const hammer = typeof c.priceAmount === "number" && Number.isFinite(c.priceAmount) && c.priceAmount > 0 ? c.priceAmount : null;
-  if (hammer == null) return fail("no_numeric_price");
+  const price = typeof c.priceAmount === "number" && Number.isFinite(c.priceAmount) && c.priceAmount > 0 ? c.priceAmount : null;
+  if (price == null) return fail("no_numeric_price");
   const currency = c.priceCurrency?.trim().toUpperCase();
   if (!currency || !/^[A-Z]{3}$/.test(currency)) return fail("no_currency");
   const saleDate = normaliseSaleDate(c.saleDate);
@@ -129,7 +148,7 @@ export function gateComp(c: Stage2bComp): CompGateResult {
   const lotNumber = lotRaw && /^\d+$/.test(lotRaw) ? Number(lotRaw) : null;
   return {
     ok: true, reason: null,
-    value: { listingUrl, house, saleDate, hammer, currency, saleId: c.saleId?.trim() || null, lotNumber,
+    value: { listingUrl, house, saleDate, price, basis, currency, saleId: c.saleId?.trim() || null, lotNumber,
              title: c.artworkTitle?.trim() || null, technique: c.technique?.trim() || null },
   };
 }
@@ -182,10 +201,16 @@ SET src.institutionName = $house,
     src.listingUrl = $listingUrl,
     src.citationUrl = $listingUrl,
     src.sold = true,
-    src.hammerPrice = $hammer,
-    src.hammerBasis = 'stated',
     src.priceCurrency = $currency,
+    // Each number goes in the field that matches its basis, and the basis is also stated
+    // outright so no reader has to infer it from which field is populated. The unused pair is
+    // cleared rather than left stale, in case a re-run corrects a comp's basis.
+    src.priceBasisRecorded = $basis,
+    src.hammerPrice = $hammer,
     src.hammerPriceGBP = $hammerGBP,
+    src.hammerBasis = $hammerBasis,
+    src.priceRealised = $realised,
+    src.priceRealisedGBP = $realisedGBP,
     src.researchTitle = $title,
     src.researchTechnique = $technique,
     src.originatingAppraisalId = $appraisalId,
@@ -230,10 +255,15 @@ export async function writeResearchComps(input: WriteResearchCompsInput): Promis
       const res = await session.run(WRITE, {
         names, workIds: input.conceptualWorkIds, id: researchCompId(v), house: v.house,
         saleId: v.saleId, lotNumber: v.lotNumber, saleDate: v.saleDate, listingUrl: v.listingUrl,
-        hammer: v.hammer, currency: v.currency,
+        currency: v.currency, basis: v.basis,
+        hammer: v.basis === "hammer" ? v.price : null,
+        hammerBasis: v.basis === "hammer" ? "stated" : null,
+        realised: v.basis === "premium_inclusive" ? v.price : null,
         // GBP is backfill_fx_gbp.py's job for every other currency; setting it here from a
-        // guessed rate is how two converters start disagreeing.
-        hammerGBP: v.currency === "GBP" ? v.hammer : null,
+        // guessed rate is how two converters start disagreeing. A premium figure is NOT
+        // divided down to a hammer: the house's premium schedule is not known here.
+        hammerGBP: v.basis === "hammer" && v.currency === "GBP" ? v.price : null,
+        realisedGBP: v.basis === "premium_inclusive" && v.currency === "GBP" ? v.price : null,
         title: v.title, technique: v.technique, appraisalId: input.originatingAppraisalId,
         now: new Date().toISOString(),
       });
@@ -250,15 +280,22 @@ export async function writeResearchComps(input: WriteResearchCompsInput): Promis
 
 export interface ResearchComp {
   workId: string; workTitle: string | null; house: string | null; saleDate: string | null;
-  hammerPrice: number | null; hammerPriceGBP: number | null; currency: string | null;
+  /** Which price this record carries. Read this rather than inferring from the fields. */
+  priceBasis: RecordedPriceBasis | null;
+  hammerPrice: number | null; hammerPriceGBP: number | null;
+  /** Premium-inclusive, i.e. what the buyer paid. Null on a hammer-basis record. */
+  priceRealised: number | null; priceRealisedGBP: number | null;
+  currency: string | null;
   listingUrl: string | null; originatingAppraisalId: string | null; discoveredAt: string | null;
 }
 
 const READ = `
 MATCH (src:SourceRecord {sourceType:'agent_research'})-[:PRICES]->(cw:ConceptualWork)
-WHERE cw.id IN $workIds AND src.hammerPrice IS NOT NULL
+WHERE cw.id IN $workIds AND (src.hammerPrice IS NOT NULL OR src.priceRealised IS NOT NULL)
 RETURN cw.id AS workId, cw.name AS workTitle, src.institutionName AS house, src.saleDate AS saleDate,
-       src.hammerPrice AS hammerPrice, src.hammerPriceGBP AS hammerPriceGBP, src.priceCurrency AS currency,
+       src.priceBasisRecorded AS priceBasis,
+       src.hammerPrice AS hammerPrice, src.hammerPriceGBP AS hammerPriceGBP,
+       src.priceRealised AS priceRealised, src.priceRealisedGBP AS priceRealisedGBP, src.priceCurrency AS currency,
        src.listingUrl AS listingUrl, src.originatingAppraisalId AS originatingAppraisalId, src.discoveredAt AS discoveredAt
 ORDER BY src.saleDate DESC`;
 
@@ -276,7 +313,9 @@ export async function queryResearchComps(workIds: string[]): Promise<ResearchCom
     const res = await session.run(READ, { workIds });
     return res.records.map((r) => ({
       workId: String(r.get("workId")), workTitle: r.get("workTitle") ?? null, house: r.get("house") ?? null,
-      saleDate: r.get("saleDate") ?? null, hammerPrice: num(r.get("hammerPrice")), hammerPriceGBP: num(r.get("hammerPriceGBP")),
+      saleDate: r.get("saleDate") ?? null, priceBasis: (r.get("priceBasis") as RecordedPriceBasis) ?? null,
+      hammerPrice: num(r.get("hammerPrice")), hammerPriceGBP: num(r.get("hammerPriceGBP")),
+      priceRealised: num(r.get("priceRealised")), priceRealisedGBP: num(r.get("priceRealisedGBP")),
       currency: r.get("currency") ?? null, listingUrl: r.get("listingUrl") ?? null,
       originatingAppraisalId: r.get("originatingAppraisalId") ?? null, discoveredAt: r.get("discoveredAt") ?? null,
     }));

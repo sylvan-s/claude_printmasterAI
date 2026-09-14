@@ -1,5 +1,5 @@
 /**
- * Gates for the Stage 2b comps write-back (ADR-0007's auction-comp slice, hammer basis only).
+ * Gates for the Stage 2b comps write-back (ADR-0007's auction-comp slice).
  * Pure — the identity and dedupe gates need the graph and are exercised by a live run.
  *
  *   npm run test:research-comps
@@ -27,13 +27,30 @@ console.log("gateComp — hammer basis only");
 {
   const g = gateComp(good);
   eq("a complete hammer comp passes", [g.ok, g.reason], [true, null]);
-  eq("and is normalised", g.value, { listingUrl: good.listingUrl, house: "Bonhams", saleDate: "2026-06-23", hammer: 1000, currency: "GBP", saleId: "32236", lotNumber: 108, title: good.artworkTitle, technique: good.technique });
+  eq("and is normalised", g.value, { listingUrl: good.listingUrl, house: "Bonhams", saleDate: "2026-06-23", price: 1000, basis: "hammer", currency: "GBP", saleId: "32236", lotNumber: 108, title: good.artworkTitle, technique: good.technique });
 
-  // THE gate. Measured on the first lots to reach this code, every comp came back
-  // premium_inclusive — writing those as hammer is the 25-30% error repair_bonhams had to undo.
-  eq("premium-inclusive is refused", gateComp({ ...good, priceBasis: "premium_inclusive" }).reason, "basis_not_hammer");
-  eq("unknown basis is refused", gateComp({ ...good, priceBasis: "unknown" }).reason, "basis_not_hammer");
-  eq("a missing basis is refused", gateComp({ ...good, priceBasis: null }).reason, "basis_not_hammer");
+  // A premium-inclusive figure is REAL DATA and is kept — it just goes in the realised field,
+  // which is what every ingested record already does. Refusing it (the first cut of this
+  // module) threw away 4 of 4 comps on the first lots for no safety gain.
+  const p = gateComp({ ...good, priceBasis: "premium_inclusive" });
+  eq("premium-inclusive is admitted, and carries its basis", [p.ok, p.value?.basis, p.value?.price], [true, "premium_inclusive", 1000]);
+
+  // What stays refused is a number nobody stated a basis for: it cannot go in either field
+  // without a guess, and a guess is unrepairable later because nothing records it as one.
+  eq("unknown basis is refused", gateComp({ ...good, priceBasis: "unknown" }).reason, "basis_unknown");
+  eq("a missing basis is refused", gateComp({ ...good, priceBasis: null }).reason, "basis_unknown");
+  eq("an unrecognised basis string is refused", gateComp({ ...good, priceBasis: "net" }).reason, "basis_unknown");
+}
+
+console.log("gateComp — the basis decides the field, never the value");
+{
+  // The whole point of admitting premium: the SAME number means different things, and the
+  // record must say which. A hammer 1,000 and a realised 1,000 are not interchangeable.
+  const h = gateComp({ ...good, priceBasis: "hammer" }).value!;
+  const r = gateComp({ ...good, priceBasis: "premium_inclusive" }).value!;
+  eq("same number, different basis", [h.price, r.price], [1000, 1000]);
+  eq("and the basis is carried, not inferred", [h.basis, r.basis], ["hammer", "premium_inclusive"]);
+  ok("both produce the same dedupe id — it is the SALE that is unique, not the basis", researchCompId(h) === researchCompId(r));
 }
 
 console.log("gateComp — the citation is the evidence and the key");

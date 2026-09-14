@@ -13,7 +13,7 @@ export type { ArtistPriceProfile, PriceAttrs, PriceAdjustment, PriceProfileBasis
 export { priceAttrsOfComparable, priceAttrsOfLot, signatureClass, proofClass, editionSizeOf, dimsCm, primaryProcess, PROCESSES } from "./price_attrs.js";
 export { queryWorkFacts } from "./query_work_facts.js";
 export { writeResearchComps, queryResearchComps, gateComp, researchCompId, normaliseSaleDate, WRITEABLE_WORK_BASES } from "./write_research_comps.js";
-export type { WriteResearchCompsInput, WriteResearchCompsResult, ResearchComp, CompGateResult, CompRejection } from "./write_research_comps.js";
+export type { WriteResearchCompsInput, WriteResearchCompsResult, ResearchComp, CompGateResult, CompRejection, RecordedPriceBasis } from "./write_research_comps.js";
 export { isTypoVariant, isSurnameTypoVariant, isDesignatorToken, osaDistanceAtMost } from "./typo_tolerance.js";
 export type { WorkFacts } from "./query_work_facts.js";
 export { lookupArtistNames } from "./artist_lookup.js";

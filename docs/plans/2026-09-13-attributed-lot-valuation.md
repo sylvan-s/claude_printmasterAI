@@ -154,7 +154,7 @@ the remaining variance surface").
 **Gate:** the stability protocol (5 fixtures x 4 reps, then the 10 unseen pool lots) — the
 stable-lot count should rise and agreement should approach 100% on the tree half.
 
-### 5. Comps write-back (ADR-0007) — BUILT 2026-09-14, hammer basis only
+### 5. Comps write-back (ADR-0007) — BUILT 2026-09-14
 
 Phase 0 reported: on the first attributed lots to reach it, `comp_storability` scored 4/4
 storable on key and price and 0/4 on hammer basis — every comp came back premium-inclusive.
@@ -175,8 +175,18 @@ ConceptualWork -> EditionRun -> Impression <- SourceRecord and filters `sourceTy
 so these rows are structurally unreachable from it and cannot become silent peers of Bonhams
 data. `queryResearchComps` is a separate, opt-in read (ADR-0007 Decision 4).
 
-Seven gates, each from a specific failure: hammer basis only (ADR-0016; a premium figure
-written as hammer is the 25-30% error repair_bonhams undid across 39,914 rows); a citation URL
+**Basis: the first cut admitted hammer only, and that was wrong (corrected same day).** It
+conflated putting a premium-inclusive figure in the HAMMER field — the 25-30% error
+repair_bonhams undid across 39,914 rows — with RECORDING a premium figure as what it is, which
+is what every ingested record already does. The SourceRecord schema has carried both since the
+start. Each number now goes in the field matching its basis, `priceBasisRecorded` states it
+outright so no reader infers it from which field is populated, and a premium figure leaves
+hammer NULL rather than being divided by a guessed premium schedule. What stays refused is
+"unknown": a number with no stated basis cannot go in either field without a guess. The old
+gate threw away 4 of 4 comps on the first lots for no safety gain.
+
+Seven gates, each from a specific failure: a determinate basis, hammer or premium-inclusive,
+never unknown; a citation URL
 (ADR-0007 Decision 3, and it is the dedupe key); a numeric price and a currency code; a sale
 date and a house; the artist MATCHed never MERGEd (ADR-0007 Decision 5); the work resolved on an
 UNAMBIGUOUS EXACT basis only — exact_title / citation / citation_and_title, never the
@@ -184,13 +194,15 @@ stripped-title or typo-tolerant levels, because the no-fuzzy rule is about write
 not already in the graph by URL or house+sale+lot. GBP is set only for GBP-native prices;
 everything else is left to `backfill_fx_gbp.py`, which owns sale-date FX.
 
-Verified end to end 2026-09-14 against the live graph with a synthetic record, since no real
-hammer-basis comp has appeared yet: the write lands and reads back; a comp whose sale is already
+Verified end to end 2026-09-14 against the live graph with synthetic records, since no real
+comp has yet reached the writer: hammer, premium-GBP and premium-USD rows each land in the right
+field (the USD row keeps its native price with GBP left null for `backfill_fx_gbp.py`, and both
+premium rows leave hammer null); an unknown-basis row is refused; a comp whose sale is already
 ingested is skipped naming the existing record (`bonhams-32236-108-record`); a re-run is
-idempotent on the deterministic id; `queryAuctionComparables` cannot see the written row; and
-all four batch refusals fire (read-side work basis, attribution below probable, work unresolved,
-artist absent). The synthetic record was deleted; the graph holds no agent_research
-SourceRecords. On the live Baldessari lot: 0 written, 4 skipped, all `basis_not_hammer`.
+idempotent on the deterministic id, which keys on the SALE and not the basis;
+`queryAuctionComparables` cannot see any written row; and all four batch refusals fire
+(read-side work basis, attribution below probable, work unresolved, artist absent). Every
+synthetic record was deleted; the graph holds no agent_research SourceRecords.
 
 Two bugs the tests caught rather than review: `Date.parse("23 June 2026")` plus `toISOString()`
 wrote 2026-06-22 under BST, and V8 accepted "summer 2026" as a date. Dates are now formatted
