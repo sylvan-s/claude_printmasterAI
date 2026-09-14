@@ -13,6 +13,8 @@ export type { ArtistPriceProfile, PriceAttrs, PriceAdjustment, PriceProfileBasis
 export { priceAttrsOfComparable, priceAttrsOfLot, signatureClass, proofClass, editionSizeOf, dimsCm, primaryProcess, PROCESSES } from "./price_attrs.js";
 export { blendPrices, blendWitnesses, calibratedWitnesses, rawWitnesses, priorsModelPrediction, fitBlendCalibration, defaultCalibration, hurdleFrom, crpsOnGrid, sameWorkBand, WITNESS_SOURCES } from "./price_blend.js";
 export type { BlendInputs, BlendCalibration, BlendRegime, PriceBlend, PriceWitness, PriceContribution, WitnessSource, FitRow } from "./price_blend.js";
+export { estimateFeaturesOf, fitEstimateModel, predictLogEstimate, residualsByHouse, ESTIMATE_MODEL_COLUMNS, ESTIMATE_PREDICTOR_SOURCES } from "./estimate_model.js";
+export type { EstimateFeatures, EstimateModel, HouseResidual, EstimateFitRow } from "./estimate_model.js";
 export { queryWorkFacts } from "./query_work_facts.js";
 export { writeResearchComps, queryResearchComps, gateComp, researchCompId, normaliseSaleDate, WRITEABLE_WORK_BASES } from "./write_research_comps.js";
 export type { WriteResearchCompsInput, WriteResearchCompsResult, ResearchComp, CompGateResult, CompRejection, RecordedPriceBasis } from "./write_research_comps.js";

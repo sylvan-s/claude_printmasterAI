@@ -726,6 +726,86 @@ of this is started.
 
 **Compute.** Two 2,500-lot harness runs ≈ 12 min each; a gate fit + score ≈ 22 s; $0.
 
+### 9. Estimate-residual model — the "house incentives" node in a causal read of the pipeline
+
+**Logged and built 2026-09-14.** Prompted by re-reading step 8's blend gate causally: with an
+estimate present, dropping every comps witness moved Forum MAE(log) from 0.288 to 0.287 —
+nothing — and dropping the priors witness moved it from 0.288 to 0.278, an *improvement*. Read
+as a graph rather than a set of witnesses to combine, that is near-total mediation:
+
+```
+provenance/priors ─┐
+                    ├──→ house estimate ──→ hammer
+market comps ───────┘         ↑
+house incentives (latent) ────┘
+```
+
+Once the estimate is known, comps and provenance add almost nothing further to hammer — the
+estimate is close to a sufficient statistic. Nothing in the pipeline modelled the estimate
+itself before this; `price_blend.ts` treats it as one witness among several, correcting for its
+correlation with comps only implicitly (down-weighting comps rather than saying why). This step
+asks the upstream question: does the estimate follow from provenance + comps alone, and what's
+left over — the closest measurable proxy for the fourth, latent node above.
+
+**Built.** `src/appraisal/knowledge_graph/estimate_model.ts` (pure; 14 unit tests, `npm run
+test:estimate-model`): a small hand-rolled ridge regression (Gaussian elimination on the normal
+equations, 9 columns, no new dependency) fitting `log(estimate midpoint) ~ same-work comps +
+tier comps + priors model`, deliberately WITHOUT a house term, reusing `rawWitnesses` from
+step 8 so the predictors here are the identical numbers price_blend treats as alternatives to
+combine — this model asks whether they instead explain the estimate. `residualsByHouse` groups
+the residual by house: how far that house's estimates sit from what provenance + comps alone
+would predict. `tests/backtest/estimate_residual_report.ts` runs it on the two `--blend` files
+from step 8 (Roseberys = A, Forum = B, 2,471 / 2,486 lots with an estimate — every lot, not
+just sold ones, since the target exists pre-sale) and reports three things: the pooled residual
+by house, whether the fitted RELATIONSHIP (not just the level) transfers across houses, and
+whether the estimate-side residual matches or diverges from the already-known hammer/estimate
+gap.
+
+**Result.**
+
+| | Roseberys (A) | Forum (B) |
+|---|---|---|
+| Pooled-model residual (provenance+comps → estimate), 95% CI (artist-clustered bootstrap) | +0.040 [-0.011, +0.075] — not significant | -0.117 [-0.191, -0.041] (×0.89) — significant |
+| Hammer / estimate-midpoint, sold lots | ×0.80 (n=1,714) | ×0.83 (n=1,504) |
+
+Roseberys's printed estimate tracks provenance + comps about as well as a pooled log-linear
+combination of that evidence would — its residual is indistinguishable from zero. Forum's
+printed estimate runs measurably lower than the same evidence would predict, independently of
+and on top of the fact that hammer then lands below BOTH houses' own midpoints by a similar
+~20%. That second gap (hammer vs each house's own printed midpoint) is close in size for both
+houses and is not what the estimate-side residual is measuring — it looks like a separate,
+buyer-side effect (the midpoint sits above where hammer typically clusters for both houses,
+consistent with `ESTIMATE_DRIFT = 0.82` already being fit against the midpoint rather than the
+low estimate). The two houses differ in a *third* place: how far their PRINTED number sits from
+what a valuer with only provenance and comps would write.
+
+**Cross-house transfer says the two houses don't just differ by a flat amount — they weigh the
+same evidence differently.** Fitting separately: same-work comps get coefficient 0.363 on
+Roseberys vs 0.231 on Forum; tier-2 (same-artist-technique) comps get 0.185 vs 0.394 — roughly
+inverted. Applying Roseberys's fitted relationship to Forum's lots gives a residual of -0.289
+(much worse than the pooled -0.117); applying Forum's to Roseberys gives +0.204. Neither
+house's estimate-setting process is a shifted copy of the other's; they lean on different
+evidence types by different amounts when writing a number. That is new information — nothing
+upstream of this measured it.
+
+**What this is not.** The residual cannot separate "this house shades its printed number down
+to invite bidding" from "this house is more conservative because it specialises in a segment
+where the comps overstate value" from "this house's own valuers are simply more cautious" — all
+three would show up identically as a negative residual net of the evidence this model can see.
+Calling it "house incentives" is a label for what's measurable, not a claim the mechanism is
+pinned down. A genuine separation would need an instrument (a policy change at one house, say),
+which this dataset doesn't have.
+
+**Not wired anywhere.** This is a diagnostic model, matching step 8's discipline: built, tested,
+run, reported, nothing changed in Stage 3 or the blend. A natural next step — not started — is
+whether the house residual, added as a bias term on the estimate witness in `price_blend.ts`,
+improves the with-estimate regime at all (step 8 found it barely moves either way once the
+estimate is present, so the honest prior going in is that it won't matter much for hammer
+prediction even if it is real and informative about the houses themselves).
+
+**Compute.** Fits and scores on 4,957 lots in under 2 seconds; $0; no graph reads (reuses the
+step-8 `--blend` JSONL already on disk).
+
 ## Step 2 built (2026-09-13) — the attributed-lot entry path
 
 `src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method
