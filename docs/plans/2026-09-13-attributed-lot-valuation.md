@@ -929,6 +929,50 @@ R² = 0.571 also means 43% of Roseberys estimate variation is still unexplained 
 drivers — condition, rarity, state, and specialist judgement not captured anywhere in this
 model, consistent with the residual noise found throughout this whole plan step.
 
+**Addendum 2026-09-14 (final, decisive) — does the four-driver model's residual identify
+genuine mispricing worth acting on?** The user's actual goal, stated directly: spot a
+Roseberys/Forum lot that is distressed (the ~30% re-listing discount) AND mispriced beyond that
+known, mechanical discount, since the discount alone likely isn't enough margin once round-trip
+costs and other buyers' own awareness of the same pattern are counted. `undervaluation_screen.ts`
+tests this: compute each lot's residual from the `estimate_driver_weights.ts` model (actual
+estimate minus what priors+comps+house+relisting together predict), and check whether that
+residual predicts anything real — specifically, does a large negative residual (looks
+underpriced vs. the model) correlate with hammer later beating its own estimate, on lots whose
+outcome is already known.
+
+**Result: a real, validated signal, but a weak one.**
+
+| Cohort | Spearman(residual, log hammer/estimate) | 95% CI |
+|---|---:|---|
+| All sold lots (n=3,591) | −0.092 | [−0.133, −0.053] — excludes 0 |
+| Distressed lots only (n=238) | −0.039 | [−0.170, 0.120] — same direction, not independently significant |
+
+(Negative is the "works" direction here: low residual — underpriced per the model — pairing
+with high hammer/estimate; verified against a synthetic worked example before trusting the
+sign, since it is easy to get backwards.) The correlation is genuine on the full sample — most
+things fished for in a dataset this size turn up nothing, and this isn't nothing — but weak:
+ρ≈0.09 explains a small share of what happens to any individual lot. On the distressed cohort
+specifically, the direction is consistent but the sample (238) isn't enough to call it
+significant on its own.
+
+**Illustrative check**: the ten most underpriced-per-model distressed lots that went on to sell
+averaged 1.10× their own low estimate — a real tilt, but with genuine losers in the list
+(0.33×, 0.38×, 0.64×, 0.67×) alongside genuine winners (2.43×, 2.16×, 1.76×). Consistent with a
+weak-but-real signal: favourable across many bets, not reliable on any single one.
+
+**Why it's weak, most likely**: the model has zero visibility into condition, rarity, or state
+— not ingested anywhere in this graph (documented earlier in this plan's pricing-model work). A
+large negative residual is at least as likely to mean "the house saw a real flaw the model
+can't see" as "the house missed genuine value" — mirrors the recurring finding throughout this
+whole plan that the house estimate is a well-informed number, hard to systematically beat with
+attribute-only data.
+
+**Recommendation, not built further this session**: use the residual as a FILTER, not a
+standalone signal — rank live distressed Roseberys/Forum lots by it to cut a long list to a
+short one worth a human/expert look, rather than treating a flagged lot as a buy call on its
+own. The genuine edge this graph cannot supply is exactly the connoisseurship (condition,
+rarity, state) a specialist brings to the shortlist.
+
 ## Step 2 built (2026-09-13) — the attributed-lot entry path
 
 `src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method
