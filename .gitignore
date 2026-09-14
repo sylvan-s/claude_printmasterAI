@@ -127,3 +127,6 @@ knowledge_graph/pricing_ml/data/
 
 # attributed-lot harness run logs (tests/backtest/run_attributed_lot.ts batches)
 tests/backtest/attrpath_logs/
+
+# CatBoost training output
+catboost_info/
