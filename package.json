@@ -31,6 +31,7 @@
     "test:search-scope": "tsx tests/appraisal/search_scope_tests.ts",
     "test:comp-citation": "tsx tests/appraisal/comp_citation_filter_tests.ts",
     "test:stage2b-gate": "tsx tests/appraisal/stage2b_gate_tests.ts",
+    "test:rolling-cache": "tsx tests/appraisal/rolling_cache_tests.ts",
     "backtest:attributed-lot": "tsx tests/backtest/run_attributed_lot.ts",
     "test:leak-detection": "tsx tests/benchmark_parse/leak_detection_tests.ts",
     "test:comp-storability": "tsx tests/comp_storability/run_tests.ts",

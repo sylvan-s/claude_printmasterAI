@@ -352,6 +352,49 @@ const anthropicBackoffMs = (attempt: number) =>
  * Prices are per million tokens, Sonnet 4.6 / Haiku 4.5 list at 2026-09. Cache writes cost
  * 1.25x input, cache reads 0.1x — which is the whole point of the cache_control breakpoints.
  */
+const EPHEMERAL = { type: "ephemeral" as const };
+
+/**
+ * Cache breakpoints for a multi-turn tool loop.
+ *
+ * Anthropic caches a PREFIX: a breakpoint marks everything from the start of the request up to
+ * and including that block as reusable, billed at 1.25x to write and 0.1x to read. The request
+ * is ordered tools, then system, then messages, so a loop that only marks the system prompt —
+ * which is what Stage 2b did — re-sends its tool definitions and the lot's own evidence at full
+ * price on every round trip, and re-sends the whole accumulated conversation on top.
+ *
+ * Measured on one Stage 2b run before this: 7,865 tokens written once and 15,730 read (the
+ * system prompt, working perfectly across three turns), against 17,865 tokens of fresh input
+ * that were not cached at all — about 4,700 of fixed payload per trip plus the growing
+ * conversation.
+ *
+ * Two breakpoints are static (the first user message, which is this lot's evidence, and the
+ * tools) and one ROLLS: it moves to the last user message each turn, so turn N reads everything
+ * turn N-1 sent instead of paying for it again. The rolling one is moved rather than added,
+ * because Anthropic permits at most four and tools + system + first + rolling is exactly four.
+ *
+ * Breakpoints go only on USER messages. Assistant turns come back from the API carrying
+ * tool_use and server-tool blocks, and they are echoed back verbatim; this does not edit them.
+ */
+function cacheBlocks(content: unknown): any[] {
+  if (typeof content === "string") return [{ type: "text", text: content }];
+  return Array.isArray(content) ? content.map((b) => ({ ...b })) : [];
+}
+
+export function withRollingCache(messages: any[]): any[] {
+  const out = messages.map((m) => ({ ...m, content: cacheBlocks(m.content) }));
+  const users = out.map((m, i) => (m.role === "user" ? i : -1)).filter((i) => i >= 0);
+  if (!users.length) return out;
+  const mark = (i: number) => {
+    const blocks = out[i].content;
+    if (!blocks.length) return;
+    blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: EPHEMERAL };
+  };
+  mark(users[0]);
+  if (users.length > 1) mark(users[users.length - 1]);
+  return out;
+}
+
 const TOKEN_PRICES: Record<string, { in: number; out: number }> = {
   "claude-opus-4-8": { in: 15, out: 75 },
   "claude-sonnet-4-6": { in: 3, out: 15 },
@@ -1342,8 +1385,11 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
           // every lot routed to the same specialist config; the web_search tool renders
           // before it and is cached alongside.
           system: [{ type: "text", text: systemInstruction, cache_control: { type: "ephemeral" } }],
-          messages,
-          tools,
+          // Only Anthropic's own endpoint is given the extra breakpoints. The system one above
+          // predates this and is known to be tolerated by the compat endpoint; there is no
+          // reason to find out the hard way whether a cache_control on a tool definition is.
+          messages: compatBaseUrl ? messages : withRollingCache(messages),
+          tools: compatBaseUrl ? tools : tools.map((t, i) => (i === tools.length - 1 ? { ...t, cache_control: EPHEMERAL } : t)),
           ...(forceFinal ? { tool_choice: { type: "none" } } : {}),
         },
         {
