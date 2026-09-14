@@ -1087,3 +1087,57 @@ than automatically more accurate. The 23 September hammer decides that.
 - ADR-0017 Decision 1 (title decomposition) — needed eventually for tier-1 comps to match
   "Ojai Festival (Baggott 81)" against "Ojai Festival"; not on the critical path for step 1.
 - ADR-0019 Phase 1+ (technique features on a rented GPU) — separate track, unaffected.
+
+## Rolling cache breakpoints at Stage 2b (2026-09-14)
+
+Stage 2b runs up to four tool-use rounds against an unchanged prefix: the
+system prompt, the tool schemas and the lot dossier. Every round was re-sent
+as fresh input. `withRollingCache` in `src/appraisal/appraiser.ts` marks the
+last tool block plus the first and last user turns, so the prefix stays cached
+as the transcript grows while staying inside the four-breakpoint limit. It is
+skipped when a compat base URL is set — non-Anthropic gateways reject the field.
+
+Measured on A0793 lot 289, the same lot both runs:
+
+| | fresh in | cache read | Stage 2b |
+|---|---|---|---|
+| before | 30,494 | 25,011 | $0.2173 |
+| after | 20 | 69,663 | $0.1834 |
+
+Stage 2b fell 16%, the lot total 11% ($0.2722 → $0.2422). 16 unit tests in
+`tests/appraisal/rolling_cache_tests.ts`.
+
+## Two open defects found on lot 289
+
+The same run valued lot 289 (after Matisse, *Le Cirque* from Jazz) at £25–50
+against a catalogue estimate of £300–500. Both runs of the lot did this
+(£45–90 before the cache change), so the cache is not the cause.
+
+**1. Comp-driven adjustments are unbounded.** Stage 3 applied a single
+`down -91%` step from one tier-2 comp (*Le destin, from Jazz*, Skinner
+Feb 2026, edition 1500, hammer £29.24). Clause B of
+`VALUATION_ATTRIBUTED_LOT_SUFFIX` tells the model comps are "a BAND and a
+DIRECTION, not a price" but sets no magnitude. This is the same
+obeys-direction-invents-magnitude failure already closed for liquidity
+(`LIQUIDITY_MAX_PRICE_ADJUSTMENT`) and for condition; comps were never bounded.
+
+**2. Every priced Forum record is invisible to the comps query.** The Cypher in
+`query_comparables.ts` requires `src.saleDate IS NOT NULL`. All 6,228 sold,
+priced Forum Auctions records have no date property at all:
+
+| house | sold + priced | null saleDate |
+|---|---|---|
+| Forum Auctions | 6,228 | 6,228 |
+| Bonhams | 38,663 | 0 |
+| Roseberys London | 8,807 | 0 |
+| Skinner | 1,251 | 0 |
+
+That is 11% of the priced corpus. On this lot it mattered directly: the graph
+holds exactly three sold Jazz records — £29.24 (Skinner), £300 (Forum,
+edition 1500, unsigned) and £3,200 (Prospectus, edition 8). The £300 record
+corroborates the catalogue estimate and is the closest match on edition size,
+and it was dropped for the missing date, leaving the £29.24 outlier alone in
+front of Stage 3.
+
+The dates are recoverable: 6,228 records span only 57 distinct `saleId` values,
+and each sale's date is on its Forum listing page. Logged, not swept.
