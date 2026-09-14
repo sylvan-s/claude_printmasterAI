@@ -602,37 +602,54 @@ export function describeCompDifferences(lot: PriceAttrs, comp: AuctionComparable
   return out;
 }
 
-/** Prior appearances needed before the measured unsold base rates apply at all. */
+/** Appearances needed for the SECOND limb of the liquidity rule (a work that has sold before). */
 export const LIQUIDITY_MIN_APPEARANCES = 3;
 
 /**
- * Does this work's auction history meet the bar the liquidity base rates were measured at?
+ * Does this work's auction history carry a measured warning about clearing?
  *
- * The rates ("41-52% of such lots go unsold against 22-32% otherwise") came from works with
- * THREE OR MORE prior appearances and a sell-through BELOW 50%. Stating the threshold in the
- * prompt and leaving the model to apply it does not work: on Bonhams 32240 it wrote "with only
- * 2 prior appearances, this is ordinary auction noise rather than a measured signal (base rates
- * require 3+ appearances)" and then took 10% off anyway. So the verdict is computed here and
- * the block carries the ANSWER, not the rule.
+ * Measured 2026-09-14 on the 941 backtest lots that had any prior history of the same work,
+ * base unsold rate 30%. Two limbs, and the union separates 208 lots at 43% unsold from 733 at
+ * 27%:
+ *
+ *   NEVER SOLD (0 sales, any number of appearances) — n=158, 41% unsold. Holds on both houses
+ *     against their own bases: Forum 57% against 37%, Roseberys 36% against 25%. It fires from
+ *     a single failed appearance (n=123, 41%) as strongly as from several (n=35, 40%), so the
+ *     appearance count is not what carries it — never having cleared is.
+ *   THIN RECORD (>=3 appearances, under 50%, but sold at least once) — n=50, 48% unsold.
+ *
+ * The first limb is why this function was rewritten. It originally required 3+ appearances for
+ * either case, which caught the 57-lot thin-record cohort and missed all 158 never-sold lots —
+ * including Bonhams 32240's Baldessari, offered twice at ~GBP 4,000 and unsold both times,
+ * where Stage 3 reached for the concern anyway and had to route around the verdict to express
+ * it. The threshold was assumed; this one is measured.
+ *
+ * The verdict is computed here and the block carries the ANSWER rather than the rule, because
+ * stating a threshold and leaving the model to apply it does not work: it wrote "with only 2
+ * prior appearances, this is ordinary auction noise rather than a measured signal (base rates
+ * require 3+ appearances)" and then took 10% off anyway.
  */
 export function liquidityVerdict(sellThrough: { sold: number; unsold: number } | null | undefined): {
-  applies: boolean; n: number; rate: number | null; line: string;
+  applies: boolean; n: number; rate: number | null; limb: "never_sold" | "thin_record" | null; line: string;
 } {
   const st = sellThrough;
   const n = st ? st.sold + st.unsold : 0;
   if (!st || n === 0) {
-    return { applies: false, n: 0, rate: null, line: `LIQUIDITY: no prior auction appearance of this work is recorded in the graph. MEASURED SIGNAL: NO — there is no history to read, which is a coverage fact and NOT evidence that the work is hard to sell. Take no liquidity adjustment.` };
+    return { applies: false, n: 0, rate: null, limb: null, line: `LIQUIDITY: no prior auction appearance of this work is recorded in the graph. MEASURED SIGNAL: NO — there is no history to read, which is a coverage fact and NOT evidence that the work is hard to sell. Take no liquidity adjustment.` };
   }
   const rate = st.sold / n;
   const pc = Math.round(rate * 100);
   const head = `LIQUIDITY: this work appeared at auction ${n} time${n === 1 ? "" : "s"} before; sold ${st.sold}, unsold ${st.unsold} (${pc}% sell-through).`;
+  if (st.sold === 0) {
+    return { applies: true, n, rate, limb: "never_sold", line: `${head} MEASURED SIGNAL: YES — this work has NEVER cleared at auction. Measured on 941 lots: works with no prior sale go unsold 41% of the time against a 30% base, and the count of failed attempts barely matters (41% after one, 40% after two or more). Hold the lowEstimate at or below the anchor and name this as the reason. Note also what the house itself did with its estimate across those attempts, if the block shows it.` };
+  }
   if (n >= LIQUIDITY_MIN_APPEARANCES && rate < 0.5) {
-    return { applies: true, n, rate, line: `${head} MEASURED SIGNAL: YES — ${n} appearances at under 50% puts this work in the cohort where 41-52% of lots go unsold, against a 22-32% base rate. Hold the lowEstimate at or below the anchor and name this as the reason.` };
+    return { applies: true, n, rate, limb: "thin_record", line: `${head} MEASURED SIGNAL: YES — ${n} appearances at under 50%, having sold at least once, is the cohort where 48% of lots go unsold against a 30% base (n=50). Hold the lowEstimate at or below the anchor and name this as the reason.` };
   }
   const why = n < LIQUIDITY_MIN_APPEARANCES
-    ? `${n} prior appearance${n === 1 ? "" : "s"} is below the ${LIQUIDITY_MIN_APPEARANCES} the base rates were measured on`
-    : `${pc}% sell-through is at or above the 50% the base rates were measured below`;
-  return { applies: false, n, rate, line: `${head} MEASURED SIGNAL: NO — ${why}. This is ordinary auction noise. Take NO liquidity adjustment: an adjustment whose evidence cites this history is invalid. Put the history in evidenceAgainst instead.` };
+    ? `it has sold before, and ${n} prior appearance${n === 1 ? "" : "s"} is below the ${LIQUIDITY_MIN_APPEARANCES} the thin-record cohort was measured on`
+    : `it has sold before and ${pc}% sell-through is at or above the 50% that cohort was measured below`;
+  return { applies: false, n, rate, limb: null, line: `${head} MEASURED SIGNAL: NO — ${why}. Measured, this sits at the 27-28% base rate, i.e. ordinary auction noise. Take NO liquidity adjustment: an adjustment whose evidence cites this history is invalid, whatever it is labelled. Put the history in evidenceAgainst instead.` };
 }
 
 /**

@@ -673,6 +673,41 @@ reduction, not a different number — which is the honest reading: this lot was 
 be priced off its anchor and its one same-work comp, and the adjustments were noise the
 pipeline was generating about itself.
 
+### Liquidity: the threshold was assumed, and the measurement moved it (2026-09-14)
+
+Bonhams 32240's Baldessari ("Arg, from Engravings with Sounds") exposed it. The work had been
+offered twice and failed both times, and Stage 3 reached for that fact, found the verdict line
+saying NO measured signal, and expressed the concern anyway under a different label ("absence
+of same-work price history", -10%). Rather than tighten the prohibition again, the threshold
+itself was measured — on the 941 backtest lots that had any prior history of the same work,
+base unsold rate 30%:
+
+| prior history of the same work | lots | then unsold |
+|---|---:|---:|
+| never sold, 1 failed appearance | 123 | 41% |
+| never sold, 2+ failed appearances | 35 | 40% |
+| **never sold, any count** | **158** | **41%** |
+| sold once of 2 | 50 | 18% |
+| sold twice of 2 | 99 | 27% |
+| >=3 appearances, under 50%, sold at least once | 50 | 48% |
+| >=3 appearances, 50% or more | 346 | 27% |
+| sold at least once, any shape | 783 | 28% |
+
+The old rule (>=3 appearances AND under 50%) caught 57 lots and missed all 158 never-sold ones.
+The discriminator is not the appearance count: it is whether the work has EVER cleared. The
+union of the two limbs separates 208 lots at 43% unsold from 733 at 27%, and holds against each
+house's own base (Forum 37% base, 57% never-sold, 54% thin-record; Roseberys 25% base, 36% and
+42%). `liquidityVerdict` now returns which limb fired and quotes the figures for it.
+
+Re-run of the Baldessari: the -10% under a different label became "-15% Liquidity — MEASURED
+SIGNAL: YES ... works with no prior sale go unsold 41% of the time against a 30% base". Same
+range (GBP 1,200-1,800), correct provenance for the number.
+
+**The general lesson, third time this session.** When Stage 3 routes around a prohibition, the
+prohibition is usually describing a real signal badly. Clause H stopped the model inventing
+discounts from uncertainty; it could not stop it reaching for a fact the rule wrongly excluded.
+Measure the threshold before forbidding what falls outside it.
+
 Observed, not yet acted on:
 - An upcoming lot ALREADY INGESTED into the graph is excluded by saleId + lotNumber, and the
   Bonhams ingest stores preview lots as lotNumber 0 (no number is parseable from a preview

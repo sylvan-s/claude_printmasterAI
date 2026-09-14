@@ -127,6 +127,8 @@ console.log("Stage 3 block + comp differences");
   ok("block lists the comp difference as a fact", block.includes("signature hand vs lot unsigned"));
   const lowLiq = buildAttributedLotValuationBlock({ claim, verification: v, routing: routeAttributedLot(v, 2), comps, workFacts: { ...facts, sellThrough: { sold: 1, unsold: 3 } } });
   ok("liquidity warning under 50% on 3+", lowLiq.includes("MEASURED SIGNAL: YES"));
+  const neverSold = buildAttributedLotValuationBlock({ claim, verification: v, routing: routeAttributedLot(v, 2), comps, workFacts: { ...facts, sellThrough: { sold: 0, unsold: 2 } } });
+  ok("a work that has never cleared warns too", /MEASURED SIGNAL: YES/.test(neverSold) && /NEVER cleared/.test(neverSold));
   eq("primaryDimension prefers image/plate", primaryDimension(claim.dimensions)?.kind, "plate");
 }
 
@@ -200,16 +202,23 @@ console.log("divergenceSignalUsable — a lone stale comp is not a signal");
   ok("and the comp is still shown", /2017-03-22 Bonhams hammer 650/.test(b));
 }
 
-console.log("liquidityVerdict — the block carries the verdict, not the threshold");
+console.log("liquidityVerdict — two measured limbs, and the block carries the verdict");
 {
   const L = (sold: number, unsold: number) => liquidityVerdict({ sold, unsold });
-  eq("3+ appearances under 50% is the measured cohort", [L(1, 3).applies, /MEASURED SIGNAL: YES/.test(L(1, 3).line)], [true, true]);
-  eq("exactly at 50% on 4 is not", [L(2, 2).applies, /MEASURED SIGNAL: NO/.test(L(2, 2).line)], [false, true]);
-  eq("2 appearances at 50% is not (the Bonhams 32240 case)", L(1, 1).applies, false);
-  ok("and it says why, and forbids the adjustment", /below the 3 the base rates were measured on/.test(L(1, 1).line) && /Take NO liquidity adjustment/.test(L(1, 1).line));
-  eq("one unsold appearance alone is not", L(0, 1).applies, false);
-  eq("no history at all is not a signal either", [L(0, 0).applies, /coverage fact/.test(L(0, 0).line)], [false, true]);
-  ok("a 6-appearance 33% work IS the cohort", L(2, 4).applies);
+  // Limb 1: never cleared. 158 lots, 41% unsold against a 30% base, and it fires from one
+  // failed appearance as strongly as from several.
+  eq("never sold, one failed appearance", [L(0, 1).applies, L(0, 1).limb], [true, "never_sold"]);
+  eq("never sold, two failed appearances (Bonhams 32240 Baldessari)", [L(0, 2).applies, L(0, 2).limb], [true, "never_sold"]);
+  ok("and it quotes the measurement", /NEVER cleared/.test(L(0, 2).line) && /41% of the time against a 30% base/.test(L(0, 2).line));
+  // Limb 2: sold before, but a thin record over enough appearances. 50 lots, 48% unsold.
+  eq("3+ appearances under 50% having sold once", [L(1, 3).applies, L(1, 3).limb], [true, "thin_record"]);
+  eq("6 appearances at 33%", L(2, 4).applies, true);
+  // Neither limb.
+  eq("2 appearances, 1 sold — the base rate", [L(1, 1).applies, L(1, 1).limb], [false, null]);
+  ok("and it says why and forbids the adjustment under any label", /it has sold before/.test(L(1, 1).line) && /invalid, whatever it is labelled/.test(L(1, 1).line));
+  eq("exactly 50% on 4", L(2, 2).applies, false);
+  eq("sold every time", L(3, 0).applies, false);
+  eq("no history at all is a coverage fact, not a signal", [L(0, 0).applies, /coverage fact/.test(L(0, 0).line)], [false, true]);
 }
 
 console.log("conditionEvidenceLines — facts priced, absence never deducted");
