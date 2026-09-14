@@ -369,6 +369,28 @@ copy. Not needed for the pilot.
 - An out-of-fold confident-learning pass surfaces probable mislabels for a small review,
   using the Haiku 4.5 vision adjudicator on native-resolution tiles.
 
+#### Phase 3 result: the halftone audit closes the offset-lithograph question (2026-09-14)
+
+`technique_ml/halftone_audit.py`, `artifacts/halftone_audit.md` / `.jsonl`. 250 `Lithograph`-only
+and 250 `Offset lithograph`-only images at ≥ 7 px/mm (median 9), native-resolution tiles from the
+localised print area, a lattice-screen detector (two spectral peaks of similar radius ~90° apart
+in a mid-tone/dark tile with real high-frequency energy; blank paper, JPEG block harmonics and
+sub-60-lpi periodicity excluded — each of those produced a false-positive generation of the
+detector first, verified by eye on zoomed crops).
+
+Result: at a score that visibly corresponds to a dot screen, **1 of 250 offset images and 0 of
+250 lithographs** show one; looser thresholds flag grain and paper texture. At listing-photo
+resolution a halftone is detectable only when coarse and well photographed, and most auction
+"offset lithographs" are flat-ink prints with no tonal halftone anyway, so absence of a screen
+proves nothing either.
+
+Decision: `Lithograph` and `Offset lithograph` are **merged into one planographic class** for
+the classifier; "offset" stays a catalogue attribute; a strong lattice detection is surfaced as
+positive photomechanical evidence when it occurs, never used as a label. The tile model's
+emitted `Offset lithograph` (a gate pass at 0.50, test F1 0.29) is withdrawn. The Giclée /
+Inkjet / Pigment / Digital merge and the family-only treatment of the generic `Intaglio` /
+`Relief printing` labels remain as planned.
+
 ### Phase 4 — model and evaluation
 
 - The two-stage family → process design, the artist-grouped split and the **same held-out
