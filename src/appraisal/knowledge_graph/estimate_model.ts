@@ -24,44 +24,35 @@
  * Ridge fit via normal equations, hand-rolled (Gaussian elimination) — no new dependency, and
  * the design is under 15 columns, so a manual solve is exact and fast. Pure: no I/O.
  *
- * Liquidity / track record: `liquidityVerdict` (attributed_lot.ts) established that never-sold
- * and thin-record works carry a measured, real effect on whether a lot SELLS and, weakly, on
- * what it makes WHEN it sells — but nobody has checked whether that history shows up in the
- * house's printed ESTIMATE at all, as opposed to only in the outcome. `liquidityLimb` below is a
- * local copy of that same classification (never_sold / thin_record / sold_before_healthy /
- * no_history), added here as three reference-coded dummies alongside the evidence predictors —
- * so the fit can say whether a house writes a lower number for a work with a bad track record,
- * net of the same provenance and comps every other lot is judged on.
+ * Liquidity / track record — REPLACED 2026-09-14. The first version used `liquidityVerdict`'s
+ * AGGREGATE sell-through classification (never-sold / thin-record over a 10-year window) and
+ * found no effect on the estimate. Roseberys told the user directly that isn't how they price:
+ * an unsold lot is typically re-priced down up to 30% for its NEXT auction — a sequential,
+ * house-specific, recency-driven practice, not a static track-record flag. `relist_discount_report.ts`
+ * confirmed it directly at both Roseberys and Bonhams (median ×0.70 at a same-house relist
+ * within 180 days, fading to ×0.83–0.92 past a year; flat at ×1.00 when the prior appearance
+ * sold — the aggregate dummy was structurally blind to this: a work that sold once years ago
+ * and then just failed lands in the SAME "sold before" bucket as one with a clean record).
+ * `recentSameHouseAppearance` on `BlendInputs` (house-scoped, most recent pre-sale appearance
+ * only) replaces `sellThrough` here: `recent_unsold_present`/`_log_days` and
+ * `recent_sold_present`/`_log_days`, present+value pairs matching every other predictor below,
+ * so the fit can recover both the level shift and its decay with time since that appearance.
  */
 import { rawWitnesses, type BlendInputs, type WitnessSource } from "./price_blend.js";
 
 export const ESTIMATE_PREDICTOR_SOURCES: Exclude<WitnessSource, "estimate">[] = ["same_work", "same_artist_technique", "same_artist", "priors_model"];
 
-/** Mirrors `liquidityVerdict` in attributed_lot.ts, collapsed to one label. Kept as a local copy
- *  rather than an import: attributed_lot.ts sits above knowledge_graph/ in the dependency
- *  layering (it imports FROM here), so importing it back would invert that. The threshold
- *  (LIQUIDITY_MIN_APPEARANCES = 3, rate < 0.5 for "thin") is the same constant, named the same
- *  way, in both files — change both together if it ever moves. */
-export type LiquidityLimb = "no_history" | "never_sold" | "thin_record" | "sold_before_healthy";
-export const LIQUIDITY_MIN_APPEARANCES = 3;
-export function liquidityLimb(sellThrough: { sold: number; unsold: number } | null | undefined): LiquidityLimb {
-  const n = sellThrough ? sellThrough.sold + sellThrough.unsold : 0;
-  if (!sellThrough || n === 0) return "no_history";
-  if (sellThrough.sold === 0) return "never_sold";
-  if (n >= LIQUIDITY_MIN_APPEARANCES && sellThrough.sold / n < 0.5) return "thin_record";
-  return "sold_before_healthy";
-}
-const LIQUIDITY_LEVELS: Exclude<LiquidityLimb, "no_history">[] = ["never_sold", "thin_record", "sold_before_healthy"];
-
 export interface EstimateFeatures {
   /** column order: intercept, [present_i, value_i] pairs per ESTIMATE_PREDICTOR_SOURCES, then
-   *  one dummy per LIQUIDITY_LEVELS (reference level "no_history" = all three dummies 0) */
+   *  [present, log_days] pairs for "most recent same-house appearance unsold" and "...sold"
+   *  (reference level: no prior same-house appearance at all — both presents 0) */
   row: number[];
 }
 export const ESTIMATE_MODEL_COLUMNS: string[] = [
   "intercept",
   ...ESTIMATE_PREDICTOR_SOURCES.flatMap((s) => [`${s}_present`, `${s}_value`]),
-  ...LIQUIDITY_LEVELS.map((l) => `liquidity_${l}`),
+  "recent_unsold_present", "recent_unsold_log_days",
+  "recent_sold_present", "recent_sold_log_days",
 ];
 
 const ln = Math.log;
@@ -78,8 +69,10 @@ export function estimateFeaturesOf(inputs: BlendInputs): EstimateFeatures {
     const v = raw.get(s);
     row.push(v != null ? 1 : 0, v ?? 0);
   }
-  const limb = liquidityLimb(inputs.sellThrough);
-  for (const l of LIQUIDITY_LEVELS) row.push(limb === l ? 1 : 0);
+  const recent = inputs.recentSameHouseAppearance;
+  const logDays = recent ? ln(recent.daysAgo + 1) : 0;
+  row.push(recent && !recent.sold ? 1 : 0, recent && !recent.sold ? logDays : 0);
+  row.push(recent && recent.sold ? 1 : 0, recent && recent.sold ? logDays : 0);
   return { row };
 }
 

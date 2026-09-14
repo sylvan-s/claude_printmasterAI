@@ -8,7 +8,6 @@ import {
   fitEstimateModel,
   predictLogEstimate,
   residualsByHouse,
-  liquidityLimb,
   ESTIMATE_MODEL_COLUMNS,
   type EstimateFitRow,
 } from "../../src/appraisal/knowledge_graph/estimate_model";
@@ -26,64 +25,67 @@ function close(label: string, got: number, want: number, tol = 1e-6) {
 function ok(label: string, cond: boolean) { if (cond) passed++; else { failed++; console.log(`  FAIL ${label}`); } }
 
 const LN = Math.log;
+const ln = Math.log;
 const inputs = (over: Partial<BlendInputs> = {}): BlendInputs => ({
   saleDate: "2024-03-01", house: "roseberys", estimate: { lowGBP: 800, highGBP: 1200 },
-  sameWork: [], sameArtistTechnique: null, sameArtist: null, priors: null, sellThrough: null, ...over,
+  sameWork: [], sameArtistTechnique: null, sameArtist: null, priors: null, sellThrough: null, recentSameHouseAppearance: null, ...over,
 });
 
 // ── estimateFeaturesOf ───────────────────────────────────────────────────────
 {
-  eq("no evidence, no sell-through: intercept only, everything else 0", estimateFeaturesOf(inputs()).row, [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  eq("no evidence, no recent appearance: intercept only, everything else 0", estimateFeaturesOf(inputs()).row, [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   const f = estimateFeaturesOf(inputs({ sameWork: [{ hammerGBP: 500, saleDate: null }], priors: { mu: LN(600), basis: "shrunk", earlierSales: 20, contributions: [] } }));
-  eq("columns line up with ESTIMATE_MODEL_COLUMNS", ESTIMATE_MODEL_COLUMNS, ["intercept", "same_work_present", "same_work_value", "same_artist_technique_present", "same_artist_technique_value", "same_artist_present", "same_artist_value", "priors_model_present", "priors_model_value", "liquidity_never_sold", "liquidity_thin_record", "liquidity_sold_before_healthy"]);
+  eq("columns line up with ESTIMATE_MODEL_COLUMNS", ESTIMATE_MODEL_COLUMNS, ["intercept", "same_work_present", "same_work_value", "same_artist_technique_present", "same_artist_technique_value", "same_artist_present", "same_artist_value", "priors_model_present", "priors_model_value", "recent_unsold_present", "recent_unsold_log_days", "recent_sold_present", "recent_sold_log_days"]);
   close("same_work value is the log of the (single) comp", f.row[2], LN(500));
   eq("same_work present flag set", f.row[1], 1);
   eq("tier 2/3 absent", [f.row[3], f.row[5]], [0, 0]);
   close("priors value is its raw mu", f.row[8], LN(600));
-  eq("no sell-through data: all liquidity dummies 0 (reference level)", f.row.slice(9), [0, 0, 0]);
+  eq("no recent-appearance data: all four recency columns 0 (reference level)", f.row.slice(9), [0, 0, 0, 0]);
 }
 
-// ── liquidityLimb ────────────────────────────────────────────────────────────
+// ── recentSameHouseAppearance -> the recency present/value pairs ───────────────────────────────
 {
-  eq("no history", liquidityLimb(null), "no_history");
-  eq("zero appearances", liquidityLimb({ sold: 0, unsold: 0 }), "no_history");
-  eq("never sold, one attempt", liquidityLimb({ sold: 0, unsold: 1 }), "never_sold");
-  eq("never sold, several attempts", liquidityLimb({ sold: 0, unsold: 5 }), "never_sold");
-  eq("thin record: 3+ appearances, under 50%", liquidityLimb({ sold: 1, unsold: 3 }), "thin_record");
-  eq("sold before, only 2 appearances (below the thin-record threshold)", liquidityLimb({ sold: 1, unsold: 1 }), "sold_before_healthy");
-  eq("sold before, healthy rate", liquidityLimb({ sold: 3, unsold: 1 }), "sold_before_healthy");
-  const g = estimateFeaturesOf(inputs({ sellThrough: { sold: 0, unsold: 2 } }));
-  eq("estimateFeaturesOf sets the never_sold dummy", g.row.slice(9), [1, 0, 0]);
-  const h = estimateFeaturesOf(inputs({ sellThrough: { sold: 1, unsold: 4 } }));
-  eq("estimateFeaturesOf sets the thin_record dummy", h.row.slice(9), [0, 1, 0]);
-  const k = estimateFeaturesOf(inputs({ sellThrough: { sold: 5, unsold: 1 } }));
-  eq("estimateFeaturesOf sets the sold_before_healthy dummy", k.row.slice(9), [0, 0, 1]);
+  const u = estimateFeaturesOf(inputs({ recentSameHouseAppearance: { sold: false, daysAgo: 90 } }));
+  eq("unsold recent appearance sets recent_unsold_present, not recent_sold_present", [u.row[9], u.row[11]], [1, 0]);
+  close("recent_unsold_log_days is log(daysAgo+1)", u.row[10], LN(91));
+  eq("recent_sold_log_days is 0 when the appearance was unsold", u.row[12], 0);
+  const s = estimateFeaturesOf(inputs({ recentSameHouseAppearance: { sold: true, daysAgo: 400 } }));
+  eq("sold recent appearance sets recent_sold_present, not recent_unsold_present", [s.row[9], s.row[11]], [0, 1]);
+  close("recent_sold_log_days is log(daysAgo+1)", s.row[12], LN(401));
+  eq("recent_unsold_log_days is 0 when the appearance sold", s.row[10], 0);
+  const zero = estimateFeaturesOf(inputs({ recentSameHouseAppearance: { sold: false, daysAgo: 0 } }));
+  close("daysAgo=0 (sold same day, edge case) still gives a finite log", zero.row[10], LN(1));
 }
 
-// ── does the fit recover a planted liquidity effect on the ESTIMATE? ───────────────────────────
+// ── does the fit recover a planted recency effect on the ESTIMATE? ─────────────────────────────
 {
   let seed = 23; const noise = () => { seed = (seed * 48271) % 2147483647; return (seed / 2147483647 - 0.5) * 2; };
-  // Planted truth: log(estimate) = 5 + 0.5*priors_value, MINUS 0.2 when never_sold, MINUS 0.1
-  // when thin_record, no effect for sold_before_healthy or no_history (both reference-equivalent
-  // here since sold_before_healthy's coefficient should come out near 0 too).
+  // Planted truth: log(estimate) = 5 + 0.5*priors_value, MINUS a discount that fades with time
+  // since an unsold same-house appearance: -0.5 at daysAgo=0 decaying toward 0 as ln(days+1)
+  // grows (coefficient +0.08 on recent_unsold_log_days, i.e. recovers roughly -0.36 at 180 days
+  // and -0.15 at 365 — the shape relist_discount_report.ts measured). No effect planted for a
+  // recent SOLD appearance (both its coefficients should come out near 0).
   const rows: { features: ReturnType<typeof estimateFeaturesOf>; logEstimateMid: number }[] = [];
-  const limbs: ("no_history" | "never_sold" | "thin_record" | "sold_before_healthy")[] = ["no_history", "never_sold", "thin_record", "sold_before_healthy"];
-  for (let i = 0; i < 600; i++) {
+  for (let i = 0; i < 900; i++) {
     const prVal = 5 + (i % 17) * 0.1;
-    const limb = limbs[i % 4];
-    const sellThrough = limb === "no_history" ? null : limb === "never_sold" ? { sold: 0, unsold: 1 + (i % 3) } : limb === "thin_record" ? { sold: 1, unsold: 3 + (i % 3) } : { sold: 4 + (i % 3), unsold: 1 };
-    const inp = inputs({ priors: { mu: prVal, basis: "shrunk", earlierSales: 20, contributions: [] }, sellThrough });
+    const kind = i % 3; // 0 = no history, 1 = recent unsold, 2 = recent sold
+    const daysAgo = 5 + (i % 12) * 60; // spread from ~5 to ~665 days
+    const recentSameHouseAppearance = kind === 0 ? null : kind === 1 ? { sold: false, daysAgo } : { sold: true, daysAgo };
+    const inp = inputs({ priors: { mu: prVal, basis: "shrunk", earlierSales: 20, contributions: [] }, recentSameHouseAppearance });
     const features = estimateFeaturesOf(inp);
-    const penalty = limb === "never_sold" ? -0.2 : limb === "thin_record" ? -0.1 : 0;
+    const penalty = kind === 1 ? -0.5 + 0.08 * ln(daysAgo + 1) : 0;
     const y = 5 + 0.5 * prVal + penalty + 0.03 * noise();
     rows.push({ features, logEstimateMid: y });
   }
   const model = fitEstimateModel(rows, 0.01);
-  const nsCol = ESTIMATE_MODEL_COLUMNS.indexOf("liquidity_never_sold"), trCol = ESTIMATE_MODEL_COLUMNS.indexOf("liquidity_thin_record"), shCol = ESTIMATE_MODEL_COLUMNS.indexOf("liquidity_sold_before_healthy");
-  close("recovers the planted never_sold penalty", model.coef[nsCol], -0.2, 0.1);
-  close("recovers the planted thin_record penalty", model.coef[trCol], -0.1, 0.1);
-  close("sold_before_healthy comes out near 0 (same as the reference)", model.coef[shCol], 0, 0.08);
-  ok("never_sold is a bigger discount than thin_record, as planted", model.coef[nsCol] < model.coef[trCol]);
+  const upCol = ESTIMATE_MODEL_COLUMNS.indexOf("recent_unsold_present"), udCol = ESTIMATE_MODEL_COLUMNS.indexOf("recent_unsold_log_days");
+  const spCol = ESTIMATE_MODEL_COLUMNS.indexOf("recent_sold_present"), sdCol = ESTIMATE_MODEL_COLUMNS.indexOf("recent_sold_log_days");
+  close("recovers the planted recent_unsold level shift", model.coef[upCol], -0.5, 0.1);
+  close("recovers the planted recent_unsold decay-with-time slope", model.coef[udCol], 0.08, 0.03);
+  close("recent_sold_present comes out near 0 (no effect planted)", model.coef[spCol], 0, 0.1);
+  close("recent_sold_log_days comes out near 0 (no effect planted)", model.coef[sdCol], 0, 0.03);
+  const predAt = (days: number) => model.coef[upCol] + model.coef[udCol] * ln(days + 1);
+  ok("the recovered discount shrinks toward 0 as days-ago grows, as planted", predAt(5) < predAt(180) && predAt(180) < predAt(665));
 }
 
 // ── fitEstimateModel / predictLogEstimate: recovers a known linear relationship ───────────────

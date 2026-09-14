@@ -57,6 +57,17 @@ export interface BlendInputs {
   priors: { mu: number; basis: string; earlierSales: number | null; contributions: PriceContribution[] } | null;
   /** Pre-sale appearances of the same work, for the hurdle. */
   sellThrough: { sold: number; unsold: number } | null;
+  /**
+   * The single most recent PRE-SALE appearance of the same work AT THE SAME HOUSE (strictly
+   * before this lot's own sale date), if any — house-scoped, unlike `sellThrough` which pools
+   * every house. Added 2026-09-14 to replace an earlier liquidity feature that used AGGREGATE
+   * sell-through and found no effect on the estimate; `relist_discount_report.ts` showed why —
+   * the real practice is sequential and house-specific (Roseberys told the user directly: an
+   * unsold lot is typically re-priced down ~30% for its next auction), not something an
+   * aggregate rate captures. `daysAgo` is what lets the estimate model fit a decay: the measured
+   * effect is strongest within ~180 days and fades by ~365.
+   */
+  recentSameHouseAppearance: { sold: boolean; daysAgo: number } | null;
 }
 
 export interface PriceContribution { term: string; logEffect: number }

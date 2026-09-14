@@ -341,6 +341,36 @@ async function sellThrough(artist: string, titleKey: string, lot: Lot, sinceDate
   } finally { await s.close(); }
 }
 
+/** House-scoped, unlike SELL_THROUGH which pools every house: the single most recent pre-sale
+ *  appearance of the same work AT THE SAME HOUSE, for the re-listing-discount feature
+ *  (BlendInputs.recentSameHouseAppearance — plan step 9, relist_discount_report.ts). No
+ *  sinceDate cap here: relist_discount_report.ts found the effect fades by ~1yr but a >1yr-old
+ *  most-recent appearance is still the right one to report as "most recent," the model's own
+ *  continuous days-ago term is what lets the fit discount a stale one. */
+const RECENT_SAME_HOUSE = `
+MATCH (a:Artist)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(:EditionRun)
+      -[:INCLUDES]->(i:Impression)<-[:DOCUMENTS]-(s:SourceRecord)
+WHERE a.name = $artist AND s.institutionName = $house AND s.sourceType = 'auction'
+  AND s.saleDate IS NOT NULL AND substring(s.saleDate, 0, 10) < $untilDate
+  AND NOT (s.saleId = $saleId AND s.lotNumber = $lotNumber)
+WITH cw, s
+WHERE replace(replace(replace(toLower(trim(cw.name)),'(',' '),')',' '),'-',' ') CONTAINS $titleKey
+RETURN substring(s.saleDate, 0, 10) AS date, s.sold AS sold
+ORDER BY s.saleDate DESC
+LIMIT 1
+`;
+async function recentSameHouseAppearance(artist: string, titleKey: string, lot: Lot, house: string): Promise<{ sold: boolean; daysAgo: number } | null> {
+  const s = getDriver().session({ database: getDatabase() });
+  try {
+    const r = await s.run(RECENT_SAME_HOUSE, { artist, titleKey, house, untilDate: lot.saleDate, saleId: lot.saleId, lotNumber: lot.lotNumber });
+    const rec = r.records[0];
+    if (!rec) return null;
+    const days = (new Date(lot.saleDate).getTime() - new Date(String(rec.get("date"))).getTime()) / 86400000;
+    if (!Number.isFinite(days) || days < 0) return null;
+    return { sold: !!rec.get("sold"), daysAgo: days };
+  } finally { await s.close(); }
+}
+
 function statOf(xs: ComparablesResult["comparables"]): TierStat {
   const p = xs.map((x) => x.priceRealisedGBP).filter((v): v is number => v != null && v > 0).sort((a, b) => a - b);
   const med = p.length ? (p.length % 2 ? p[(p.length - 1) / 2] : (p[p.length / 2 - 1] + p[p.length / 2]) / 2) : null;
@@ -471,6 +501,7 @@ async function processLot(lot: Lot): Promise<Row> {
           sameArtist: t3.n > 0 && t3.medianHammer != null ? { n: t3.n, medianHammerGBP: t3.medianHammer } : null,
           priors: pred && profile ? { mu: pred.mu, basis: profile.basis, earlierSales: profile.earlierSales, contributions: pred.contributions } : null,
           sellThrough: null,
+          recentSameHouseAppearance: null,
         },
         lotAttrsSource: fromGraph ? "graph" : profile ? "csv" : "none",
         priorsUnknownColumns: pred?.unknownColumns ?? [],
@@ -487,6 +518,7 @@ async function processLot(lot: Lot): Promise<Row> {
     if (base.titleUsable) {
       const key = normalizeTitleKey(lot.title).slice(0, 24);
       if (key) base.sellThrough = await sellThrough(id.canonical, key, lot, sinceDate);
+      if (key && base.blend) base.blend.inputs.recentSameHouseAppearance = await recentSameHouseAppearance(id.canonical, key, lot, houseName(lot));
     }
     if (base.blend) base.blend.inputs.sellThrough = base.sellThrough;
   } catch (err: any) {

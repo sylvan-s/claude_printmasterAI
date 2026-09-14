@@ -806,6 +806,52 @@ prediction even if it is real and informative about the houses themselves).
 **Compute.** Fits and scores on 4,957 lots in under 2 seconds; $0; no graph reads (reuses the
 step-8 `--blend` JSONL already on disk).
 
+**Addendum 2026-09-14 (final) — the liquidity dummies rebuilt as a recency-weighted feature,
+and what a properly-specified regression can and can't confirm.** Replaced the aggregate
+`liquidityLimb` dummies entirely with a house-scoped feature: `BlendInputs` gained
+`recentSameHouseAppearance: { sold, daysAgo } | null` (the single most recent PRE-SALE
+appearance of the same work at the SAME house — `comps_hammer_backtest.ts` computes it natively
+now via `RECENT_SAME_HOUSE`, mirroring `SELL_THROUGH`'s pattern; `patch_recency_feature.ts`
+back-filled it onto the three existing `--blend` files in ~7s each rather than re-running the
+12-minute harness). `estimate_model.ts`'s liquidity block became two present+value pairs —
+`recent_unsold_present`/`_log_days` and `recent_sold_present`/`_log_days` — so the fit recovers
+both a level shift and its decay with time, matching the shape `relist_discount_report.ts`
+measured directly. 27 unit tests, including one that plants a decaying discount and confirms
+the fit recovers both the level and the decay slope.
+
+**Forum turned out to be structurally unable to inform this feature at all**, for a bigger
+reason than previously recorded: [[project_forum_missing_sale_dates]] already flagged Forum's
+6,228 sold+priced records as undated; re-checked directly this session and it's every one of
+Forum's 10,050 auction `SourceRecord`s, unconditionally — `saleDate` is absent from the node's
+property list, not merely null. A house-scoped, date-ordered query can never find a "most
+recent Forum appearance" as a result. Reconfirmed in the existing memory note and spawned as a
+follow-up (the fix was already scoped there: 57 saleIds, backfill from listing pages, no
+re-ingest).
+
+**Result, properly separated by whether the pool actually has informative rows:**
+
+| Pool | recent_unsold_present | 95% CI |
+|---|---:|---|
+| Roseberys + Forum (Forum contributes 0 informative rows) | +0.113 — wrong sign | [-0.472, 0.753] |
+| Roseberys + Bonhams (both informative) | **-0.357 (×0.70)** — matches the pairwise ×0.70/×0.71 almost exactly | [-0.715, 0.119] — still crosses 0 |
+
+Pooling in Forum for this specific coefficient is worse than not having the feature at all — it
+dilutes a real, correctly-signed effect into noise, because every Forum row is forced to the
+reference level regardless of its true history. Restricted to the two houses that actually
+carry the information, the regression's point estimate lands almost exactly on the value
+`relist_discount_report.ts` measured directly (×0.70), which is a real agreement between two
+independent methods. But even there the regression's own confidence interval still crosses
+zero — with only house-residuals-worth of statistical power split across four new recency
+columns plus five other predictors, a cross-sectional regression is a structurally noisier
+instrument for this specific effect than the direct same-work paired comparison. The paired
+test remains the authoritative measurement (tight bootstrap CI, [×0.70, ×0.71]); the regression
+coefficient should be read as consistent with it, not as an independent confirmation.
+
+**House residuals barely move with the corrected feature in place** (Roseberys vs Forum: +0.027
+vs the earlier +0.039/+0.040; Roseberys vs Bonhams: -0.115 vs the earlier -0.117/-0.116) —
+consistent with the earlier check that recent-history lots are too small a share of any sample
+(under 6%) to be driving the main house-residual findings either way.
+
 ## Step 2 built (2026-09-13) — the attributed-lot entry path
 
 `src/appraisal/attributed_lot.ts` + `AttributedLotAppraiser` (appraiser.ts), method

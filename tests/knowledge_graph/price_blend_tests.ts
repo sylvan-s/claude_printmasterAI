@@ -36,7 +36,7 @@ function ok(label: string, cond: boolean) { if (cond) passed++; else { failed++;
 const LN = Math.log;
 const inputs = (over: Partial<BlendInputs> = {}): BlendInputs => ({
   saleDate: "2024-03-01", house: "roseberys", estimate: { lowGBP: 800, highGBP: 1200 },
-  sameWork: [], sameArtistTechnique: null, sameArtist: null, priors: null, sellThrough: null, ...over,
+  sameWork: [], sameArtistTechnique: null, sameArtist: null, priors: null, sellThrough: null, recentSameHouseAppearance: null, ...over,
 });
 
 // ── rawWitnesses ──────────────────────────────────────────────────────────────
