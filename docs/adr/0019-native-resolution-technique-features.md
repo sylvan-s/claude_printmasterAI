@@ -1,7 +1,7 @@
 # ADR-0019: Technique classification needs native-resolution features, not a bigger head
 
 **Date:** 2026-09-13
-**Status:** Proposed. **Corrected 2026-09-14** — the Phase 0/0b drypoint figures were host-confounded; see "Correction and variance" under Phase 4. **Phase 0 gate passed on 2026-09-13** (results below): tiling at a fixed
+**Status:** Proposed → **implemented through Phase 4 on 2026-09-14**: on the 2026-09-07 held-out artists the tile model scores family macro-F1 0.662 (was 0.558) and flat 21-way 0.389 (was 0.275), emitting 13 techniques (was 7). **Corrected 2026-09-14** — the Phase 0/0b drypoint figures were host-confounded; see "Correction and variance" under Phase 4. **Phase 0 gate passed on 2026-09-13** (results below): tiling at a fixed
 physical scale is worth +0.09 / +0.15 artist-balanced F1 on aquatint / drypoint over the same
 encoder at 518px, and resolution alone is worth nothing. **Amended 2026-09-13** after the
 physical-cue research in [`docs/research/intaglio-technique-visual-cues-2026-09-13.md`](../research/intaglio-technique-visual-cues-2026-09-13.md):
@@ -550,6 +550,47 @@ less institution-identifiable (0.63 vs 0.76 against the same 0.38 majority), it 
 Apache-2.0, and it is the encoder the ACKG already uses for Stage 1d. **Phase 2's encoder is
 DINOv2-L**; the Phase 0b selection of DINOv3 rested on the host-confounded drypoint figure and
 is withdrawn. The DINOv3 shards are kept for reference only.
+
+#### Full-corpus two-stage model (2026-09-14) — the comparable numbers
+
+`train_two_stage_tiles.py` on `data/tiles_full/` (28,127 images extracted from the 28,822-image
+manifest at ≥ 5 px/mm; DINOv2-L, 16 stratified 40 mm tiles, mean ⊕ max pooled; 3.5 GB;
+$1.60 of GPU). Scored on the **2026-09-07 model's own held-out artists** — 637 of its 1,244
+test artists have images at ≥ 5 px/mm, giving 4,587 test images; train 18,172 images / 2,096
+artists (the old train fold plus 1,307 artists ingested since); labels the same 21 techniques.
+`artifacts/two_stage_tiles.json`. Artist-balanced, single split as in the original protocol.
+
+| | 2026-09-07 (stored 224 px embedding) | Tile features (this ADR) |
+|---|---|---|
+| Family macro-F1 (6 families) | 0.558 | **0.662** |
+| Flat 21-way macro-F1 | 0.275 | **0.389** |
+| Techniques passing the escalation gate | 7 / 21 | **13 / 21** |
+
+Stage A per family (F1 / AUROC): Photographic 0.93 / 0.99, Intaglio 0.81 / 0.91, Planographic
+0.65 / 0.89, Screen 0.63 / 0.95, Relief 0.58 / 0.89, Other (collage) 0.37 / 0.84.
+
+Stage B, within-family test F1 / AUROC for the emitted techniques: etching 0.82 / 0.78,
+engraving 0.62 / 0.84, aquatint 0.59 / 0.80, photogravure 0.67 / 0.98 (n=47), gelatin silver
+0.93 / 0.91, lithograph 0.93 / 0.81, woodcut 0.80 / 0.85, wood engraving 0.77 / 0.95, linocut
+0.56 / 0.92, letterpress 0.75 / 0.94 (n=24), embossing 0.57 / 0.94 (n=26), screenprint via
+Stage A. Not emitted: drypoint (gate 0.41 vs bar 0.45; test 0.38 / 0.79), mezzotint (n=24),
+monotype, platinum, chromogenic, collage.
+
+Read with these cautions:
+
+- **Offset lithograph passed the gate (0.50) and scored 0.29 on test** — the gate false-pass the
+  original evaluation warned about, at the class the ADR already flags as a label problem. It
+  should be treated as not emitted until the Phase 3 halftone audit fixes its labels.
+- Several newly emitted relief/intaglio techniques rest on small test counts (24–80 images);
+  their gate passes are real but their F1s carry wide intervals. Artist-bootstrap intervals on
+  this split are the next addition.
+- The test images are the held-out artists' images at ≥ 5 px/mm, not the identical image set
+  the 2026-09-07 model was scored on; the artists are the same, the resolution filter is new.
+
+Net: on the same held-out artists, native-resolution tiles lift the family model by +0.10
+macro-F1 and the flat 21-way model by +0.11, and nearly double the number of processes the
+system is entitled to name. Drypoint remains a family-level answer, as the research note
+predicted for accent-only, worn-burr labels.
 
 ### Phase 5 — product implication
 
