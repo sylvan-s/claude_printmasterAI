@@ -348,7 +348,12 @@ async function main() {
     }
     const n = picked.length, maybe = n - certain;
     console.log(`\nStage 2b certain on ${certain}/${n}; may be skipped on ${maybe}.`);
-    console.log(`Cost estimate (Stage 1a and 1b off): ~$0.08/lot without 2b, ~$0.45-0.70/lot with 2b (client-side search) -> low ~$${(certain * 0.45 + maybe * 0.08).toFixed(2)}, high ~$${(certain * 0.70 + maybe * 0.70).toFixed(2)} for ${n} lots.`);
+    // Measured 2026-09-14 on the gated attributed method (Stage 1a and 1b off, Haiku at 2b with
+    // Sonnet on escalation): ~$0.04 when 2b is skipped, ~$0.09 when it runs and the gate passes,
+    // ~$0.19 when it escalates and the stage is redone on Sonnet.
+    const SKIP = 0.04, PASS = 0.09, ESC = 0.19;
+    console.log(`Cost estimate (gated 2b, Stage 1a and 1b off): $${SKIP.toFixed(2)} skipped / $${PASS.toFixed(2)} gate passes / $${ESC.toFixed(2)} escalates`);
+    console.log(`  -> ~$${(certain * PASS + maybe * SKIP).toFixed(2)} if nothing escalates, ~$${(certain * ESC + maybe * ESC).toFixed(2)} if everything does, for ${n} lots.`);
     await closeDriver();
     return;
   }

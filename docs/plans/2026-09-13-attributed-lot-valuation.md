@@ -977,6 +977,52 @@ catches, deterministically and from the output alone, the cases where it cannot.
 reason is recorded in `report.attributedLot.stage2bGate` with the model that failed, so the rate
 is measurable from stored runs rather than assumed.
 
+### Escalation rate measured: 58%, and the gate pays 16% (2026-09-14)
+
+Ten fresh lots, seed 42, deliberately NOT the ones the gate was built against.
+`npm run report:gate-rate` reads stored runs, so this is re-checkable for free as more accumulate.
+
+| | |
+|---|---:|
+| stored runs | 41 |
+| reached the gate | 12 |
+| escalated | 7 |
+| **E** | **58%** |
+| reasons | no_search_despite_gap 6, uncited_catalogue_raisonne 2, research_failed 1 |
+
+Stage 2b costs $0.04 on Haiku and $0.157 on Sonnet, so gated = 0.04 + 0.58 x 0.157 = **$0.132
+against $0.157, 16% cheaper**, with break-even at E = 75%. It pays, but not by much: about
+$0.025 a lot, or roughly £12 over a 500-lot sale.
+
+**The separation is perfect, and that is the more useful finding.** Counting only Haiku's own
+searches, before any Sonnet redo:
+
+| Haiku searches | lots | outcome |
+|---|---|---|
+| 1, 4, 3, 1 | 14, 221, 300, 315 | **all 4 PASSED** |
+| 0 | 15, 33, 164, 289, 346, 426 | **all 6 ESCALATED** |
+
+Whether Haiku searches at all predicts the outcome with no exceptions in this sample. And when
+it does not search it does not stay silent — it asserts. Lot 15 named "Michler & Löpsinger" as
+Dalí's catalogue raisonné and lot 346 named "Benavides" for Vasarely, both plausible and neither
+carrying a source URL. That is the same parametric-recall behaviour as the fabricated Sherman
+comps, caught here by a different gate reason. The three reasons are independent tests of one
+underlying failure.
+
+Note this is not a side-effect of the STEP 7 rewrite that told Stage 2b to search less: in the
+model comparison BEFORE that change, Haiku already made zero searches on 2 of 4 lots.
+
+**What this means for the design.** The cost case is real but thin. The stronger case is
+robustness: the gate is model-agnostic and also caught an outright crash (lot 33, Haiku returned
+prose instead of JSON), which without gating kills the lot. Judge it as a safety net that
+happens to save money rather than as a cost optimisation.
+
+**The obvious next move is to make Haiku search.** Six of seven escalations are "did not try",
+and every lot where it tried passed. If a prompt change lifted the search rate, escalations would
+convert to passes and E would fall well under the break-even, at which point the saving is
+material rather than marginal. Not attempted here — it is a prompt experiment with its own
+measurement, and the honest current answer is the 58% above.
+
 Observed, not yet acted on:
 ### Liquidity: the SIZE bounded on measurement, not judgement (2026-09-14)
 
