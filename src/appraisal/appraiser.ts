@@ -1390,12 +1390,17 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
             // The lot's own sale code / lot number never reach the search engine, and its own
             // listing never reaches the model — a request in the prompt is not a filter.
             const { query: q, removed } = sanitizeSearchQuery(asked, excludeRef);
-            if (removed.length) console.log(`[4-Stage] Stage 2b search scope: removed ${removed.join(", ")} from "${asked.slice(0, 80)}"`);
+            // Queries are logged IN FULL, both as asked and as sent. They are the audit trail
+            // for what Stage 2b went looking for, and a truncated query cannot be checked
+            // against the leakage rules or reproduced — the two the search-scope guard exists
+            // to police. A search query is a line of text the model wrote; it is not a size
+            // risk worth trading that for.
+            if (removed.length) console.log(`[4-Stage] Stage 2b search scope: removed ${removed.join(", ")} from "${asked}"`);
             const raw = await tavilySearch(q, { maxResults: SEARCH_MAX_RESULTS });
             const { results, dropped } = filterExcludedResults(raw.results, excludeRef);
-            if (dropped.length) console.log(`[4-Stage] Stage 2b search scope: dropped ${dropped.length} result(s) for this lot's own listing (${dropped.map((d) => d.url).join(", ").slice(0, 160)})`);
+            if (dropped.length) console.log(`[4-Stage] Stage 2b search scope: dropped ${dropped.length} result(s) for this lot's own listing (${dropped.map((d) => d.url).join(", ")})`);
             const r = { ...raw, results };
-            console.log(`[4-Stage] Stage 2b web_search "${q.slice(0, 70)}": ${r.results.length} result(s)${r.error ? ` — ${r.error.slice(0, 60)}` : ""}`);
+            console.log(`[4-Stage] Stage 2b web_search "${q}": ${r.results.length} result(s)${r.error ? ` — ${r.error}` : ""}`);
             return { type: "tool_result", tool_use_id: b.id, content: formatSearchForModel(r) };
           }
           if (b.name === "query_ackg_comparables") {
