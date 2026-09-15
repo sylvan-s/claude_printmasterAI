@@ -133,7 +133,16 @@ def stamp(now):
 # ============================================================ section 1: the merge primitive
 
 # Every relationship type an Artist carries. ATTRIBUTED_TO and CATALOGUES are INCOMING.
-HANDLED_TYPES = {"CREATED", "MADE_MATRIX", "FROM_REGION", "ATTRIBUTED_TO", "CATALOGUES"}
+# PRICE_NEIGHBOUR added 2026-09-15: found live by assert_transferable's own guard doing
+# exactly its job — a re-run of this script after PRICING-PRIORS-1.2 (2026-09-14) had
+# written outgoing Artist->Artist PRICE_NEIGHBOUR edges refused to delete 5 dup nodes that
+# carried them ('Adriaen Jansz. van Ostade', 'Margaret J. Patterson', 'Francisco José de
+# Goya y Lucientes', 'David Alfaro Siqueiros', 'William Seltzer Rice') rather than silently
+# dropping the edges on DETACH DELETE. It is directed and carries `weight`/`run` properties,
+# unlike every other type here, and (confirmed live) can appear on either side, so both
+# directions are transferred below.
+HANDLED_TYPES = {"CREATED", "MADE_MATRIX", "FROM_REGION", "ATTRIBUTED_TO", "CATALOGUES",
+                  "PRICE_NEIGHBOUR"}
 
 MERGE_PAIR = """
 MATCH (canon:Artist {name: $canonName})
@@ -169,6 +178,24 @@ CALL {
     WITH canon, dup
     OPTIONAL MATCH (n)-[:CATALOGUES]->(dup)
     FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END | MERGE (x)-[:CATALOGUES]->(canon))
+}
+CALL {
+    WITH canon, dup
+    OPTIONAL MATCH (dup)-[r:PRICE_NEIGHBOUR]->(n)
+    WHERE n IS NULL OR elementId(n) <> elementId(canon)
+    FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END |
+        MERGE (canon)-[nr:PRICE_NEIGHBOUR]->(x)
+        ON CREATE SET nr.weight = r.weight, nr.run = r.run
+    )
+}
+CALL {
+    WITH canon, dup
+    OPTIONAL MATCH (n)-[r:PRICE_NEIGHBOUR]->(dup)
+    WHERE n IS NULL OR elementId(n) <> elementId(canon)
+    FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END |
+        MERGE (x)-[nr:PRICE_NEIGHBOUR]->(canon)
+        ON CREATE SET nr.weight = r.weight, nr.run = r.run
+    )
 }
 WITH canon, dup
 // Inherit any identity field the survivor lacks, so a merge never loses an identifier.

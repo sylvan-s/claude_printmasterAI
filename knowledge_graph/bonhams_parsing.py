@@ -133,6 +133,21 @@ def strip_leading_parenthetical(s):
 _LOWERCASE_CONNECTORS = {"de", "van", "der", "den", "la", "le", "di", "du", "von", "y", "of"}
 
 
+def _titlecase_token(w):
+    """Capitalizes a single space-separated token, including each side of an internal
+    hyphen ("TOULOUSE-LAUTREC" -> "Toulouse-Lautrec", "PIERRE-AUGUSTE" -> "Pierre-
+    Auguste") — a hyphen is not a word boundary `name.split(" ")` sees, so the original
+    per-word `w[:1] + w[1:].lower()` left everything after the hyphen lowercase (found
+    live 2026-09-15 ingesting Swann: "HENRI TOULOUSE-LAUTREC" -> "Henri Toulouse-
+    lautrec", "PIERRE-AUGUSTE RENOIR" -> "Pierre-auguste Renoir" — a pre-existing defect
+    in this function, not something the Swann adapter introduced; just never exercised
+    against a hyphenated ALL-CAPS name before). Each hyphen-segment is capitalized on
+    its own, not run through the connector-lowercasing rule below — that rule exists for
+    a standalone word like "VAN"/"DE" between space-separated name parts, and doesn't
+    apply inside a hyphenated compound."""
+    return "-".join(seg[:1] + seg[1:].lower() if seg else seg for seg in w.split("-"))
+
+
 def normalize_all_caps_name(name):
     """Bonhams' own catalogue data formats some lots' artist names in ALL CAPS (a real
     house-style inconsistency, confirmed live: every ALL-CAPS Artist node created by an
@@ -152,7 +167,7 @@ def normalize_all_caps_name(name):
         if i > 0 and w.lower() in _LOWERCASE_CONNECTORS:
             out.append(w.lower())
         else:
-            out.append(w[:1] + w[1:].lower() if w else w)
+            out.append(_titlecase_token(w))
     return " ".join(out)
 
 

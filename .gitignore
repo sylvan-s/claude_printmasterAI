@@ -130,3 +130,9 @@ tests/backtest/attrpath_logs/
 
 # CatBoost training output
 catboost_info/
+
+# Swann ingest/dedup one-off outputs (regenerate on demand)
+knowledge_graph/swann_excluded_rows.csv
+knowledge_graph/roseberys_junk_repoint_presnapshot_*.json
+knowledge_graph/dupwork_*backup_*.json
+knowledge_graph/artist_splink_candidates_weights.html
