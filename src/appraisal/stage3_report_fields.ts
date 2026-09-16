@@ -91,7 +91,7 @@ export function nextStepsFromEvidence(ev: ValuationEvidence, attr: AttributionRe
   if (a?.reprintForgeryAssessment?.physicalExaminationRecommended || a?.researchConfidenceSummary?.physicalExaminationRequired) {
     steps.push("Examine the print in hand to confirm the impression, paper and signature.");
   }
-  const unstated = Object.entries(ev.attrs).filter(([, v]) => v.source === "default").map(([k]) => ({ signature: "signature", proof: "proof status", editionSize: "edition size", areaCm2: "sheet size", process: "technique" } as Record<string, string>)[k]);
+  const unstated = Object.entries(ev.attrs).filter(([, v]) => v.source === "default").map(([k]) => ({ signature: "signature", proof: "impression status (numbered, artist's proof, hors commerce…)", editionSize: "edition size", areaCm2: "sheet size", process: "technique" } as Record<string, string>)[k]);
   if (unstated.length) steps.push(`Record the ${unstated.join(", ")}: the valuation priced ${unstated.length === 1 ? "it" : "them"} at the model's default.`);
   if (!ev.condition.grade && !ev.condition.appraiserClaims.length) steps.push("Obtain a condition report: condition is noted but not priced, and a damaged sheet can sell well below this range.");
   if (!ev.targetHouse.value) steps.push("Choose the auction house: the range uses the pooled house level and is wider for it.");

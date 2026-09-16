@@ -49,13 +49,14 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
     + (0.78 * 0 + 0.2 * Math.log(0.92) + 0.02 * Math.log(0.92)) + 0.03;
   ok("start + model bars = the priors witness price the blend used, exactly", close(exactStart + modelSteps, priors.mu));
   eq("no gap note on a consistent build", w.notes, []);
-  eq("bar order: starts at artist + technique, no artist or technique bar", w.bars.map((b) => b.key), ["baseline", "signature", "proof", "edition", "size", "house", "year", "calibration", "model", "comps", "total", "condition"]);
+  eq("bar order: starts at artist + technique, no artist or technique bar", w.bars.map((b) => b.key), ["baseline", "signature", "impression", "edition", "size", "house", "year", "calibration", "model", "comps", "total", "condition"]);
   ok("start label names the artist and technique", w.bars[0].label.startsWith("X, etching: typical print"));
   ok("signature bar is beta * (1 - share)", close(w.bars.find((b) => b.key === "signature")!.logEffect, 0.7 * (1 - 0.75)));
-  ok("proof bar for a numbered (reference) lot is -beta * share of unknown", close(w.bars.find((b) => b.key === "proof")!.logEffect, -(-0.1) * 0.2));
+  ok("proof bar for a numbered (reference) lot is -beta * share of unknown", close(w.bars.find((b) => b.key === "impression")!.logEffect, -(-0.1) * 0.2));
   ok("house bar is the lot's level minus the training mix's level", close(w.bars.find((b) => b.key === "house")!.logEffect, Math.log(0.85) - (0.2 * Math.log(0.92) + 0.02 * Math.log(0.92)))); // Skinner is unmeasured here: pooled
   ok("calibration bar is the witness bias", close(w.bars.find((b) => b.key === "calibration")!.logEffect, Math.log(0.8)));
-  ok("labels carry the attribute source", w.bars.find((b) => b.key === "proof")!.label.includes("not stated: model default"));
+  ok("labels carry the attribute source", w.bars.find((b) => b.key === "impression")!.label.includes("not stated: model default"));
+  ok("the step is labelled impression status in plain words", w.bars.find((b) => b.key === "impression")!.label.startsWith("Impression status: numbered impression"));
   ok("running prices chain: each bar starts where the last ended", w.bars.filter((b) => b.kind === "factor" || b.kind === "comps").every((b, i, a) => i === 0 || Math.abs(b.fromGBP - a[i - 1].toGBP) <= 1));
   eq("condition is a zero-length note", [w.bars.at(-1)!.kind, w.bars.at(-1)!.logEffect], ["note", 0]);
   const other = valuationWaterfall({ ...e, profile: { ...e.profile!, run: "PRICING-PRIORS-9@2027" } }, cal, means, median)!;
@@ -70,12 +71,13 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   const rHc = stage3aValuation(hc, cal, means)!;
   const wHc = valuationWaterfall(hc, cal, means, rHc.medianGBP)!;
   const bar = (k: string) => wHc.bars.find((b) => b.key === k)!;
-  eq("proof without an edition: edition bar is zero and says so", [bar("edition").logEffect, bar("edition").label], [0, "Edition: not stated, not held against a hors commerce"]);
+  eq("proof without an edition: edition bar is zero and says so", [bar("edition").logEffect, bar("edition").label], [0, "Edition: not stated, not held against an impression outside the edition"]);
+  ok("hors commerce reads as outside the numbered edition", bar("impression").label.startsWith("Impression status: hors commerce (outside the numbered edition)"));
   const hcEd = { ...hc, attrs: { ...hc.attrs, editionSize: { value: 25, source: "catalogue" } } };
   const wEd = valuationWaterfall(hcEd, cal, means, stage3aValuation(hcEd, cal, means)!.medianGBP)!;
   ok("proof with a stated edition: the edition still prices it", wEd.bars.find((b) => b.key === "edition")!.logEffect !== 0 && wEd.bars.find((b) => b.key === "edition")!.label.startsWith("Edition: 25") && wEd.notes.length === 0);
-  ok("proof: a large fitted proof effect is clamped to +10%", close(bar("proof").logEffect, Math.log(1.1)));
-  ok("proof: label says modest proof premium", bar("proof").label.includes("modest proof premium, 5-10%"));
+  ok("proof: a large fitted proof effect is clamped to +10%", close(bar("impression").logEffect, Math.log(1.1)));
+  ok("proof: label says modest proof premium", bar("impression").label.includes("modest proof premium, 5-10%"));
   const hcPriors = calibratedWitnesses(evidenceToBlendInputs(hc, { proofPolicy: { columnMeans: means.columns, premium: { min: 1.05, max: 1.1 } } }), cal, "no_estimate").witnesses.find((x) => x.source === "priors_model")!;
   const hcModelSteps = wHc.bars.slice(0, wHc.bars.findIndex((b) => b.key === "model")).filter((b) => b.kind === "factor").reduce((t, b) => t + b.logEffect, 0);
   eq("proof: no gap note, so the bars reach the model price exactly", wHc.notes, []);

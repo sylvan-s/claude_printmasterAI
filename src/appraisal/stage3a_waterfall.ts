@@ -66,7 +66,16 @@ export function loadColumnMeans(path = MEANS_PATH): ColumnMeans | null {
   return m;
 }
 
-const LABELS: Record<string, string> = { signature: "Signature", proof: "Proof", edition: "Edition", size: "Size" };
+const LABELS: Record<string, string> = { signature: "Signature", proof: "Impression status", edition: "Edition", size: "Size" };
+/** Plain names for the proof classes: where the impression sits relative to the numbered edition. */
+const IMPRESSION_STATUS: Record<string, string> = {
+  numbered: "numbered impression",
+  artist_proof: "artist's proof (outside the numbered edition)",
+  hors_commerce: "hors commerce (outside the numbered edition)",
+  trial_proof: "trial proof (before the edition)",
+  edition_unnumbered: "unnumbered impression from the edition",
+  unknown: "not stated",
+};
 const pretty = (s: string) => s.replace(/_/g, " ");
 
 /** The lot's value on every non-house model column, exactly as priorsModelPrediction reads them. */
@@ -97,10 +106,10 @@ function attrLabel(dim: string, ev: ValuationEvidence, policyProof: boolean, neu
   switch (dim) {
     case "signature": return `${LABELS.signature}: ${pretty(a.signature.value)} (${src(a.signature)})`;
     case "proof": return policyProof
-      ? `${LABELS.proof}: ${pretty(a.proof.value)} (${src(a.proof)}; modest proof premium, ${Math.round((DEFAULT_PROOF_PREMIUM.min - 1) * 100)}-${Math.round((DEFAULT_PROOF_PREMIUM.max - 1) * 100)}%)`
-      : `${LABELS.proof}: ${pretty(a.proof.value)} (${src(a.proof)})`;
+      ? `${LABELS.proof}: ${IMPRESSION_STATUS[a.proof.value] ?? pretty(a.proof.value)} (${src(a.proof)}; modest proof premium, ${Math.round((DEFAULT_PROOF_PREMIUM.min - 1) * 100)}-${Math.round((DEFAULT_PROOF_PREMIUM.max - 1) * 100)}%)`
+      : `${LABELS.proof}: ${IMPRESSION_STATUS[a.proof.value] ?? pretty(a.proof.value)} (${src(a.proof)})`;
     case "edition": return neutralEdition
-      ? `${LABELS.edition}: not stated, not held against a ${pretty(a.proof.value)}`
+      ? `${LABELS.edition}: not stated, not held against an impression outside the edition`
       : `${LABELS.edition}: ${a.editionSize.value ?? "unknown"} (${src(a.editionSize)})`;
     case "size": return `${LABELS.size}: ${a.areaCm2.value != null ? `${Math.round(a.areaCm2.value)} cm²` : "unknown"} (${src(a.areaCm2)})`;
     default: return dim;
@@ -165,7 +174,8 @@ export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration,
     const who = ev.artist.canonical ?? ev.artist.reported ?? "Unknown artist";
     running = baseline;
     bars.push({ key: "baseline", label: `${who}, ${tech}: typical print (${profile.basis === "shrunk" ? `${profile.earlierSales} own sales` : profile.basis === "prior" ? "priced from similar artists" : "segment default"})`, kind: "baseline", logEffect: 0, multiplier: 1, fromGBP: Math.round(Math.exp(baseline)), toGBP: Math.round(Math.exp(baseline)) });
-    for (const dim of ["signature", "proof", "edition", "size"]) if (dim in byDim) push(dim, attrLabel(dim, ev, policyProof, neutralEdition), "factor", byDim[dim]);
+    // Bar key "impression" (the impression-status step); the model dimension behind it is "proof".
+    for (const dim of ["signature", "proof", "edition", "size"]) if (dim in byDim) push(dim === "proof" ? "impression" : dim, attrLabel(dim, ev, policyProof, neutralEdition), "factor", byDim[dim]);
     if (off) push("house", `Sale house: ${ev.targetHouse.value ?? "none chosen (pooled level)"}`, "factor", houseLog - meanHouse);
     push("year", `Market level: ${year}`, "factor", yearEff - means.meanYearEffect);
     push("calibration", "Model calibration on realised hammers", "factor", priors.mu - priors.rawMu);
