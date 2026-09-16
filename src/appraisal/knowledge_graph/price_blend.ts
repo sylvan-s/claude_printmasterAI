@@ -100,6 +100,10 @@ export interface PriceWitness {
   /** Human-readable provenance for the report. */
   basis: string;
   contributions?: PriceContribution[];
+  /** The calibration bias applied from `key`, excluding the house mix. */
+  keyBias?: number;
+  /** The house-mix part of the bias, when the calibration has one for the target house. */
+  houseMix?: { house: string; logEffect: number } | null;
 }
 
 export interface PriceBlend {
@@ -120,6 +124,33 @@ export interface WitnessCalibration {
   df: number | null;
   /** bias = median(log hammer - raw mu) on the fit lots; sigma = 1.4826 x MAD of the de-biased residual. */
   byKey: Record<string, { bias: number; sigma: number; n: number }>;
+  /**
+   * House MIX, per target house (graph institution name): the median residual left after the
+   * key bias, on that house's fit lots. Only the artist-level witnesses carry it (HOUSE_MIX_SOURCES).
+   * It is additive to the key bias and kept apart from the like-for-like house offset, so the
+   * report can show "house price level" and "house mix" as two separate factors. A house with
+   * too few fit lots, or none, gets no entry and so no mix term.
+   */
+  houseMix?: Record<string, { bias: number; n: number }>;
+}
+
+/**
+ * Witnesses that price the ARTIST rather than the print, and so inherit what a house tends to
+ * sell: measured 2026-09-16, after house re-basing and time adjustment, tier-2/3 comps and the
+ * priors model read x0.74-0.92 at Forum/Roseberys and x0.94-1.12 at Bonhams, while same-work
+ * comps stayed within x0.91-0.99 everywhere. Same-work comps are left out on purpose.
+ */
+export const HOUSE_MIX_SOURCES: WitnessSource[] = ["same_artist_technique", "same_artist", "priors_model"];
+
+/** The mix term for a witness at a target house, or null when the calibration has none for it. */
+export function houseMixOf(cal: WitnessCalibration, house: string | null | undefined): { house: string; logEffect: number; n: number } | null {
+  if (!cal.houseMix || !house) return null;
+  const h = house.toLowerCase();
+  for (const [name, v] of Object.entries(cal.houseMix)) {
+    const n = name.toLowerCase();
+    if (n === h || n.includes(h) || h.includes(n)) return { house: name, logEffect: v.bias, n: v.n };
+  }
+  return null;
 }
 export interface RegimeCalibration {
   weights: Record<WitnessSource, number>;
@@ -420,9 +451,12 @@ export function calibratedWitnesses(inp: BlendInputs, cal: BlendCalibration, reg
     const c = lookup(cal.witnesses[w.source], w.keys);
     if (!c) continue;
     const weight = weights[w.source] ?? 0;
+    const mix = houseMixOf(cal.witnesses[w.source], inp.targetHouse);
+    const bias = c.bias + (mix?.logEffect ?? 0);
     witnesses.push({
-      source: w.source, rawMu: w.rawMu, mu: w.rawMu + c.bias, sigma: Math.sqrt(c.sigma ** 2 + extra ** 2), weight, df: cal.witnesses[w.source].df,
-      samples: w.rawSamples?.map((s) => s + c.bias), key: c.key, basis: w.basis, contributions: w.contributions,
+      source: w.source, rawMu: w.rawMu, mu: w.rawMu + bias, sigma: Math.sqrt(c.sigma ** 2 + extra ** 2), weight, df: cal.witnesses[w.source].df,
+      samples: w.rawSamples?.map((s) => s + bias), key: c.key, basis: w.basis, contributions: w.contributions,
+      keyBias: c.bias, houseMix: mix ? { house: mix.house, logEffect: mix.logEffect } : null,
     });
   }
   return { witnesses, regime: r };
@@ -585,7 +619,7 @@ function scoreRows(rows: FitRow[], cal: BlendCalibration, regime: BlendRegime): 
  * the posterior median, then a temperature for 80% interval coverage — separately for the
  * with-estimate and no-estimate regimes. Deterministic. Fit on one house, score on another.
  */
-export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fittedOn: string; fittedAt?: string; df?: number | null; divergenceThreshold?: number; houseOffsets?: HouseOffsets | null }): BlendCalibration {
+export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fittedOn: string; fittedAt?: string; df?: number | null; divergenceThreshold?: number; houseOffsets?: HouseOffsets | null; houseMix?: boolean }): BlendCalibration {
   const df = opts.df === undefined ? 5 : opts.df;
   const witnesses = {} as Record<WitnessSource, WitnessCalibration>;
   for (const src of WITNESS_SOURCES) witnesses[src] = { df, byKey: {} };
@@ -606,6 +640,27 @@ export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fit
       if (!es.length) continue;
       const b = median(es);
       witnesses[src].byKey[key] = { bias: b, sigma: Math.max(SIGMA_FLOOR, 1.4826 * mad(es, b)), n: es.length };
+    }
+  }
+  if (opts.houseMix) {
+    // Second pass: what each target house leaves over after the key bias. Additive, so the key
+    // bias stays the pooled calibration and the mix is a separate, reportable term.
+    const left: Record<string, Record<string, number[]>> = {};
+    for (const r of rows) {
+      if (!r.inputs.targetHouse) continue;
+      const y = ln(r.hammerGBP);
+      for (const w of rawWitnesses(r.inputs, opts.houseOffsets)) {
+        if (!HOUSE_MIX_SOURCES.includes(w.source)) continue;
+        const c = lookup(witnesses[w.source], w.keys);
+        const e = y - w.rawMu - (c?.bias ?? 0);
+        if (Number.isFinite(e)) ((left[w.source] ??= {})[r.inputs.targetHouse] ??= []).push(e);
+      }
+    }
+    for (const src of HOUSE_MIX_SOURCES) {
+      for (const [house, es] of Object.entries(left[src] ?? {})) {
+        if (es.length < MIN_KEY_LOTS) continue;
+        (witnesses[src].houseMix ??= {})[house] = { bias: median(es), n: es.length };
+      }
     }
   }
   const cal: BlendCalibration = {

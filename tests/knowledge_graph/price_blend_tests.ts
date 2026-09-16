@@ -18,6 +18,7 @@ import {
   sameWorkBand,
   houseOffsetOf,
   timeShift,
+  houseMixOf,
   type HouseOffsets,
   type BlendInputs,
   type PriceWitness,
@@ -110,6 +111,39 @@ const offsets: HouseOffsets = {
   const w = rawWitnesses(inputs({ estimate: null, sameWork: [{ hammerGBP: 1000, saleDate: "2015-01-01" }] }), { ...idx, timeAdjust: "prior_year" });
   close("same-work samples carry the time shift", w[0].rawSamples![0], LN(1000) + 0.5);
   ok("basis says the comps were market-adjusted", w[0].basis.includes("market-adjusted"));
+}
+
+// ── house mix on the artist-level witnesses ────────────────────────────────────
+{
+  // Two houses whose lots sell at the same level against same-work comps, but House B sells an
+  // artist's cheaper works: its tier-2 median and priors read x2 high. The mix term must catch
+  // that on tier 2 and priors and leave same-work alone.
+  const rows: FitRow[] = [];
+  for (let i = 0; i < 120; i++) {
+    const house = i % 2 ? "House B" : "House A";
+    const y = 6 + (i % 10) * 0.1;
+    const skew = house === "House B" ? LN(2) : 0;
+    rows.push({ hammerGBP: Math.exp(y), inputs: inputs({
+      estimate: null, targetHouse: house,
+      sameWork: [{ hammerGBP: Math.exp(y + ((i % 3) - 1) * 0.1), saleDate: "2023-01-01" }],
+      sameArtistTechnique: { n: 5, medianHammerGBP: Math.exp(y + skew + ((i % 5) - 2) * 0.1) },
+      priors: { mu: y + skew + ((i % 7) - 3) * 0.05, basis: "shrunk", earlierSales: 40, contributions: [] },
+    }) });
+  }
+  const off = fitBlendCalibration(rows, { version: "T", fittedOn: "synthetic", fittedAt: "2026-09-16T00:00:00Z" });
+  eq("house mix is off unless asked for", off.witnesses.priors_model.houseMix, undefined);
+  const cal = fitBlendCalibration(rows, { version: "T", fittedOn: "synthetic", fittedAt: "2026-09-16T00:00:00Z", houseMix: true });
+  const mA = houseMixOf(cal.witnesses.priors_model, "House A")!.logEffect, mB = houseMixOf(cal.witnesses.priors_model, "House B")!.logEffect;
+  close("priors mix gap between the houses recovers the planted x2", mA - mB, LN(2), 0.08);
+  close("tier-2 mix gap likewise", houseMixOf(cal.witnesses.same_artist_technique, "House A")!.logEffect - houseMixOf(cal.witnesses.same_artist_technique, "House B")!.logEffect, LN(2), 0.08);
+  eq("same-work carries no mix term", cal.witnesses.same_work.houseMix, undefined);
+  eq("an unseen house has no mix term", houseMixOf(cal.witnesses.priors_model, "House C"), null);
+  const w = calibratedWitnesses(rows[1].inputs, cal, "no_estimate").witnesses.find((x) => x.source === "priors_model")!;
+  close("witness mu applies key bias + house mix", w.mu, w.rawMu + w.keyBias! + w.houseMix!.logEffect);
+  eq("the witness names its mix house", w.houseMix!.house, "House B");
+  const b = calibratedWitnesses(rows[1].inputs, cal, "no_estimate").witnesses.find((x) => x.source === "priors_model")!;
+  const a = calibratedWitnesses(rows[0].inputs, cal, "no_estimate").witnesses.find((x) => x.source === "priors_model")!;
+  close("after mix, both houses' priors de-bias to within noise of the truth", Math.abs((b.mu - LN(rows[1].hammerGBP)) - (a.mu - LN(rows[0].hammerGBP))), 0, 0.15);
 }
 
 // ── priorsModelPrediction ─────────────────────────────────────────────────────

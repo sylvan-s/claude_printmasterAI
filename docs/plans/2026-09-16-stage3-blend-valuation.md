@@ -317,3 +317,44 @@ the house bar on the chart means. Either the bar shows like-for-like price level
 house's mix (one bar, "what lots at Forum typically fetch vs comparable Bonhams evidence"), or
 it shows two bars, "house price level" and "house mix". Not started; this is for the user to
 decide.
+
+## Phase 1c result (2026-09-16): house mix built as a separate term, and it does not hold up over time — left off
+
+**Built** (the user chose two chart bars: house price level, and house mix):
+- `WitnessCalibration.houseMix` is a per-target-house bias on the artist-level witnesses
+  (`HOUSE_MIX_SOURCES`: tier 2, tier 3, priors model). It is added to the key bias, so it can
+  be reported as its own term.
+- `PriceWitness.keyBias` and `PriceWitness.houseMix` expose the two parts for the waterfall.
+- `fitBlendCalibration({ houseMix: true })` fits it. `blend_gate.ts` gains `--house-mix`,
+  `--split-date` (fit on earlier lots, test on later ones, comma-separated files allowed) and a
+  per-house gate verdict.
+- Unit tests: 80 pass.
+
+**Gate within houses over time** (all three houses; `prior_year` time adjustment; no estimate;
+per-house MAE(log) / geo):
+
+| split | mix | overall MAE / geo / cover | Bonhams | Forum | Roseberys |
+|---|---|---|---|---|---|
+| 2021 | off | 0.613 / 0.97 / 79% | 0.574 / 0.89 | 0.652 / 1.01 | 0.589 / 0.97 |
+| 2021 | on | 0.619 / 0.89 / 80% | 0.566 / 0.96 | 0.663 / 0.87 | 0.595 / 0.88 |
+| 2023 | off | 0.621 / 0.97 / 80% | 0.589 / 0.93 | 0.656 / 1.01 | 0.584 / 0.92 |
+| 2023 | on | 0.628 / 0.91 / 78% | 0.583 / 1.02 | 0.661 / 0.93 | 0.598 / 0.83 |
+| 2024 | off | 0.629 / 0.96 / 78% | 0.593 / 0.91 | 0.653 / 1.03 | 0.599 / 0.87 |
+| 2024 | on | 0.633 / 0.90 / 79% | 0.590 / 0.98 | 0.654 / 0.95 | 0.611 / 0.79 |
+
+- Every row passes the gate, overall and per house (coverage 76–83%; the blend beats the best
+  single witness at every house).
+- At all three split dates the mix term fixes Bonhams (MAE −0.003 to −0.008, geo moves to
+  0.96–1.02), but it pushes Forum and Roseberys too low (Roseberys geo down to 0.79–0.88), and
+  overall MAE is worse by 0.004–0.007.
+- The mix fitted on earlier sales (Forum ×0.74–0.91, Roseberys ×0.82–0.90, Bonhams ×1.11–1.21)
+  over-corrects later ones: what a house sells is not stable over time.
+
+**Also:** without the mix term, the temporal gate already puts Bonhams at geo 0.89–0.93. The 0.86
+under-read seen leave-one-house-out was mostly the calibration never having seen Bonhams lots,
+which a production calibration fitted on every house does not suffer from.
+
+**Decision needed.** The house-mix term is built but `calibration.json` stays BLEND-1.2 with the
+mix off. Applying it would make prices slightly worse overall, and a chart bar for it would show
+a correction that does not generalise. Options: keep it off and show one house bar (price level
+only); or apply it anyway for the Bonhams gain. Not wired into anything.

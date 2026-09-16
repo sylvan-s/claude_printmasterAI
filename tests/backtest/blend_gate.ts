@@ -47,6 +47,10 @@ const DF = arg("df", "5") === "gauss" ? null : Number(arg("df", "5"));
 const HOUSE_OFFSETS = arg("house-offsets");
 /** Phase 1b: none | prior_year | sale_year (leaky upper bound). Uses house_offsets.json yearEffects. */
 const TIME_ADJUST = arg("time-adjust", "none") as "none" | "prior_year" | "sale_year";
+/** Fit a per-house mix term on the artist-level witnesses (price_blend HOUSE_MIX_SOURCES). */
+const HOUSE_MIX = argv.includes("--house-mix");
+/** Within-house temporal gate: fit on lots sold before this date, test on lots from it. --fit and --test may be the same file(s). */
+const SPLIT_DATE = arg("split-date");
 
 interface Row { key: string; source: string; sold: boolean; hammer: number | null; lowEst: number; highEst: number; error?: string; blend?: { inputs: BlendInputs; lotAttrsSource: string } | null; tiers: { same_work: { n: number } } }
 
@@ -193,7 +197,18 @@ function report(title: string, rows: FitRow[], cal: BlendCalibration) {
 }
 
 function main() {
-  const fit = load(FIT), test = load(TEST);
+  const loadMany = (spec: string) => {
+    const parts = spec.split(",").map(load);
+    return { rows: parts.flatMap((p) => p.rows), raw: parts.flatMap((p) => p.raw), skipped: parts.reduce((t, p) => { for (const [k, v] of Object.entries(p.skipped)) t[k] = (t[k] ?? 0) + v; return t; }, {} as Record<string, number>) };
+  };
+  const fit = loadMany(FIT), test = loadMany(TEST);
+  if (SPLIT_DATE) {
+    const before = (r: FitRow) => (r.inputs.saleDate ?? "") < SPLIT_DATE;
+    fit.rows = fit.rows.filter(before);
+    test.rows = test.rows.filter((r) => !before(r));
+    console.log(`temporal split at ${SPLIT_DATE}: fit on ${fit.rows.length} earlier lots, test on ${test.rows.length} later lots`);
+  }
+  console.log(`house mix: ${HOUSE_MIX ? "on" : "off"}`);
   console.log(`fit  ${FIT}: ${fit.rows.length} sold lots with blend inputs (skipped: ${JSON.stringify(fit.skipped)})`);
   console.log(`test ${TEST}: ${test.rows.length} sold lots with blend inputs (skipped: ${JSON.stringify(test.skipped)})`);
   const cover = (rows: FitRow[]) => { const c: Record<string, number> = {}; for (const r of rows) c[tierLabel(r)] = (c[tierLabel(r)] ?? 0) + 1; return c; };
@@ -207,7 +222,7 @@ function main() {
     const rebaseable = (rows: FitRow[]) => rows.filter((r) => r.inputs.targetHouse && [...r.inputs.sameWork, ...(r.inputs.sameArtistTechnique?.comps ?? []), ...(r.inputs.sameArtist?.comps ?? [])].some((c) => c.house)).length;
     console.log(`house offsets ${houseOffsets.version} (${HOUSE_OFFSETS}): ${Object.entries(houseOffsets.houses).map(([h, v]) => `${h} x${Math.exp(v.log).toFixed(2)}`).join(", ")}; re-baseable lots fit ${rebaseable(fit.rows)}/${fit.rows.length}, test ${rebaseable(test.rows)}/${test.rows.length}`);
   }
-  const cal = fitBlendCalibration(fit.rows, { version: VERSION, fittedOn: `${FIT} (${fit.rows.length} sold lots)`, df: DF, houseOffsets });
+  const cal = fitBlendCalibration(fit.rows, { version: VERSION, fittedOn: `${FIT} (${fit.rows.length} sold lots)`, df: DF, houseOffsets, houseMix: HOUSE_MIX });
   console.log(`\n── Calibration ${cal.version} (df=${DF ?? "gauss"}) ──`);
   for (const [src, w] of Object.entries(cal.witnesses)) {
     const keys = Object.entries(w.byKey).map(([k, v]) => `${k}: bias ${v.bias >= 0 ? "+" : ""}${v.bias.toFixed(2)} (x${Math.exp(v.bias).toFixed(2)}) sigma ${v.sigma.toFixed(2)} n=${v.n}`).join(" | ");
@@ -228,6 +243,20 @@ function main() {
   console.log(`  80% interval coverage ${pct(bl.coverage80)} (must be 75-85%): ${coverOk ? "PASS" : "FAIL"}`);
   console.log(`  MAE(log) blend ${f3(bl.mae)} vs best single witness ${f3(base.mae)}: ${maeOk ? "PASS" : "FAIL"}   geo bias blend ${f3(bl.geo)}`);
   console.log(`  GATE ${coverOk && maeOk ? "PASSES" : "FAILS"}`);
+  const houses = [...new Set(test.rows.map((r) => r.inputs.targetHouse ?? "unknown"))].sort();
+  if (houses.length > 1) {
+    console.log(`  per house (every house must also cover 75-85% and beat its best single witness):`);
+    for (const h of houses) {
+      const sub = test.rows.filter((r) => (r.inputs.targetHouse ?? "unknown") === h);
+      const b = scoreBlend(sub, cal, "no_estimate"), s1 = scorePoint(sub, bestSingle(cal, "no_estimate"));
+      const ok = b.coverage80 >= 0.75 && b.coverage80 <= 0.85 && b.mae < s1.mae;
+      console.log(`    ${h.padEnd(20)} n=${String(b.n).padStart(4)}  cover ${pct(b.coverage80).padStart(4)}  MAE ${f3(b.mae)} vs ${f3(s1.mae)}  geo ${f3(b.geo)}  ${ok ? "PASS" : "FAIL"}`);
+    }
+  }
+  for (const src of ["same_artist_technique", "same_artist", "priors_model"] as WitnessSource[]) {
+    const m = cal.witnesses[src].houseMix;
+    if (m) console.log(`  house mix ${src.padEnd(22)} ${Object.entries(m).map(([h, v]) => `${h} x${Math.exp(v.bias).toFixed(2)} (n=${v.n})`).join(", ")}`);
+  }
 
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify(cal, null, 2) + "\n");
