@@ -49,10 +49,18 @@ export interface BlendInputs {
   /** Calibration key for the estimate witness: the house whose drift applies ("roseberys", "forum", ...). */
   house: string | null;
   estimate: { lowGBP: number; highGBP: number } | null;
-  /** Tier-1 comps with a hammer, strictly before the lot's sale. */
-  sameWork: { hammerGBP: number; saleDate: string | null }[];
-  sameArtistTechnique: { n: number; medianHammerGBP: number } | null;
-  sameArtist: { n: number; medianHammerGBP: number } | null;
+  /**
+   * The house the price is FOR, as the graph names it ("Forum Auctions"). With a calibration
+   * that carries `houseOffsets`, every comp is re-based from its own house to this one and the
+   * priors model's house term is replaced by this house's measured offset. Null or absent: no
+   * re-basing, the pre-2026-09-16 behaviour.
+   */
+  targetHouse?: string | null;
+  /** Tier-1 comps with a hammer, strictly before the lot's sale. `house` enables re-basing. */
+  sameWork: CompSale[];
+  /** `comps` (added 2026-09-16) lets the median be re-taken after re-basing; without it the stored median is used as-is. */
+  sameArtistTechnique: { n: number; medianHammerGBP: number; comps?: CompSale[] } | null;
+  sameArtist: { n: number; medianHammerGBP: number; comps?: CompSale[] } | null;
   /** From `priorsModelPrediction`, when the artist has a profile. */
   priors: { mu: number; basis: string; earlierSales: number | null; contributions: PriceContribution[] } | null;
   /** Pre-sale appearances of the same work, for the hurdle. */
@@ -69,6 +77,8 @@ export interface BlendInputs {
    */
   recentSameHouseAppearance: { sold: boolean; daysAgo: number } | null;
 }
+
+export interface CompSale { hammerGBP: number; saleDate: string | null; house?: string | null }
 
 export interface PriceContribution { term: string; logEffect: number }
 
@@ -115,6 +125,8 @@ export interface RegimeCalibration {
   weights: Record<WitnessSource, number>;
   /** Common divisor on the log-posterior; >1 widens the interval. Fitted for 80% coverage. */
   temperature: number;
+  /** Per evidence tier, fitted for 80% coverage within the tier; a tier without enough fit lots uses `temperature`. */
+  temperatureByTier?: Partial<Record<EvidenceTier, number>>;
   fitLots: number;
   fitMaeLog: number;
   fitCoverage80: number;
@@ -126,7 +138,38 @@ export interface BlendCalibration {
   witnesses: Record<WitnessSource, WitnessCalibration>;
   regimes: Record<BlendRegime, RegimeCalibration>;
   divergenceThreshold: number;
+  /** Like-for-like house price levels (knowledge_graph/pricing_ml/house_offsets.py). Absent: no re-basing. */
+  houseOffsets?: HouseOffsets | null;
 }
+
+/**
+ * The shape house_offsets.py writes, trimmed to what the blend reads. Every entry is log hammer
+ * against `referenceHouse` for the SAME work, sale year and signed status — a house effect, not
+ * a mix effect.
+ */
+export interface HouseOffsets {
+  version: string;
+  referenceHouse: string;
+  houses: Record<string, { log: number; se: number }>;
+  /** For a house with no hammer data: the measured houses' weighted mean, and their spread,
+   *  which is added in quadrature to every witness sigma because the offset itself is unknown. */
+  pooledFallback: { log: number; betweenHouseSd: number };
+}
+
+/** A house's offset, matched on the graph's institution name (case-insensitive, substring either way). */
+export function houseOffsetOf(table: HouseOffsets, house: string | null | undefined): { log: number; measured: boolean; name: string } {
+  if (house) {
+    const h = house.toLowerCase();
+    for (const [name, v] of Object.entries(table.houses)) {
+      const n = name.toLowerCase();
+      if (n === h || n.includes(h) || h.includes(n)) return { log: v.log, measured: true, name };
+    }
+  }
+  return { log: table.pooledFallback.log, measured: false, name: house ?? "unknown house" };
+}
+
+/** Comps older than this (at the valuation date) key the same-work witness as "old". */
+export const RECENT_COMP_YEARS = 3;
 
 // ── grid ──────────────────────────────────────────────────────────────────────
 
@@ -242,55 +285,104 @@ export const sameWorkBand = (n: number): string => (n <= 1 ? "1" : n === 2 ? "2"
 interface RawWitness {
   source: WitnessSource;
   rawMu: number;
-  key: string;
+  /** Calibration keys, most specific first ("3+|recent", "3+"); "all" is always the last resort. */
+  keys: string[];
   basis: string;
   rawSamples?: number[];
   contributions?: PriceContribution[];
 }
 
-export function rawWitnesses(inp: BlendInputs): RawWitness[] {
+const medianOfSorted = (s: number[]): number => (s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2);
+
+const yearsBetween = (from: string, to: string): number => (Date.parse(to.slice(0, 10)) - Date.parse(from.slice(0, 10))) / (365.25 * 86400e3);
+
+/**
+ * House re-basing (plan 2026-09-16 phase 1). A comp sold at house H is moved to the target
+ * house T by exp(offset[T] - offset[H]): the SAME print fetches less at Forum than at Bonhams,
+ * so a Bonhams comp for a Forum lot reads high until it is re-based. Returns the log shift for
+ * one comp, 0 when either side is not known.
+ */
+function compShift(offsets: HouseOffsets | null | undefined, target: string | null | undefined, compHouse: string | null | undefined): number {
+  if (!offsets || !target || !compHouse) return 0;
+  return houseOffsetOf(offsets, target).log - houseOffsetOf(offsets, compHouse).log;
+}
+
+function rebasedLogs(comps: CompSale[], inp: BlendInputs, offsets: HouseOffsets | null | undefined): number[] {
+  return comps.filter((c) => c.hammerGBP > 0).map((c) => ln(c.hammerGBP) + compShift(offsets, inp.targetHouse, c.house)).sort((a, b) => a - b);
+}
+
+/**
+ * The priors model with its house term swapped for the measured like-for-like offset of the
+ * target house. The model's own `house=` column is per-artist and never saw Forum; the offset
+ * table is one consistent, measured number per house, and it is what the contribution chart
+ * shows as the house factor. Both are relative to Bonhams, so the swap is a replacement, not a
+ * re-reference.
+ */
+function priorsWithHouse(priors: NonNullable<BlendInputs["priors"]>, inp: BlendInputs, offsets: HouseOffsets | null | undefined): { mu: number; contributions: PriceContribution[] } {
+  if (!offsets || !inp.targetHouse) return { mu: priors.mu, contributions: priors.contributions };
+  const own = priors.contributions.filter((c) => c.term.startsWith("house="));
+  const kept = priors.contributions.filter((c) => !c.term.startsWith("house="));
+  const off = houseOffsetOf(offsets, inp.targetHouse);
+  const mu = priors.mu - own.reduce((t, c) => t + c.logEffect, 0) + off.log;
+  const term = `house=${off.name}${off.measured ? "" : " (unmeasured: pooled offset)"}`;
+  return { mu, contributions: [...kept, { term, logEffect: off.log }] };
+}
+
+export function rawWitnesses(inp: BlendInputs, offsets?: HouseOffsets | null): RawWitness[] {
   const out: RawWitness[] = [];
   if (inp.estimate && inp.estimate.lowGBP > 0 && inp.estimate.highGBP > 0) {
-    out.push({ source: "estimate", rawMu: ln((inp.estimate.lowGBP + inp.estimate.highGBP) / 2), key: inp.house ?? "all", basis: `catalogue estimate ${inp.estimate.lowGBP}-${inp.estimate.highGBP} GBP` });
+    out.push({ source: "estimate", rawMu: ln((inp.estimate.lowGBP + inp.estimate.highGBP) / 2), keys: inp.house ? [inp.house] : [], basis: `catalogue estimate ${inp.estimate.lowGBP}-${inp.estimate.highGBP} GBP` });
   }
   const sw = inp.sameWork.filter((c) => c.hammerGBP > 0);
   if (sw.length) {
-    const logs = sw.map((c) => ln(c.hammerGBP)).sort((a, b) => a - b);
-    const med = logs.length % 2 ? logs[(logs.length - 1) / 2] : (logs[logs.length / 2 - 1] + logs[logs.length / 2]) / 2;
-    const latest = sw.map((c) => c.saleDate).filter(Boolean).sort().pop() ?? "undated";
-    out.push({ source: "same_work", rawMu: med, key: sameWorkBand(sw.length), basis: `${sw.length} prior sale${sw.length === 1 ? "" : "s"} of this work, latest ${latest}`, rawSamples: logs });
+    const logs = rebasedLogs(sw, inp, offsets);
+    const latest = sw.map((c) => c.saleDate).filter(Boolean).sort().pop() ?? null;
+    const band = sameWorkBand(sw.length);
+    // Age of the NEWEST comp at the valuation date: several recent sales are the tightest
+    // evidence there is; the same count of decade-old sales is not.
+    const age = latest && inp.saleDate ? (yearsBetween(latest, inp.saleDate) <= RECENT_COMP_YEARS ? "recent" : "old") : null;
+    const rebased = offsets && inp.targetHouse && sw.some((c) => c.house) ? `, re-based to ${inp.targetHouse}` : "";
+    out.push({ source: "same_work", rawMu: medianOfSorted(logs), keys: age ? [`${band}|${age}`, band] : [band], basis: `${sw.length} prior sale${sw.length === 1 ? "" : "s"} of this work, latest ${latest ?? "undated"}${rebased}`, rawSamples: logs });
   }
-  if (inp.sameArtistTechnique && inp.sameArtistTechnique.n > 0 && inp.sameArtistTechnique.medianHammerGBP > 0) {
-    out.push({ source: "same_artist_technique", rawMu: ln(inp.sameArtistTechnique.medianHammerGBP), key: "all", basis: `median of ${inp.sameArtistTechnique.n} same-artist, same-technique sales` });
-  }
-  if (inp.sameArtist && inp.sameArtist.n > 0 && inp.sameArtist.medianHammerGBP > 0) {
-    out.push({ source: "same_artist", rawMu: ln(inp.sameArtist.medianHammerGBP), key: "all", basis: `median of ${inp.sameArtist.n} same-artist sales` });
-  }
+  const tier = (t: BlendInputs["sameArtistTechnique"], source: WitnessSource, label: string) => {
+    if (!t || t.n <= 0 || !(t.medianHammerGBP > 0)) return;
+    const logs = t.comps?.length ? rebasedLogs(t.comps, inp, offsets) : [];
+    const mu = logs.length ? medianOfSorted(logs) : ln(t.medianHammerGBP);
+    out.push({ source, rawMu: mu, keys: [], basis: `median of ${t.n} ${label} sales${logs.length && offsets && inp.targetHouse ? `, re-based to ${inp.targetHouse}` : ""}` });
+  };
+  tier(inp.sameArtistTechnique, "same_artist_technique", "same-artist, same-technique");
+  tier(inp.sameArtist, "same_artist", "same-artist");
   if (inp.priors && Number.isFinite(inp.priors.mu)) {
-    out.push({ source: "priors_model", rawMu: inp.priors.mu, key: inp.priors.basis, basis: `log-linear model, ${inp.priors.basis} basis${inp.priors.earlierSales != null ? `, ${inp.priors.earlierSales} earlier sales` : ""}`, contributions: inp.priors.contributions });
+    const p = priorsWithHouse(inp.priors, inp, offsets);
+    out.push({ source: "priors_model", rawMu: p.mu, keys: [inp.priors.basis], basis: `log-linear model, ${inp.priors.basis} basis${inp.priors.earlierSales != null ? `, ${inp.priors.earlierSales} earlier sales` : ""}`, contributions: p.contributions });
   }
   return out;
 }
 
-function lookup(cal: WitnessCalibration, key: string): { bias: number; sigma: number; key: string } | null {
-  const hit = cal.byKey[key] ?? cal.byKey.all;
-  if (!hit) return null;
-  return { bias: hit.bias, sigma: hit.sigma, key: cal.byKey[key] ? key : "all" };
+function lookup(cal: WitnessCalibration, keys: string[]): { bias: number; sigma: number; key: string } | null {
+  for (const k of [...keys, "all"]) {
+    const hit = cal.byKey[k];
+    if (hit) return { bias: hit.bias, sigma: hit.sigma, key: k };
+  }
+  return null;
 }
 
 /** Apply a calibration: de-bias, attach sigma / df / pool weight, drop what has no calibration or a zero weight. */
 export function calibratedWitnesses(inp: BlendInputs, cal: BlendCalibration, regime?: BlendRegime): { witnesses: PriceWitness[]; regime: BlendRegime } {
-  const raw = rawWitnesses(inp);
+  const raw = rawWitnesses(inp, cal.houseOffsets);
   const r: BlendRegime = regime ?? (raw.some((w) => w.source === "estimate") ? "with_estimate" : "no_estimate");
   const weights = cal.regimes[r].weights;
+  // A target house with no measured offset: the offset is a guess, so every witness carries
+  // the between-house spread on top of its own sigma.
+  const extra = cal.houseOffsets && inp.targetHouse && !houseOffsetOf(cal.houseOffsets, inp.targetHouse).measured ? cal.houseOffsets.pooledFallback.betweenHouseSd : 0;
   const witnesses: PriceWitness[] = [];
   for (const w of raw) {
     if (r === "no_estimate" && w.source === "estimate") continue;
-    const c = lookup(cal.witnesses[w.source], w.key);
+    const c = lookup(cal.witnesses[w.source], w.keys);
     if (!c) continue;
     const weight = weights[w.source] ?? 0;
     witnesses.push({
-      source: w.source, rawMu: w.rawMu, mu: w.rawMu + c.bias, sigma: c.sigma, weight, df: cal.witnesses[w.source].df,
+      source: w.source, rawMu: w.rawMu, mu: w.rawMu + c.bias, sigma: Math.sqrt(c.sigma ** 2 + extra ** 2), weight, df: cal.witnesses[w.source].df,
       samples: w.rawSamples?.map((s) => s + c.bias), key: c.key, basis: w.basis, contributions: w.contributions,
     });
   }
@@ -372,7 +464,22 @@ export function blendWitnesses(witnesses: PriceWitness[], opts: { temperature?: 
 /** The whole path: inputs -> calibrated witnesses -> posterior. */
 export function blendPrices(inp: BlendInputs, cal: BlendCalibration, regime?: BlendRegime): PriceBlend | null {
   const { witnesses, regime: r } = calibratedWitnesses(inp, cal, regime);
-  return blendWitnesses(witnesses, { temperature: cal.regimes[r].temperature, regime: r, hurdle: inp.sellThrough, divergenceThreshold: cal.divergenceThreshold });
+  const reg = cal.regimes[r];
+  const temperature = reg.temperatureByTier?.[evidenceTier(inp)] ?? reg.temperature;
+  return blendWitnesses(witnesses, { temperature, regime: r, hurdle: inp.sellThrough, divergenceThreshold: cal.divergenceThreshold });
+}
+
+/** The strongest price evidence a lot has, ignoring the estimate — what sets how wide its range should be. */
+export type EvidenceTier = "same_work_3+" | "same_work_1-2" | "same_artist_technique" | "same_artist" | "priors_model" | "none";
+export const EVIDENCE_TIERS: EvidenceTier[] = ["same_work_3+", "same_work_1-2", "same_artist_technique", "same_artist", "priors_model", "none"];
+export function evidenceTier(inp: BlendInputs): EvidenceTier {
+  const sw = inp.sameWork.filter((c) => c.hammerGBP > 0).length;
+  if (sw >= 3) return "same_work_3+";
+  if (sw >= 1) return "same_work_1-2";
+  if (inp.sameArtistTechnique && inp.sameArtistTechnique.n > 0) return "same_artist_technique";
+  if (inp.sameArtist && inp.sameArtist.n > 0) return "same_artist";
+  if (inp.priors) return "priors_model";
+  return "none";
 }
 
 /** CRPS of a grid posterior against an observed log price — lower is better, in log units. */
@@ -439,18 +546,19 @@ function scoreRows(rows: FitRow[], cal: BlendCalibration, regime: BlendRegime): 
  * the posterior median, then a temperature for 80% interval coverage — separately for the
  * with-estimate and no-estimate regimes. Deterministic. Fit on one house, score on another.
  */
-export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fittedOn: string; fittedAt?: string; df?: number | null; divergenceThreshold?: number }): BlendCalibration {
+export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fittedOn: string; fittedAt?: string; df?: number | null; divergenceThreshold?: number; houseOffsets?: HouseOffsets | null }): BlendCalibration {
   const df = opts.df === undefined ? 5 : opts.df;
   const witnesses = {} as Record<WitnessSource, WitnessCalibration>;
   for (const src of WITNESS_SOURCES) witnesses[src] = { df, byKey: {} };
   const resid: Record<WitnessSource, Record<string, number[]>> = { estimate: {}, same_work: {}, same_artist_technique: {}, same_artist: {}, priors_model: {} };
   for (const r of rows) {
     const y = ln(r.hammerGBP);
-    for (const w of rawWitnesses(r.inputs)) {
+    // Residuals are taken AFTER re-basing, so the bias left for a witness is what the house
+    // offset does not explain — and a Roseberys fit carries over to a Forum lot.
+    for (const w of rawWitnesses(r.inputs, opts.houseOffsets)) {
       const e = y - w.rawMu;
       if (!Number.isFinite(e)) continue;
-      (resid[w.source][w.key] ??= []).push(e);
-      (resid[w.source].all ??= []).push(e);
+      for (const k of [...w.keys, "all"]) (resid[w.source][k] ??= []).push(e);
     }
   }
   for (const src of WITNESS_SOURCES) {
@@ -468,6 +576,7 @@ export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fit
       no_estimate: { weights: { estimate: 0, same_work: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 }, temperature: 1, fitLots: 0, fitMaeLog: NaN, fitCoverage80: NaN },
     },
     divergenceThreshold: opts.divergenceThreshold ?? 0.5,
+    houseOffsets: opts.houseOffsets ?? null,
   };
   for (const regime of ["with_estimate", "no_estimate"] as BlendRegime[]) {
     const pool = regime === "with_estimate" ? rows.filter((r) => r.inputs.estimate) : rows;
@@ -504,6 +613,22 @@ export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fit
       if (gap < bestGap - 1e-9) { bestGap = gap; bestT = T; }
     }
     reg.temperature = bestT;
+    // Then one temperature per evidence tier. A single temperature is set by the tier mix of
+    // the fit set, and out of sample it left 1-2 same-work comps covering ~70% on every house
+    // (2026-09-16): thin same-work evidence read as more certain than it is. Temperature only
+    // widens or narrows the interval, never the median, so the tiers fit independently.
+    reg.temperatureByTier = {};
+    for (const tier of EVIDENCE_TIERS) {
+      const sub = pool.filter((r) => evidenceTier(r.inputs) === tier);
+      if (sub.length < 2 * MIN_KEY_LOTS) continue;
+      let tBest = bestT, tGap = Infinity;
+      for (const T of TEMPERATURE_GRID) {
+        reg.temperatureByTier[tier] = T;
+        const gap = Math.abs(scoreRows(sub, cal, regime).coverage80 - 0.8);
+        if (gap < tGap - 1e-9) { tGap = gap; tBest = T; }
+      }
+      reg.temperatureByTier[tier] = tBest;
+    }
     const final = scoreRows(pool, cal, regime);
     reg.fitLots = final.n; reg.fitMaeLog = final.mae; reg.fitCoverage80 = final.coverage80;
   }

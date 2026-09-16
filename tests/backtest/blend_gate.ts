@@ -29,6 +29,7 @@ import {
   type BlendInputs,
   type BlendRegime,
   type FitRow,
+  type HouseOffsets,
   type WitnessSource,
 } from "../../src/appraisal/knowledge_graph/price_blend";
 
@@ -40,6 +41,10 @@ const OUT = arg("out", join("knowledge_graph/pricing_ml/blend", "calibration.jso
 const VERSION = arg("version", "BLEND-1.0")!;
 const DRIFT = Number(arg("drift", "0.82"));
 const DF = arg("df", "5") === "gauss" ? null : Number(arg("df", "5"));
+/** Plan 2026-09-16 phase 1: knowledge_graph/pricing_ml/blend/house_offsets.json. Re-bases every comp to
+ *  the lot's house and swaps the priors house term. Needs harness runs that record comp houses
+ *  (targetHouse + per-comp house, 2026-09-16 onwards); older runs pass through un-rebased. */
+const HOUSE_OFFSETS = arg("house-offsets");
 
 interface Row { key: string; source: string; sold: boolean; hammer: number | null; lowEst: number; highEst: number; error?: string; blend?: { inputs: BlendInputs; lotAttrsSource: string } | null; tiers: { same_work: { n: number } } }
 
@@ -193,18 +198,32 @@ function main() {
   console.log(`fit  best evidence: ${JSON.stringify(cover(fit.rows))}`);
   console.log(`test best evidence: ${JSON.stringify(cover(test.rows))}`);
 
-  const cal = fitBlendCalibration(fit.rows, { version: VERSION, fittedOn: `${FIT} (${fit.rows.length} sold lots)`, df: DF });
+  const houseOffsets: HouseOffsets | null = HOUSE_OFFSETS ? JSON.parse(readFileSync(HOUSE_OFFSETS, "utf8")) : null;
+  if (houseOffsets) {
+    const rebaseable = (rows: FitRow[]) => rows.filter((r) => r.inputs.targetHouse && [...r.inputs.sameWork, ...(r.inputs.sameArtistTechnique?.comps ?? []), ...(r.inputs.sameArtist?.comps ?? [])].some((c) => c.house)).length;
+    console.log(`house offsets ${houseOffsets.version} (${HOUSE_OFFSETS}): ${Object.entries(houseOffsets.houses).map(([h, v]) => `${h} x${Math.exp(v.log).toFixed(2)}`).join(", ")}; re-baseable lots fit ${rebaseable(fit.rows)}/${fit.rows.length}, test ${rebaseable(test.rows)}/${test.rows.length}`);
+  }
+  const cal = fitBlendCalibration(fit.rows, { version: VERSION, fittedOn: `${FIT} (${fit.rows.length} sold lots)`, df: DF, houseOffsets });
   console.log(`\n── Calibration ${cal.version} (df=${DF ?? "gauss"}) ──`);
   for (const [src, w] of Object.entries(cal.witnesses)) {
     const keys = Object.entries(w.byKey).map(([k, v]) => `${k}: bias ${v.bias >= 0 ? "+" : ""}${v.bias.toFixed(2)} (x${Math.exp(v.bias).toFixed(2)}) sigma ${v.sigma.toFixed(2)} n=${v.n}`).join(" | ");
     console.log(`  ${src.padEnd(22)} ${keys || "(no fit lots)"}`);
   }
   for (const [regime, r] of Object.entries(cal.regimes)) {
-    console.log(`  ${regime.padEnd(22)} weights ${JSON.stringify(r.weights)}  temperature ${r.temperature}  fit: n=${r.fitLots} MAE(log)=${f3(r.fitMaeLog)} 80% cover ${pct(r.fitCoverage80)}`);
+    console.log(`  ${regime.padEnd(22)} weights ${JSON.stringify(r.weights)}  temperature ${r.temperature} by tier ${JSON.stringify(r.temperatureByTier ?? {})}  fit: n=${r.fitLots} MAE(log)=${f3(r.fitMaeLog)} 80% cover ${pct(r.fitCoverage80)}`);
   }
 
   report(`IN-SAMPLE (fit set, ${FIT})`, fit.rows, cal);
   report(`OUT-OF-SAMPLE (test set, ${TEST}) — the gate`, test.rows, cal);
+
+  // Phase-1 gate (plan 2026-09-16): no-estimate regime, out of sample.
+  const base = scorePoint(test.rows, bestSingle(cal, "no_estimate"));
+  const bl = scoreBlend(test.rows, cal, "no_estimate");
+  const coverOk = bl.coverage80 >= 0.75 && bl.coverage80 <= 0.85, maeOk = bl.mae < base.mae;
+  console.log(`\n══ PHASE-1 GATE (no estimate, out of sample) ══`);
+  console.log(`  80% interval coverage ${pct(bl.coverage80)} (must be 75-85%): ${coverOk ? "PASS" : "FAIL"}`);
+  console.log(`  MAE(log) blend ${f3(bl.mae)} vs best single witness ${f3(base.mae)}: ${maeOk ? "PASS" : "FAIL"}   geo bias blend ${f3(bl.geo)}`);
+  console.log(`  GATE ${coverOk && maeOk ? "PASSES" : "FAILS"}`);
 
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify(cal, null, 2) + "\n");

@@ -379,6 +379,11 @@ function statOf(xs: ComparablesResult["comparables"]): TierStat {
   const latest = xs.map((x) => x.saleDate?.slice(0, 10) ?? "").filter(Boolean).sort().pop() ?? null;
   return { n: xs.length, median: med, medianHammer: medH, latest };
 }
+function hammerComps(c: ComparablesResult, tier: Row["bestTier"]): { hammerGBP: number; saleDate: string | null; house: string | null }[] {
+  return c.comparables
+    .filter((x) => x.tier === tier && x.hammerPriceGBP != null && x.hammerPriceGBP > 0)
+    .map((x) => ({ hammerGBP: x.hammerPriceGBP!, saleDate: x.saleDate, house: x.institutionName }));
+}
 function tierStat(c: ComparablesResult, tier: Row["bestTier"]): TierStat {
   return statOf(c.comparables.filter((x) => x.tier === tier));
 }
@@ -496,9 +501,12 @@ async function processLot(lot: Lot): Promise<Row> {
         inputs: {
           saleDate: lot.saleDate, house: BONHAMS_HOUSE.has(lot.saleId) ? "bonhams" : lot.source,
           estimate: lot.lowEst > 0 && lot.highEst > 0 ? { lowGBP: lot.lowEst, highGBP: lot.highEst } : null,
-          sameWork: c.comparables.filter((x) => x.tier === "same_work" && x.hammerPriceGBP != null && x.hammerPriceGBP > 0).map((x) => ({ hammerGBP: x.hammerPriceGBP!, saleDate: x.saleDate })),
-          sameArtistTechnique: t2.n > 0 && t2.medianHammer != null ? { n: t2.n, medianHammerGBP: t2.medianHammer } : null,
-          sameArtist: t3.n > 0 && t3.medianHammer != null ? { n: t3.n, medianHammerGBP: t3.medianHammer } : null,
+          sameWork: hammerComps(c, "same_work"),
+          // `comps` carries each sale's house so price_blend can re-base it to the lot's house
+          // (plan 2026-09-16 phase 1); the median stays for runs and readers that predate it.
+          sameArtistTechnique: t2.n > 0 && t2.medianHammer != null ? { n: t2.n, medianHammerGBP: t2.medianHammer, comps: hammerComps(c, "same_artist_technique") } : null,
+          sameArtist: t3.n > 0 && t3.medianHammer != null ? { n: t3.n, medianHammerGBP: t3.medianHammer, comps: hammerComps(c, "same_artist") } : null,
+          targetHouse: houseName(lot),
           priors: pred && profile ? { mu: pred.mu, basis: profile.basis, earlierSales: profile.earlierSales, contributions: pred.contributions } : null,
           sellThrough: null,
           recentSameHouseAppearance: null,

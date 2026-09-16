@@ -1,20 +1,30 @@
 {
-  "version": "BLEND-1.0",
-  "fittedAt": "2026-09-14T12:49:45.059Z",
-  "fittedOn": "tests/backtest/comps_hammer/roseberys_n2500_blend.jsonl (1714 sold lots)",
+  "version": "BLEND-1.1",
+  "fittedAt": "2026-09-16T09:18:15.952Z",
+  "fittedOn": "/private/tmp/claude-501/-Users-sylvansitkey-Library-CloudStorage-GoogleDrive-sylvansitkey07-gmail-com-My-Drive-02-Personal-Projects-Printmaster-AI/24ad3ef6-5cf5-44fc-92f1-11a12ab14806/scratchpad/fit_all.jsonl (5094 sold lots)",
   "witnesses": {
     "estimate": {
       "df": 5,
       "byKey": {
+        "forum": {
+          "bias": -0.1823215567939549,
+          "sigma": 0.2584963317808472,
+          "n": 1504
+        },
+        "all": {
+          "bias": -0.19415601444095731,
+          "sigma": 0.3132868622710015,
+          "n": 5094
+        },
         "roseberys": {
           "bias": -0.2231435513142097,
           "sigma": 0.3308326291784473,
-          "n": 1714
+          "n": 1713
         },
-        "all": {
-          "bias": -0.2231435513142097,
-          "sigma": 0.3308326291784473,
-          "n": 1714
+        "bonhams": {
+          "bias": -0.16253553550638244,
+          "sigma": 0.4089927402383295,
+          "n": 1877
         }
       }
     },
@@ -22,24 +32,54 @@
       "df": 5,
       "byKey": {
         "1": {
-          "bias": -0.13483178347455116,
-          "sigma": 0.5440913494869524,
-          "n": 196
+          "bias": -0.06453852113757108,
+          "sigma": 0.5054577578426019,
+          "n": 673
         },
         "2": {
-          "bias": -0.07707533991362858,
-          "sigma": 0.3995581059931418,
-          "n": 71
+          "bias": -0.07013720141561297,
+          "sigma": 0.5129559036518293,
+          "n": 241
+        },
+        "1|recent": {
+          "bias": -0.07701168023743321,
+          "sigma": 0.48696505216114505,
+          "n": 455
         },
         "all": {
-          "bias": -0.09531017980432477,
-          "sigma": 0.4598356967032729,
-          "n": 374
+          "bias": -0.059202965217478365,
+          "sigma": 0.512350682539915,
+          "n": 1327
+        },
+        "3+|recent": {
+          "bias": -0.03734821022653145,
+          "sigma": 0.4905800560356672,
+          "n": 378
         },
         "3+": {
-          "bias": -0.07410797215372167,
-          "sigma": 0.44107580503252847,
-          "n": 107
+          "bias": -0.010216838771095915,
+          "sigma": 0.49841071101867246,
+          "n": 413
+        },
+        "1|old": {
+          "bias": 0,
+          "sigma": 0.561700608410738,
+          "n": 218
+        },
+        "2|recent": {
+          "bias": -0.05793365393548999,
+          "sigma": 0.5009806641026658,
+          "n": 186
+        },
+        "2|old": {
+          "bias": -0.10431943255566445,
+          "sigma": 0.690512231939417,
+          "n": 55
+        },
+        "3+|old": {
+          "bias": 0.1823032476439561,
+          "sigma": 0.7198134529349526,
+          "n": 35
         }
       }
     },
@@ -47,9 +87,9 @@
       "df": 5,
       "byKey": {
         "all": {
-          "bias": -0.1855109098406551,
-          "sigma": 0.7200356078671633,
-          "n": 1930
+          "bias": -0.017569452329841084,
+          "sigma": 0.7517679769865839,
+          "n": 3607
         }
       }
     },
@@ -57,34 +97,34 @@
       "df": 5,
       "byKey": {
         "all": {
-          "bias": -0.2231435513142097,
-          "sigma": 1.0001284637445425,
-          "n": 2040
+          "bias": -0.06453852113757108,
+          "sigma": 1.024616395028952,
+          "n": 2701
         }
       }
     },
     "priors_model": {
       "df": 5,
       "byKey": {
-        "shrunk": {
-          "bias": -0.0012981310216555464,
-          "sigma": 0.5753251208272457,
-          "n": 1056
+        "segment": {
+          "bias": -1.2032121998221426,
+          "sigma": 1.157738096432519,
+          "n": 908
         },
         "all": {
-          "bias": -0.09756808350784052,
-          "sigma": 0.711930788258074,
-          "n": 1714
+          "bias": -0.27268603630426913,
+          "sigma": 0.7864288677192981,
+          "n": 5094
         },
-        "segment": {
-          "bias": -0.8885785669963369,
-          "sigma": 0.8806083612087257,
-          "n": 415
+        "shrunk": {
+          "bias": -0.17199778167848478,
+          "sigma": 0.6823395934527166,
+          "n": 3673
         },
         "prior": {
-          "bias": 8.881784197001252e-16,
-          "sigma": 0.5922774002465221,
-          "n": 243
+          "bias": -0.20148095026556945,
+          "sigma": 0.6625654230374415,
+          "n": 513
         }
       }
     }
@@ -96,26 +136,136 @@
         "same_work": 1.5,
         "same_artist_technique": 0,
         "same_artist": 0,
-        "priors_model": 1.5
+        "priors_model": 1
       },
       "temperature": 3,
-      "fitLots": 1714,
-      "fitMaeLog": 0.30294535121709953,
-      "fitCoverage80": 0.7911318553092183
+      "fitLots": 5094,
+      "fitMaeLog": 0.32027161350970285,
+      "fitCoverage80": 0.7850412249705536,
+      "temperatureByTier": {
+        "same_work_3+": 3,
+        "same_work_1-2": 3,
+        "same_artist_technique": 3,
+        "same_artist": 3,
+        "priors_model": 4
+      }
     },
     "no_estimate": {
       "weights": {
         "estimate": 0,
-        "same_work": 2,
-        "same_artist_technique": 0.5,
-        "same_artist": 0.25,
-        "priors_model": 2
+        "same_work": 3,
+        "same_artist_technique": 0.75,
+        "same_artist": 0.5,
+        "priors_model": 1.5
       },
       "temperature": 2,
-      "fitLots": 1714,
-      "fitMaeLog": 0.5508750023737481,
-      "fitCoverage80": 0.7870478413068844
+      "fitLots": 5094,
+      "fitMaeLog": 0.6255311142076665,
+      "fitCoverage80": 0.795838241067923,
+      "temperatureByTier": {
+        "same_work_3+": 2.5,
+        "same_work_1-2": 3,
+        "same_artist_technique": 2,
+        "same_artist": 2,
+        "priors_model": 1.5
+      }
     }
   },
-  "divergenceThreshold": 0.5
+  "divergenceThreshold": 0.5,
+  "houseOffsets": {
+    "version": "HOUSE-OFFSETS-1.0",
+    "builtAt": "2026-09-16T08:49:44Z",
+    "referenceHouse": "Bonhams",
+    "method": "log hammer = work FE + house + sale year + signed; sparse LSQ over works with >=2 dated sold hammer records; work-cluster bootstrap",
+    "records": 13524,
+    "works": 5101,
+    "multiHouseWorks": 871,
+    "excludedGateLots": 1424,
+    "excludeFiles": [
+      "tests/backtest/comps_hammer/forum_n2500_blend_recency.jsonl",
+      "tests/backtest/comps_hammer/roseberys_n2500_blend_recency.jsonl",
+      "tests/backtest/comps_hammer/bonhams_n2500_blend_recency.jsonl"
+    ],
+    "houses": {
+      "Bonhams": {
+        "log": 0,
+        "multiplier": 1,
+        "se": 0,
+        "ci90": [
+          0,
+          0
+        ],
+        "identifyingWorks": 716,
+        "sales": 10433
+      },
+      "Forum Auctions": {
+        "log": -0.16367577432465027,
+        "multiplier": 0.8490172504511221,
+        "se": 0.042305664295023485,
+        "ci90": [
+          -0.24373565631525812,
+          -0.11422039102800138
+        ],
+        "identifyingWorks": 388,
+        "sales": 1217
+      },
+      "Roseberys London": {
+        "log": -0.08402599330985853,
+        "multiplier": 0.9194073573441965,
+        "se": 0.03222072522985871,
+        "ci90": [
+          -0.14042752152594074,
+          -0.03736007601893865
+        ],
+        "identifyingWorks": 468,
+        "sales": 1580
+      },
+      "Skinner": {
+        "log": -0.20694112460781475,
+        "multiplier": 0.8130675182474358,
+        "se": 0.04970863549256962,
+        "ci90": [
+          -0.2825559304356063,
+          -0.1353489768481309
+        ],
+        "identifyingWorks": 216,
+        "sales": 294
+      }
+    },
+    "pooledFallback": {
+      "log": -0.08251098893862757,
+      "betweenHouseSd": 0.0776326938222066
+    },
+    "tau": 0.49344011778218766,
+    "yearEffects": {
+      "2003": -0.5933309283211803,
+      "2004": -0.570619133784553,
+      "2005": -0.43438920274191006,
+      "2006": -0.490185325705435,
+      "2007": -0.5226015400026035,
+      "2008": -0.49638548446190994,
+      "2009": -0.4922172157538854,
+      "2010": -0.4448811546412935,
+      "2011": -0.5146529232330512,
+      "2012": -0.4837065546923724,
+      "2013": -0.4220922906331976,
+      "2014": -0.3886071976772435,
+      "2015": -0.3282603553280451,
+      "2016": -0.289229502530187,
+      "2017": -0.28226179540220603,
+      "2018": -0.22638743497193325,
+      "2019": -0.20694809718569837,
+      "2020": 0,
+      "2021": 0.07398863288401279,
+      "2022": 0.14396429303638283,
+      "2023": -0.10801804867656244,
+      "2024": -0.1288564555113941,
+      "2025": -0.2312779635623992,
+      "2026": -0.2585902378375536
+    },
+    "signed": {
+      "true": 0.4566860583946212,
+      "unknown": 0
+    }
+  }
 }

@@ -16,6 +16,8 @@ import {
   hurdleFrom,
   crpsOnGrid,
   sameWorkBand,
+  houseOffsetOf,
+  type HouseOffsets,
   type BlendInputs,
   type PriceWitness,
   type FitRow,
@@ -42,19 +44,58 @@ const inputs = (over: Partial<BlendInputs> = {}): BlendInputs => ({
 // ── rawWitnesses ──────────────────────────────────────────────────────────────
 {
   const w = rawWitnesses(inputs());
-  eq("estimate only -> one witness keyed by house", w.map((x) => [x.source, x.key]), [["estimate", "roseberys"]]);
+  eq("estimate only -> one witness keyed by house", w.map((x) => [x.source, x.keys]), [["estimate", ["roseberys"]]]);
   close("estimate raw mu is log midpoint", w[0].rawMu, LN(1000));
   const sw = rawWitnesses(inputs({ sameWork: [{ hammerGBP: 400, saleDate: "2022-01-01" }, { hammerGBP: 900, saleDate: "2023-05-05" }, { hammerGBP: 600, saleDate: null }] }));
   const s = sw.find((x) => x.source === "same_work")!;
   close("same_work raw mu is the log median", s.rawMu, LN(600));
-  eq("same_work key is the n band", s.key, "3+");
+  eq("same_work keys: n band with the newest comp's age, then the band alone", s.keys, ["3+|recent", "3+"]);
   eq("same_work samples are sorted logs", s.rawSamples!.map((x) => Math.round(Math.exp(x))), [400, 600, 900]);
   ok("same_work basis names the latest dated sale", s.basis.includes("2023-05-05"));
   eq("n bands", [sameWorkBand(1), sameWorkBand(2), sameWorkBand(7)], ["1", "2", "3+"]);
   const none = rawWitnesses(inputs({ estimate: null, sameWork: [{ hammerGBP: 0, saleDate: null }] }));
   eq("zero-hammer comps and a missing estimate give no witnesses", none.length, 0);
   const t = rawWitnesses(inputs({ estimate: null, sameArtistTechnique: { n: 5, medianHammerGBP: 300 }, sameArtist: { n: 20, medianHammerGBP: 250 }, priors: { mu: LN(500), basis: "prior", earlierSales: 9, contributions: [] } }));
-  eq("tier 2/3 and priors witnesses", t.map((x) => [x.source, x.key]), [["same_artist_technique", "all"], ["same_artist", "all"], ["priors_model", "prior"]]);
+  eq("tier 2/3 and priors witnesses", t.map((x) => [x.source, x.keys]), [["same_artist_technique", []], ["same_artist", []], ["priors_model", ["prior"]]]);
+  const old = rawWitnesses(inputs({ sameWork: [{ hammerGBP: 400, saleDate: "2015-01-01" }] })).find((x) => x.source === "same_work")!;
+  eq("a lone comp older than RECENT_COMP_YEARS keys as old", old.keys, ["1|old", "1"]);
+  const undated = rawWitnesses(inputs({ saleDate: null, sameWork: [{ hammerGBP: 400, saleDate: "2015-01-01" }] })).find((x) => x.source === "same_work")!;
+  eq("no valuation date -> band key only", undated.keys, ["1"]);
+}
+
+// ── house offsets: re-basing comps and the priors house term ───────────────────
+const offsets: HouseOffsets = {
+  version: "TEST", referenceHouse: "Bonhams",
+  houses: { Bonhams: { log: 0, se: 0 }, "Forum Auctions": { log: LN(0.8), se: 0.04 }, "Roseberys London": { log: LN(0.9), se: 0.03 } },
+  pooledFallback: { log: LN(0.85), betweenHouseSd: 0.1 },
+};
+{
+  eq("house lookup is case-insensitive and substring-tolerant", [houseOffsetOf(offsets, "forum").name, houseOffsetOf(offsets, "BONHAMS").measured], ["Forum Auctions", true]);
+  eq("an unknown house takes the pooled fallback, flagged unmeasured", [houseOffsetOf(offsets, "Swann Auction Galleries").measured, +houseOffsetOf(offsets, null).log.toFixed(4)], [false, +LN(0.85).toFixed(4)]);
+  const lot = inputs({
+    estimate: null, targetHouse: "Forum Auctions",
+    sameWork: [{ hammerGBP: 1000, saleDate: "2023-01-01", house: "Bonhams" }, { hammerGBP: 800, saleDate: "2023-06-01", house: "Forum Auctions" }],
+    sameArtistTechnique: { n: 2, medianHammerGBP: 999, comps: [{ hammerGBP: 900, saleDate: null, house: "Roseberys London" }, { hammerGBP: 500, saleDate: null, house: "Bonhams" }] },
+    priors: { mu: LN(1000) + LN(0.7), basis: "shrunk", earlierSales: 40, contributions: [{ term: "artist level", logEffect: LN(1000) }, { term: "house=Roseberys London", logEffect: LN(0.7) }] },
+  });
+  const w = rawWitnesses(lot, offsets);
+  const sw = w.find((x) => x.source === "same_work")!;
+  eq("same-work comps re-based to the target house: Bonhams 1000 -> 800, Forum 800 stays", sw.rawSamples!.map((x) => Math.round(Math.exp(x))), [800, 800]);
+  ok("basis says the comps were re-based", sw.basis.includes("re-based to Forum Auctions"));
+  const t2 = w.find((x) => x.source === "same_artist_technique")!;
+  // Roseberys 900 -> 900 x 0.8/0.9 = 800; Bonhams 500 -> 400; median of 400 and 800 = sqrt(400*800) in log space
+  close("tier-2 median re-taken over re-based comps, not the stored median", t2.rawMu, (LN(400) + LN(800)) / 2);
+  const pr = w.find((x) => x.source === "priors_model")!;
+  close("priors: the model's own house term is swapped for the target's offset", pr.rawMu, LN(1000) + LN(0.8));
+  eq("priors contributions carry exactly one house term, the target's", pr.contributions!.map((c) => c.term), ["artist level", "house=Forum Auctions"]);
+  const noTarget = rawWitnesses({ ...lot, targetHouse: null }, offsets);
+  close("no target house -> no re-basing", noTarget.find((x) => x.source === "same_work")!.rawSamples![1], LN(1000));
+  const unmeasured = rawWitnesses({ ...lot, targetHouse: "Swann Auction Galleries" }, offsets).find((x) => x.source === "priors_model")!;
+  ok("an unmeasured target house is named as such in the contribution", unmeasured.contributions!.some((c) => c.term.includes("unmeasured")));
+  const cal = { ...defaultCalibration(), houseOffsets: offsets };
+  const measuredSigma = calibratedWitnesses({ ...lot, targetHouse: "Forum Auctions" }, cal).witnesses.find((x) => x.source === "priors_model")!.sigma;
+  const pooledSigma = calibratedWitnesses({ ...lot, targetHouse: "Swann Auction Galleries" }, cal).witnesses.find((x) => x.source === "priors_model")!.sigma;
+  close("an unmeasured house adds the between-house SD in quadrature", pooledSigma, Math.sqrt(measuredSigma ** 2 + 0.1 ** 2));
 }
 
 // ── priorsModelPrediction ─────────────────────────────────────────────────────
