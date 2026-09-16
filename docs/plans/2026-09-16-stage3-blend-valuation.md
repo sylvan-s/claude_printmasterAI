@@ -818,3 +818,52 @@ is 0.688 → 0.699, both small losses.
 The user had also asked for shape bands and waterfall labels; adoption is pending a decision on
 the route: Stage 3a reads artist profiles from the committed build JSON instead of the graph,
 calibration refit offline from the same file, and size labels in plain words.
+
+## Adopted (2026-09-16): shape bands + extra-large term, from the committed model file (no graph write)
+
+**Model file.** `knowledge_graph/pricing_ml/priors_stage3a/` contains `artist_elasticities.json`,
+`neighbours.csv`, `artist_multipliers.csv` and `column_means.json`. It is built with
+`build_priors.py --size-terms shape-bands+xl --out-dir .../priors_stage3a` and
+`column_means.py --size-terms shape-bands+xl`, and its version is
+`PRICING-PRIORS-1.2-shape-bands+xl`. It holds 745 artists, and its priors temporal MAE is 0.649.
+The graph's PricingModelRun and `priors/` (the graph writer's source) are untouched; nothing was
+written to the graph.
+
+**Stage 3a reads it.**
+- `knowledge_graph/file_price_profile.ts` `queryArtistPriceProfileFromFile` uses the artist's own
+  entry, else the nationality × period segment default. The graph is only read, for stored
+  names, nationality and birth year. If the file is unreadable, the graph profile is used with a
+  warning.
+- `readLotGraphEvidence` uses it, and the waterfall reads `priors_stage3a/column_means.json`.
+- `artist_price_profile.areaBandFor` and `price_blend.xlAreaLog` apply the shape bands and the
+  extra-large term.
+
+**Calibration BLEND-1.3.** `tests/backtest/refit_blend_calibration.ts` refits offline. Each lot's
+pricing-model witness is rebuilt as live Stage 3a builds it (`lotAttrsWithSources`, the file
+profile, the proof policy); the comps witnesses are the harness's recorded ones.
+- Temporal gate (fit before 2024-07-01, score 1,495 after): **MAE(log) 0.622, 80% cover 79%, geo
+  ×0.97**.
+  - By house: Bonhams 0.590, Forum 0.646, Roseberys 0.587.
+  - By size: under 400 cm² 0.770 (cover 66%), 400–1,800 0.632, 1,800–7,500 0.560, over 7,500
+    0.820 (cover 69%), size unknown 0.700.
+  - Proofs: 0.565.
+- Production fit on all 5,094 lots: weights same-work 2, tier 2 0.5, tier 3 0.25, model 1;
+  temperature 1.3 (by tier: 1.5 / 2.5 / 1.3 / 1.3 / 0.9); fit MAE 0.628, cover 80%.
+- Artists by basis in the fit: 291 shrunk, 247 prior, 747 segment (not in the file).
+
+**Chart labels.** The size step is named by band and sheet side:
+- "small, up to 20 cm a side";
+- "small, 20–30 cm";
+- "medium, 30–42 cm";
+- "large, 42–87 cm (the typical size)";
+- "extra large, over 87 cm a side; larger still: ×k per doubling of area".
+
+The narration prompt names the bands the same way. Tests: `test:file-price-profile` (7),
+`test:stage3a-waterfall` (29); all other suites pass.
+
+**Braque example** (A0785/2, hammer £1,300): £330–2,000, median £810. Braque aquatint typical
+print £1,039 → hand ×1.24 → HC ×1.05 → edition ×1.00 → size (small, up to 20 cm) ×0.84 → Roseberys
+×0.94 → 2026 ×0.97 → calibration ×0.84 → model £867 → comps ×0.93 → £810.
+
+**Note.** `valuation_evidence_parity.ts` compares evidence against harness inputs recorded with
+the graph's 1.2 profiles, so its priors column now differs by design; comps parity still applies.

@@ -83,5 +83,24 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   eq("proof: no gap note, so the bars reach the model price exactly", wHc.notes, []);
   ok("proof: model price agrees with the chart's model subtotal", Math.abs(Math.log(bar("model").toGBP) - hcPriors.mu) < 1e-3 && hcModelSteps !== 0);
 }
+// ── shape size bands and the extra-large term ─────────────────────────────────────
+{
+  const e = ev();
+  const shapeProfile = { ...e.profile!, referenceLevels: { ...e.profile!.referenceLevels, area_band: "1800-7500" },
+    elasticities: { signature_hand: 0.7, "area_band_<400": -0.2, "area_band_>7500": 0.25, area_log_xl: 0.4, process_etching: 0.15 } };
+  const shapeMeans = { ...means, columns: { signature_hand: 0.75, "area_band_<400": 0.05, "area_band_>7500": 0.08, area_log_xl: 0.05 } };
+  const at = (cm2: number | null) => ({ ...e, profile: shapeProfile, attrs: { ...e.attrs, areaCm2: { value: cm2, source: cm2 == null ? "default" : "catalogue" } } }) as any;
+  const sizeBar = (cm2: number | null) => { const x = at(cm2); const r = stage3aValuation(x, cal, shapeMeans)!; return valuationWaterfall(x, cal, shapeMeans, r.medianGBP)!; };
+  const small = sizeBar(297);
+  eq("small sheet label names the band and side", small.bars.find((b) => b.key === "size")!.label, "Size: small, up to 20 cm a side (297 cm², catalogue)");
+  ok("small sheet bar is the band effect against the mix", close(small.bars.find((b) => b.key === "size")!.logEffect, -0.2 * (1 - 0.05) - 0.25 * 0.08 - 0.4 * 0.05));
+  const big = sizeBar(30000);
+  const bigBar = big.bars.find((b) => b.key === "size")!;
+  ok("extra-large label gives the band and the per-doubling growth", bigBar.label.startsWith("Size: extra large, over 87 cm a side (30,000 cm², catalogue; larger still: x1.32 per doubling of area"));
+  ok("extra-large bar adds the step and the log-area term above 7,500 cm²", close(bigBar.logEffect, -0.2 * (0 - 0.05) + 0.25 * (1 - 0.08) + 0.4 * (Math.log(30000 / 7500) - 0.05)));
+  eq("the chart still reaches the model price exactly (no gap note)", big.notes, []);
+  eq("unknown size says so", sizeBar(null).bars.find((b) => b.key === "size")!.label, "Size: not stated (not stated: model default)");
+}
+
 console.log(`\nstage3a waterfall tests: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

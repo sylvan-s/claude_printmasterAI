@@ -56,7 +56,8 @@ export interface Waterfall {
   notes: string[];
 }
 
-const MEANS_PATH = join(process.cwd(), "knowledge_graph/pricing_ml/priors/column_means.json");
+/** The training mix of the Stage 3a model file (build_priors --size-terms shape-bands+xl). */
+const MEANS_PATH = join(process.cwd(), "knowledge_graph/pricing_ml/priors_stage3a/column_means.json");
 let meansCache: ColumnMeans | null | undefined;
 export function loadColumnMeans(path = MEANS_PATH): ColumnMeans | null {
   if (meansCache !== undefined && path === MEANS_PATH) return meansCache;
@@ -101,7 +102,28 @@ function lotColumns(profile: ArtistPriceProfile, ev: ValuationEvidence): Record<
   return out;
 }
 
-function attrLabel(dim: string, ev: ValuationEvidence, policyProof: boolean, neutralEdition: boolean): string {
+/** Plain names for the shape size bands (build_priors --size-terms shape-bands[+xl]), by sheet side. */
+const SIZE_BAND_NAMES: Record<string, string> = {
+  "<400": "small, up to 20 cm a side",
+  "400-900": "small, 20-30 cm a side",
+  "900-1800": "medium, 30-42 cm a side",
+  "1800-7500": "large, 42-87 cm a side (the typical size)",
+  ">7500": "extra large, over 87 cm a side",
+};
+
+function sizeLabel(ev: ValuationEvidence, profile: ArtistPriceProfile): string {
+  const a = ev.attrs.areaCm2;
+  const src = a.source === "default" ? "not stated: model default" : a.source;
+  if (a.value == null) return `${LABELS.size}: not stated (${src})`;
+  const cm2 = `${Math.round(a.value).toLocaleString("en-GB")} cm²`;
+  if (profile.referenceLevels.area_band !== "1800-7500") return `${LABELS.size}: ${cm2} (${src})`;
+  const band = areaBandFor(a.value, profile.referenceLevels);
+  const xl = profile.elasticities.area_log_xl;
+  const larger = band === ">7500" && xl != null && Number.isFinite(xl) ? `; larger still: x${Math.exp(xl * Math.LN2).toFixed(2)} per doubling of area` : "";
+  return `${LABELS.size}: ${SIZE_BAND_NAMES[band] ?? band} (${cm2}, ${src}${larger})`;
+}
+
+function attrLabel(dim: string, ev: ValuationEvidence, policyProof: boolean, neutralEdition: boolean, profile: ArtistPriceProfile): string {
   const a = ev.attrs;
   const src = (s: { source: string }) => (s.source === "default" ? "not stated: model default" : s.source);
   switch (dim) {
@@ -112,7 +134,7 @@ function attrLabel(dim: string, ev: ValuationEvidence, policyProof: boolean, neu
     case "edition": return neutralEdition
       ? `${LABELS.edition}: not stated, not held against an impression outside the edition`
       : `${LABELS.edition}: ${a.editionSize.value ?? "unknown"} (${src(a.editionSize)})`;
-    case "size": return `${LABELS.size}: ${a.areaCm2.value != null ? `${Math.round(a.areaCm2.value)} cm²` : "unknown"} (${src(a.areaCm2)})`;
+    case "size": return sizeLabel(ev, profile);
     default: return dim;
   }
 }
@@ -176,7 +198,7 @@ export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration,
     running = baseline;
     bars.push({ key: "baseline", label: `${who}, ${tech}: typical print (${profile.basis === "shrunk" ? `${profile.earlierSales} own sales` : profile.basis === "prior" ? "priced from similar artists" : "segment default"})`, kind: "baseline", logEffect: 0, multiplier: 1, fromGBP: Math.round(Math.exp(baseline)), toGBP: Math.round(Math.exp(baseline)) });
     // Bar key "impression" (the impression-status step); the model dimension behind it is "proof".
-    for (const dim of ["signature", "proof", "edition", "size"]) if (dim in byDim) push(dim === "proof" ? "impression" : dim, attrLabel(dim, ev, policyProof, neutralEdition), "factor", byDim[dim]);
+    for (const dim of ["signature", "proof", "edition", "size"]) if (dim in byDim) push(dim === "proof" ? "impression" : dim, attrLabel(dim, ev, policyProof, neutralEdition, profile), "factor", byDim[dim]);
     if (off) push("house", `Sale house: ${ev.targetHouse.value ?? "none chosen (pooled level)"}`, "factor", houseLog - meanHouse);
     push("year", `Market level: ${year}`, "factor", yearEff - means.meanYearEffect);
     push("calibration", "Model calibration on realised hammers", "factor", priors.mu - priors.rawMu);

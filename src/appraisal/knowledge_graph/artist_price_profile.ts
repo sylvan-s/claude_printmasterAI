@@ -90,7 +90,7 @@ export interface PriceAdjustment {
   unknownColumns: string[];
 }
 
-const CONTINUOUS = new Set(["edition_log", "area_log"]);
+const CONTINUOUS = new Set(["edition_log", "area_log", "area_log_xl"]);
 const LN2 = Math.log(2);
 
 // ── pure helpers (mirrors of train_price_model.py / build_priors.py) ────────────

@@ -1,32 +1,11 @@
 {
-  "version": "BLEND-1.2",
-  "fittedAt": "2026-09-16T09:36:33.908Z",
-  "fittedOn": "/private/tmp/claude-501/-Users-sylvansitkey-Library-CloudStorage-GoogleDrive-sylvansitkey07-gmail-com-My-Drive-02-Personal-Projects-Printmaster-AI/24ad3ef6-5cf5-44fc-92f1-11a12ab14806/scratchpad/fit_all.jsonl (5094 sold lots)",
+  "version": "BLEND-1.3",
+  "fittedAt": "2026-09-16T15:01:44.050Z",
+  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl@2026-09-16T14:59:12+00:00, offline refit",
   "witnesses": {
     "estimate": {
       "df": 5,
-      "byKey": {
-        "forum": {
-          "bias": -0.1823215567939549,
-          "sigma": 0.2584963317808472,
-          "n": 1504
-        },
-        "all": {
-          "bias": -0.19415601444095731,
-          "sigma": 0.3132868622710015,
-          "n": 5094
-        },
-        "roseberys": {
-          "bias": -0.2231435513142097,
-          "sigma": 0.3308326291784473,
-          "n": 1713
-        },
-        "bonhams": {
-          "bias": -0.16253553550638244,
-          "sigma": 0.4089927402383295,
-          "n": 1877
-        }
-      }
+      "byKey": {}
     },
     "same_work": {
       "df": 5,
@@ -107,24 +86,24 @@
       "df": 5,
       "byKey": {
         "segment": {
-          "bias": -1.2032121998221426,
-          "sigma": 1.157738096432519,
-          "n": 908
+          "bias": -1.0931034727841964,
+          "sigma": 1.2337807419795552,
+          "n": 982
         },
         "all": {
-          "bias": -0.27268603630426913,
-          "sigma": 0.7864288677192981,
+          "bias": -0.26404157422440866,
+          "sigma": 0.7932984662694442,
           "n": 5094
         },
         "shrunk": {
-          "bias": -0.17199778167848478,
-          "sigma": 0.6823395934527166,
-          "n": 3673
+          "bias": -0.17531016685441525,
+          "sigma": 0.6753803395100536,
+          "n": 3596
         },
         "prior": {
-          "bias": -0.20148095026556945,
-          "sigma": 0.6625654230374415,
-          "n": 513
+          "bias": -0.2056839911830508,
+          "sigma": 0.6610740342499646,
+          "n": 516
         }
       }
     }
@@ -132,42 +111,36 @@
   "regimes": {
     "with_estimate": {
       "weights": {
-        "estimate": 3,
-        "same_work": 1.5,
-        "same_artist_technique": 0,
-        "same_artist": 0,
+        "estimate": 1,
+        "same_work": 1,
+        "same_artist_technique": 1,
+        "same_artist": 1,
         "priors_model": 1
       },
-      "temperature": 3,
-      "fitLots": 5094,
-      "fitMaeLog": 0.3198720482383601,
-      "fitCoverage80": 0.7852375343541421,
-      "temperatureByTier": {
-        "same_work_3+": 3,
-        "same_work_1-2": 3,
-        "same_artist_technique": 3,
-        "same_artist": 3,
-        "priors_model": 4
-      }
+      "temperature": 1,
+      "fitLots": 0,
+      "fitMaeLog": null,
+      "fitCoverage80": null,
+      "temperatureByTier": {}
     },
     "no_estimate": {
       "weights": {
         "estimate": 0,
-        "same_work": 3,
+        "same_work": 2,
         "same_artist_technique": 0.5,
-        "same_artist": 0.5,
-        "priors_model": 1.5
+        "same_artist": 0.25,
+        "priors_model": 1
       },
-      "temperature": 2,
+      "temperature": 1.3,
       "fitLots": 5094,
-      "fitMaeLog": 0.6233052909650725,
-      "fitCoverage80": 0.7946603847663918,
+      "fitMaeLog": 0.6282588746116239,
+      "fitCoverage80": 0.7991755005889282,
       "temperatureByTier": {
-        "same_work_3+": 2.5,
-        "same_work_1-2": 3,
-        "same_artist_technique": 1.75,
-        "same_artist": 2,
-        "priors_model": 1.5
+        "same_work_3+": 1.5,
+        "same_work_1-2": 2.5,
+        "same_artist_technique": 1.3,
+        "same_artist": 1.3,
+        "priors_model": 0.9
       }
     }
   },

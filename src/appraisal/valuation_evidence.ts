@@ -8,7 +8,8 @@
  *
  * The graph reads here are the ones the blend was CALIBRATED on (tests/backtest/
  * comps_hammer_backtest.ts --blend): comps from a 10-year window before the valuation date, up
- * to 60 of them, work identity resolved first, the artist's price profile. They are deliberately
+ * to 60 of them, work identity resolved first, the artist's price profile (from the committed Stage 3a
+ * model file, knowledge_graph/pricing_ml/priors_stage3a). They are deliberately
  * NOT Stage 3's current LLM reads (from 2015, 40 comps): a price computed from inputs the
  * calibration never saw would carry intervals that were never measured. Nothing here reads
  * `evidence` back into the LLM Stage 3 — that switch is phase 4.
@@ -43,6 +44,7 @@ import type { ProofPolicy } from "./knowledge_graph/price_blend.js";
 import type { SignatureClass, ProofClass } from "./knowledge_graph/artist_price_profile.js";
 import type { WorkIdentityBasis } from "./knowledge_graph/work_identity.js";
 import { mapTechniqueToAckgVocabulary } from "./stage2a_query_plan.js";
+import { queryArtistPriceProfileFromFile, loadPriorsBuild } from "./knowledge_graph/file_price_profile.js";
 
 export const VALUATION_EVIDENCE_VERSION = "VE-1.0";
 /** The calibrated comps window and cap (comps_hammer_backtest.ts WINDOW_YEARS / limit). */
@@ -229,7 +231,15 @@ export async function readLotGraphEvidence(input: {
   const out: LotGraphEvidence = { profile: null, identity: { workIds: [], basis: null, matchedName: null, ambiguousAt: null, via: "none" }, workFacts: null, comps: null, query, warnings };
   const artist = input.canonicalArtist;
   if (!artist) { warnings.push("no graph identity for the artist: no profile, no comps"); return out; }
-  try { out.profile = await queryArtistPriceProfile(artist); } catch (e: any) { warnings.push(`price profile read failed: ${e?.message ?? e}`); }
+  // Stage 3a prices from the committed model file (priors_stage3a, 2026-09-16), not the graph's
+  // PricingModelRun; the graph profile is only a fallback when the file is missing.
+  try {
+    out.profile = await queryArtistPriceProfileFromFile(artist);
+    if (!out.profile && !loadPriorsBuild()) {
+      warnings.push("Stage 3a model file unreadable: using the graph's price profile");
+      out.profile = await queryArtistPriceProfile(artist);
+    }
+  } catch (e: any) { warnings.push(`price profile read failed: ${e?.message ?? e}`); }
   if (input.workTitle?.trim()) {
     try {
       const wi = await resolveWorkIdentity({ artistName: artist, title: input.workTitle, catalogueRefs: input.catalogueRefs ?? null, excludeSaleLot: input.excludeSaleLot ?? null });
