@@ -7,6 +7,7 @@ import {
   AppraiserInputResult,
   Stage1dResult,
   EmbeddingMatchCandidate,
+  AuctionEstimate,
 } from "../types";
 import {
   getPrompt,
@@ -65,6 +66,9 @@ import { mapTechniqueToAckgVocabulary as mapClaimTechnique } from "./stage2a_que
 import { VALUATION_ATTRIBUTED_LOT_SUFFIX } from "./prompts";
 import { readLotGraphEvidence, assembleValuationEvidence, type ValuationEvidence, type Sourced } from "./valuation_evidence.js";
 import { stage3aValuation, stage3aAuctionEstimate, loadBlendCalibration, type Stage3aResult } from "./stage3a_blend.js";
+import { loadColumnMeans } from "./stage3a_waterfall.js";
+import { allowedFigures, checkFigures, narrationText, stage3bUserText, STAGE3B_SYSTEM, STAGE3B_SCHEMA, STAGE3B_VERSION, type ValuationNarrative } from "./stage3b_narration.js";
+import { gbpRate } from "./stage3a_blend.js";
 import {
   mergeClaimIntoAppraiserInput, verifyAttributedLot, routeAttributedLot, synthesizeAttributionResult,
   buildAttributedLotValuationBlock, isAuthorshipClaim, ESTIMATE_DRIFT, deriveMisattributionRisk, workTitleFromImageMatch, veaNotRun,
@@ -223,6 +227,8 @@ export interface AppraisalMethodConfig {
   stage2bModel?: string;
   stage2Model?: string;
   stage3Model?: string;
+  /** Stage 3b narration of the Stage 3a price (stage3b_narration.ts). Default claude-haiku-4-5. */
+  stage3bModel?: string;
   /** Route through AttributedLotAppraiser: the catalogue's claim enters Stage 2a as a
    *  documented_fact, is verified against the graph, and Stage 2b runs only when routing
    *  says so. Requires stage2aModel. */
@@ -3394,7 +3400,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
    * llmAuctionEstimate for audit and stays displayed only when Stage 3a cannot price the lot or
    * convert to the report currency. Never throws.
    */
-  protected applyStage3a(report: PrintAnalysisReport, currency: string): void {
+  protected async applyStage3a(report: PrintAnalysisReport, currency: string): Promise<void> {
     const r = this.stage3aShadow(report.valuationEvidence ?? null);
     report.stage3a = r;
     const est = r ? stage3aAuctionEstimate(r, currency, report.valuationEvidence?.valuationDate.value ?? null) : null;
@@ -3402,9 +3408,43 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
       report.llmAuctionEstimate = report.auctionEstimate;
       report.auctionEstimate = est;
       report.estimateSource = { source: "stage3a", note: `Stage 3a ${r.calibrationVersion}, evidence ${r.evidenceTier}` };
+      report.valuationNarrative = await this.runStage3bNarration(r, est, report);
     } else {
       report.estimateSource = { source: "llm", note: !report.valuationEvidence ? "no valuation evidence was built" : !r ? "Stage 3a had no witness to price from (no artist identity, comps or price profile)" : `no ECB rate for ${currency}` };
       console.warn(`[Stage 3a] displayed estimate falls back to the LLM: ${report.estimateSource.note}`);
+    }
+  }
+
+  /**
+   * Stage 3b: the model narrates the Stage 3a price. Every figure it writes is checked against the
+   * allowed list; one retry naming the rejected figures, then no narration rather than a wrong one.
+   * Never throws.
+   */
+  protected async runStage3bNarration(r: Stage3aResult, est: AuctionEstimate, report: PrintAnalysisReport): Promise<ValuationNarrative | null> {
+    const model = this.config.stage3bModel || "claude-haiku-4-5";
+    try {
+      const fx = gbpRate(est.currency, report.valuationEvidence?.valuationDate.value ?? null);
+      if (!fx) return null;
+      const allowed = allowedFigures(r, est, fx.rate, report.valuationEvidence);
+      const ev = report.valuationEvidence;
+      const base = stage3bUserText(r, est, allowed, { artist: ev?.artist.canonical ?? ev?.artist.reported ?? null, title: ev?.identity.matchedName ?? null });
+      const rejected: string[] = [];
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const text = attempt === 1 ? base : `${base}\n\nYOUR PREVIOUS DRAFT QUOTED FIGURES NOT IN THE ALLOWED LIST: ${rejected.join(", ")}. Rewrite without them.`;
+        const out: any = await this.callClaude(model, STAGE3B_SYSTEM, [{ type: "text", text }], "report_valuation_narrative", "Report the narration of the set price.", STAGE3B_SCHEMA);
+        const bad = checkFigures(narrationText(out), allowed);
+        if (!bad.length) {
+          console.log(`[Stage 3b] narration accepted on attempt ${attempt}`);
+          return { version: STAGE3B_VERSION, headline: out.headline, keyDrivers: out.keyDrivers ?? [], narrative: out.narrative, caveats: out.caveats ?? [], model, guard: { attempts: attempt, rejected } };
+        }
+        rejected.push(...bad);
+        const txt = narrationText(out);
+        console.warn(`[Stage 3b] attempt ${attempt} quoted figures not in the allowed list: ${bad.map((b) => { const i = txt.indexOf(b); return `${b} in "…${txt.slice(Math.max(0, i - 70), i + b.length + 30).replace(/\n/g, " ")}…"`; }).join(" | ")}`);
+      }
+      return null;
+    } catch (err: any) {
+      console.warn(`[Stage 3b] narration failed, report carries none: ${err?.message ?? err}`);
+      return null;
     }
   }
 
@@ -3414,7 +3454,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     try {
       const cal = loadBlendCalibration();
       if (!cal) return null;
-      const r = stage3aValuation(ev, cal);
+      const r = stage3aValuation(ev, cal, loadColumnMeans());
       console.log(r
         ? `[Stage 3a] GBP ${r.lowGBP}-${r.highGBP} (median ${r.medianGBP}); evidence ${r.evidenceTier}; ${r.witnesses.map((w) => `${w.source} ${w.priceGBP} @${w.effectiveWeight}`).join(", ")}${r.printedEstimate?.midpointOverMedian ? `; printed estimate midpoint x${r.printedEstimate.midpointOverMedian} of median` : ""}`
         : `[Stage 3a] no witness: no price`);
@@ -3862,7 +3902,7 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     report.valuationEvidence = valuationEvidence;
-    this.applyStage3a(report, currency);
+    await this.applyStage3a(report, currency);
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
     report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${stage3Model}]`;
     report.promptVersion = "4stage";
@@ -4152,7 +4192,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     report.valuationEvidence = await evidencePromise;
-    this.applyStage3a(report, currency);
+    await this.applyStage3a(report, currency);
     const mid = claim.estimateLow && claim.estimateHigh ? (claim.estimateLow + claim.estimateHigh) / 2 : null;
     report.attributedLot = {
       claim, verification, routing, researchCompWrite, stage2bGate,

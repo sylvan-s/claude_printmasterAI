@@ -2,6 +2,7 @@ import type { Stage2bComp, CompStorabilityReport } from "./appraisal/comp_storab
 import type { AttributedLotReport } from "./appraisal/attributed_lot.js";
 import type { ValuationEvidence } from "./appraisal/valuation_evidence.js";
 import type { Stage3aResult } from "./appraisal/stage3a_blend.js";
+import type { ValuationNarrative } from "./appraisal/stage3b_narration.js";
 
 export interface AuctionEstimate {
   lowEstimate: number;
@@ -78,6 +79,8 @@ export interface PrintAnalysisReport {
   llmAuctionEstimate?: AuctionEstimate | null;
   /** Which stage produced auctionEstimate, and why when it is the fallback. */
   estimateSource?: { source: "stage3a" | "llm"; note: string };
+  /** Stage 3b's commentary on the Stage 3a price; null when its figures failed the check twice. */
+  valuationNarrative?: ValuationNarrative | null;
   pipelineMeta?: {
     specialistConfigUsed: string;
     humanEscalationRequired: boolean;

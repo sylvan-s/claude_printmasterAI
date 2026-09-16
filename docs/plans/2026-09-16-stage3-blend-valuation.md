@@ -574,3 +574,63 @@ like that is "not practicable to publish". To pick up later:
 
 The artist-identity task (priceless duplicate nodes) feeds this directly: its misses are the
 widest, lowest ranges.
+
+## Phase 5 result (2026-09-16): contribution waterfall, Stage 3b narration, report UI
+
+**Waterfall** (`src/appraisal/stage3a_waterfall.ts`, attached as `report.stage3a.waterfall`).
+- SHAP-exact for the log-linear model: each attribute bar is beta·(x − E[x]), with E over the
+  model's 31,920 training rows.
+- The means come from `knowledge_graph/pricing_ml/column_means.py`, written to
+  `priors/column_means.json`. It rebuilds the priors design exactly (training rows match the build)
+  and writes nothing to the graph.
+- Bars, in order:
+  - average sold print (£1,091)
+  - artist
+  - signature, proof, edition, size, technique
+  - sale house (like-for-like level vs the training house mix)
+  - market level (year)
+  - model calibration
+  - = pricing model price
+  - market comps pull
+  - = fair-value median
+  - condition, as a zero-length "noted, not priced" row.
+- Band and per-doubling terms are one bar per attribute.
+- Checked on 40 real lots: the bars reproduce the median to 2.8e-15 in log space, with no gap
+  notes. Tests: `test:stage3a-waterfall` (14).
+
+**Stage 3b narration** (`src/appraisal/stage3b_narration.ts`, `report.valuationNarrative`).
+- Haiku 4.5 by default (`stage3bModel`), about $0.007 per lot. It writes the headline, key
+  drivers, narrative and plain caveats, and has no numeric output fields.
+- `checkFigures` rejects any figure not in `allowedFigures`: the range and median, witness prices
+  and weights, chart multipliers and running prices, multipliers restated as % changes, the 80%
+  range, the training-sale count, individual comp hammers and years, attribute values printed in
+  chart labels, and the printed estimate as a reference. One retry names the rejected figures;
+  otherwise there is no narration.
+- Live checks:
+  - first cut: 1/5 accepted, all rejections legitimate derived figures;
+  - widened list: 12/12 first-attempt;
+  - prompt fixed for meaning, since the model had described attribute bars as "vs his other
+    techniques / larger works" when they are vs the typical mix across all training sales:
+    12/12, 1 retry.
+
+  Tests: `test:stage3b` (16). `tests/backtest/stage3b_narration_check.ts` re-runs the live check.
+- **Known limit:** the guard checks figures, not meaning. Occasional imprecise wording remains
+  (for example "16% smaller" for a bar that is 16% lower in price).
+
+**UI.**
+- `src/components/ValuationWaterfall.tsx` draws a log price axis with round-number ticks. Steps
+  are green (raises) or claret (lowers), and levels are marked in gold and claret, in the app's
+  palette. The narration sits beside it (stacked below the xl breakpoint).
+- `ReportView` shows a full-width "How the fair value was built" card when `estimateSource` is
+  stage3a and the view is not in edit mode. The range heading reads "Fair value range (hammer)".
+- Verified in the browser at desktop and 375px phone width on a temporary preview page (removed)
+  with a real lot (Henry Moore, "Seated Figure IV", sold £500; fair value £500–1,800, median
+  £943). No console errors.
+- **Not changed, worth knowing:** `ReportView.convertValue` converts currencies client-side with
+  fixed rates (GBP→USD ×1.25). The chart uses the same function so it matches the headline, but
+  those rates are not the ECB rates Stage 3a uses server-side.
+
+**Still open from this plan:**
+- the LLM Stage 3 call still runs for the other report fields (cost unchanged);
+- publishable confidence bounds (logged);
+- the artist-identity task (running separately).

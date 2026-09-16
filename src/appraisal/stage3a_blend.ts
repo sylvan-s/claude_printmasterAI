@@ -20,6 +20,7 @@ import { join } from "node:path";
 import { blendPrices, calibratedWitnesses, evidenceTier, houseOffsetOf, type BlendCalibration, type EvidenceTier, type WitnessSource } from "./knowledge_graph/price_blend.js";
 import { evidenceToBlendInputs, type ValuationEvidence } from "./valuation_evidence.js";
 import type { AuctionEstimate } from "../types.js";
+import { valuationWaterfall, type ColumnMeans, type Waterfall } from "./stage3a_waterfall.js";
 
 export const STAGE3A_VERSION = "STAGE3A-1.0";
 const CALIBRATION_PATH = join(process.cwd(), "knowledge_graph/pricing_ml/blend/calibration.json");
@@ -72,10 +73,12 @@ export interface Stage3aResult {
   condition: { grade: string | null; note: string };
   /** Everything a reader should know before trusting the range. */
   caveats: string[];
+  /** The contribution chart from the average sold print to the median (stage3a_waterfall.ts). Null without column means. */
+  waterfall: Waterfall | null;
 }
 
 /** Stage 3a on one lot's evidence. Null when no witness carries weight (no artist, no comps, no profile). */
-export function stage3aValuation(ev: ValuationEvidence, cal: BlendCalibration): Stage3aResult | null {
+export function stage3aValuation(ev: ValuationEvidence, cal: BlendCalibration, means?: ColumnMeans | null): Stage3aResult | null {
   const inputs = evidenceToBlendInputs(ev);
   const blend = blendPrices(inputs, cal, "no_estimate");
   if (!blend) return null;
@@ -117,6 +120,7 @@ export function stage3aValuation(ev: ValuationEvidence, cal: BlendCalibration): 
         + (ev.condition.appraiserClaims.length ? `; appraiser notes: ${ev.condition.appraiserClaims.join("; ")}` : ""),
     },
     caveats,
+    waterfall: means ? valuationWaterfall(ev, cal, means, Math.round(blend.medianGBP)) : null,
   };
 }
 
