@@ -154,6 +154,42 @@ export interface HouseOffsets {
   /** For a house with no hammer data: the measured houses' weighted mean, and their spread,
    *  which is added in quadrature to every witness sigma because the offset itself is unknown. */
   pooledFallback: { log: number; betweenHouseSd: number };
+  /** Repeat-sales market index, log hammer by sale year vs REFERENCE_YEAR, from the same fit. */
+  yearEffects?: Record<string, number>;
+  /**
+   * How comps are moved in time (plan 2026-09-16, phase 1b). Absent or "none": not at all.
+   * "prior_year": a comp older than the valuation year minus one is brought up to that year's
+   * index level — the latest level a valuer could know. "sale_year": to the valuation year's own
+   * level; that level is not known before the sale, so it is a leaky upper bound for backtests
+   * only, never for Stage 3.
+   */
+  timeAdjust?: "none" | "prior_year" | "sale_year";
+}
+
+/** Index level for a year, clamped to the measured range (the nearest measured year otherwise). */
+function indexAt(years: Record<string, number>, year: number): number | null {
+  const ys = Object.keys(years).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!ys.length) return null;
+  const y = Math.min(Math.max(year, ys[0]), ys[ys.length - 1]);
+  let best = ys[0];
+  for (const k of ys) if (Math.abs(k - y) < Math.abs(best - y)) best = k;
+  return years[String(best)];
+}
+
+/**
+ * Log shift that moves a comp sold at `compDate` to the market level the valuation can use.
+ * Only ever moves a comp FORWARD: a comp at or after the target year is left alone, so a sale
+ * earlier in the valuation's own year is not dragged back to last year's level.
+ */
+export function timeShift(offsets: HouseOffsets | null | undefined, compDate: string | null | undefined, valuationDate: string | null | undefined): number {
+  const mode = offsets?.timeAdjust ?? "none";
+  if (mode === "none" || !offsets?.yearEffects || !compDate || !valuationDate) return 0;
+  const compYear = Number(compDate.slice(0, 4)), valYear = Number(valuationDate.slice(0, 4));
+  if (!Number.isFinite(compYear) || !Number.isFinite(valYear)) return 0;
+  const target = mode === "prior_year" ? valYear - 1 : valYear;
+  if (compYear >= target) return 0;
+  const a = indexAt(offsets.yearEffects, target), b = indexAt(offsets.yearEffects, compYear);
+  return a == null || b == null ? 0 : a - b;
 }
 
 /** A house's offset, matched on the graph's institution name (case-insensitive, substring either way). */
@@ -308,7 +344,10 @@ function compShift(offsets: HouseOffsets | null | undefined, target: string | nu
 }
 
 function rebasedLogs(comps: CompSale[], inp: BlendInputs, offsets: HouseOffsets | null | undefined): number[] {
-  return comps.filter((c) => c.hammerGBP > 0).map((c) => ln(c.hammerGBP) + compShift(offsets, inp.targetHouse, c.house)).sort((a, b) => a - b);
+  return comps
+    .filter((c) => c.hammerGBP > 0)
+    .map((c) => ln(c.hammerGBP) + compShift(offsets, inp.targetHouse, c.house) + timeShift(offsets, c.saleDate, inp.saleDate))
+    .sort((a, b) => a - b);
 }
 
 /**
@@ -341,7 +380,7 @@ export function rawWitnesses(inp: BlendInputs, offsets?: HouseOffsets | null): R
     // Age of the NEWEST comp at the valuation date: several recent sales are the tightest
     // evidence there is; the same count of decade-old sales is not.
     const age = latest && inp.saleDate ? (yearsBetween(latest, inp.saleDate) <= RECENT_COMP_YEARS ? "recent" : "old") : null;
-    const rebased = offsets && inp.targetHouse && sw.some((c) => c.house) ? `, re-based to ${inp.targetHouse}` : "";
+    const rebased = (offsets && inp.targetHouse && sw.some((c) => c.house) ? `, re-based to ${inp.targetHouse}` : "") + (offsets?.timeAdjust && offsets.timeAdjust !== "none" && offsets.yearEffects ? ", market-adjusted to the valuation date" : "");
     out.push({ source: "same_work", rawMu: medianOfSorted(logs), keys: age ? [`${band}|${age}`, band] : [band], basis: `${sw.length} prior sale${sw.length === 1 ? "" : "s"} of this work, latest ${latest ?? "undated"}${rebased}`, rawSamples: logs });
   }
   const tier = (t: BlendInputs["sameArtistTechnique"], source: WitnessSource, label: string) => {

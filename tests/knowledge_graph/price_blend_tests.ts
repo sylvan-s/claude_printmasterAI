@@ -17,6 +17,7 @@ import {
   crpsOnGrid,
   sameWorkBand,
   houseOffsetOf,
+  timeShift,
   type HouseOffsets,
   type BlendInputs,
   type PriceWitness,
@@ -96,6 +97,19 @@ const offsets: HouseOffsets = {
   const measuredSigma = calibratedWitnesses({ ...lot, targetHouse: "Forum Auctions" }, cal).witnesses.find((x) => x.source === "priors_model")!.sigma;
   const pooledSigma = calibratedWitnesses({ ...lot, targetHouse: "Swann Auction Galleries" }, cal).witnesses.find((x) => x.source === "priors_model")!.sigma;
   close("an unmeasured house adds the between-house SD in quadrature", pooledSigma, Math.sqrt(measuredSigma ** 2 + 0.1 ** 2));
+}
+
+// ── time adjustment ────────────────────────────────────────────────────────────
+{
+  const idx = { version: "T", referenceHouse: "Bonhams", houses: { Bonhams: { log: 0, se: 0 } }, pooledFallback: { log: 0, betweenHouseSd: 0 }, yearEffects: { "2015": -0.3, "2020": 0, "2023": 0.2, "2024": 0.1 } } as HouseOffsets;
+  eq("no mode -> no shift", timeShift(idx, "2015-05-01", "2024-06-01"), 0);
+  close("prior_year: a 2015 comp for a 2024 lot moves to the 2023 level", timeShift({ ...idx, timeAdjust: "prior_year" }, "2015-05-01", "2024-06-01"), 0.2 - -0.3);
+  close("sale_year: to the lot's own year (leaky upper bound)", timeShift({ ...idx, timeAdjust: "sale_year" }, "2015-05-01", "2024-06-01"), 0.1 - -0.3);
+  eq("comps at or after the target year are never moved back", [timeShift({ ...idx, timeAdjust: "prior_year" }, "2023-02-01", "2024-06-01"), timeShift({ ...idx, timeAdjust: "prior_year" }, "2024-01-01", "2024-06-01")], [0, 0]);
+  close("unmeasured years clamp to the nearest measured one", timeShift({ ...idx, timeAdjust: "prior_year" }, "2010-01-01", "2030-01-01"), 0.1 - -0.3);
+  const w = rawWitnesses(inputs({ estimate: null, sameWork: [{ hammerGBP: 1000, saleDate: "2015-01-01" }] }), { ...idx, timeAdjust: "prior_year" });
+  close("same-work samples carry the time shift", w[0].rawSamples![0], LN(1000) + 0.5);
+  ok("basis says the comps were market-adjusted", w[0].basis.includes("market-adjusted"));
 }
 
 // ── priorsModelPrediction ─────────────────────────────────────────────────────

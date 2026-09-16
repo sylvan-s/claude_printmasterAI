@@ -45,6 +45,8 @@ const DF = arg("df", "5") === "gauss" ? null : Number(arg("df", "5"));
  *  the lot's house and swaps the priors house term. Needs harness runs that record comp houses
  *  (targetHouse + per-comp house, 2026-09-16 onwards); older runs pass through un-rebased. */
 const HOUSE_OFFSETS = arg("house-offsets");
+/** Phase 1b: none | prior_year | sale_year (leaky upper bound). Uses house_offsets.json yearEffects. */
+const TIME_ADJUST = arg("time-adjust", "none") as "none" | "prior_year" | "sale_year";
 
 interface Row { key: string; source: string; sold: boolean; hammer: number | null; lowEst: number; highEst: number; error?: string; blend?: { inputs: BlendInputs; lotAttrsSource: string } | null; tiers: { same_work: { n: number } } }
 
@@ -198,7 +200,9 @@ function main() {
   console.log(`fit  best evidence: ${JSON.stringify(cover(fit.rows))}`);
   console.log(`test best evidence: ${JSON.stringify(cover(test.rows))}`);
 
-  const houseOffsets: HouseOffsets | null = HOUSE_OFFSETS ? JSON.parse(readFileSync(HOUSE_OFFSETS, "utf8")) : null;
+  const houseOffsets: HouseOffsets | null = HOUSE_OFFSETS ? { ...JSON.parse(readFileSync(HOUSE_OFFSETS, "utf8")), timeAdjust: TIME_ADJUST } : null;
+  if (TIME_ADJUST !== "none" && !houseOffsets?.yearEffects) throw new Error("--time-adjust needs --house-offsets with yearEffects");
+  console.log(`time adjustment: ${TIME_ADJUST}`);
   if (houseOffsets) {
     const rebaseable = (rows: FitRow[]) => rows.filter((r) => r.inputs.targetHouse && [...r.inputs.sameWork, ...(r.inputs.sameArtistTechnique?.comps ?? []), ...(r.inputs.sameArtist?.comps ?? [])].some((c) => c.house)).length;
     console.log(`house offsets ${houseOffsets.version} (${HOUSE_OFFSETS}): ${Object.entries(houseOffsets.houses).map(([h, v]) => `${h} x${Math.exp(v.log).toFixed(2)}`).join(", ")}; re-baseable lots fit ${rebaseable(fit.rows)}/${fit.rows.length}, test ${rebaseable(test.rows)}/${test.rows.length}`);

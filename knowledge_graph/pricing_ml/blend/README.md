@@ -11,7 +11,7 @@ the artist priors model — into one posterior over log hammer. It is produced b
 
 and is the ONLY writer. The pipeline never writes it.
 
-**Since BLEND-1.1 (2026-09-16)**, `house_offsets.json` sits beside it: like-for-like house price levels
+**Since BLEND-1.2 (2026-09-16)** comps are also moved forward in time (`--time-adjust prior_year`, the year index in `house_offsets.json`). **Since BLEND-1.1**, `house_offsets.json` sits beside it: like-for-like house price levels
 from repeat sales, written only by `../house_offsets.py`. The calibration embeds a copy, and the blend
 re-bases every comp to the lot's house with it. BLEND-1.1 is fitted on all three houses, and its gate
 is leave-one-house-out (plan `docs/plans/2026-09-16-stage3-blend-valuation.md`, phase 1):
@@ -22,7 +22,7 @@ is leave-one-house-out (plan `docs/plans/2026-09-16-stage3-blend-valuation.md`, 
     cat $D/roseberys_n2500_blend_house.jsonl $D/bonhams_n2500_blend_house.jsonl > /tmp/fit_rb.jsonl   # and the other two rotations
     npm run backtest:blend-gate -- --fit /tmp/fit_rb.jsonl --test $D/forum_n2500_blend_house.jsonl --house-offsets knowledge_graph/pricing_ml/blend/house_offsets.json --out /tmp/cal_loho.json
     cat $D/*_n2500_blend_house.jsonl > /tmp/fit_all.jsonl
-    npm run backtest:blend-gate -- --fit /tmp/fit_all.jsonl --test $D/forum_n2500_blend_house.jsonl --house-offsets knowledge_graph/pricing_ml/blend/house_offsets.json --version BLEND-1.1
+    npm run backtest:blend-gate -- --fit /tmp/fit_all.jsonl --test $D/forum_n2500_blend_house.jsonl --house-offsets knowledge_graph/pricing_ml/blend/house_offsets.json --time-adjust prior_year --version BLEND-1.2
 
 What it holds, per witness: `bias` (median of log hammer minus the witness's raw mean on the
 fit lots) and `sigma` (1.4826 x MAD of the de-biased residual), keyed by regime — house for the

@@ -261,3 +261,59 @@ ordering the user asked for holds, but the steps between same-work tiers are sma
 2. **Priors-model-only lots** cover 67–93% depending on the held-out house. They are few (135–313
    per house) and the widest ranges, but still the least trustworthy tier.
 3. `check_price_priors_fresh.py` does not yet cover `house_offsets.json` or `calibration.json`.
+
+## Phase 1b result (2026-09-16): comp time adjustment — adopted, but comp age was not what made Bonhams read low
+
+**Built.** `timeShift` in `price_blend.ts` moves each comp forward using the repeat-sales year
+index from `house_offsets.json`. Prices rise to a peak in 2022 (×1.15 vs 2020) and fall to
+×0.77 in 2026, relative to 2020. It applies to same-work and tier-2/3 comps alike. The
+`--time-adjust` modes:
+- `prior_year`: brings older comps up to the level of the year before the valuation, the latest
+  level a valuer could know.
+- `sale_year`: brings them to the lot's own year. That year's level is not known before the
+  sale, so this is a leaky upper bound for backtests only.
+
+Comps are never moved backwards. Unit tests: 72 pass.
+
+**Leave-one-house-out, no estimate** (none = the phase-1 run):
+
+| held out | mode | 80% cover | MAE blend vs best single | geo | same-work 3+: MAE / geo / cover |
+|---|---|---|---|---|---|
+| Forum | none | 77% | 0.671 vs 0.714 | 1.07 | 0.433 / 1.11 / 79% |
+| Forum | prior_year | 76% | 0.671 vs 0.706 | 1.05 | 0.419 / 1.07 / 80% |
+| Roseberys | none | 85% | 0.593 vs 0.695 | 1.12 | 0.400 / 1.11 / 85% |
+| Roseberys | prior_year | 85% | 0.595 vs 0.699 | 1.13 | 0.404 / 1.13 / 83% |
+| Bonhams | none | 75% | 0.639 vs 0.736 | 0.86 | 0.493 / 0.77 / 69% |
+| Bonhams | prior_year | 77% | 0.634 vs 0.728 | 0.87 | 0.460 / 0.82 / 77% |
+
+`sale_year` is within 0.01 of `prior_year` everywhere, so the honest variant costs almost
+nothing. On Bonhams, the most dated house, same-work comps improve most: MAE −0.033 and
+coverage 69% → 77%. The overall Bonhams under-read barely moves (geo 0.86 → 0.87).
+**Adopted:** BLEND-1.2 calibration, fitted on all three houses with `prior_year`.
+
+**What actually makes Bonhams read low: a house-mix bias the like-for-like offset cannot see.**
+Raw witness residual `median(log hammer − witness)`, after house re-basing and time
+adjustment:
+
+| test house | same_work | same-artist technique | same artist | priors (shrunk) |
+|---|---|---|---|---|
+| Forum | ×0.94 | ×0.92 | ×0.74 | ×0.83 |
+| Roseberys | ×0.91 | ×0.85 | ×0.77 | ×0.74 |
+| Bonhams | ×0.99 | ×1.05 | ×1.12 | ×0.94 |
+
+- Same-work comps are close to unbiased at every house. The like-for-like offset does its job
+  where the comparison really is like for like.
+- The artist-level witnesses read high at Forum and Roseberys and slightly low at Bonhams. The
+  regional houses sell the cheaper works of a given artist. That is a *mix* effect, not a price
+  level, and it lands on exactly the witnesses a lot without same-work comps depends on.
+- A calibration fitted on Forum and Roseberys learns "shade artist-level witnesses down ~25%"
+  and applies it to Bonhams.
+
+**The fix, and a decision it needs:** key the tier-2/3 and priors witness bias by the lot's
+house (a mix factor per house), falling back to pooled for a house the fit has not seen. This
+cannot be tested leave-one-house-out, because a held-out house has no mix key by definition.
+It needs a within-house temporal split (fit before 2023, test from 2023). It also changes what
+the house bar on the chart means. Either the bar shows like-for-like price level plus the
+house's mix (one bar, "what lots at Forum typically fetch vs comparable Bonhams evidence"), or
+it shows two bars, "house price level" and "house mix". Not started; this is for the user to
+decide.

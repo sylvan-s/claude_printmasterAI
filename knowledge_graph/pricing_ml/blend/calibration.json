@@ -1,6 +1,6 @@
 {
-  "version": "BLEND-1.1",
-  "fittedAt": "2026-09-16T09:18:15.952Z",
+  "version": "BLEND-1.2",
+  "fittedAt": "2026-09-16T09:36:33.908Z",
   "fittedOn": "/private/tmp/claude-501/-Users-sylvansitkey-Library-CloudStorage-GoogleDrive-sylvansitkey07-gmail-com-My-Drive-02-Personal-Projects-Printmaster-AI/24ad3ef6-5cf5-44fc-92f1-11a12ab14806/scratchpad/fit_all.jsonl (5094 sold lots)",
   "witnesses": {
     "estimate": {
@@ -32,53 +32,53 @@
       "df": 5,
       "byKey": {
         "1": {
-          "bias": -0.06453852113757108,
-          "sigma": 0.5054577578426019,
+          "bias": -0.07410797215372167,
+          "sigma": 0.49767637451577285,
           "n": 673
         },
         "2": {
-          "bias": -0.07013720141561297,
-          "sigma": 0.5129559036518293,
+          "bias": -0.07488723376609485,
+          "sigma": 0.48455810706573454,
           "n": 241
         },
         "1|recent": {
-          "bias": -0.07701168023743321,
-          "sigma": 0.48696505216114505,
+          "bias": -0.07531369821650724,
+          "sigma": 0.48425886034506566,
           "n": 455
         },
         "all": {
-          "bias": -0.059202965217478365,
-          "sigma": 0.512350682539915,
+          "bias": -0.06453852113757108,
+          "sigma": 0.482917249053802,
           "n": 1327
         },
         "3+|recent": {
-          "bias": -0.03734821022653145,
-          "sigma": 0.4905800560356672,
+          "bias": -0.010006620408855582,
+          "sigma": 0.4501928813403151,
           "n": 378
         },
         "3+": {
-          "bias": -0.010216838771095915,
-          "sigma": 0.49841071101867246,
+          "bias": -0.007368501845658848,
+          "sigma": 0.460535415405075,
           "n": 413
         },
         "1|old": {
-          "bias": 0,
-          "sigma": 0.561700608410738,
+          "bias": -0.06204925986195686,
+          "sigma": 0.5428795529622776,
           "n": 218
         },
         "2|recent": {
-          "bias": -0.05793365393548999,
-          "sigma": 0.5009806641026658,
+          "bias": -0.06413917302434369,
+          "sigma": 0.4329214565484685,
           "n": 186
         },
         "2|old": {
-          "bias": -0.10431943255566445,
-          "sigma": 0.690512231939417,
+          "bias": -0.2281198707064469,
+          "sigma": 0.6443107482268347,
           "n": 55
         },
         "3+|old": {
-          "bias": 0.1823032476439561,
-          "sigma": 0.7198134529349526,
+          "bias": 0.0332700762855751,
+          "sigma": 0.6496947487056309,
           "n": 35
         }
       }
@@ -87,8 +87,8 @@
       "df": 5,
       "byKey": {
         "all": {
-          "bias": -0.017569452329841084,
-          "sigma": 0.7517679769865839,
+          "bias": -0.055826226044219496,
+          "sigma": 0.7401550472285077,
           "n": 3607
         }
       }
@@ -97,8 +97,8 @@
       "df": 5,
       "byKey": {
         "all": {
-          "bias": -0.06453852113757108,
-          "sigma": 1.024616395028952,
+          "bias": -0.13774517479223114,
+          "sigma": 0.9983721924386865,
           "n": 2701
         }
       }
@@ -140,8 +140,8 @@
       },
       "temperature": 3,
       "fitLots": 5094,
-      "fitMaeLog": 0.32027161350970285,
-      "fitCoverage80": 0.7850412249705536,
+      "fitMaeLog": 0.3198720482383601,
+      "fitCoverage80": 0.7852375343541421,
       "temperatureByTier": {
         "same_work_3+": 3,
         "same_work_1-2": 3,
@@ -154,18 +154,18 @@
       "weights": {
         "estimate": 0,
         "same_work": 3,
-        "same_artist_technique": 0.75,
+        "same_artist_technique": 0.5,
         "same_artist": 0.5,
         "priors_model": 1.5
       },
       "temperature": 2,
       "fitLots": 5094,
-      "fitMaeLog": 0.6255311142076665,
-      "fitCoverage80": 0.795838241067923,
+      "fitMaeLog": 0.6233052909650725,
+      "fitCoverage80": 0.7946603847663918,
       "temperatureByTier": {
         "same_work_3+": 2.5,
         "same_work_1-2": 3,
-        "same_artist_technique": 2,
+        "same_artist_technique": 1.75,
         "same_artist": 2,
         "priors_model": 1.5
       }
@@ -266,6 +266,7 @@
     "signed": {
       "true": 0.4566860583946212,
       "unknown": 0
-    }
+    },
+    "timeAdjust": "prior_year"
   }
 }
