@@ -481,3 +481,55 @@ judge. On those 5 the LLM scores MAE(log) 0.36 against Stage 3a's 0.81 and the p
 
 **Open decision: the comparison run.** A0777 (198 hammers) and A0785 (209) are past Roseberys
 sales. Saved attributed-path runs cost $0.24 per lot on average (Haiku).
+
+## Phase 4 result (2026-09-16): Stage 3 unit trial on 100 sold lots — $4.07, no Stage 1/2 model runs
+
+`tests/backtest/stage3_trial.ts --per-house 50 --seed 5 --since 2022-01-01`. The lots are 50
+Roseberys and 50 Forum, sold, catalogued, single-artist and unqualified. Each lot's Stage 3
+inputs are rebuilt in code (claim, graph reads, work identity, comps, profile, verification with
+a Stage 2a stub agreeing with the catalogue artist, synthesised attribution as when 2b is
+skipped). Four arms on Haiku 4.5:
+
+| arm | MAE(log) | geo | within 2x | hammer in range | median high/low |
+|---|---|---|---|---|---|
+| A old LLM Stage 3, printed estimate shown | 0.252 | 0.99 | 93% | 64% | 1.55x |
+| B old LLM Stage 3, estimate withheld | 0.696 | 0.91 | 65% | **30%** | 1.75x |
+| C Stage 3a deterministic | 0.714 | 0.82 | 63% | **75%** | 6.42x |
+| D price-model-informed LLM | 0.716 | 0.82 | 62% | 76% | 6.41x |
+| ref: printed midpoint ×0.82 | 0.210 | 1.00 | 95% | 53% | 1.50x |
+
+By the strongest evidence (C vs B, MAE / range coverage):
+
+| strongest evidence | lots | C | B |
+|---|---|---|---|
+| same-work 3+ | 12 | 0.467 / 75% | 0.494 / 25% |
+| same-work 1–2 | 14 | 0.367 / 79% | 0.292 / 43% |
+| same-artist technique | 44 | 0.628 / 73% | 0.579 / 32% |
+| same artist | 16 | 0.848 / 81% | 1.018 / 19% |
+| model only | 14 | 1.389 / 71% | 1.273 / 29% |
+
+**What it says.**
+1. **With a printed estimate, the old LLM adds noise to it.** A 0.252 vs the bare estimate ×0.82
+   at 0.210.
+2. **Without an estimate, the LLM and Stage 3a are about equally accurate, but only Stage 3a's
+   range is honest.** B's ranges hold 30% of hammers at 1.75x wide; C's hold 75% at 6.4x. B
+   reports confidence the evidence does not support. C is the calibrated one, and it is wide
+   because the evidence is.
+3. **The price-model-informed agent (D) adds nothing to the number.** Its range equals C's
+   exactly on 79/100 lots, and it departed on a quoted catalogue fact once (a portfolio of
+   nineteen etchings). With this prompt it defers to the model, so its value is narration: phase
+   5's Stage 3b, not a second pricer.
+4. **The model-only tail is identity failure, not model failure.** Lots resolved to Artist nodes
+   with no price data:
+   - duplicates: "Joan Miro" (0 hammers) vs "Joan Miró" (1,301); "Walter Richard Sickert" vs
+     "Walter Sickert"; "Augustus John" (0 hammers);
+   - a junk node: "Property of an Urban Art Collector", the provenance line parsed as an artist
+     (hammer £26,000, C median £201).
+
+   With no profile they fall to the segment default, which the calibration shades to ×0.30.
+   Without those 4 lots: C 0.612 (geo 0.93, cover 78%), B 0.626 (cover 31%), D 0.614, A 0.242,
+   ref 0.200.
+
+**Not decided here:** switching the displayed estimate. The estimate-withheld comparison is a tie
+on accuracy with far better range honesty for Stage 3a. With a printed estimate, both LLM arms
+and Stage 3a lose to the estimate itself.
