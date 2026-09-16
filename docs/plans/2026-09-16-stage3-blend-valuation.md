@@ -447,3 +447,37 @@ Logged; no sweep run.
 **Also logged:** the ingests' BAT copy-type keyword is the bare substring "bon", so it matches
 "carbon" and "ribbon". It is mirrored as-is in `detectCopyType`, so lots are classed like their
 training neighbours.
+
+## Phase 4 (2026-09-16): Stage 3a built and recording in shadow mode; the paid comparison is pending
+
+**Built.**
+- `src/appraisal/stage3a_blend.ts`. `stage3aValuation(evidence, calibration)` gives:
+  - the 80% range and median (hammer basis, GBP) and the evidence tier;
+  - the witness table with effective weights and calibrated spreads;
+  - the like-for-like house factor and the priors-model contributions;
+  - P(sells) as a hurdle;
+  - witness divergence, and the printed estimate *compared* (midpoint ÷ median), never blended;
+  - condition as a note, never applied;
+  - caveats naming defaulted attributes, an unmeasured or unchosen house, model-only lots,
+    segment-default artists and unresolved works.
+
+  It reads the committed calibration once through `loadBlendCalibration()`.
+- Both appraise paths set `report.stage3aShadow` beside `auctionEstimate`, which is still the one
+  shown, and log a `[Stage 3a shadow]` line. Stage 3a never throws.
+- `tests/backtest/stage3a_shadow_report.ts` scores Stage 3a, the LLM estimate and the printed
+  estimate ×0.82 on realised hammers read from the graph. `--recompute` rebuilds Stage 3a for
+  runs saved before this existed, from their own Stage 1c/2 outputs, with zero LLM.
+- Tests: `npm run test:stage3a` (11); price-blend 82; valuation-evidence 26; `tsc` clean.
+
+**Bug found and fixed:** with no sale house chosen, the report claimed the pooled house level and
+a widened range, but the blend applied neither. It only re-based to a *named* house. Now
+no-house lots re-base to the pooled level and carry the between-house spread. Every calibration
+lot has a house, so BLEND-1.2 refits identically (checked).
+
+**Zero-cost smoke test on the 33 saved attributed-lot runs** (recomputed): Stage 3a produced a
+range on all 33. Only 5 have hammers (the other 27 are A0793, not yet sold), which is too few to
+judge. On those 5 the LLM scores MAE(log) 0.36 against Stage 3a's 0.81 and the printed estimate
+×0.82's 0.33, which is expected because the attributed-path LLM anchors on the printed estimate.
+
+**Open decision: the comparison run.** A0777 (198 hammers) and A0785 (209) are past Roseberys
+sales. Saved attributed-path runs cost $0.24 per lot on average (Haiku).

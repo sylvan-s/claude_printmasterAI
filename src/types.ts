@@ -1,6 +1,7 @@
 import type { Stage2bComp, CompStorabilityReport } from "./appraisal/comp_storability.js";
 import type { AttributedLotReport } from "./appraisal/attributed_lot.js";
 import type { ValuationEvidence } from "./appraisal/valuation_evidence.js";
+import type { Stage3aResult } from "./appraisal/stage3a_blend.js";
 
 export interface AuctionEstimate {
   lowEstimate: number;
@@ -70,6 +71,9 @@ export interface PrintAnalysisReport {
   /** Stage 2's structured valuation evidence (src/appraisal/valuation_evidence.ts, plan 2026-09-16 phase 3).
    *  Persisted for audit and for Stage 3a; the LLM Stage 3 does not read it yet. */
   valuationEvidence?: ValuationEvidence | null;
+  /** Stage 3a's deterministic price from that evidence (src/appraisal/stage3a_blend.ts), SHADOW MODE:
+   *  recorded beside auctionEstimate for comparison, not shown as the valuation. */
+  stage3aShadow?: Stage3aResult | null;
   pipelineMeta?: {
     specialistConfigUsed: string;
     humanEscalationRequired: boolean;

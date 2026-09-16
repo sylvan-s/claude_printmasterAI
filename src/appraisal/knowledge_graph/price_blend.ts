@@ -370,7 +370,9 @@ const yearsBetween = (from: string, to: string): number => (Date.parse(to.slice(
  * one comp, 0 when either side is not known.
  */
 function compShift(offsets: HouseOffsets | null | undefined, target: string | null | undefined, compHouse: string | null | undefined): number {
-  if (!offsets || !target || !compHouse) return 0;
+  // No target house means "no house chosen": comps go to the POOLED level (houseOffsetOf(null)),
+  // not left at their own houses, so the price matches the pooled factor the report shows.
+  if (!offsets || !compHouse) return 0;
   return houseOffsetOf(offsets, target).log - houseOffsetOf(offsets, compHouse).log;
 }
 
@@ -389,12 +391,12 @@ function rebasedLogs(comps: CompSale[], inp: BlendInputs, offsets: HouseOffsets 
  * re-reference.
  */
 function priorsWithHouse(priors: NonNullable<BlendInputs["priors"]>, inp: BlendInputs, offsets: HouseOffsets | null | undefined): { mu: number; contributions: PriceContribution[] } {
-  if (!offsets || !inp.targetHouse) return { mu: priors.mu, contributions: priors.contributions };
+  if (!offsets) return { mu: priors.mu, contributions: priors.contributions };
   const own = priors.contributions.filter((c) => c.term.startsWith("house="));
   const kept = priors.contributions.filter((c) => !c.term.startsWith("house="));
   const off = houseOffsetOf(offsets, inp.targetHouse);
   const mu = priors.mu - own.reduce((t, c) => t + c.logEffect, 0) + off.log;
-  const term = `house=${off.name}${off.measured ? "" : " (unmeasured: pooled offset)"}`;
+  const term = inp.targetHouse ? `house=${off.name}${off.measured ? "" : " (unmeasured: pooled offset)"}` : "house=none chosen (pooled offset)";
   return { mu, contributions: [...kept, { term, logEffect: off.log }] };
 }
 
@@ -411,14 +413,14 @@ export function rawWitnesses(inp: BlendInputs, offsets?: HouseOffsets | null): R
     // Age of the NEWEST comp at the valuation date: several recent sales are the tightest
     // evidence there is; the same count of decade-old sales is not.
     const age = latest && inp.saleDate ? (yearsBetween(latest, inp.saleDate) <= RECENT_COMP_YEARS ? "recent" : "old") : null;
-    const rebased = (offsets && inp.targetHouse && sw.some((c) => c.house) ? `, re-based to ${inp.targetHouse}` : "") + (offsets?.timeAdjust && offsets.timeAdjust !== "none" && offsets.yearEffects ? ", market-adjusted to the valuation date" : "");
+    const rebased = (offsets && sw.some((c) => c.house) ? `, re-based to ${inp.targetHouse ?? "the pooled house level"}` : "") + (offsets?.timeAdjust && offsets.timeAdjust !== "none" && offsets.yearEffects ? ", market-adjusted to the valuation date" : "");
     out.push({ source: "same_work", rawMu: medianOfSorted(logs), keys: age ? [`${band}|${age}`, band] : [band], basis: `${sw.length} prior sale${sw.length === 1 ? "" : "s"} of this work, latest ${latest ?? "undated"}${rebased}`, rawSamples: logs });
   }
   const tier = (t: BlendInputs["sameArtistTechnique"], source: WitnessSource, label: string) => {
     if (!t || t.n <= 0 || !(t.medianHammerGBP > 0)) return;
     const logs = t.comps?.length ? rebasedLogs(t.comps, inp, offsets) : [];
     const mu = logs.length ? medianOfSorted(logs) : ln(t.medianHammerGBP);
-    out.push({ source, rawMu: mu, keys: [], basis: `median of ${t.n} ${label} sales${logs.length && offsets && inp.targetHouse ? `, re-based to ${inp.targetHouse}` : ""}` });
+    out.push({ source, rawMu: mu, keys: [], basis: `median of ${t.n} ${label} sales${logs.length && offsets ? `, re-based to ${inp.targetHouse ?? "the pooled house level"}` : ""}` });
   };
   tier(inp.sameArtistTechnique, "same_artist_technique", "same-artist, same-technique");
   tier(inp.sameArtist, "same_artist", "same-artist");
@@ -444,7 +446,7 @@ export function calibratedWitnesses(inp: BlendInputs, cal: BlendCalibration, reg
   const weights = cal.regimes[r].weights;
   // A target house with no measured offset: the offset is a guess, so every witness carries
   // the between-house spread on top of its own sigma.
-  const extra = cal.houseOffsets && inp.targetHouse && !houseOffsetOf(cal.houseOffsets, inp.targetHouse).measured ? cal.houseOffsets.pooledFallback.betweenHouseSd : 0;
+  const extra = cal.houseOffsets && !houseOffsetOf(cal.houseOffsets, inp.targetHouse).measured ? cal.houseOffsets.pooledFallback.betweenHouseSd : 0;
   const witnesses: PriceWitness[] = [];
   for (const w of raw) {
     if (r === "no_estimate" && w.source === "estimate") continue;

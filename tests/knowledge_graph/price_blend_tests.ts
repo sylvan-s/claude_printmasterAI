@@ -91,7 +91,10 @@ const offsets: HouseOffsets = {
   close("priors: the model's own house term is swapped for the target's offset", pr.rawMu, LN(1000) + LN(0.8));
   eq("priors contributions carry exactly one house term, the target's", pr.contributions!.map((c) => c.term), ["artist level", "house=Forum Auctions"]);
   const noTarget = rawWitnesses({ ...lot, targetHouse: null }, offsets);
-  close("no target house -> no re-basing", noTarget.find((x) => x.source === "same_work")!.rawSamples![1], LN(1000));
+  close("no target house -> comps re-based to the pooled level (Bonhams 1000 x 0.85)", noTarget.find((x) => x.source === "same_work")!.rawSamples![1], LN(1000) + LN(0.85));
+  eq("no target house -> the priors house term names the pooled offset", noTarget.find((x) => x.source === "priors_model")!.contributions!.at(-1)!.term, "house=none chosen (pooled offset)");
+  const noOffsets = rawWitnesses({ ...lot, targetHouse: null }, null);
+  close("no offsets table at all -> no re-basing", noOffsets.find((x) => x.source === "same_work")!.rawSamples![1], LN(1000));
   const unmeasured = rawWitnesses({ ...lot, targetHouse: "Swann Auction Galleries" }, offsets).find((x) => x.source === "priors_model")!;
   ok("an unmeasured target house is named as such in the contribution", unmeasured.contributions!.some((c) => c.term.includes("unmeasured")));
   const cal = { ...defaultCalibration(), houseOffsets: offsets };

@@ -64,6 +64,7 @@ import { queryWorkFacts, queryArtistPriceProfile, writeResearchComps, type WorkF
 import { mapTechniqueToAckgVocabulary as mapClaimTechnique } from "./stage2a_query_plan";
 import { VALUATION_ATTRIBUTED_LOT_SUFFIX } from "./prompts";
 import { readLotGraphEvidence, assembleValuationEvidence, type ValuationEvidence, type Sourced } from "./valuation_evidence.js";
+import { stage3aValuation, loadBlendCalibration, type Stage3aResult } from "./stage3a_blend.js";
 import {
   mergeClaimIntoAppraiserInput, verifyAttributedLot, routeAttributedLot, synthesizeAttributionResult,
   buildAttributedLotValuationBlock, isAuthorshipClaim, ESTIMATE_DRIFT, deriveMisattributionRisk, workTitleFromImageMatch, veaNotRun,
@@ -3387,6 +3388,23 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     }
   }
 
+  /** Stage 3a in shadow mode: the deterministic price, recorded beside the LLM estimate. Never throws. */
+  protected stage3aShadow(ev: ValuationEvidence | null): Stage3aResult | null {
+    if (!ev) return null;
+    try {
+      const cal = loadBlendCalibration();
+      if (!cal) return null;
+      const r = stage3aValuation(ev, cal);
+      console.log(r
+        ? `[Stage 3a shadow] GBP ${r.lowGBP}-${r.highGBP} (median ${r.medianGBP}); evidence ${r.evidenceTier}; ${r.witnesses.map((w) => `${w.source} ${w.priceGBP} @${w.effectiveWeight}`).join(", ")}${r.printedEstimate?.midpointOverMedian ? `; printed estimate midpoint x${r.printedEstimate.midpointOverMedian} of median` : ""}`
+        : `[Stage 3a shadow] no witness: no price`);
+      return r;
+    } catch (err: any) {
+      console.warn(`[Stage 3a shadow] failed: ${err?.message ?? err}`);
+      return null;
+    }
+  }
+
   protected async runStage3Valuation(
     vea: VisualExtractionResult,
     attr: AttributionResearchResult,
@@ -3824,6 +3842,7 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     report.valuationEvidence = valuationEvidence;
+    report.stage3aShadow = this.stage3aShadow(valuationEvidence);
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
     report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${stage3Model}]`;
     report.promptVersion = "4stage";
@@ -4113,6 +4132,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     report.valuationEvidence = await evidencePromise;
+    report.stage3aShadow = this.stage3aShadow(report.valuationEvidence);
     const mid = claim.estimateLow && claim.estimateHigh ? (claim.estimateLow + claim.estimateHigh) / 2 : null;
     report.attributedLot = {
       claim, verification, routing, researchCompWrite, stage2bGate,
