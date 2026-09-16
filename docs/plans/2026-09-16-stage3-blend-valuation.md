@@ -930,3 +930,14 @@ User direction: adopt it, with generic prefixes excluded.
   model 1.
 - Braque *Oiseau bleu* example: three Vallier 153 sibling sales (Bonhams 2023 £707, Skinner 2022
   £4,855, Roseberys 2020 £1,100). The range moves to £430–1,800, median £850, tier `same_suite`.
+
+### Year index: sterling-only variant tested, not adopted
+
+Research note: `docs/research/print-market-year-index-2026-09-16.md`. Rebuilding the repeat-sales year
+index with 90% bootstrap bands confirms the 2022 peak (×1.46 of 2025) and the fall since. It also shows
+that the pre-2019 rise in the production index is mostly sterling's fall against the dollar. Dollar
+sales are about half the repeat-sales records. `house_offsets.py --year-currency GBP` builds a
+sterling-only index (`blend/house_offsets_gbp_years.json`, house offsets unchanged). In the temporal
+gate it ties production with a slight edge (MAE 0.620 vs 0.622, cover 79% vs 78%). Adopting it
+needs a BLEND refit with `--offsets`. Reconverting dollar comps at the valuation-date rate is the
+open follow-up.

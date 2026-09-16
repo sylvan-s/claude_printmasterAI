@@ -29,13 +29,16 @@ const OUT = arg("out", "knowledge_graph/pricing_ml/blend/calibration.json")!;
 const D = "tests/backtest/comps_hammer";
 /** Same-suite comps per lot (extract_suite_comps.ts). Given: the blend gets a same_suite witness. */
 const SUITE = arg("suite");
+/** House offsets and year index (house_offsets.py output). */
+const OFFSETS = arg("offsets", "knowledge_graph/pricing_ml/blend/house_offsets.json")!;
 /** Report only; write no calibration. */
 const DRY = argv.includes("--dry");
 
 async function main() {
   const build = loadPriorsBuild()!;
   const means = JSON.parse(readFileSync(`${STAGE3A_PRIORS_DIR}/column_means.json`, "utf8"));
-  const offsets: HouseOffsets = { ...JSON.parse(readFileSync("knowledge_graph/pricing_ml/blend/house_offsets.json", "utf8")), timeAdjust: "prior_year" };
+  const offsets: HouseOffsets = { ...JSON.parse(readFileSync(OFFSETS, "utf8")), timeAdjust: "prior_year" };
+  console.log(`house offsets ${OFFSETS} (year index: ${(offsets as any).yearIndexCurrency ?? "all"})`);
   const policy = { columnMeans: means.columns, premium: DEFAULT_PROOF_PREMIUM };
   const profiles = new Map<string, ArtistPriceProfile | null>();
   const rows: { r: any; fit: FitRow; area: number | null; proof: string; suite: number }[] = [];
@@ -73,6 +76,15 @@ async function main() {
   for (const h of [...new Set(late.map((x) => x.r.blend.inputs.targetHouse))].sort()) console.log(`  ${h.padEnd(24)}${score(late.filter((x) => x.r.blend.inputs.targetHouse === h))}`);
   for (const s of ["under 400 cm²", "400-1,800 cm²", "1,800-7,500 cm²", "over 7,500 cm²", "size unknown"]) console.log(`  ${s.padEnd(24)}${score(late.filter((x) => size(x.area) === s))}`);
   console.log(`  ${"proofs (AP/HC/trial)".padEnd(24)}${score(late.filter((x) => isPolicyProof(x.proof)))}`);
+  // Comp age drives how much the year index moves a lot's comps.
+  const compAge = (x: (typeof rows)[number]) => {
+    const i = x.fit.inputs, ages = [...i.sameWork, ...(i.sameSuite ?? []), ...(i.sameArtistTechnique?.comps ?? []), ...(i.sameArtist?.comps ?? [])]
+      .filter((c) => c.saleDate).map((c) => Number(x.r.saleDate.slice(0, 4)) - Number(c.saleDate!.slice(0, 4))).sort((a, b) => a - b);
+    return ages.length ? ages[ages.length >> 1] : null;
+  };
+  console.log(`  ${"median comp age <3y".padEnd(24)}${score(late.filter((x) => (compAge(x) ?? -1) >= 0 && compAge(x)! < 3))}`);
+  console.log(`  ${"median comp age 3-5y".padEnd(24)}${score(late.filter((x) => (compAge(x) ?? -1) >= 3 && compAge(x)! < 6))}`);
+  console.log(`  ${"median comp age 6y+".padEnd(24)}${score(late.filter((x) => (compAge(x) ?? -1) >= 6))}`);
   if (suiteByKey.size || argv.includes("--suite-groups")) {
     const suiteKeys = new Set([...(suiteByKey.size ? suiteByKey : new Map(readFileSync(arg("suite-groups")!, "utf8").split("\n").filter(Boolean).map((l) => { const x = JSON.parse(l); return [x.key, x.comps]; }))).entries()].filter(([, c]) => (c as any[]).length).map(([k]) => k));
     console.log(`  ${"lots with suite comps".padEnd(24)}${score(late.filter((x) => suiteKeys.has(x.r.key)))}`);
