@@ -292,6 +292,10 @@ function houseLevel(house: string | null | undefined): string | null {
  * house the model never saw (Forum) contributes 0 and is listed in `unknownColumns`; the
  * calibration bias per house absorbs it.
  */
+/** The extra-large threshold (build_priors.py XL_AREA_CM2, ~87 cm a side) and the xl area term's value. */
+export const XL_AREA_CM2 = 7500;
+export const xlAreaLog = (cm2: number | null | undefined): number => (cm2 != null && Number.isFinite(cm2) && cm2 > 0 ? Math.max(0, Math.log(cm2) - Math.log(XL_AREA_CM2)) : 0);
+
 /** Proof classes outside the numbered edition: an edition size does not describe the sheet. */
 export const PROOF_POLICY_CLASSES = ["artist_proof", "hors_commerce", "trial_proof"] as const;
 /**
@@ -369,6 +373,13 @@ export function priorsModelPrediction(
       if (eff !== 0) contributions.push({ term: `${label}=${Math.round(v)}`, logEffect: eff });
       mu += eff;
     }
+  }
+  // Extra-large sheets (a model built with --size-terms shape-bands+xl): log area above 7,500 cm²,
+  // zero below the threshold and when the size is unknown, so it adds nothing to other lots.
+  const bxl = profile.elasticities.area_log_xl;
+  if (bxl != null && Number.isFinite(bxl) && bxl !== 0) {
+    const xl = xlAreaLog(attrs.areaCm2);
+    if (xl > 0) { contributions.push({ term: `extra-large size=${Math.round(attrs.areaCm2!)}`, logEffect: bxl * xl }); mu += bxl * xl; }
   }
   const hl = houseLevel(ctx.house);
   if (ctx.house && hl == null) unknown.add(`house_${ctx.house}`);

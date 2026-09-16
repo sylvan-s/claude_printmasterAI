@@ -791,3 +791,30 @@ bands matching the measured curve, and less under-pricing of very large sheets.
 - waterfall size labels for the new bands.
 
 Awaiting the user's decision.
+
+## Size: shape bands + an extra-large-only area term (2026-09-16) — best of the size forms, not yet adopted
+
+**User design, for simplicity:** use the shape bands, and for extra-large pieces only, add a
+continuous log term. `build_priors.py --size-terms shape-bands+xl` adds
+`area_log_xl = max(0, log area − log 7,500)`: zero at or below ~87 cm a side and when size is
+unknown. Its support counts only extra-large rows, so a thin artist's slope comes from the prior.
+In words: "extra-large sheets get a step up, and grow in value the bigger they are." The TS pricer
+and waterfall read `area_log_xl` when a profile has it (`xlAreaLog`); current profiles are
+unaffected.
+
+Fitted, median shrunk artist: the >7,500 cm² step is ×1.27, plus ×1.36 per doubling beyond it
+(×1.12 on the 105 artists with ≥ 3 own extra-large sales).
+
+| size form | priors MAE, sales from 2024-07 | blend MAE, 1,495 lots | 80% cover | over 7,500 cm² (145) | proofs (133) | Roseberys (442) |
+|---|---|---|---|---|---|---|
+| current: 5 bands + log area | 0.652 | 0.631 | 80% | 0.843 | 0.583 | 0.610 |
+| shape bands only | 0.651 | 0.635 | 78% | 0.835 | 0.584 | 0.613 |
+| **shape bands + extra-large log** | **0.649** | **0.630** | 79% | **0.818** | **0.576** | **0.603** |
+
+The pricing-model witness alone is 0.765 → 0.758. Under 400 cm² is 0.788 → 0.791 and size unknown
+is 0.688 → 0.699, both small losses.
+
+**Not adopted, and no graph writes** (the user was clear the graph is not to be written back to).
+The user had also asked for shape bands and waterfall labels; adoption is pending a decision on
+the route: Stage 3a reads artist profiles from the committed build JSON instead of the graph,
+calibration refit offline from the same file, and size labels in plain words.

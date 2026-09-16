@@ -101,6 +101,7 @@ CONT = ["edition_log", "area_log"]
 # both code to 0). See the 1.2 changelog note above for why only these three.
 SUBJECT_FLAGS = {"subject_is_abstract": "abstract", "subject_is_comic_satirical": "comic_satirical", "subject_is_surreal": "surreal"}
 BINARY = list(SUBJECT_FLAGS.keys())
+XL_AREA_CM2 = 7500       # the extra-large threshold (size_shape.py): the xl area term starts here
 MIN_LEVEL_ROWS = 3        # an artist's own coefficient for a level is trusted only with this many rows on it
 MIN_OWN = 15              # below this many earlier sales an artist gets the prior outright
 MIN_DESC = 5              # below this many earlier sales there is no per-artist entry at all (segment default)
@@ -130,7 +131,9 @@ def level_support(feat_rows: pd.DataFrame, columns):
     where the flag is 1, i.e. confidently that subject)."""
     out = {}
     for col in columns:
-        if col in CONT:
+        if col == "area_log_xl":
+            out[col] = int((feat_rows[col] > 0).sum())   # only extra-large sheets carry this term
+        elif col in CONT:
             out[col] = int(feat_rows[col].notna().sum())
         elif col in BINARY:
             out[col] = int(feat_rows[col].sum())
@@ -240,14 +243,18 @@ def main():
     ap.add_argument("--cut", default="2024-07-01")
     ap.add_argument("--min-year", default="2010")
     ap.add_argument("--out-dir", default=os.path.join(HERE, "priors"))
-    ap.add_argument("--size-terms", choices=["both", "bands", "shape-bands", "shape-bands+log"], default="both",
+    ap.add_argument("--size-terms", choices=["both", "bands", "shape-bands", "shape-bands+log", "shape-bands+xl"], default="both",
                     help="both = area bands + per-doubling area_log (1.2); bands = area bands only (2026-09-16 check: the two are collinear and pulled against each other for thin artists)")
     ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
     if args.with_citation:
         BINARY.append("catalogue_cited")
-    if args.size_terms in ("bands", "shape-bands"):
+    if args.size_terms in ("bands", "shape-bands", "shape-bands+xl"):
         CONT.remove("area_log")
+    if args.size_terms == "shape-bands+xl":
+        # Extra large only: log area above 7,500 cm² (~87 cm a side), zero below and when unknown.
+        # "Bigger still sells for more, x per doubling beyond 87 cm"; the >7500 band keeps the step.
+        CONT.append("area_log_xl")
     if args.size_terms.startswith("shape-bands"):
         # Bands cut where size_shape.py found the price curve bends (2026-09-16): small sheets flat
         # at ~x0.85, a rise to ~42 cm a side, a flat plateau to ~87 cm, then a +45-55% jump.
@@ -264,6 +271,7 @@ def main():
         feat["area_band"] = np.select(
             [area.isna(), area < 400, area < 900, area < 1800, area < 7500],
             ["unknown", "<400", "400-900", "900-1800", "1800-7500"], default=">7500")
+    feat["area_log_xl"] = (feat["area_log"] - math.log(XL_AREA_CM2)).clip(lower=0).fillna(0.0)
     for col, cat in SUBJECT_FLAGS.items():
         feat[col] = (feat["subject"] == cat).astype(float)
     feat["catalogue_cited"] = feat["has_citation"].astype(float)

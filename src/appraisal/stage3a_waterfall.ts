@@ -21,7 +21,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { calibratedWitnesses, houseOffsetOf, isPolicyProof, DEFAULT_PROOF_PREMIUM, type BlendCalibration, type ProofPolicy } from "./knowledge_graph/price_blend.js";
+import { calibratedWitnesses, houseOffsetOf, isPolicyProof, xlAreaLog, DEFAULT_PROOF_PREMIUM, type BlendCalibration, type ProofPolicy } from "./knowledge_graph/price_blend.js";
 import { editionBand, areaBandFor, type ArtistPriceProfile } from "./knowledge_graph/artist_price_profile.js";
 import { evidenceToBlendInputs, attrsValues, type ValuationEvidence } from "./valuation_evidence.js";
 
@@ -97,6 +97,7 @@ function lotColumns(profile: ArtistPriceProfile, ev: ValuationEvidence): Record<
   const logOr = (v: number | null | undefined, median: number) => (v != null && Number.isFinite(v) && v > 0 ? Math.log(v) : median);
   if ("edition_log" in profile.elasticities) out.edition_log = { dim: "edition", x: logOr(a.editionSize, profile.continuousMedians.edition_log ?? 0) };
   if ("area_log" in profile.elasticities) out.area_log = { dim: "size", x: logOr(a.areaCm2, profile.continuousMedians.area_log ?? 0) };
+  if ("area_log_xl" in profile.elasticities) out.area_log_xl = { dim: "size", x: xlAreaLog(a.areaCm2) };
   return out;
 }
 

@@ -30,7 +30,7 @@ import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from build_priors import design, CONT, REFS, SUBJECT_FLAGS  # noqa: E402
+from build_priors import design, CONT, REFS, SUBJECT_FLAGS, XL_AREA_CM2  # noqa: E402
 from train_price_model import build_features  # noqa: E402
 
 
@@ -39,7 +39,7 @@ def main():
     ap.add_argument("csv")
     ap.add_argument("--priors", default=os.path.join(HERE, "priors", "artist_elasticities.json"))
     ap.add_argument("--out", default=os.path.join(HERE, "priors", "column_means.json"))
-    ap.add_argument("--size-terms", choices=["both", "bands", "shape-bands", "shape-bands+log"], default="both",
+    ap.add_argument("--size-terms", choices=["both", "bands", "shape-bands", "shape-bands+log", "shape-bands+xl"], default="both",
                     help="must match the priors build (build_priors.py --size-terms)")
     args = ap.parse_args()
 
@@ -58,8 +58,11 @@ def main():
         feat["area_band"] = np.select(
             [area.isna(), area < 400, area < 900, area < 1800, area < 7500],
             ["unknown", "<400", "400-900", "900-1800", "1800-7500"], default=">7500")
-    if args.size_terms in ("bands", "shape-bands") and "area_log" in CONT:
+    feat["area_log_xl"] = (feat["area_log"] - np.log(XL_AREA_CM2)).clip(lower=0).fillna(0.0)
+    if args.size_terms in ("bands", "shape-bands", "shape-bands+xl") and "area_log" in CONT:
         CONT.remove("area_log")
+    if args.size_terms == "shape-bands+xl" and "area_log_xl" not in CONT:
+        CONT.append("area_log_xl")
     if args.size_terms.startswith("shape-bands"):
         REFS["area_band"] = "1800-7500"
     for col, cat in SUBJECT_FLAGS.items():
