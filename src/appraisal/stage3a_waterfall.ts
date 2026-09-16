@@ -22,7 +22,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { calibratedWitnesses, houseOffsetOf, isPolicyProof, DEFAULT_PROOF_PREMIUM, type BlendCalibration, type ProofPolicy } from "./knowledge_graph/price_blend.js";
-import { editionBand, areaBand, type ArtistPriceProfile } from "./knowledge_graph/artist_price_profile.js";
+import { editionBand, areaBandFor, type ArtistPriceProfile } from "./knowledge_graph/artist_price_profile.js";
 import { evidenceToBlendInputs, attrsValues, type ValuationEvidence } from "./valuation_evidence.js";
 
 export interface ColumnMeans {
@@ -76,7 +76,7 @@ function lotColumns(profile: ArtistPriceProfile, ev: ValuationEvidence): Record<
     signature: a.signature ?? "unsigned",
     proof: a.proof ?? "unknown",
     edition_band: editionBand(a.editionSize),
-    area_band: areaBand(a.areaCm2),
+    area_band: areaBandFor(a.areaCm2, profile.referenceLevels),
     process: a.process ? a.process.toLowerCase() : "other",
   };
   const dimOf: Record<string, string> = { signature: "signature", proof: "proof", edition_band: "edition", area_band: "size", process: "process" };

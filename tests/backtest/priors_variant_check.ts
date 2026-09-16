@@ -73,7 +73,7 @@ function main() {
       }
       return { n, mae: mae / n, geo: Math.exp(geo / n), cover: cover / n, priorsMae: priorsMae / pn };
     };
-    const band = (t: any) => t.attrs.areaCm2 == null ? "size unknown" : t.attrs.areaCm2 < 400 ? "under 400 cm²" : t.attrs.areaCm2 < 1800 ? "400-1,800 cm²" : t.attrs.areaCm2 < 4000 ? "1,800-4,000 cm²" : "over 4,000 cm²";
+    const band = (t: any) => t.attrs.areaCm2 == null ? "size unknown" : t.attrs.areaCm2 < 400 ? "under 400 cm²" : t.attrs.areaCm2 < 1800 ? "400-1,800 cm²" : t.attrs.areaCm2 < 7500 ? "1,800-7,500 cm²" : "over 7,500 cm²";
     const groups: Record<string, typeof test> = { all: test };
     for (const t of test) {
       (groups[t.r.blend.inputs.targetHouse] ??= []).push(t);

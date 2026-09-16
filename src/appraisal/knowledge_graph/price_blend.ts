@@ -37,7 +37,7 @@
  * Pure: no I/O, no randomness. Same inputs, same numbers.
  */
 import type { ArtistPriceProfile, PriceAttrs } from "./artist_price_profile.js";
-import { editionBand, areaBand } from "./artist_price_profile.js";
+import { editionBand, areaBand, areaBandFor } from "./artist_price_profile.js";
 
 export type WitnessSource = "estimate" | "same_work" | "same_artist_technique" | "same_artist" | "priors_model";
 export const WITNESS_SOURCES: WitnessSource[] = ["estimate", "same_work", "same_artist_technique", "same_artist", "priors_model"];
@@ -316,7 +316,7 @@ export function priorsModelPrediction(
     signature: attrs.signature ?? "unsigned",
     proof: attrs.proof ?? "unknown",
     edition_band: editionBand(attrs.editionSize),
-    area_band: areaBand(attrs.areaCm2),
+    area_band: areaBandFor(attrs.areaCm2, profile.referenceLevels),
     process: attrs.process ? attrs.process.toLowerCase() : "other",
   };
   const policy = ctx.proofPolicy && isPolicyProof(attrs.proof) ? ctx.proofPolicy : null;

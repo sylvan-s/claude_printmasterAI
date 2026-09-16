@@ -747,3 +747,47 @@ cannot tell a 40×50 cm sheet from a 100×70 cm one.
 readability problem, not an accuracy one, and the chart already shows size as a single combined
 bar. If a single size form is still wanted, the candidates are continuous area alone, or finer
 bands with the top band split. Neither has been tested.
+
+## Size shape: measured, and shape-matched bands tested (2026-09-16) — not adopted yet
+
+**User hypothesis:** a straight line in log area cannot show a U-shape, with premiums for
+miniatures and for very large sheets and nothing in the middle.
+
+**Measured** (`knowledge_graph/pricing_ml/size_shape.py`). A pooled log-hammer model with artist,
+year, house, signature, proof, edition and process but no size term; residuals grouped by sheet
+area:
+
+| sheet | all sales | artists with ≥ 50 sized sales |
+|---|---|---|
+| under 900 cm² (≤ 30 cm side) | ×0.85–0.94 | ×0.83–0.87 |
+| 900–1,800 cm² | rising to ×1.00 | rising to ×0.98 |
+| 1,800–7,500 cm² (42–87 cm) | flat ×0.98–1.01 | flat ×0.99–1.05 |
+| over 7,500 cm² (87 cm+) | **×1.44** | **×1.54** |
+
+Not a U-shape: there is no miniature premium; small sheets carry a flat discount. The middle is
+flat, and very large sheets jump. A hockey stick, which the straight line smears across every
+size, and which the current bands blur because their top band (> 1,800 cm²) mixes the plateau
+with the jump.
+
+**Tested** (`build_priors.py --size-terms shape-bands | shape-bands+log`; bands <400, 400–900,
+900–1,800, **1,800–7,500 reference**, >7,500; the TS pricer recognises them by that reference
+level via `areaBandFor`, so current profiles price exactly as before):
+
+| size form | priors MAE, sales from 2024-07 | blend MAE, 1,495 lots | 80% cover | over 7,500 cm² (145) | under 400 cm² (94) |
+|---|---|---|---|---|---|
+| current: 5 bands + log area | 0.652 | 0.631 | 80% | 0.843, geo ×0.78 | 0.788 |
+| current bands only | 0.663 | 0.639 | 78% | — | 0.817 |
+| **shape bands only** | **0.651** | **0.635** | 78% | **0.835, geo ×0.84** | 0.796 |
+| shape bands + log area | 0.649 | 0.634 | 79% | 0.833, geo ×0.85 | 0.828 |
+
+Shape bands alone match the current accuracy within noise, with no straight-line term, readable
+bands matching the measured curve, and less under-pricing of very large sheets.
+
+**Not adopted:** switching is a production change that feeds live prices. It needs:
+- `build_priors.py --size-terms shape-bands` plus `write_price_priors.py` (graph write);
+- `column_means.py` rebuilt;
+- blend calibration refit on shape-band priors (re-run the harness, or refit offline as
+  `priors_variant_check.ts` does);
+- waterfall size labels for the new bands.
+
+Awaiting the user's decision.

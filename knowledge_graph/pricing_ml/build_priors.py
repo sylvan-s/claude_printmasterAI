@@ -240,14 +240,18 @@ def main():
     ap.add_argument("--cut", default="2024-07-01")
     ap.add_argument("--min-year", default="2010")
     ap.add_argument("--out-dir", default=os.path.join(HERE, "priors"))
-    ap.add_argument("--size-terms", choices=["both", "bands"], default="both",
+    ap.add_argument("--size-terms", choices=["both", "bands", "shape-bands", "shape-bands+log"], default="both",
                     help="both = area bands + per-doubling area_log (1.2); bands = area bands only (2026-09-16 check: the two are collinear and pulled against each other for thin artists)")
     ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
     if args.with_citation:
         BINARY.append("catalogue_cited")
-    if args.size_terms == "bands":
+    if args.size_terms in ("bands", "shape-bands"):
         CONT.remove("area_log")
+    if args.size_terms.startswith("shape-bands"):
+        # Bands cut where size_shape.py found the price curve bends (2026-09-16): small sheets flat
+        # at ~x0.85, a rise to ~42 cm a side, a flat plateau to ~87 cm, then a +45-55% jump.
+        REFS["area_band"] = "1800-7500"
 
     df = pd.read_csv(args.csv, low_memory=False)
     source_rows = int(len(df))          # rows in the export, before any filter: the freshness check compares this to the graph
@@ -255,6 +259,11 @@ def main():
     df = df[~df["rawMedium"].fillna("").str.lower().str.contains(r"\bthe book\b|the complete set|set of \d|portfolio of|\(vol\)")]
     df = df[df["artist"].notna()].reset_index(drop=True)
     feat = build_features(df)
+    if args.size_terms.startswith("shape-bands"):
+        area = np.exp(feat["area_log"])
+        feat["area_band"] = np.select(
+            [area.isna(), area < 400, area < 900, area < 1800, area < 7500],
+            ["unknown", "<400", "400-900", "900-1800", "1800-7500"], default=">7500")
     for col, cat in SUBJECT_FLAGS.items():
         feat[col] = (feat["subject"] == cat).astype(float)
     feat["catalogue_cited"] = feat["has_citation"].astype(float)
@@ -394,7 +403,7 @@ def main():
     # 5. write the priors database
     os.makedirs(args.out_dir, exist_ok=True)
     built_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    db = {"version": ("PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2") + ("-bands" if args.size_terms == "bands" else ""), "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
+    db = {"version": ("PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2") + ("" if args.size_terms == "both" else f"-{args.size_terms}"), "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
           "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
           "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),
           "reference_levels": REFS, "elasticity_columns": cols, "year_effects": year_eff, "continuous_medians": med,
@@ -445,7 +454,8 @@ def main():
         for col in ["signature_hand", "edition_band_>300", "edition_band_<=30", "process_screenprint", "process_etching"] + BINARY:
             if col in e:
                 print("     " + show(col))
-        print(f"     area per doubling x{math.exp(e['area_log']['value'] * math.log(2)):.2f}   edition per doubling x{math.exp(e['edition_log']['value'] * math.log(2)):.2f}")
+        per_doubling = lambda col: f"x{math.exp(e[col]['value'] * math.log(2)):.2f}" if col in e else "n/a (no continuous term)"
+        print(f"     area per doubling {per_doubling('area_log')}   edition per doubling {per_doubling('edition_log')}")
 
 
 if __name__ == "__main__":

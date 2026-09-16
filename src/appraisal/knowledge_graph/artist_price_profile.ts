@@ -104,6 +104,22 @@ export function editionBand(n: number | null | undefined): EditionBand {
   return ">300";
 }
 
+/**
+ * The size bands a profile was fitted with. The shape bands (build_priors --size-terms shape-bands,
+ * 2026-09-16) are cut where the measured price curve bends — flat below ~30 cm a side, rising to
+ * ~42 cm, flat to ~87 cm, then a jump — and use 1800-7500 as the reference level, which is how a
+ * profile built with them is recognised. Every other profile uses areaBand.
+ */
+export function areaBandFor(cm2: number | null | undefined, referenceLevels: Record<string, string> | null | undefined): string {
+  if (referenceLevels?.area_band !== "1800-7500") return areaBand(cm2);
+  if (cm2 == null || !Number.isFinite(cm2) || cm2 <= 0) return "unknown";
+  if (cm2 < 400) return "<400";
+  if (cm2 < 900) return "400-900";
+  if (cm2 < 1800) return "900-1800";
+  if (cm2 < 7500) return "1800-7500";
+  return ">7500";
+}
+
 export function areaBand(cm2: number | null | undefined): AreaBand {
   if (cm2 == null || !Number.isFinite(cm2) || cm2 <= 0) return "unknown";
   if (cm2 < 150) return "<150cm2";
