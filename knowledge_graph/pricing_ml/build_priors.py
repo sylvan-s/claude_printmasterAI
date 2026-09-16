@@ -240,10 +240,14 @@ def main():
     ap.add_argument("--cut", default="2024-07-01")
     ap.add_argument("--min-year", default="2010")
     ap.add_argument("--out-dir", default=os.path.join(HERE, "priors"))
+    ap.add_argument("--size-terms", choices=["both", "bands"], default="both",
+                    help="both = area bands + per-doubling area_log (1.2); bands = area bands only (2026-09-16 check: the two are collinear and pulled against each other for thin artists)")
     ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
     if args.with_citation:
         BINARY.append("catalogue_cited")
+    if args.size_terms == "bands":
+        CONT.remove("area_log")
 
     df = pd.read_csv(args.csv, low_memory=False)
     source_rows = int(len(df))          # rows in the export, before any filter: the freshness check compares this to the graph
@@ -390,7 +394,7 @@ def main():
     # 5. write the priors database
     os.makedirs(args.out_dir, exist_ok=True)
     built_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    db = {"version": "PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2", "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
+    db = {"version": ("PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2") + ("-bands" if args.size_terms == "bands" else ""), "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
           "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
           "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),
           "reference_levels": REFS, "elasticity_columns": cols, "year_effects": year_eff, "continuous_medians": med,

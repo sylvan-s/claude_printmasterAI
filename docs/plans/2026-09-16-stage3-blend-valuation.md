@@ -713,3 +713,37 @@ text say so. Tests: price-blend 88, stage3a-waterfall 21, stage3b 17.
   ×1.05 → edition ×1.00 → size ×0.79 → Roseberys ×0.94 → 2026 ×0.97 → calibration ×0.84 → model
   £866 → comps ×0.93 → £804.
 - The narration was first dropped for quoting "5–10%"; the policy band is now an allowed figure.
+
+## Size terms: bands only vs bands + per-doubling area (2026-09-16) — bands only rejected
+
+**Question** (user): is size linear or bucketed? It is both. Five area bands (<150, 150–400,
+400–900 reference, 900–1,800, >1,800 cm²) plus a per-doubling `area_log` term. The two are
+collinear, and for thin artists they pull against each other (Braque: band ×1.63, per-doubling
+×0.49, net ×0.79), so the user asked for a bands-only refit.
+
+**Built:** `build_priors.py --size-terms bands` (version suffix `-bands`) and
+`tests/backtest/priors_variant_check.ts`. The check re-prices every sold backtest lot through the
+blend with each build's profiles read from the build JSON, with no graph write and identical lot
+attributes; calibration is fitted before 2024-07-01 and scored after. The default build reproduces
+the committed priors byte for byte.
+
+**Priors temporal check** (sales from 2024-07-01, MAE(log)): bands only is worse in every
+earlier-sales band. Overall 0.652 → 0.663; 15–40 sales 0.684 → 0.707; 40–100 sales 0.633 → 0.648.
+
+**Stage 3 blend check** (1,495 lots after the split): blend MAE(log) 0.631 → 0.639, 80% coverage
+80% → 78%. By sheet size:
+
+| size | lots | blend MAE(log) |
+|---|---|---|
+| under 400 cm² | 94 | 0.788 → 0.817 |
+| 400–1,800 cm² | 375 | 0.640 → 0.639 (tie) |
+| 1,800–4,000 cm² | 475 | 0.566 → 0.564 (tie) |
+| over 4,000 cm² | 491 | 0.649 → 0.669 |
+
+The loss is at the extremes. The open-ended top band holds 54% of training sales, so bands alone
+cannot tell a 40×50 cm sheet from a 100×70 cm one.
+
+**Decision: keep both terms** (production unchanged, PRICING-PRIORS-1.2). The collinearity is a
+readability problem, not an accuracy one, and the chart already shows size as a single combined
+bar. If a single size form is still wanted, the candidates are continuous area alone, or finer
+bands with the top band split. Neither has been tested.
