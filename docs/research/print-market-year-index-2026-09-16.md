@@ -1,4 +1,4 @@
-# The print market by sale year: a repeat-sales index, with and without dollar sales
+# The print market by sale year: a repeat-sales index, with and without dollar sales, by segment, and against Swann
 
 **Date:** 2026-09-16
 **Status:** Research note. The GBP-only index is built (`blend/house_offsets_gbp_years.json`) and
@@ -30,6 +30,14 @@ print prices really fallen, and how much of the index is the exchange rate?
 4. **For a sterling buyer, an old print has not appreciated much.** Like-for-like, a print that sold
    in London in 2010–2019 fetches about the same nominal hammer today, after a boom and bust in
    between.
+5. **The boom and bust was driven by modern and contemporary prints, and it was transatlantic.**
+   Prints by artists born 1945 or later rose 2.5-fold from 2015 to 2022 and are still falling in
+   2026. US dollar hammer prices (Bonhams New York, Skinner) trace the same peak and fall as London.
+   See "The 2020–22 boom and bust".
+6. **Older prints have been in long nominal decline in both London and New York.** This covers
+   artists born before 1900, from Rembrandt to early modernists such as Picasso and Miró. Swann,
+   which sells almost nothing else, had no COVID boom at all: its prices fell about 30% in dollars
+   from 2016–18 to 2025. See "Swann comparison".
 
 ## Method
 
@@ -125,6 +133,119 @@ mid-2024 draw mostly on recent comps: only 72 have a median comp six or more yea
   cross-sectionally on all currencies. They show the same peak (about +0.37 log in 2021–22) and
   would carry the same pre-2019 currency drift. Untested.
 
+## The 2020–22 boom and bust
+
+`knowledge_graph/pricing_ml/market_index/segment_index.py` refits the sterling-only index on subsets
+(100 bootstraps per subset). The sample differs slightly from the main index: every sterling sale
+with a dated repeat sale and a resolved artist, with no gate-lot exclusion (8,208 sales on 3,081
+works). The all-sales row therefore reads a little differently from the table above.
+
+Level relative to 2025 [90% band]:
+
+| Segment | 2015 | 2019 | 2022 | 2026 (part) |
+|---|---|---|---|---|
+| All sterling sales | 1.05 [0.96–1.14] | 1.09 [1.02–1.18] | 1.43 [1.35–1.50] | 0.96 [0.91–1.01] |
+| Artist born 1945+ | **0.59** [0.48–0.74] | 1.06 [0.94–1.23] | **1.50** [1.39–1.64] | **0.90** [0.82–0.99] |
+| Artist born 1900–1944 | 1.08 [0.96–1.20] | 1.03 [0.93–1.14] | 1.36 [1.24–1.51] | 1.00 [0.91–1.08] |
+| Artist born before 1900 | 1.35 [1.14–1.52] | 1.30 [1.13–1.46] | 1.30 [1.14–1.46] | 0.98 [0.86–1.08] |
+| Work usually under £500 | 1.33 [1.04–1.76] | 1.24 [1.07–1.42] | 1.52 [1.36–1.70] | 0.94 [0.85–1.04] |
+| Work usually £500–2,000 | 1.25 [1.14–1.38] | 1.15 [1.04–1.29] | 1.47 [1.39–1.59] | 0.94 [0.89–1.03] |
+| Work usually £2,000+ | 0.74 [0.64–0.86] | 0.91 [0.82–1.04] | 1.25 [1.09–1.38] | 1.01 [0.94–1.13] |
+
+The most-resold artists born 1945 or later are Banksy, Damien Hirst, Tracey Emin, Takashi Murakami,
+David Shrigley, the Connor Brothers, Keith Haring and Julian Opie. "Usually" is the work's median
+hammer across its sales. Grouping on that is a mild selection effect, since a work's own prices set
+its tier.
+
+Three movements sit inside the overall index:
+
+1. **Contemporary boom and bust.** The 1945+ segment rose from ×0.59 (2015) to ×1.50 (2022) and is
+   the only segment clearly still falling in 2026.
+2. **Modern and post-war boom, fully reversed.** The 1900–1944 segment was flat before 2020, rose
+   about a third, and is back at its 2019 level.
+3. **Slow decline underneath.** Pre-1900 artists and cheaper prints have drifted down since at least
+   2015, with a COVID bump on top. Works usually above £2,000 are the only group above their 2015
+   level.
+
+**Sell-through and supply** (sterling records):
+- Sell-through peaked in 2020–21: Bonhams 85% (67–77% before), Roseberys 79% (61–69% before). Both
+  were back near 70% by 2024–25.
+- Offered lots rose after the peak: Roseberys from about 940 (2019) to 1,500–1,600 a year in 2022–24,
+  Forum from about 570 (2022) to about 2,250 (2024–25). This may partly reflect the graph's coverage
+  of each house by year, so treat it as a pointer rather than a measurement.
+- Bonhams' median sterling hammer fell from £2,000 (2021) to £1,100 (2026), partly a change of mix.
+
+**Likely causes.** These are wider market events, not measured in this data. They fit the timing but
+are not tested against it.
+
+- *Boom, 2020–22.* Lockdown savings, Bank Rate at 0.1% and rising asset prices. Auctions moved
+  online and brought in new bidders, and prints are the easiest art to buy online. Crypto and NFT
+  wealth chased contemporary names, which fits the 1945+ segment rising most.
+- *Reversal, from 2023.* Bank Rate rose to 5.25% by August 2023. UK inflation peaked above 11% in
+  late 2022, with a cost-of-living squeeze. Crypto crashed in 2022. Boom-era buyers began to resell,
+  consistent with the rise in offered lots. Industry reports (Art Basel/UBS) recorded shrinking global
+  art sales in 2023 and 2024.
+- *No return to growth.* In sterling there was no pre-2020 growth to return to (finding 3). Rates
+  remain well above their 2010s level, the speculative segment is still deflating, and older and
+  cheaper prints were already declining before COVID. After UK inflation of roughly 30% since 2019,
+  real prices are well below pre-COVID levels.
+
+## Swann comparison
+
+Swann Auction Galleries (New York) is in the graph differently from the other houses. It has 10,392
+sold lots from 2016-09 to 2026-04, priced in dollars as the price *realised* (with buyer's premium):
+no hammer and no sterling conversion. Stage 3a comps and the year index above therefore never use
+Swann. `knowledge_graph/pricing_ml/market_index/swann_index.py` fits the same repeat-sales model,
+2016–2026, separately for three markets:
+
+| Year | UK sterling hammer | US dollar hammer (Bonhams NY, Skinner) | Swann, dollar price realised |
+|---|---|---|---|
+| 2016 | 0.91 [0.81–1.01] | 1.04 [0.91–1.17] | **1.42** [1.35–1.53] |
+| 2017 | 0.92 [0.82–1.02] | 1.01 [0.89–1.11] | 1.41 [1.35–1.49] |
+| 2018 | 1.02 [0.92–1.10] | 0.98 [0.83–1.07] | 1.47 [1.39–1.59] |
+| 2019 | 1.11 [1.03–1.22] | 0.98 [0.89–1.07] | 1.35 [1.26–1.44] |
+| 2020 | 1.35 [1.24–1.45] | 1.14 [1.03–1.23] | 1.26 [1.18–1.34] |
+| 2021 | 1.40 [1.31–1.47] | 1.44 [1.32–1.56] | 1.49 [1.41–1.62] |
+| 2022 | 1.40 [1.32–1.48] | **1.46** [1.35–1.57] | 1.32 [1.24–1.41] |
+| 2023 | 1.20 [1.14–1.27] | 1.19 [1.11–1.28] | 1.19 [1.13–1.26] |
+| 2024 | 1.14 [1.10–1.18] | 1.08 [1.01–1.17] | 1.13 [1.05–1.23] |
+| 2025 | 1.00 | 1.00 | 1.00 |
+| 2026 (part) | 0.95 [0.90–1.00] | 1.00 [0.91–1.13] | 1.16 [1.06–1.31] |
+| Repeat sales | 5,429 | 2,839 | 5,384 (1,745 works) |
+
+The UK column is refitted on 2016–2026 sales only, so it differs slightly from the main table.
+
+**Swann sells a different market.** Its most-resold artists are Rembrandt, Dürer, Thomas Hart Benton,
+Picasso, Whistler, Chagall, Piranesi, Miró, Martin Lewis and Tamayo. 91% of its repeat sales are by
+artists born before 1900, and 2 are by artists born after 1945.
+
+**Reading.**
+- **The boom and bust was transatlantic.** US dollar hammer prices were flat from 2016 to 2019, peaked
+  at ×1.46 in 2022 and were back to ×1.00 by 2025, almost matching London. The drivers were global,
+  not British.
+- **Swann had no boom.** It dipped in 2020 (×1.26, the year lockdown disrupted sales), rebounded for
+  one year in 2021 (×1.49), then fell steadily to ×1.00. From 2016–18 that is a nominal fall of about
+  30%, and about half in real terms after US inflation of roughly a third.
+- **Older prints are declining in both markets.** Swann's pre-1900 segment falls from ×1.44 (2016)
+  to ×1.00, in line with the UK pre-1900 segment (×1.35 in 2015 to ×1.00). The decline shows across
+  Swann's price tiers: works usually $1,000–5,000 fell from ×1.43 to ×1.00, and $5,000+ from ×1.38.
+  Swann's 1900–1944 segment has only 347 repeat sales, with wide bands.
+- **Swann's volume moved against price.** Sell-through rose from 68–71% before 2020 to 75–80% since,
+  while offered lots fell from about 2,100 (2017) to about 800 (2025) and the median price realised
+  fell from $3,000 to about $1,900. That fits a house setting lower estimates and reserves to clear a
+  thinner market, though the graph's coverage of Swann's recent sales is unchecked.
+- **For "no return to growth".** For older prints, returning to growth would mean reversing a decline
+  that predates COVID. An ageing collector base and shifting taste are plausible reasons, but untested.
+
+**Swann-specific caveats.**
+- Prices include buyer's premium. If Swann raised its premium rate over the decade, the hammer decline
+  is steeper than shown. Its premium history is unchecked.
+- The 2026 rise (×1.16) rests on 118 repeat sales from the spring sales alone and may reflect the
+  season's mix rather than a turn.
+- Converting Swann to sterling at sale-date rates gives the same shape, with 2022 raised to ×1.44 by
+  the weak pound.
+- Works that sold only once at Swann do not enter the index. 1,745 of 6,753 sold works resold there.
+
 ## Follow-up: re-pricing dollar comps at the valuation-date rate
 
 **Built, gated, not adopted.** Code is in place with the switch off, so production behaviour is
@@ -177,13 +298,21 @@ sterling index, is a presentation and consistency choice rather than an accuracy
 
 ## Reproduce
 
+Year index and gate:
+
     knowledge_graph/venv-embeddings/bin/python knowledge_graph/pricing_ml/house_offsets.py \
         --exclude tests/backtest/comps_hammer/{forum,roseberys,bonhams}_n2500_blend_recency.jsonl \
         --year-currency GBP --out knowledge_graph/pricing_ml/blend/house_offsets_gbp_years.json
     npx tsx tests/backtest/refit_blend_calibration.ts --suite tests/backtest/comps_hammer/suite_comps.jsonl \
         --dry --offsets knowledge_graph/pricing_ml/blend/house_offsets_gbp_years.json
 
-Add `--fx-reconvert` for dollar re-pricing (after `npx tsx tests/backtest/extract_comp_currency.ts`),
-and `--split 2018-01-01` for the earlier split. Drop `--year-currency` (and `--offsets`) for the
-all-currency index. Every build now prints and
-stores its per-year bands (`yearBands`).
+- Drop `--year-currency` (and `--offsets`) for the all-currency index. Every build prints and stores
+  its per-year bands (`yearBands`).
+- Add `--fx-reconvert` for dollar re-pricing, after `npx tsx tests/backtest/extract_comp_currency.ts`.
+- Add `--split 2018-01-01` for the earlier split.
+
+Segment and Swann analyses (read-only; print only, and `swann_index.py` takes an optional JSON output
+path):
+
+    knowledge_graph/venv-embeddings/bin/python knowledge_graph/pricing_ml/market_index/segment_index.py
+    knowledge_graph/venv-embeddings/bin/python knowledge_graph/pricing_ml/market_index/swann_index.py
