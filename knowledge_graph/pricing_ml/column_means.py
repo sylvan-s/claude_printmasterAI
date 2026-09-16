@@ -30,7 +30,7 @@ import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from build_priors import design, CONT, SUBJECT_FLAGS  # noqa: E402
+from build_priors import design, CONT, REFS, SUBJECT_FLAGS  # noqa: E402
 from train_price_model import build_features  # noqa: E402
 
 
@@ -39,6 +39,8 @@ def main():
     ap.add_argument("csv")
     ap.add_argument("--priors", default=os.path.join(HERE, "priors", "artist_elasticities.json"))
     ap.add_argument("--out", default=os.path.join(HERE, "priors", "column_means.json"))
+    ap.add_argument("--size-terms", choices=["both", "bands", "shape-bands", "shape-bands+log"], default="both",
+                    help="must match the priors build (build_priors.py --size-terms)")
     args = ap.parse_args()
 
     db = json.load(open(args.priors))
@@ -50,12 +52,23 @@ def main():
     df = df[~df["rawMedium"].fillna("").str.lower().str.contains(r"\bthe book\b|the complete set|set of \d|portfolio of|\(vol\)")]
     df = df[df["artist"].notna()].reset_index(drop=True)
     feat = build_features(df)
+    if args.size_terms.startswith("shape-bands"):
+        # Mirrors build_priors.py: bands cut where the measured price curve bends.
+        area = np.exp(feat["area_log"])
+        feat["area_band"] = np.select(
+            [area.isna(), area < 400, area < 900, area < 1800, area < 7500],
+            ["unknown", "<400", "400-900", "900-1800", "1800-7500"], default=">7500")
+    if args.size_terms in ("bands", "shape-bands") and "area_log" in CONT:
+        CONT.remove("area_log")
+    if args.size_terms.startswith("shape-bands"):
+        REFS["area_band"] = "1800-7500"
     for col, cat in SUBJECT_FLAGS.items():
         feat[col] = (feat["subject"] == cat).astype(float)
     train = (df["saleDate"] < cut).values
     X = design(feat, columns=cols)
     for c in CONT:
-        X[c] = X[c].fillna(db["continuous_medians"][c])
+        if c in X:
+            X[c] = X[c].fillna(db["continuous_medians"][c])
     Xt = X[train]
     y = np.log(df.loc[train, "hammerGBP"].astype(float))
     years = pd.to_datetime(df.loc[train, "saleDate"]).dt.year.astype(str)
