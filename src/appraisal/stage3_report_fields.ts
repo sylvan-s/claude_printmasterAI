@@ -18,13 +18,16 @@ import type { ValuationEvidence } from "./valuation_evidence.js";
 
 export const RECENT_SALES_SHOWN = 8;
 const gbp = (n: number) => `£${Math.round(n).toLocaleString("en-GB")}`;
-const TIER_NOTE: Record<string, string> = { same_work: "same work", same_artist_technique: "same artist and technique", same_artist: "same artist" };
+const TIER_NOTE: Record<string, string> = { same_work: "same work", same_suite: "same catalogue entry", same_artist_technique: "same artist and technique", same_artist: "same artist" };
 
 export function recentSalesFromEvidence(ev: ValuationEvidence): RecentSale[] {
-  const rank = { same_work: 0, same_artist_technique: 1, same_artist: 2 } as const;
+  const rank = { same_work: 0, same_suite: 1, same_artist_technique: 2, same_artist: 3 } as const;
+  // A suite sale can also be in tier 2/3 (the blend counts both); the list shows each sale once, at its best tier.
+  const seen = new Set<string>();
   return ev.comps.items
     .filter((c) => (c.hammerGBP ?? 0) > 0 || (c.realisedGBP ?? 0) > 0)
     .sort((a, b) => rank[a.tier] - rank[b.tier] || (b.saleDate ?? "").localeCompare(a.saleDate ?? ""))
+    .filter((c) => { const k = `${c.house}|${c.saleDate?.slice(0, 10)}|${c.hammerGBP}`; if (seen.has(k)) return false; seen.add(k); return true; })
     .slice(0, RECENT_SALES_SHOWN)
     .map((c) => ({
       artworkTitle: c.workTitle ?? "Untitled",
@@ -36,7 +39,7 @@ export function recentSalesFromEvidence(ev: ValuationEvidence): RecentSale[] {
         ? `${gbp(c.realisedGBP)}${c.hammerGBP ? ` (hammer ${gbp(c.hammerGBP)})` : ""}`
         : `hammer ${gbp(c.hammerGBP!)}`,
       auctionHouse: c.house ?? "unknown house",
-      conditionState: `not recorded; ${TIER_NOTE[c.tier]} comparable`,
+      conditionState: `not recorded; ${TIER_NOTE[c.tier]}${c.entry ? ` (${c.entry})` : ""} comparable`,
     }));
 }
 

@@ -81,6 +81,7 @@ const graph: LotGraphEvidence = {
     comparables: [comp("same_work", 1000, "Bonhams", "2023-01-01"), comp("same_work", 800, "Forum Auctions", "2022-01-01"), comp("same_artist_technique", 500, "Bonhams", "2021-01-01"), comp("same_artist_technique", null, "Roseberys London", "2021-01-01"), comp("same_artist", 300, "Bonhams", "2020-01-01")],
     summary: {} as any, coverageNote: "test coverage",
   },
+  suite: [],
   query: { sinceDate: "2014-06-01", untilDate: "2024-06-01", limit: 60, technique: "Etching", workTitle: "T" },
   warnings: [],
 };
@@ -90,7 +91,13 @@ const graph: LotGraphEvidence = {
     builtAt: "2026-09-16T00:00:00Z", reportedArtist: "X", canonicalArtist: "X", claim, vea, graph,
     targetHouse: { value: "Forum Auctions", source: "catalogue" }, valuationDate: { value: "2024-06-01", source: "catalogue" },
   });
-  eq("tier counts include a comp with no hammer", ev.comps.tierCounts, { same_work: 2, same_artist_technique: 2, same_artist: 1 });
+  eq("tier counts include a comp with no hammer", ev.comps.tierCounts, { same_work: 2, same_suite: 0, same_artist_technique: 2, same_artist: 1 });
+  const withSuite = assembleValuationEvidence({
+    builtAt: "t", reportedArtist: "X", canonicalArtist: "X", claim, vea, graph: { ...graph, suite: [{ hammerGBP: 700, saleDate: "2022-05-01", house: "Bonhams", work: "sib", workTitle: "Sibling plate", entry: "Vallier 153", listingUrl: null }] },
+    targetHouse: { value: "Forum Auctions", source: "catalogue" }, valuationDate: { value: "2024-06-01", source: "catalogue" },
+  });
+  eq("suite comps join as their own tier with the joining entry", [withSuite.comps.tierCounts.same_suite, withSuite.comps.items.find((c) => c.tier === "same_suite")!.entry], [1, "Vallier 153"]);
+  eq("and reach the blend as sameSuite", evidenceToBlendInputs(withSuite).sameSuite, [{ hammerGBP: 700, saleDate: "2022-05-01", house: "Bonhams" }]);
   eq("printed estimate kept for display", ev.printedEstimate, { low: 900, high: 1200, currency: "GBP" });
   eq("condition from the image, appraiser claims alongside", [ev.condition.grade, ev.condition.defects[0], ev.condition.source], ["GOOD", "foxing (minor)", "vea"]);
   const b = evidenceToBlendInputs(ev);

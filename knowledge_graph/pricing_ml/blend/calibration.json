@@ -1,6 +1,6 @@
 {
-  "version": "BLEND-1.3",
-  "fittedAt": "2026-09-16T15:01:44.050Z",
+  "version": "BLEND-1.4",
+  "fittedAt": "2026-09-16T15:36:09.404Z",
   "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl@2026-09-16T14:59:12+00:00, offline refit",
   "witnesses": {
     "estimate": {
@@ -62,6 +62,31 @@
         }
       }
     },
+    "same_suite": {
+      "df": 5,
+      "byKey": {
+        "1": {
+          "bias": 0.0002437116439901743,
+          "sigma": 0.5304565313611069,
+          "n": 121
+        },
+        "2": {
+          "bias": -0.1094236616083677,
+          "sigma": 0.5918375407428069,
+          "n": 49
+        },
+        "all": {
+          "bias": 0.0008968648935270274,
+          "sigma": 0.5834775453406814,
+          "n": 234
+        },
+        "3+": {
+          "bias": 0.13191919552201892,
+          "sigma": 0.6844826668415851,
+          "n": 64
+        }
+      }
+    },
     "same_artist_technique": {
       "df": 5,
       "byKey": {
@@ -113,6 +138,7 @@
       "weights": {
         "estimate": 1,
         "same_work": 1,
+        "same_suite": 1,
         "same_artist_technique": 1,
         "same_artist": 1,
         "priors_model": 1
@@ -127,17 +153,19 @@
       "weights": {
         "estimate": 0,
         "same_work": 2,
+        "same_suite": 1,
         "same_artist_technique": 0.5,
         "same_artist": 0.25,
         "priors_model": 1
       },
-      "temperature": 1.3,
+      "temperature": 1.5,
       "fitLots": 5094,
-      "fitMaeLog": 0.6282588746116239,
+      "fitMaeLog": 0.6262997552063727,
       "fitCoverage80": 0.7991755005889282,
       "temperatureByTier": {
-        "same_work_3+": 1.5,
+        "same_work_3+": 1.75,
         "same_work_1-2": 2.5,
+        "same_suite": 1.3,
         "same_artist_technique": 1.3,
         "same_artist": 1.3,
         "priors_model": 0.9

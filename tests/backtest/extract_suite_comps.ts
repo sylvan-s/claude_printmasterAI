@@ -1,5 +1,6 @@
 /**
- * Same-suite comps for every sold backtest lot (2026-09-16 test of a "same book / suite" comp tier).
+ * Same-suite comps for every sold backtest lot, via the live read (src/appraisal/knowledge_graph/suite_comps.ts,
+ * generic catalogue prefixes excluded), for fitting the calibration.
  * Read-only against the graph. A suite sibling is another ConceptualWork by the same artist
  * documented by the SAME CatalogueEntry (exact catalogue prefix + number), e.g. every plate of
  * Braque's Le Tir a l'arc under Vallier 153. Exact fields only, no title similarity.
@@ -13,25 +14,14 @@
  */
 import "dotenv/config";
 import { readFileSync, appendFileSync, existsSync } from "node:fs";
-import { closeDriver, resolveWorkIdentity, citationsInRefs, citationsInTitle, foldPrefix } from "../../src/appraisal/knowledge_graph/index";
+import { closeDriver, resolveWorkIdentity, querySuiteComps, artistCatalogueEntries, type CatalogueEntryRow } from "../../src/appraisal/knowledge_graph/index";
 import { getDriver, getDatabase } from "../../src/appraisal/knowledge_graph/client";
 
 const D = "tests/backtest/comps_hammer";
 const OUT = `${D}/suite_comps.jsonl`;
 const CONCURRENCY = 6;
 
-const ENTRIES = `
-MATCH (a:Artist {name: $artist})-[:CREATED]->(w:ConceptualWork)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
-RETURN cr.numberingPrefix AS prefix, toString(ce.number) AS number, elementId(ce) AS entry, collect(DISTINCT w.id) AS works
-`;
-const SALES = `
-MATCH (w:ConceptualWork)-[:PRINTED_AS]->(:EditionRun)-[:INCLUDES]->(:Impression)<-[:DOCUMENTS]-(s:SourceRecord)
-WHERE w.id IN $ids AND s.sourceType = 'auction' AND s.sold = true AND s.hammerPriceGBP > 0 AND s.saleDate IS NOT NULL
-  AND substring(s.saleDate, 0, 10) >= $since AND substring(s.saleDate, 0, 10) < $until
-  AND NOT (s.saleId = $saleId AND s.lotNumber = $lotNumber)
-RETURN DISTINCT s.hammerPriceGBP AS hammer, substring(s.saleDate, 0, 10) AS date, s.institutionName AS house, w.id AS work
-`;
-const entryCache = new Map<string, { key: string; label: string; works: string[] }[]>();
+const entryCache = new Map<string, CatalogueEntryRow[]>();
 
 async function main() {
   const done = new Set(existsSync(OUT) ? readFileSync(OUT, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l).key) : []);
@@ -47,27 +37,19 @@ async function main() {
       const r = rows[i++];
       const saleLot = { saleId: String(r.saleId), lotNumber: Number(r.lotNumber) };
       let comps: any[] = [], workIds: string[] = [], error: string | null = null;
-      const s = getDriver().session({ database: getDatabase() });
       try {
         const wi = await resolveWorkIdentity({ artistName: r.canonicalArtist, title: r.title ?? "", catalogueRefs: r.catalogueRefs ?? null, excludeSaleLot: saleLot });
         workIds = wi.workIds;
-        const cites = new Set([...citationsInRefs(r.catalogueRefs), ...citationsInTitle(r.title ?? "")].map((c) => `${c.prefix}|${c.number}`));
         if (!entryCache.has(r.canonicalArtist)) {
-          const er = await s.run(ENTRIES, { artist: r.canonicalArtist });
-          entryCache.set(r.canonicalArtist, er.records.map((x) => ({ key: `${foldPrefix(String(x.get("prefix") ?? ""))}|${String(x.get("number")).toLowerCase()}`, label: `${x.get("prefix")} ${x.get("number")}`, works: x.get("works") as string[] })));
+          const s = getDriver().session({ database: getDatabase() });
+          try { entryCache.set(r.canonicalArtist, await artistCatalogueEntries(s, r.canonicalArtist)); } finally { await s.close(); }
         }
-        // The lot's entries: those documenting its own resolved works, or matching a citation it prints.
-        const entries = entryCache.get(r.canonicalArtist)!.filter((e) => e.works.some((w) => workIds.includes(w)) || cites.has(e.key));
-        const siblings = new Map<string, string>();
-        for (const e of entries) for (const w of e.works) if (!workIds.includes(w)) siblings.set(w, e.label);
-        if (siblings.size) {
-          const until = r.saleDate.slice(0, 10);
-          const since = `${Number(until.slice(0, 4)) - 10}${until.slice(4)}`;
-          const res = await s.run(SALES, { ids: [...siblings.keys()], since, until, saleId: saleLot.saleId, lotNumber: saleLot.lotNumber });
-          comps = res.records.map((x) => ({ hammerGBP: x.get("hammer"), saleDate: x.get("date"), house: x.get("house"), work: x.get("work"), entry: siblings.get(x.get("work")) }));
-        }
+        const until = r.saleDate.slice(0, 10);
+        const since = `${Number(until.slice(0, 4)) - 10}${until.slice(4)}`;
+        // The live Stage 3a read (suite_comps.ts), with generic catalogue prefixes excluded.
+        const res = await querySuiteComps({ artist: r.canonicalArtist, workIds, catalogueRefs: r.catalogueRefs ?? null, title: r.title ?? null, sinceDate: since, untilDate: until, excludeSaleLot: saleLot, excludeListingUrl: r.listingUrl ?? null, entries: entryCache.get(r.canonicalArtist) });
+        comps = res.comps; error = res.error;
       } catch (e: any) { error = String(e?.message ?? e); }
-      finally { await s.close(); }
       appendFileSync(OUT, JSON.stringify({ key: r.key, workIds: workIds.length, comps, error }) + "\n");
       n++; if (comps.length) withSuite++;
       if (n % 250 === 0) console.log(`  ${n}/${rows.length}, ${withSuite} with suite comps`);

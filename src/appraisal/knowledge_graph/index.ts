@@ -16,6 +16,8 @@ export type { BlendInputs, BlendCalibration, BlendRegime, PriceBlend, PriceWitne
 export { estimateFeaturesOf, fitEstimateModel, predictLogEstimate, residualsByHouse, ESTIMATE_MODEL_COLUMNS, ESTIMATE_PREDICTOR_SOURCES } from "./estimate_model.js";
 export type { EstimateFeatures, EstimateModel, HouseResidual, EstimateFitRow } from "./estimate_model.js";
 export { queryWorkFacts } from "./query_work_facts.js";
+export { querySuiteComps, suiteSiblings, artistCatalogueEntries, isGenericCataloguePrefix, GENERIC_CATALOGUE_PREFIXES } from "./suite_comps.js";
+export type { SuiteComp, CatalogueEntryRow } from "./suite_comps.js";
 export { writeResearchComps, queryResearchComps, gateComp, researchCompId, normaliseSaleDate, WRITEABLE_WORK_BASES } from "./write_research_comps.js";
 export type { WriteResearchCompsInput, WriteResearchCompsResult, ResearchComp, CompGateResult, CompRejection, RecordedPriceBasis } from "./write_research_comps.js";
 export { isTypoVariant, isSurnameTypoVariant, isDesignatorToken, osaDistanceAtMost } from "./typo_tolerance.js";

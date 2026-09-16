@@ -119,6 +119,7 @@ HOW TO READ THE CHART (get this right; it is the most common error)
 - "Impression status" is where this impression sits relative to the numbered edition (numbered, artist's proof, hors commerce, trial proof). It is NOT a catalogue raisonné citation. For an artist's proof, hors commerce or trial proof it is a modest proof premium of 5-10%; if no edition is stated, the edition step is zero rather than a penalty.
 - "Size" compares this sheet with the typical training size mix; the bands are named by sheet side (small up to 30 cm, medium 30-42 cm, large 42-87 cm, extra large over 87 cm, where larger still adds value per doubling).
 - "Sale house" is the house's like-for-like price level against the average house mix of the training sales. "Market level" is the valuation year's market against the average year. "Model calibration" corrects the model to realised hammers.
+- "Same catalogue entry" comps are sales of OTHER works catalogued under the same catalogue raisonné entry as this print (e.g. other plates of the same book, "Vallier 153"): close relatives, not this exact work.
 - "Market comps" is the pull from realised sales, re-based to the target house and to the valuation date; the comps come from several houses and years, not one house.
 
 RULES

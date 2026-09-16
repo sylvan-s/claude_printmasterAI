@@ -908,3 +908,25 @@ key group), so it is promising but small-sample.
 **To adopt:** `readLotGraphEvidence` fetches suite comps; the waterfall comps label and narration
 mention the suite; the calibration is refit with `--suite`. Worth deciding first whether to
 exclude generic catalogue prefixes ("No.").
+
+### Same-suite tier adopted (BLEND-1.4)
+
+User direction: adopt it, with generic prefixes excluded.
+
+- `knowledge_graph/suite_comps.ts` (read-only): the artist's CatalogueEntry nodes, dropping generic
+  numbering prefixes (`No.`, `Nr.`, `Cat.`, `P.`, page/plate/figure…). Siblings are scoped to the
+  artist, because entries are shared across artists. Matching is exact prefix + number; there is
+  no title similarity. `extract_suite_comps.ts` now calls the same function, so the backtest and live
+  read cannot drift: **234 lots** have suite comps (240 with generic prefixes; the old file is kept as
+  `suite_comps_v0_all_prefixes.jsonl`).
+- `readLotGraphEvidence` fetches suite comps in the same 10-year window. They enter the evidence as
+  tier `same_suite` carrying their entry label. They are not deduplicated against tier 2/3, matching
+  the calibration; the recent-sales list deduplicates for display only.
+- The waterfall comps bar reads "Market comps: same catalogue entry (Vallier 153), …". The narration
+  prompt and the recent-sales notes name the entry.
+- **BLEND-1.4** refit with `--suite`. Temporal gate: all 0.622 with 78% cover. Lots with suite comps:
+  0.504. With suite comps but no same-work comps: 0.455, geo ×0.95. Suite sigma is 0.53/0.59/0.68 by
+  count band. Pool weights: same_work 2, same_suite 1, same-artist technique 0.5, same artist 0.25,
+  model 1.
+- Braque *Oiseau bleu* example: three Vallier 153 sibling sales (Bonhams 2023 £707, Skinner 2022
+  £4,855, Roseberys 2020 £1,100). The range moves to £430–1,800, median £850, tier `same_suite`.

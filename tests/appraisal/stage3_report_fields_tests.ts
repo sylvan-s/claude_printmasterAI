@@ -14,7 +14,7 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   attrs: { signature: { value: "hand", source: "catalogue" }, proof: { value: "artist_proof", source: "catalogue" }, editionSize: { value: 50, source: "catalogue" }, areaCm2: { value: null, source: "default" }, process: { value: "etching", source: "catalogue" } },
   targetHouse: { value: "Bonhams", source: "catalogue" }, valuationDate: { value: "2024-06-01", source: "catalogue" },
   identity: { workIds: ["w"], basis: "exact_title", matchedName: "T", ambiguousAt: null, via: "claim" },
-  comps: { query: {} as any, items: [comp("same_artist", 300, 390, "2024-01-01", "Other"), comp("same_work", 1000, 1300, "2020-01-01"), comp("same_work", 1200, null, "2023-01-01"), comp("same_artist_technique", null, null, "2024-02-01")], tierCounts: { same_work: 2, same_artist_technique: 1, same_artist: 1 }, coverageNote: "" },
+  comps: { query: {} as any, items: [comp("same_artist", 300, 390, "2024-01-01", "Other"), comp("same_work", 1000, 1300, "2020-01-01"), comp("same_work", 1200, null, "2023-01-01"), comp("same_artist_technique", null, null, "2024-02-01")], tierCounts: { same_work: 2, same_suite: 0, same_artist_technique: 1, same_artist: 1 }, coverageNote: "" },
   webComps: [], condition: { grade: null, defects: [], appraiserClaims: [], source: "default" }, sellThrough: null, printedEstimate: null, warnings: [], ...over,
 });
 {

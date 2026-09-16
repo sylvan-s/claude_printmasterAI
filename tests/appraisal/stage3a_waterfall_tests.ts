@@ -30,7 +30,7 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   attrs: { signature: { value: "hand", source: "catalogue" }, proof: { value: "numbered", source: "default" }, editionSize: { value: 50, source: "catalogue" }, areaCm2: { value: 3000, source: "catalogue" }, process: { value: "etching", source: "catalogue" } },
   targetHouse: { value: "Forum Auctions", source: "catalogue" }, valuationDate: { value: "2024-06-01", source: "catalogue" },
   identity: { workIds: ["w"], basis: "exact_title", matchedName: "T", ambiguousAt: null, via: "claim" },
-  comps: { query: { sinceDate: "2014-06-01", untilDate: "2024-06-01", limit: 60, technique: null, workTitle: "T" }, items: [{ tier: "same_work", hammerGBP: 2500, realisedGBP: null, saleDate: "2023-03-01", house: "Bonhams", saleId: "s", lotNumber: 1, workTitle: "T", listingUrl: null, attrs: {} as any }], tierCounts: { same_work: 1, same_artist_technique: 0, same_artist: 0 }, coverageNote: "" },
+  comps: { query: { sinceDate: "2014-06-01", untilDate: "2024-06-01", limit: 60, technique: null, workTitle: "T" }, items: [{ tier: "same_work", hammerGBP: 2500, realisedGBP: null, saleDate: "2023-03-01", house: "Bonhams", saleId: "s", lotNumber: 1, workTitle: "T", listingUrl: null, attrs: {} as any }], tierCounts: { same_work: 1, same_suite: 0, same_artist_technique: 0, same_artist: 0 }, coverageNote: "" },
   webComps: [], condition: { grade: "GOOD", defects: [], appraiserClaims: [], source: "vea" }, sellThrough: null, printedEstimate: null, warnings: [], ...over,
 });
 {

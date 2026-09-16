@@ -24,7 +24,7 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   attrs: { signature: { value: "hand", source: "catalogue" }, proof: { value: "numbered", source: "default" }, editionSize: { value: 50, source: "catalogue" }, areaCm2: { value: null, source: "default" }, process: { value: "etching", source: "catalogue" } },
   targetHouse: { value: "Forum Auctions", source: "catalogue" }, valuationDate: { value: "2024-06-01", source: "catalogue" },
   identity: { workIds: ["w"], basis: "exact_title", matchedName: "T", ambiguousAt: null, via: "claim" },
-  comps: { query: { sinceDate: "2014-06-01", untilDate: "2024-06-01", limit: 60, technique: null, workTitle: "T" }, items: [comp("same_work", 900, "Bonhams", "2023-03-01"), comp("same_work", 1100, "Forum Auctions", "2023-09-01"), comp("same_work", 1000, "Bonhams", "2022-05-01")], tierCounts: { same_work: 3, same_artist_technique: 0, same_artist: 0 }, coverageNote: "" },
+  comps: { query: { sinceDate: "2014-06-01", untilDate: "2024-06-01", limit: 60, technique: null, workTitle: "T" }, items: [comp("same_work", 900, "Bonhams", "2023-03-01"), comp("same_work", 1100, "Forum Auctions", "2023-09-01"), comp("same_work", 1000, "Bonhams", "2022-05-01")], tierCounts: { same_work: 3, same_suite: 0, same_artist_technique: 0, same_artist: 0 }, coverageNote: "" },
   webComps: [], condition: { grade: "FAIR", defects: ["foxing (minor)"], appraiserClaims: [], source: "vea" }, sellThrough: { sold: 2, unsold: 0 },
   printedEstimate: { low: 800, high: 1200, currency: "GBP" }, warnings: [], ...over,
 });
@@ -41,8 +41,8 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   ok("defaulted attributes are named in the caveats", r.caveats.some((c) => c.includes("proof") && c.includes("areaCm2")));
   const pooled = stage3aValuation(ev({ targetHouse: { value: null, source: "default" } }), cal)!;
   ok("no house: caveat and a wider range", pooled.caveats.some((c) => c.startsWith("no sale house")) && pooled.highGBP / pooled.lowGBP > r.highGBP / r.lowGBP);
-  eq("no profile and no comps -> no price", stage3aValuation(ev({ profile: null, comps: { ...ev().comps, items: [], tierCounts: { same_work: 0, same_artist_technique: 0, same_artist: 0 } } }), cal), null);
-  const modelOnly = stage3aValuation(ev({ comps: { ...ev().comps, items: [], tierCounts: { same_work: 0, same_artist_technique: 0, same_artist: 0 } }, identity: { ...ev().identity, workIds: [] } }), cal)!;
+  eq("no profile and no comps -> no price", stage3aValuation(ev({ profile: null, comps: { ...ev().comps, items: [], tierCounts: { same_work: 0, same_suite: 0, same_artist_technique: 0, same_artist: 0 } } }), cal), null);
+  const modelOnly = stage3aValuation(ev({ comps: { ...ev().comps, items: [], tierCounts: { same_work: 0, same_suite: 0, same_artist_technique: 0, same_artist: 0 } }, identity: { ...ev().identity, workIds: [] } }), cal)!;
   ok("model-only lots say so", modelOnly.evidenceTier === "priors_model" && modelOnly.caveats.some((c) => c.startsWith("no market comps")));
 }
 // ── the displayed estimate ─────────────────────────────────────────────────────

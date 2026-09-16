@@ -107,7 +107,8 @@ export function stage3aValuation(ev: ValuationEvidence, cal: BlendCalibration, m
     highGBP: Math.round(blend.p90GBP),
     evidenceTier: tier,
     witnesses: witnesses.filter((w) => w.weight > 0).map((w) => ({
-      source: w.source, basis: w.basis, priceGBP: Math.round(Math.exp(w.mu)), sigma: +w.sigma.toFixed(3),
+      source: w.source,
+      basis: w.source === "same_suite" ? `${w.basis}: ${[...new Set(ev.comps.items.filter((c) => c.tier === "same_suite" && c.entry).map((c) => c.entry))].join(", ")}` : w.basis, priceGBP: Math.round(Math.exp(w.mu)), sigma: +w.sigma.toFixed(3),
       effectiveWeight: +(byKey.get(w.source)?.effectiveWeight ?? 0).toFixed(3), calibrationKey: w.key,
     })),
     house: { name: ev.targetHouse.value, multiplier: +Math.exp(houseOff?.log ?? 0).toFixed(3), measured: !!houseOff?.measured, referenceHouse: cal.houseOffsets?.referenceHouse ?? "Bonhams" },

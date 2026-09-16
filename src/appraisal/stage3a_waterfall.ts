@@ -216,7 +216,9 @@ export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration,
   }
 
   const comps = witnesses.filter((w) => w.source !== "priors_model" && w.weight > 0);
-  push("comps", comps.length ? `Market comps: ${comps.map((w) => pretty(w.source)).join(", ")}` : "No market comps", "comps", Math.log(medianGBP) - running);
+  const entries = [...new Set(ev.comps.items.filter((c) => c.tier === "same_suite" && c.entry).map((c) => c.entry!))];
+  const compName = (src: string) => (src === "same_suite" ? `same catalogue entry${entries.length ? ` (${entries.join(", ")})` : ""}` : pretty(src));
+  push("comps", comps.length ? `Market comps: ${comps.map((w) => compName(w.source)).join(", ")}` : "No market comps", "comps", Math.log(medianGBP) - running);
   bars.push({ key: "total", label: "Fair-value median", kind: "total", logEffect: 0, multiplier: 1, fromGBP: Math.round(medianGBP), toGBP: Math.round(medianGBP) });
   bars.push({ key: "condition", label: `Condition: ${ev.condition.grade ?? "not assessed"} (noted, not priced)`, kind: "note", logEffect: 0, multiplier: 1, fromGBP: Math.round(medianGBP), toGBP: Math.round(medianGBP) });
   return { bars, meansVersion: means.version, notes };
