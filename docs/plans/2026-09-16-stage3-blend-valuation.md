@@ -667,3 +667,49 @@ price the lot.
 - Kept: `runStage3Valuation` itself (the fallback, `ThreeStageAppraiser` and
   `tests/backtest/stage3_trial.ts` use it), `llmAuctionEstimate` in the type for reports saved
   while both ran.
+
+## Proof policy and artist-technique baseline (2026-09-16)
+
+**Proof policy** (`price_blend.ts` `PROOF_POLICY_CLASSES`, `DEFAULT_PROOF_PREMIUM`; applied on the
+valuation path via `evidenceToBlendInputs(ev, { proofPolicy })`; the calibration harness is
+unchanged). The user's direction: proofs attract a modest premium, 5–10%.
+- **What the fitted models say** (median shrunk artist, against the training mix):
+  - the proof term alone is a premium: AP ×1.07, HC ×1.14, trial ×1.11;
+  - the "edition unknown" term proofs usually carry turned the combined effect into a discount
+    (×0.85–0.96). That was the Braque example's ×0.54.
+- **Rule** for artist's proofs, HC and trial proofs:
+  - the proof step is the artist's own proof effect against the mix, clamped to ×1.05–1.10;
+  - when no edition is stated, the edition terms sit at the training mix (no effect);
+  - a stated edition still prices the proof.
+- **Measured** on 375 backtest proofs (`tests/backtest/proof_policy_check.ts`, zero LLM),
+  blended MAE(log) without → with the policy:
+
+  | proofs | lots | MAE | geo |
+  |---|---|---|---|
+  | AP, no edition | 12 | 0.392 → 0.349 | ×0.89 → ×1.00 |
+  | HC/trial, no edition | 7 | 0.438 → 0.229 | ×0.67 → ×0.88 |
+  | AP, edition stated | 322 | 0.526 → 0.531 | |
+  | HC/trial, edition stated | 34 | 0.489 → 0.528 | the 10% cap is below their typical fitted ×1.14 |
+  | all | 375 | 0.517 → 0.520 | |
+
+  An earlier version neutralised the edition for every proof: 0.517 → 0.528, and it cost the 322
+  APs with a stated edition. It was narrowed on that evidence. The waterfall adds up exactly on
+  all 375.
+
+**Waterfall baseline** (user direction). The chart starts at a typical print by THIS ARTIST in
+THIS TECHNIQUE:
+- the artist's model with the lot's technique term;
+- every other attribute at the training mix;
+- the training house mix and the average market year.
+
+The artist and technique bars are gone. Signature, proof, edition, size, house, year and
+calibration each move from that start, then the comps pull, then the median. With no pricing
+model the chart still starts at the average sold print. The narration prompt and the report card
+text say so. Tests: price-blend 88, stage3a-waterfall 21, stage3b 17.
+
+**The Braque example** (Roseberys A0785/2, HC aquatint, hammer £1,300):
+- before: £200–1,200, median £482 (edition unknown ×0.54);
+- after: £340–1,900, median £804. Braque, aquatint typical print £1,098 → hand ×1.24 → HC proof
+  ×1.05 → edition ×1.00 → size ×0.79 → Roseberys ×0.94 → 2026 ×0.97 → calibration ×0.84 → model
+  £866 → comps ×0.93 → £804.
+- The narration was first dropped for quoting "5–10%"; the policy band is now an allowed figure.

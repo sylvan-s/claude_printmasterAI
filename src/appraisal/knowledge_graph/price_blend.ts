@@ -292,10 +292,24 @@ function houseLevel(house: string | null | undefined): string | null {
  * house the model never saw (Forum) contributes 0 and is listed in `unknownColumns`; the
  * calibration bias per house absorbs it.
  */
+/** Proof classes outside the numbered edition: an edition size does not describe the sheet. */
+export const PROOF_POLICY_CLASSES = ["artist_proof", "hors_commerce", "trial_proof"] as const;
+/**
+ * The proof policy (2026-09-16, user direction: proofs attract a modest premium, 5-10%). Measured
+ * on the fitted models before adopting it: the proof term alone is a premium against the typical
+ * mix (median shrunk artist AP x1.07, HC x1.14, trial x1.11), but proofs rarely state an edition,
+ * and the "edition unknown" term they then carry turned the combined effect into a discount
+ * (x0.85-0.96). So for a proof: the proof step is the artist's own proof effect against the mix,
+ * clamped to [min, max]; and when no edition is stated, the edition terms sit at the training mix.
+ */
+export const DEFAULT_PROOF_PREMIUM = { min: 1.05, max: 1.1 };
+export interface ProofPolicy { columnMeans: Record<string, number>; premium: { min: number; max: number } }
+export const isPolicyProof = (proof: string | null | undefined): boolean => !!proof && (PROOF_POLICY_CLASSES as readonly string[]).includes(proof);
+
 export function priorsModelPrediction(
   attrs: PriceAttrs,
   profile: ArtistPriceProfile,
-  ctx: { saleDate: string | null | undefined; house?: string | null },
+  ctx: { saleDate: string | null | undefined; house?: string | null; proofPolicy?: ProofPolicy | null },
 ): { mu: number; contributions: PriceContribution[]; unknownColumns: string[] } {
   const unknown = new Set<string>();
   const levels: Record<string, string> = {
@@ -305,26 +319,53 @@ export function priorsModelPrediction(
     area_band: areaBand(attrs.areaCm2),
     process: attrs.process ? attrs.process.toLowerCase() : "other",
   };
+  const policy = ctx.proofPolicy && isPolicyProof(attrs.proof) ? ctx.proofPolicy : null;
+  // Edition goes to the mix only when no edition is stated: a stated edition still prices a proof
+  // (an AP from an edition of 25 is not an AP from 250). Measured on 375 backtest proofs: neutral
+  // edition cut blended MAE(log) 0.438 -> 0.229 on HC/trial proofs without an edition, and raised
+  // it 0.526 -> 0.542 on the 322 APs whose edition was stated.
+  const neutralEdition = !!policy && !(attrs.editionSize != null && Number.isFinite(attrs.editionSize) && attrs.editionSize > 0);
+  const beta = (col: string) => { const b = profile.elasticities[col]; return b != null && Number.isFinite(b) ? b : 0; };
+  const atMix = (prefix: string) => Object.keys(profile.elasticities).filter((c) => c.startsWith(prefix)).reduce((t, c) => t + beta(c) * (policy!.columnMeans[c] ?? 0), 0);
   const contributions: PriceContribution[] = [];
   let level = profile.level;
   let mu = profile.level;
   for (const [dim, lvl] of Object.entries(levels)) {
+    if (neutralEdition && dim === "edition_band") {
+      // No edition effect for a proof: the band sits at the training mix.
+      const mix = atMix("edition_band_");
+      level += mix; mu += mix;
+      continue;
+    }
+    if (policy && dim === "proof") {
+      const mix = atMix("proof_");
+      const measured = beta(`proof_${lvl}`) - mix;
+      const prem = Math.min(Math.log(policy.premium.max), Math.max(Math.log(policy.premium.min), measured));
+      level += mix; mu += mix + prem;
+      contributions.push({ term: `proof=${lvl}`, logEffect: prem });
+      continue;
+    }
     if (profile.referenceLevels[dim] === lvl) continue;
     const col = `${dim}_${lvl}`;
-    const beta = profile.elasticities[col];
-    if (beta == null || !Number.isFinite(beta)) { unknown.add(col); continue; }
-    contributions.push({ term: `${dim}=${lvl}`, logEffect: beta });
-    mu += beta;
+    const b = profile.elasticities[col];
+    if (b == null || !Number.isFinite(b)) { unknown.add(col); continue; }
+    contributions.push({ term: `${dim}=${lvl}`, logEffect: b });
+    mu += b;
   }
   for (const [col, field, label] of CONTINUOUS) {
-    const beta = profile.elasticities[col];
-    if (beta == null || !Number.isFinite(beta) || beta === 0) continue;
+    const b = profile.elasticities[col];
+    if (b == null || !Number.isFinite(b) || b === 0) continue;
+    if (neutralEdition && col === "edition_log") {
+      const mix = b * (policy.columnMeans[col] ?? profile.continuousMedians[col] ?? 0);
+      level += mix; mu += mix;
+      continue;
+    }
     const median = profile.continuousMedians[col] ?? 0;
-    level += beta * median;
-    mu += beta * median;
+    level += b * median;
+    mu += b * median;
     const v = attrs[field] as number | null | undefined;
     if (v != null && Number.isFinite(v) && v > 0) {
-      const eff = beta * (Math.log(v) - median);
+      const eff = b * (Math.log(v) - median);
       if (eff !== 0) contributions.push({ term: `${label}=${Math.round(v)}`, logEffect: eff });
       mu += eff;
     }
@@ -332,8 +373,8 @@ export function priorsModelPrediction(
   const hl = houseLevel(ctx.house);
   if (ctx.house && hl == null) unknown.add(`house_${ctx.house}`);
   if (hl && profile.referenceLevels.house !== hl) {
-    const beta = profile.elasticities[`house_${hl}`];
-    if (beta != null && Number.isFinite(beta)) { contributions.push({ term: `house=${hl}`, logEffect: beta }); mu += beta; }
+    const b = profile.elasticities[`house_${hl}`];
+    if (b != null && Number.isFinite(b)) { contributions.push({ term: `house=${hl}`, logEffect: b }); mu += b; }
     else unknown.add(`house_${hl}`);
   }
   const year = ctx.saleDate ? ctx.saleDate.slice(0, 4) : null;

@@ -172,6 +172,30 @@ const profile: ArtistPriceProfile = {
   eq("unseen house, process and the levels this profile lacks are listed, not applied", forum.unknownColumns, ["area_band_unknown", "edition_band_unknown", "house_Forum Auctions", "process_screenprint", "proof_unknown"]);
 }
 
+// ── proof policy ───────────────────────────────────────────────────────────────
+{
+  const means = { signature_hand: 0.75, "edition_band_>300": 0.1, edition_log: LN(80), proof_artist_proof: 0.14, proof_hors_commerce: 0.01, proof_trial_proof: 0.01 } as Record<string, number>;
+  const prof = { ...profile, elasticities: { ...profile.elasticities, proof_hors_commerce: 0.9, proof_artist_proof: 0.02, edition_band_unknown: -0.7 } };
+  const policy = { columnMeans: means, premium: { min: 1.05, max: 1.1 } };
+  const base = { signature: "hand" as const, editionSize: null, areaCm2: 600, process: "lithograph" };
+  const hcOff = priorsModelPrediction({ ...base, proof: "hors_commerce" }, prof, { saleDate: "2024-06-01", house: "Bonhams" });
+  const hcOn = priorsModelPrediction({ ...base, proof: "hors_commerce" }, prof, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy });
+  const mixP = 0.02 * 0.14 + 0.9 * 0.01;
+  const mixE = 0.0; // edition_band_* columns with a mean: only >300, whose beta (log 0.5) applies
+  const expected = 6.0 + LN(2) + LN(0.5) * 0.1 + 0.1 * LN(80) + mixP + LN(1.1) + 0.1;
+  close("HC proof: edition at the mix, proof clamped to +10%", hcOn.mu, expected + mixE);
+  ok("HC proof: no edition term under the policy", !hcOn.contributions.some((c) => c.term.startsWith("edition")) && hcOff.contributions.some((c) => c.term === "edition_band=unknown"));
+  const small = { ...prof, elasticities: { ...prof.elasticities, proof_hors_commerce: 0.05 } };
+  ok("a proof with a modest fitted effect no longer pays the edition-unknown penalty", priorsModelPrediction({ ...base, proof: "hors_commerce" }, small, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy }).mu > priorsModelPrediction({ ...base, proof: "hors_commerce" }, small, { saleDate: "2024-06-01", house: "Bonhams" }).mu);
+  const ap = priorsModelPrediction({ ...base, proof: "artist_proof" }, prof, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy });
+  close("AP with a small fitted effect is lifted to the +5% floor", ap.contributions.find((c) => c.term === "proof=artist_proof")!.logEffect, LN(1.05));
+  const hcEd = priorsModelPrediction({ ...base, proof: "hors_commerce", editionSize: 400 }, prof, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy });
+  ok("a proof with a stated edition keeps its edition terms", hcEd.contributions.some((c) => c.term === "edition_band=>300") && hcEd.contributions.some((c) => c.term === "proof=hors_commerce" && Math.abs(c.logEffect - LN(1.1)) < 1e-9));
+  const numbered = priorsModelPrediction({ ...base, proof: "numbered", editionSize: 400 }, prof, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy });
+  const numberedOff = priorsModelPrediction({ ...base, proof: "numbered", editionSize: 400 }, prof, { saleDate: "2024-06-01", house: "Bonhams" });
+  close("a numbered print is untouched by the policy", numbered.mu, numberedOff.mu);
+}
+
 // ── grid posterior ─────────────────────────────────────────────────────────────
 const gauss = (source: PriceWitness["source"], mu: number, sigma: number, weight = 1): PriceWitness => ({ source, mu, rawMu: mu, sigma, weight, df: null, key: "all", basis: "" });
 {

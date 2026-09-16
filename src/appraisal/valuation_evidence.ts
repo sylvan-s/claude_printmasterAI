@@ -39,6 +39,7 @@ import {
   type PriceAttrs,
   type WorkFacts,
 } from "./knowledge_graph/index.js";
+import type { ProofPolicy } from "./knowledge_graph/price_blend.js";
 import type { SignatureClass, ProofClass } from "./knowledge_graph/artist_price_profile.js";
 import type { WorkIdentityBasis } from "./knowledge_graph/work_identity.js";
 import { mapTechniqueToAckgVocabulary } from "./stage2a_query_plan.js";
@@ -306,7 +307,7 @@ const median = (xs: number[]): number | null => {
  * The blend's inputs, exactly as the backtest harness records them for a calibration lot.
  * The printed estimate is NOT passed (user decision 2026-09-16: model + comps only).
  */
-export function evidenceToBlendInputs(ev: ValuationEvidence): BlendInputs {
+export function evidenceToBlendInputs(ev: ValuationEvidence, opts: { proofPolicy?: ProofPolicy | null } = {}): BlendInputs {
   const tierComps = (tier: EvidenceComp["tier"]) =>
     ev.comps.items.filter((c) => c.tier === tier && c.hammerGBP != null && c.hammerGBP > 0).map((c) => ({ hammerGBP: c.hammerGBP!, saleDate: c.saleDate, house: c.house }));
   const tierBlock = (tier: "same_artist_technique" | "same_artist") => {
@@ -315,7 +316,7 @@ export function evidenceToBlendInputs(ev: ValuationEvidence): BlendInputs {
     const med = median(hammers.map((c) => c.hammerGBP));
     return all.length > 0 && med != null ? { n: all.length, medianHammerGBP: med, comps: hammers } : null;
   };
-  const pred = ev.profile ? priorsModelPrediction(attrsValues(ev.attrs), ev.profile, { saleDate: ev.valuationDate.value, house: ev.targetHouse.value }) : null;
+  const pred = ev.profile ? priorsModelPrediction(attrsValues(ev.attrs), ev.profile, { saleDate: ev.valuationDate.value, house: ev.targetHouse.value, proofPolicy: opts.proofPolicy }) : null;
   return {
     saleDate: ev.valuationDate.value.slice(0, 10),
     house: null,

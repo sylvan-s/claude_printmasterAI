@@ -36,6 +36,7 @@ const withEv = allowedFigures({ ...r, waterfall: { bars: [{ label: "Average sold
 eq("derived figures: training count, 80% range, multiplier as % change, comp hammer and years", [checkFigures("Built on 31,920 sales, an 80% range; the artist sits 62% below average; it sold for £1,000 in 2022 and is valued in 2024.", withEv)], [[]]);
 const labelled = allowedFigures({ ...r, waterfall: { bars: [{ label: "Edition: 850 (catalogue)", kind: "factor", multiplier: 0.9, toGBP: 500 }, { label: "Size: 2688 cm² (catalogue)", kind: "factor", multiplier: 1.1, toGBP: 550 }] } }, est, 1);
 eq("attribute values printed in chart labels are allowed", checkFigures("an edition of 850 at 2,688 cm²", labelled), []);
+eq("the proof premium band may be quoted", checkFigures("a modest proof premium of 5–10%", allowedFigures(r, est, 1)), []);
 eq("still rejects an invented percent", checkFigures("a 38% discount", withEv), ["38%"]);
 eq("USD conversion rounds witness prices", allowedFigures(r, { ...est, currency: "USD" }, 1.35).find((a) => a.label.startsWith("priors model price"))!.value, 2500);
 

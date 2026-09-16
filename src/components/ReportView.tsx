@@ -614,7 +614,7 @@ export default function ReportView({
             HOW THE FAIR VALUE WAS BUILT
           </span>
           <p className="text-[11px] text-rosebery-muted mb-5">
-            From the average sold print, through this artist and this print's own attributes, to the price the market comps support. Hammer basis; the house's printed estimate is not used.
+            From a typical print by this artist in this technique, through this print's own attributes, to the price the market comps support. Hammer basis; the house's printed estimate is not used.
           </p>
           <ValuationWaterfall
             waterfall={report.stage3a.waterfall}

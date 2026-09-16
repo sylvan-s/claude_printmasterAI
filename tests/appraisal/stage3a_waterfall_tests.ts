@@ -39,12 +39,18 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   const median = Math.exp(Math.log(r.medianGBP)); // rounded median is fine for the identity
   const w = valuationWaterfall(e, cal, means, median)!;
   const steps = w.bars.filter((b) => b.kind === "factor" || b.kind === "comps").reduce((t, b) => t + b.logEffect, 0);
-  ok("baseline + every step = log median, exactly", close(Math.log(1000) + steps, Math.log(median)));
-  const priors = calibratedWitnesses(evidenceToBlendInputs(e), cal, "no_estimate").witnesses.find((x) => x.source === "priors_model")!;
+  const start = Math.log(w.bars[0].toGBP);
+  ok("start + every step = log median (start rounded to the pound)", close(start + steps, Math.log(median), 1e-3));
+  const priors = calibratedWitnesses(evidenceToBlendInputs(e, { proofPolicy: { columnMeans: means.columns, premium: { min: 1.05, max: 1.1 } } }), cal, "no_estimate").witnesses.find((x) => x.source === "priors_model")!;
   const modelSteps = w.bars.slice(0, w.bars.findIndex((b) => b.key === "model")).filter((b) => b.kind === "factor").reduce((t, b) => t + b.logEffect, 0);
-  ok("baseline + model bars = the priors witness price the blend used, exactly", close(Math.log(1000) + modelSteps, priors.mu));
+  // Exact start in log space: level + technique beta + other betas at the mix + mean house + mean year.
+  const p = e.profile!;
+  const exactStart = p.level + 0.15 /* process_etching */ + [["signature_hand", 0.7], ["proof_unknown", -0.1], ["edition_band_31-75", 0.2], ["area_band_>1800", 0.3], ["edition_log", -0.1], ["area_log", 0.2]].reduce((t, [c, b]) => t + (b as number) * (means.columns[c as string] ?? 0), 0)
+    + (0.78 * 0 + 0.2 * Math.log(0.92) + 0.02 * Math.log(0.92)) + 0.03;
+  ok("start + model bars = the priors witness price the blend used, exactly", close(exactStart + modelSteps, priors.mu));
   eq("no gap note on a consistent build", w.notes, []);
-  eq("bar order", w.bars.map((b) => b.key), ["baseline", "artist", "signature", "proof", "edition", "size", "process", "house", "year", "calibration", "model", "comps", "total", "condition"]);
+  eq("bar order: starts at artist + technique, no artist or technique bar", w.bars.map((b) => b.key), ["baseline", "signature", "proof", "edition", "size", "house", "year", "calibration", "model", "comps", "total", "condition"]);
+  ok("start label names the artist and technique", w.bars[0].label.startsWith("X, etching: typical print"));
   ok("signature bar is beta * (1 - share)", close(w.bars.find((b) => b.key === "signature")!.logEffect, 0.7 * (1 - 0.75)));
   ok("proof bar for a numbered (reference) lot is -beta * share of unknown", close(w.bars.find((b) => b.key === "proof")!.logEffect, -(-0.1) * 0.2));
   ok("house bar is the lot's level minus the training mix's level", close(w.bars.find((b) => b.key === "house")!.logEffect, Math.log(0.85) - (0.2 * Math.log(0.92) + 0.02 * Math.log(0.92)))); // Skinner is unmeasured here: pooled
@@ -55,8 +61,25 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   const other = valuationWaterfall({ ...e, profile: { ...e.profile!, run: "PRICING-PRIORS-9@2027" } }, cal, means, median)!;
   ok("a different priors build is noted", other.notes.some((n) => n.startsWith("chart centred on")));
   const noModel = valuationWaterfall({ ...e, profile: null }, cal, means, 2000)!;
-  eq("no profile: baseline straight to comps", noModel.bars.map((b) => b.key), ["baseline", "comps", "total", "condition"]);
+  eq("no profile: average sold print straight to comps", noModel.bars.map((b) => b.key), ["baseline", "comps", "total", "condition"]);
   ok("no profile: comps bar reaches the median", close(Math.log(1000) + noModel.bars[1].logEffect, Math.log(2000)));
+
+  // A hors-commerce proof with no edition: edition bar zero, proof bar clamped into 5-10%.
+  const hc = { ...e, attrs: { ...e.attrs, proof: { value: "hors_commerce", source: "catalogue" }, editionSize: { value: null, source: "default" } } } as any;
+  hc.profile = { ...e.profile!, elasticities: { ...e.profile!.elasticities, proof_hors_commerce: 0.6, edition_band_unknown: -0.8 } };
+  const rHc = stage3aValuation(hc, cal, means)!;
+  const wHc = valuationWaterfall(hc, cal, means, rHc.medianGBP)!;
+  const bar = (k: string) => wHc.bars.find((b) => b.key === k)!;
+  eq("proof without an edition: edition bar is zero and says so", [bar("edition").logEffect, bar("edition").label], [0, "Edition: not stated, not held against a hors commerce"]);
+  const hcEd = { ...hc, attrs: { ...hc.attrs, editionSize: { value: 25, source: "catalogue" } } };
+  const wEd = valuationWaterfall(hcEd, cal, means, stage3aValuation(hcEd, cal, means)!.medianGBP)!;
+  ok("proof with a stated edition: the edition still prices it", wEd.bars.find((b) => b.key === "edition")!.logEffect !== 0 && wEd.bars.find((b) => b.key === "edition")!.label.startsWith("Edition: 25") && wEd.notes.length === 0);
+  ok("proof: a large fitted proof effect is clamped to +10%", close(bar("proof").logEffect, Math.log(1.1)));
+  ok("proof: label says modest proof premium", bar("proof").label.includes("modest proof premium, 5-10%"));
+  const hcPriors = calibratedWitnesses(evidenceToBlendInputs(hc, { proofPolicy: { columnMeans: means.columns, premium: { min: 1.05, max: 1.1 } } }), cal, "no_estimate").witnesses.find((x) => x.source === "priors_model")!;
+  const hcModelSteps = wHc.bars.slice(0, wHc.bars.findIndex((b) => b.key === "model")).filter((b) => b.kind === "factor").reduce((t, b) => t + b.logEffect, 0);
+  eq("proof: no gap note, so the bars reach the model price exactly", wHc.notes, []);
+  ok("proof: model price agrees with the chart's model subtotal", Math.abs(Math.log(bar("model").toGBP) - hcPriors.mu) < 1e-3 && hcModelSteps !== 0);
 }
 console.log(`\nstage3a waterfall tests: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

@@ -9,6 +9,7 @@
  */
 import type { Stage3aResult } from "./stage3a_blend.js";
 import { roundEstimate } from "./stage3a_blend.js";
+import { DEFAULT_PROOF_PREMIUM } from "./knowledge_graph/price_blend.js";
 import type { AuctionEstimate } from "../types.js";
 import type { ValuationEvidence } from "./valuation_evidence.js";
 
@@ -45,6 +46,9 @@ export function allowedFigures(r: Stage3aResult, est: AuctionEstimate, fxRate: n
   }
   out.push({ label: "sale house level multiplier", value: r.house.multiplier, kind: "multiplier" });
   out.push({ label: "the range is an 80% range (%)", value: 80, kind: "percent" });
+  // The proof policy's stated band, which the chart label prints ("modest proof premium, 5-10%").
+  out.push({ label: "proof premium floor (%)", value: Math.round((DEFAULT_PROOF_PREMIUM.min - 1) * 100), kind: "percent" });
+  out.push({ label: "proof premium cap (%)", value: Math.round((DEFAULT_PROOF_PREMIUM.max - 1) * 100), kind: "percent" });
   const trainRows = r.waterfall?.bars[0]?.label.match(/\(([\d,]+) auction sales\)/)?.[1];
   if (trainRows) out.push({ label: "auction sales behind the average sold print", value: Number(trainRows.replace(/,/g, "")), kind: "count" });
   // A multiplier may also be written as a percentage change: x0.85 is "15% lower", x1.37 "37% higher".
@@ -106,13 +110,13 @@ export const STAGE3B_SYSTEM = `You write the valuation commentary for a fine art
 WRITE
 - headline: one sentence stating the fair-value range and what mainly sets it.
 - keyDrivers: the 2-5 factors that move this price most, largest first, taken from the contribution chart. For each: the factor, direction (up/down/neutral) and one plain sentence why, citing the evidence (e.g. "hand-signed impressions of this artist sell for more", "three recent sales of this exact work").
-- narrative: 3-6 sentences a collector can read: where the price starts (the average sold print and this artist), what the print's own attributes do, what the market comps say and how much they pull, and how confident the range is and why.
+- narrative: 3-6 sentences a collector can read: where the price starts (a typical print by this artist in this technique), what the print's own attributes do, what the market comps say and how much they pull, and how confident the range is and why.
 - caveats: the caveats given, rewritten plainly; add none of your own.
 
 HOW TO READ THE CHART (get this right; it is the most common error)
-- The chart starts at the average sold print across ALL artists in the training sales and multiplies step by step.
-- "Artist" is this artist's price level against that all-artist average.
-- Every attribute step (signature, proof, edition, size, technique) compares THIS lot's attribute with the AVERAGE MIX of that attribute across all training sales, priced at this artist's own rates. It is NOT a comparison with the artist's other works or other techniques. Write "hand-signed prints of this artist sell for more than the typical mix", not "than his unsigned prints" or "than his other techniques".
+- The chart starts at a typical print by THIS ARTIST in THIS TECHNIQUE (e.g. "Georges Braque, aquatint"), at the training mix of signature, proof, edition and size, and multiplies step by step.
+- Every attribute step (signature, proof, edition, size) compares THIS lot's attribute with the AVERAGE MIX of that attribute across all training sales, priced at this artist's own rates. It is NOT a comparison with the artist's other works. Write "hand-signed prints of this artist sell for more than the typical mix", not "than his unsigned prints".
+- For an artist's proof, hors commerce or trial proof the proof step is a modest proof premium of 5-10%; if no edition is stated, the edition step is zero rather than a penalty.
 - "Sale house" is the house's like-for-like price level against the average house mix of the training sales. "Market level" is the valuation year's market against the average year. "Model calibration" corrects the model to realised hammers.
 - "Market comps" is the pull from realised sales, re-based to the target house and to the valuation date; the comps come from several houses and years, not one house.
 

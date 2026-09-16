@@ -17,7 +17,7 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { blendPrices, calibratedWitnesses, evidenceTier, houseOffsetOf, type BlendCalibration, type EvidenceTier, type WitnessSource } from "./knowledge_graph/price_blend.js";
+import { blendPrices, calibratedWitnesses, evidenceTier, houseOffsetOf, DEFAULT_PROOF_PREMIUM, type BlendCalibration, type EvidenceTier, type ProofPolicy, type WitnessSource } from "./knowledge_graph/price_blend.js";
 import { evidenceToBlendInputs, type ValuationEvidence } from "./valuation_evidence.js";
 import type { AuctionEstimate } from "../types.js";
 import { valuationWaterfall, type ColumnMeans, type Waterfall } from "./stage3a_waterfall.js";
@@ -78,8 +78,11 @@ export interface Stage3aResult {
 }
 
 /** Stage 3a on one lot's evidence. Null when no witness carries weight (no artist, no comps, no profile). */
+/** The proof policy needs the training mix, so it applies whenever column means are available. */
+export const proofPolicyFor = (means: ColumnMeans | null | undefined): ProofPolicy | null => (means ? { columnMeans: means.columns, premium: DEFAULT_PROOF_PREMIUM } : null);
+
 export function stage3aValuation(ev: ValuationEvidence, cal: BlendCalibration, means?: ColumnMeans | null): Stage3aResult | null {
-  const inputs = evidenceToBlendInputs(ev);
+  const inputs = evidenceToBlendInputs(ev, { proofPolicy: proofPolicyFor(means) });
   const blend = blendPrices(inputs, cal, "no_estimate");
   if (!blend) return null;
   const { witnesses } = calibratedWitnesses(inputs, cal, "no_estimate");
