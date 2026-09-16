@@ -4,9 +4,11 @@
  * calibration, from Stage 2's ValuationEvidence. No model call, no graph read: same evidence and
  * calibration, same numbers.
  *
- * SHADOW MODE. The result is attached to the report as `stage3aShadow` beside the LLM Stage 3
- * estimate, which is still the one shown. Switching the displayed estimate is a separate user
- * decision taken on the phase-4 comparison.
+ * THE DISPLAYED ESTIMATE (user decision 2026-09-16, after the phase-4 Stage 3 trial): the report's
+ * auctionEstimate is Stage 3a's 80% range, converted from GBP at the ECB rate. The aim is a fair
+ * price from the print's inherent value and past market comps, not a forecast of a hammer that
+ * the house's own estimate sways. The LLM Stage 3 estimate is kept beside it for audit
+ * (`llmAuctionEstimate`) and is shown only when Stage 3a cannot price the lot.
  *
  * Decisions this encodes (2026-09-16): the printed estimate is never a witness (no_estimate
  * regime always; it is compared, not blended); house mix off, one like-for-like house offset;
@@ -17,6 +19,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { blendPrices, calibratedWitnesses, evidenceTier, houseOffsetOf, type BlendCalibration, type EvidenceTier, type WitnessSource } from "./knowledge_graph/price_blend.js";
 import { evidenceToBlendInputs, type ValuationEvidence } from "./valuation_evidence.js";
+import type { AuctionEstimate } from "../types.js";
 
 export const STAGE3A_VERSION = "STAGE3A-1.0";
 const CALIBRATION_PATH = join(process.cwd(), "knowledge_graph/pricing_ml/blend/calibration.json");
@@ -114,5 +117,119 @@ export function stage3aValuation(ev: ValuationEvidence, cal: BlendCalibration): 
         + (ev.condition.appraiserClaims.length ? `; appraiser notes: ${ev.condition.appraiserClaims.join("; ")}` : ""),
     },
     caveats,
+  };
+}
+
+// ── the displayed estimate ─────────────────────────────────────────────────────
+
+const FX_PATH = join(process.cwd(), "knowledge_graph/fx_gbp_ecb.json");
+let fxCache: { base: string; rates: Record<string, Record<string, number>> } | null | undefined;
+/**
+ * Units of `currency` per GBP at the latest ECB reference rate on or before `date` (else the
+ * latest available), from the committed series knowledge_graph/fx_gbp_ecb.json (the same rates
+ * the graph's GBP prices were converted with). Null when the currency is not in the series.
+ */
+export function gbpRate(currency: string, date: string | null): { rate: number; date: string } | null {
+  if (currency.toUpperCase() === "GBP") return { rate: 1, date: date ?? "n/a" };
+  if (fxCache === undefined) {
+    try { fxCache = JSON.parse(readFileSync(FX_PATH, "utf8")); }
+    catch (err: any) { console.warn(`[Stage 3a] FX series unreadable at ${FX_PATH}: ${err?.message ?? err}`); fxCache = null; }
+  }
+  if (!fxCache) return null;
+  const days = Object.keys(fxCache.rates).sort();
+  const cut = date ? days.filter((d) => d <= date.slice(0, 10)) : days;
+  for (let i = (cut.length ? cut : days).length - 1; i >= 0; i--) {
+    const d = (cut.length ? cut : days)[i];
+    const r = fxCache.rates[d]?.[currency.toUpperCase()];
+    if (r && r > 0) return { rate: r, date: d };
+  }
+  return null;
+}
+
+/** Auction-style rounding: tens below 100, else two significant figures; low rounded down, high up. */
+export function roundEstimate(x: number, dir: "down" | "up" | "nearest" = "nearest"): number {
+  if (!(x > 0)) return 0;
+  const step = x < 100 ? 10 : Math.pow(10, Math.floor(Math.log10(x)) - 1);
+  const f = dir === "down" ? Math.floor : dir === "up" ? Math.ceil : Math.round;
+  return Math.max(step, f(x / step) * step);
+}
+
+/**
+ * The model's terms as one line per factor a reader recognises. The band and the per-doubling
+ * term of the same attribute are one effect (edition band + edition size; area band + sheet
+ * area), and the house term is already stated as the like-for-like house level, so it is dropped.
+ */
+export function groupedContributions(terms: { term: string; logEffect: number }[]): { factor: string; logEffect: number; terms: string[] }[] {
+  const groupOf = (t: string): string | null => {
+    if (t === "artist level" || t.startsWith("house=")) return null;
+    if (t.startsWith("edition")) return "edition";
+    if (t.startsWith("area_band") || t.startsWith("sheet area")) return "size";
+    if (t.startsWith("sale year")) return "sale year";
+    return t.split("=")[0];
+  };
+  const out = new Map<string, { factor: string; logEffect: number; terms: string[] }>();
+  for (const c of terms) {
+    const g = groupOf(c.term);
+    if (!g) continue;
+    const e = out.get(g) ?? { factor: g, logEffect: 0, terms: [] };
+    e.logEffect += c.logEffect; e.terms.push(c.term);
+    out.set(g, e);
+  }
+  return [...out.values()];
+}
+
+const TIER_CONFIDENCE: Record<string, string> = {
+  "same_work_3+": "MEDIUM — several prior sales of this work",
+  "same_work_1-2": "MEDIUM — one or two prior sales of this work",
+  same_artist_technique: "LOW — no sale of this work; the artist's sales in the same technique and the pricing model",
+  same_artist: "LOW — no sale of this work or technique; the artist's other sales and the pricing model",
+  priors_model: "LOW — no market comps; the pricing model alone",
+  none: "LOW — no evidence",
+};
+
+/**
+ * Stage 3a's result as the report's auctionEstimate, in the report currency, with the reasoning
+ * written in code from the evidence. Null when the currency cannot be converted.
+ */
+export function stage3aAuctionEstimate(r: Stage3aResult, currency: string, valuationDate: string | null): AuctionEstimate | null {
+  const fx = gbpRate(currency, valuationDate);
+  if (!fx) return null;
+  const low = roundEstimate(r.lowGBP * fx.rate, "down");
+  const high = Math.max(roundEstimate(r.highGBP * fx.rate, "up"), low + 1);
+  const median = roundEstimate(r.medianGBP * fx.rate);
+  const cur = currency.toUpperCase();
+  const fxNote = cur === "GBP" ? "" : ` Converted from GBP at the ECB reference rate of ${fx.date} (${fx.rate} ${cur}/GBP).`;
+  const houseNote = r.house.name
+    ? `priced at ${r.house.name}${r.house.measured ? ` (like-for-like price level x${r.house.multiplier} vs ${r.house.referenceHouse})` : " (no measured price level: pooled offset, wider range)"}`
+    : "no sale house chosen (pooled house level, wider range)";
+  const witnessLines = r.witnesses.map((w) => `${w.source.replace(/_/g, " ")}: ${w.basis}; ${Math.round(w.priceGBP * fx.rate).toLocaleString("en-GB")} ${cur}, weight ${Math.round(w.effectiveWeight * 100)}%`);
+  return {
+    lowEstimate: low,
+    highEstimate: high,
+    currency: cur,
+    formattedEstimate: `${low} - ${high} ${cur}`,
+    valuationContext:
+      `A fair-value range from the print's own attributes and past market sales, not a forecast anchored on any house estimate. `
+      + `It is the 80% range of a calibrated blend of the artist's pricing model and realised hammer prices (Stage 3a, calibration ${r.calibrationVersion}), `
+      + `median ${median.toLocaleString("en-GB")} ${cur}, ${houseNote}. Hammer basis: buyer's premium is additional.${fxNote}`
+      + (r.printedEstimate?.midpointOverMedian ? ` The house's printed estimate midpoint is x${r.printedEstimate.midpointOverMedian} this median; it is shown for reference and does not enter the price.` : "")
+      + ` Condition: ${r.condition.note}.`,
+    valuationReasoning: {
+      anchor: `Calibrated blend of the pricing model and market comps (Stage 3a ${r.calibrationVersion}); strongest evidence: ${r.evidenceTier.replace(/_/g, " ")}`,
+      anchorValue: median,
+      adjustments: [
+        ...(r.house.name ? [{ factor: "sale house price level", direction: r.house.multiplier < 1 ? "down" : r.house.multiplier > 1 ? "up" : "none", magnitude: `x${r.house.multiplier}`, evidence: `like-for-like repeat sales vs ${r.house.referenceHouse}${r.house.measured ? "" : " (pooled, unmeasured house)"}` }] : []),
+        ...groupedContributions(r.priorsContributions).map((g) => ({ factor: g.factor, direction: g.logEffect < -0.005 ? "down" : g.logEffect > 0.005 ? "up" : "none", magnitude: `x${Math.exp(g.logEffect).toFixed(2)}`, evidence: `artist pricing model: ${g.terms.join(" + ")}` })),
+      ],
+      evidenceFor: witnessLines,
+      evidenceAgainst: [...r.caveats, ...r.divergence.map((d) => `${d.a.replace(/_/g, " ")} and ${d.b.replace(/_/g, " ")} disagree by x${d.ratio}: check the identification`)],
+      confidence: TIER_CONFIDENCE[r.evidenceTier] ?? "LOW",
+      whatWouldChangeIt: [
+        "a further sale of this exact work",
+        "a hands-on condition report (condition is not priced)",
+        "a different identification of the work, state or edition",
+        ...(r.house.name ? [] : ["choosing the house it will be offered at"]),
+      ],
+    },
   };
 }

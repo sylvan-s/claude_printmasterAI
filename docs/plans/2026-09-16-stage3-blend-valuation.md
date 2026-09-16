@@ -533,3 +533,44 @@ By the strongest evidence (C vs B, MAE / range coverage):
 **Not decided here:** switching the displayed estimate. The estimate-withheld comparison is a tie
 on accuracy with far better range honesty for Stage 3a. With a printed estimate, both LLM arms
 and Stage 3a lose to the estimate itself.
+
+## Decision (2026-09-16): Stage 3a IS the displayed estimate
+
+**Why (the user's words, paraphrased):** the goal is a *fair price*, not a forecast of the hammer.
+The house estimate sways the market, and the appraisal should rest on inherent value and past
+market comps. The trial's accuracy gap to the printed estimate is therefore not the criterion.
+
+**Built.**
+- `MultiStageAppraiser.applyStage3a` runs on both appraise paths. `report.auctionEstimate` is
+  Stage 3a's 80% range via `stage3aAuctionEstimate`:
+  - converted from GBP at the ECB reference rate on or before the valuation date, from the
+    committed `knowledge_graph/fx_gbp_ecb.json`, the same series the graph's GBP prices use;
+  - auction-rounded (tens below 100, else two significant figures, low down and high up);
+  - `valuationContext` and `valuationReasoning` are written in code. The anchor is the blend
+    median; adjustments are the like-for-like house level plus the model factors grouped one line
+    per factor (`groupedContributions`); evidence for is the witness table; evidence against is
+    caveats and divergence; confidence comes from the evidence tier.
+- The LLM Stage 3 estimate is kept as `report.llmAuctionEstimate`. `report.estimateSource` says
+  which stage produced the displayed number, and why when the LLM is the fallback (no evidence,
+  no witness, or no ECB rate for the currency).
+- `report.stage3aShadow` is renamed `report.stage3a`.
+- Checked at zero LLM on saved report A0777/5 (Munch, "Satyr's Head", hammer £2,800): displayed
+  £960–5,600, LLM £800–1,400, printed £1,200–1,800. The same lot in USD shows $1,300–7,600 with
+  the rate named. Tests: `test:stage3a` 24.
+
+**Still true:** the LLM Stage 3 call still runs, costs as before and supplies the other report
+fields (recent sales, next steps). Phase 5's narration replaces its valuation role.
+
+## Follow-up logged (2026-09-16, not now): publishable confidence bounds
+
+The 80% range is honest but too wide to publish as an estimate: median high/low is 6.4x overall,
+3.2–3.3x with same-work comps and 30x on model-only lots. The user flagged that a high/low ratio
+like that is "not practicable to publish". To pick up later:
+- how to present uncertainty separately from the estimate (for example a central estimate with a
+  published band plus a stated confidence level, rather than the raw p10–p90);
+- which evidence can genuinely narrow the range (within-work tau 0.49 is the floor for same-work
+  comps; the model-only tier needs identity fixes and more artist data);
+- whether a narrower published band (e.g. p25–p75) with its measured coverage is acceptable.
+
+The artist-identity task (priceless duplicate nodes) feeds this directly: its misses are the
+widest, lowest ranges.

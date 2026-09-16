@@ -71,9 +71,13 @@ export interface PrintAnalysisReport {
   /** Stage 2's structured valuation evidence (src/appraisal/valuation_evidence.ts, plan 2026-09-16 phase 3).
    *  Persisted for audit and for Stage 3a; the LLM Stage 3 does not read it yet. */
   valuationEvidence?: ValuationEvidence | null;
-  /** Stage 3a's deterministic price from that evidence (src/appraisal/stage3a_blend.ts), SHADOW MODE:
-   *  recorded beside auctionEstimate for comparison, not shown as the valuation. */
-  stage3aShadow?: Stage3aResult | null;
+  /** Stage 3a's deterministic price from that evidence (src/appraisal/stage3a_blend.ts). Since
+   *  2026-09-16 it IS the displayed auctionEstimate whenever it could price the lot. */
+  stage3a?: Stage3aResult | null;
+  /** The LLM Stage 3 estimate, kept for audit when Stage 3a supplied auctionEstimate. */
+  llmAuctionEstimate?: AuctionEstimate | null;
+  /** Which stage produced auctionEstimate, and why when it is the fallback. */
+  estimateSource?: { source: "stage3a" | "llm"; note: string };
   pipelineMeta?: {
     specialistConfigUsed: string;
     humanEscalationRequired: boolean;

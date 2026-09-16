@@ -3,7 +3,7 @@
  * deterministic range vs the LLM Stage 3 estimate, on the realised hammer.
  *
  * Reads attributed-lot run outputs (tests/backtest/output/<sale>_<lot>_attrpath/result.json, as
- * run_attributed_lot.ts writes them). Uses report.stage3aShadow when the run recorded one;
+ * run_attributed_lot.ts writes them). Uses report.stage3a when the run recorded one;
  * with --recompute it rebuilds the evidence from the run's own saved Stage 1c / 2 outputs and
  * catalogue claim (graph reads only, zero LLM), so older runs can be scored too. The hammer is
  * read from the graph by house + sale + lot.
@@ -65,10 +65,11 @@ async function main() {
   for (const d of dirs) {
     const res = JSON.parse(readFileSync(join(DIR, d, "result.json"), "utf8"));
     const claim: CatalogueAttribution = res.catalogueAttribution;
-    const shadow: Stage3aResult | null = res.report?.stage3aShadow ?? (RECOMPUTE ? await recompute(res) : null);
-    const llm = res.report?.auctionEstimate;
+    const shadow: Stage3aResult | null = res.report?.stage3a ?? (RECOMPUTE ? await recompute(res) : null);
+    // Since 2026-09-16 auctionEstimate IS Stage 3a when it priced; the LLM's own lives in llmAuctionEstimate.
+    const llm = res.report?.llmAuctionEstimate ?? res.report?.auctionEstimate;
     const out = await hammerOf(claim?.house, claim?.saleId, claim?.lotNumber);
-    rows.push({ d, claim, shadow, llm, out, source: res.report?.stage3aShadow ? "recorded" : RECOMPUTE ? "recomputed" : "none" });
+    rows.push({ d, claim, shadow, llm, out, source: res.report?.stage3a ? "recorded" : RECOMPUTE ? "recomputed" : "none" });
   }
   const sold = rows.filter((r) => r.out?.sold && r.out.hammer > 0);
   console.log(`${rows.length} runs in ${DIR} (*${SUFFIX}); Stage 3a ${rows.filter((r) => r.shadow).length} (${rows.filter((r) => r.source === "recorded").length} recorded, ${rows.filter((r) => r.source === "recomputed" && r.shadow).length} recomputed); sold with a hammer ${sold.length}; unsold ${rows.filter((r) => r.out && !r.out.sold && r.out.date).length}; not yet sold ${rows.filter((r) => r.out && !r.out.sold && !r.out.date).length}; no graph record ${rows.filter((r) => !r.out).length}`);

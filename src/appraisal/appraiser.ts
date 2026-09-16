@@ -64,7 +64,7 @@ import { queryWorkFacts, queryArtistPriceProfile, writeResearchComps, type WorkF
 import { mapTechniqueToAckgVocabulary as mapClaimTechnique } from "./stage2a_query_plan";
 import { VALUATION_ATTRIBUTED_LOT_SUFFIX } from "./prompts";
 import { readLotGraphEvidence, assembleValuationEvidence, type ValuationEvidence, type Sourced } from "./valuation_evidence.js";
-import { stage3aValuation, loadBlendCalibration, type Stage3aResult } from "./stage3a_blend.js";
+import { stage3aValuation, stage3aAuctionEstimate, loadBlendCalibration, type Stage3aResult } from "./stage3a_blend.js";
 import {
   mergeClaimIntoAppraiserInput, verifyAttributedLot, routeAttributedLot, synthesizeAttributionResult,
   buildAttributedLotValuationBlock, isAuthorshipClaim, ESTIMATE_DRIFT, deriveMisattributionRisk, workTitleFromImageMatch, veaNotRun,
@@ -3388,7 +3388,27 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     }
   }
 
-  /** Stage 3a in shadow mode: the deterministic price, recorded beside the LLM estimate. Never throws. */
+  /**
+   * Stage 3a sets the displayed estimate (user decision 2026-09-16: a fair price from inherent
+   * value and past comps, not an estimate-anchored forecast). The LLM Stage 3 estimate moves to
+   * llmAuctionEstimate for audit and stays displayed only when Stage 3a cannot price the lot or
+   * convert to the report currency. Never throws.
+   */
+  protected applyStage3a(report: PrintAnalysisReport, currency: string): void {
+    const r = this.stage3aShadow(report.valuationEvidence ?? null);
+    report.stage3a = r;
+    const est = r ? stage3aAuctionEstimate(r, currency, report.valuationEvidence?.valuationDate.value ?? null) : null;
+    if (r && est) {
+      report.llmAuctionEstimate = report.auctionEstimate;
+      report.auctionEstimate = est;
+      report.estimateSource = { source: "stage3a", note: `Stage 3a ${r.calibrationVersion}, evidence ${r.evidenceTier}` };
+    } else {
+      report.estimateSource = { source: "llm", note: !report.valuationEvidence ? "no valuation evidence was built" : !r ? "Stage 3a had no witness to price from (no artist identity, comps or price profile)" : `no ECB rate for ${currency}` };
+      console.warn(`[Stage 3a] displayed estimate falls back to the LLM: ${report.estimateSource.note}`);
+    }
+  }
+
+  /** Stage 3a on the evidence. Never throws. */
   protected stage3aShadow(ev: ValuationEvidence | null): Stage3aResult | null {
     if (!ev) return null;
     try {
@@ -3396,11 +3416,11 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
       if (!cal) return null;
       const r = stage3aValuation(ev, cal);
       console.log(r
-        ? `[Stage 3a shadow] GBP ${r.lowGBP}-${r.highGBP} (median ${r.medianGBP}); evidence ${r.evidenceTier}; ${r.witnesses.map((w) => `${w.source} ${w.priceGBP} @${w.effectiveWeight}`).join(", ")}${r.printedEstimate?.midpointOverMedian ? `; printed estimate midpoint x${r.printedEstimate.midpointOverMedian} of median` : ""}`
-        : `[Stage 3a shadow] no witness: no price`);
+        ? `[Stage 3a] GBP ${r.lowGBP}-${r.highGBP} (median ${r.medianGBP}); evidence ${r.evidenceTier}; ${r.witnesses.map((w) => `${w.source} ${w.priceGBP} @${w.effectiveWeight}`).join(", ")}${r.printedEstimate?.midpointOverMedian ? `; printed estimate midpoint x${r.printedEstimate.midpointOverMedian} of median` : ""}`
+        : `[Stage 3a] no witness: no price`);
       return r;
     } catch (err: any) {
-      console.warn(`[Stage 3a shadow] failed: ${err?.message ?? err}`);
+      console.warn(`[Stage 3a] failed: ${err?.message ?? err}`);
       return null;
     }
   }
@@ -3842,7 +3862,7 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     report.valuationEvidence = valuationEvidence;
-    report.stage3aShadow = this.stage3aShadow(valuationEvidence);
+    this.applyStage3a(report, currency);
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
     report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${stage3Model}]`;
     report.promptVersion = "4stage";
@@ -4132,7 +4152,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     report.valuationEvidence = await evidencePromise;
-    report.stage3aShadow = this.stage3aShadow(report.valuationEvidence);
+    this.applyStage3a(report, currency);
     const mid = claim.estimateLow && claim.estimateHigh ? (claim.estimateLow + claim.estimateHigh) / 2 : null;
     report.attributedLot = {
       claim, verification, routing, researchCompWrite, stage2bGate,
