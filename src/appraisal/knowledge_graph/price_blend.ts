@@ -39,8 +39,8 @@
 import type { ArtistPriceProfile, PriceAttrs } from "./artist_price_profile.js";
 import { editionBand, areaBand, areaBandFor } from "./artist_price_profile.js";
 
-export type WitnessSource = "estimate" | "same_work" | "same_artist_technique" | "same_artist" | "priors_model";
-export const WITNESS_SOURCES: WitnessSource[] = ["estimate", "same_work", "same_artist_technique", "same_artist", "priors_model"];
+export type WitnessSource = "estimate" | "same_work" | "same_suite" | "same_artist_technique" | "same_artist" | "priors_model";
+export const WITNESS_SOURCES: WitnessSource[] = ["estimate", "same_work", "same_suite", "same_artist_technique", "same_artist", "priors_model"];
 export type BlendRegime = "with_estimate" | "no_estimate";
 
 /** What the callers collect for one lot — every number in GBP, nothing yet in log space. */
@@ -58,6 +58,12 @@ export interface BlendInputs {
   targetHouse?: string | null;
   /** Tier-1 comps with a hammer, strictly before the lot's sale. `house` enables re-basing. */
   sameWork: CompSale[];
+  /**
+   * Same-suite comps (2026-09-16 test): sales of OTHER works by the artist documented by the same
+   * catalogue entry (exact prefix + number), e.g. the other plates of a book catalogued as one
+   * entry, or an unmerged duplicate node of the same print. Absent: no same_suite witness.
+   */
+  sameSuite?: CompSale[];
   /** `comps` (added 2026-09-16) lets the median be re-taken after re-basing; without it the stored median is used as-is. */
   sameArtistTechnique: { n: number; medianHammerGBP: number; comps?: CompSale[] } | null;
   sameArtist: { n: number; medianHammerGBP: number; comps?: CompSale[] } | null;
@@ -468,6 +474,11 @@ export function rawWitnesses(inp: BlendInputs, offsets?: HouseOffsets | null): R
     const rebased = (offsets && sw.some((c) => c.house) ? `, re-based to ${inp.targetHouse ?? "the pooled house level"}` : "") + (offsets?.timeAdjust && offsets.timeAdjust !== "none" && offsets.yearEffects ? ", market-adjusted to the valuation date" : "");
     out.push({ source: "same_work", rawMu: medianOfSorted(logs), keys: age ? [`${band}|${age}`, band] : [band], basis: `${sw.length} prior sale${sw.length === 1 ? "" : "s"} of this work, latest ${latest ?? "undated"}${rebased}`, rawSamples: logs });
   }
+  const suite = (inp.sameSuite ?? []).filter((c) => c.hammerGBP > 0);
+  if (suite.length) {
+    const logs = rebasedLogs(suite, inp, offsets);
+    out.push({ source: "same_suite", rawMu: medianOfSorted(logs), keys: [sameWorkBand(suite.length)], basis: `${suite.length} sale${suite.length === 1 ? "" : "s"} of works under the same catalogue entry`, rawSamples: logs });
+  }
   const tier = (t: BlendInputs["sameArtistTechnique"], source: WitnessSource, label: string) => {
     if (!t || t.n <= 0 || !(t.medianHammerGBP > 0)) return;
     const logs = t.comps?.length ? rebasedLogs(t.comps, inp, offsets) : [];
@@ -597,12 +608,13 @@ export function blendPrices(inp: BlendInputs, cal: BlendCalibration, regime?: Bl
 }
 
 /** The strongest price evidence a lot has, ignoring the estimate — what sets how wide its range should be. */
-export type EvidenceTier = "same_work_3+" | "same_work_1-2" | "same_artist_technique" | "same_artist" | "priors_model" | "none";
-export const EVIDENCE_TIERS: EvidenceTier[] = ["same_work_3+", "same_work_1-2", "same_artist_technique", "same_artist", "priors_model", "none"];
+export type EvidenceTier = "same_work_3+" | "same_work_1-2" | "same_suite" | "same_artist_technique" | "same_artist" | "priors_model" | "none";
+export const EVIDENCE_TIERS: EvidenceTier[] = ["same_work_3+", "same_work_1-2", "same_suite", "same_artist_technique", "same_artist", "priors_model", "none"];
 export function evidenceTier(inp: BlendInputs): EvidenceTier {
   const sw = inp.sameWork.filter((c) => c.hammerGBP > 0).length;
   if (sw >= 3) return "same_work_3+";
   if (sw >= 1) return "same_work_1-2";
+  if ((inp.sameSuite ?? []).some((c) => c.hammerGBP > 0)) return "same_suite";
   if (inp.sameArtistTechnique && inp.sameArtistTechnique.n > 0) return "same_artist_technique";
   if (inp.sameArtist && inp.sameArtist.n > 0) return "same_artist";
   if (inp.priors) return "priors_model";
@@ -636,7 +648,7 @@ export interface FitRow { inputs: BlendInputs; hammerGBP: number }
 /** Plan-table figures, for tests and for a first look before a fit exists. Not for Stage 3. */
 export function defaultCalibration(): BlendCalibration {
   const w = (bias: number, sigma: number, df: number | null): WitnessCalibration => ({ df, byKey: { all: { bias, sigma, n: 0 } } });
-  const weights: Record<WitnessSource, number> = { estimate: 1, same_work: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 };
+  const weights: Record<WitnessSource, number> = { estimate: 1, same_work: 1, same_suite: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 };
   return {
     version: "BLEND-DEFAULT",
     fittedAt: "",
@@ -644,6 +656,7 @@ export function defaultCalibration(): BlendCalibration {
     witnesses: {
       estimate: w(ln(0.82), 0.33, 5),
       same_work: w(0, 0.56, 5),
+      same_suite: w(0, 0.7, 5),
       same_artist_technique: w(0, 0.9, 5),
       same_artist: w(0, 1.1, 5),
       priors_model: w(0, 0.8, 5),
@@ -677,7 +690,7 @@ export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fit
   const df = opts.df === undefined ? 5 : opts.df;
   const witnesses = {} as Record<WitnessSource, WitnessCalibration>;
   for (const src of WITNESS_SOURCES) witnesses[src] = { df, byKey: {} };
-  const resid: Record<WitnessSource, Record<string, number[]>> = { estimate: {}, same_work: {}, same_artist_technique: {}, same_artist: {}, priors_model: {} };
+  const resid: Record<WitnessSource, Record<string, number[]>> = { estimate: {}, same_work: {}, same_suite: {}, same_artist_technique: {}, same_artist: {}, priors_model: {} };
   for (const r of rows) {
     const y = ln(r.hammerGBP);
     // Residuals are taken AFTER re-basing, so the bias left for a witness is what the house
@@ -720,8 +733,8 @@ export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fit
   const cal: BlendCalibration = {
     version: opts.version, fittedAt: opts.fittedAt ?? new Date().toISOString(), fittedOn: opts.fittedOn, witnesses,
     regimes: {
-      with_estimate: { weights: { estimate: 1, same_work: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 }, temperature: 1, fitLots: 0, fitMaeLog: NaN, fitCoverage80: NaN },
-      no_estimate: { weights: { estimate: 0, same_work: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 }, temperature: 1, fitLots: 0, fitMaeLog: NaN, fitCoverage80: NaN },
+      with_estimate: { weights: { estimate: 1, same_work: 1, same_suite: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 }, temperature: 1, fitLots: 0, fitMaeLog: NaN, fitCoverage80: NaN },
+      no_estimate: { weights: { estimate: 0, same_work: 1, same_suite: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 }, temperature: 1, fitLots: 0, fitMaeLog: NaN, fitCoverage80: NaN },
     },
     divergenceThreshold: opts.divergenceThreshold ?? 0.5,
     houseOffsets: opts.houseOffsets ?? null,

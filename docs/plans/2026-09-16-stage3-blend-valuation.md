@@ -867,3 +867,44 @@ print £1,039 → hand ×1.24 → HC ×1.05 → edition ×1.00 → size (small, 
 
 **Note.** `valuation_evidence_parity.ts` compares evidence against harness inputs recorded with
 the graph's 1.2 profiles, so its priors column now differs by design; comps parity still applies.
+
+## Same-suite comp tier (2026-09-16): tested, helps where it applies, not adopted yet
+
+**Why.** Braque's "Oiseau Bleu" (A0785/2) is one plate of *Le Tir à l'arc*, catalogued as a whole
+under Vallier 153. Its own work node has no earlier sale, but eight sibling nodes carry the same
+number (nine sales, 2005–2023, £220–4,855). The comps query had no way to see them as related.
+
+**Definition (exact fields only).** A suite sibling is another ConceptualWork by the same artist
+documented by the SAME `CatalogueEntry` (catalogue prefix + number), found from the lot's
+resolved works or from a citation it prints (`foldPrefix`, as work identity matches). This also
+catches unmerged duplicate nodes of the same print. Only four of Braque's Vallier 153 nodes link
+to the entry: records catalogued "V. 153, p. 45" did not. Generic prefixes such as "No. 458"
+appear and may join unrelated works.
+
+**Built** (the blend is backward-compatible; production pricing is unchanged):
+- `tests/backtest/extract_suite_comps.ts`, read-only: 5,094 backtest lots, **240 (4.7%) with
+  suite comps**, median one sibling sale.
+- `price_blend.ts`: an optional `sameSuite` input; a `same_suite` witness (kernel density over
+  the re-based, time-adjusted hammers, keyed by count band); evidence tier `same_suite` between
+  same-work and tier 2. A calibration without the source drops the witness.
+- `refit_blend_calibration.ts --suite <jsonl> --dry`.
+
+**Temporal gate** (fit before 2024-07-01, 1,495 lots after; file priors as in BLEND-1.3):
+
+| lots | without suite | with suite |
+|---|---|---|
+| all | 0.622, cover 79% | 0.622, cover 78% |
+| with suite comps (75) | 0.555, cover 84%, geo ×0.96 | **0.507**, cover 75%, geo ×1.06 |
+| with suite comps and no same-work comps (33) | 0.593, cover 91%, geo ×0.81 | **0.453**, cover 79%, geo ×0.95 |
+
+Fitted suite spread is 0.50 (n=1), 0.57 (n=2) and 0.63 (3+), close to same-work comps. The pool
+weight is 1.5 against same-work's 3. Other groups move ±0.007 as the weights refit, and size
+unknown gets worse (0.700 → 0.721).
+
+**Reading.** Where siblings exist, the gain is large, and for lots without their own sales it
+removes a ×0.81 under-pricing. It affects about 5% of lots and rests on 75 scored lots (33 in the
+key group), so it is promising but small-sample.
+
+**To adopt:** `readLotGraphEvidence` fetches suite comps; the waterfall comps label and narration
+mention the suite; the calibration is refit with `--suite`. Worth deciding first whether to
+exclude generic catalogue prefixes ("No.").

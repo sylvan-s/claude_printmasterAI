@@ -16,6 +16,7 @@ import {
   hurdleFrom,
   crpsOnGrid,
   sameWorkBand,
+  evidenceTier,
   houseOffsetOf,
   timeShift,
   houseMixOf,
@@ -194,6 +195,18 @@ const profile: ArtistPriceProfile = {
   const numbered = priorsModelPrediction({ ...base, proof: "numbered", editionSize: 400 }, prof, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy });
   const numberedOff = priorsModelPrediction({ ...base, proof: "numbered", editionSize: 400 }, prof, { saleDate: "2024-06-01", house: "Bonhams" });
   close("a numbered print is untouched by the policy", numbered.mu, numberedOff.mu);
+}
+
+// ── same-suite witness ─────────────────────────────────────────────────────────
+{
+  const lot = inputs({ estimate: null, sameSuite: [{ hammerGBP: 800, saleDate: "2020-01-01" }, { hammerGBP: 1200, saleDate: "2022-01-01" }, { hammerGBP: 0, saleDate: null }] });
+  const w = rawWitnesses(lot).find((x) => x.source === "same_suite")!;
+  close("same_suite raw mu is the log median of priced sales", w.rawMu, (LN(800) + LN(1200)) / 2);
+  eq("same_suite keyed by count band, samples kept for the kernel density", [w.keys, w.rawSamples!.length], [["2"], 2]);
+  eq("evidence tier: same_suite sits below same work and above tier 2", [evidenceTier(lot), evidenceTier({ ...lot, sameWork: [{ hammerGBP: 900, saleDate: "2023-01-01" }] }), evidenceTier({ ...lot, sameSuite: [], sameArtistTechnique: { n: 3, medianHammerGBP: 500 } })], ["same_suite", "same_work_1-2", "same_artist_technique"]);
+  const oldCal = defaultCalibration();
+  delete (oldCal.witnesses as any).same_suite;
+  eq("a calibration without same_suite drops the witness (older calibrations price as before)", calibratedWitnesses(lot, { ...oldCal, witnesses: { ...oldCal.witnesses, same_suite: { df: 5, byKey: {} } } }, "no_estimate").witnesses.map((x) => x.source), []);
 }
 
 // ── grid posterior ─────────────────────────────────────────────────────────────
