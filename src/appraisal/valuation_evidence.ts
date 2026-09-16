@@ -18,6 +18,7 @@
  *   readLotGraphEvidence   async, the graph reads (profile, work identity, work facts, comps)
  *   assembleValuationEvidence / evidenceToBlendInputs   pure
  */
+import { fxLogShift } from "./knowledge_graph/fx_series.js";
 import type { AppraiserInputResult, AttributionResearchResult, VisualExtractionResult } from "../types.js";
 import type { Stage2bComp } from "./comp_storability.js";
 import type { CatalogueAttribution } from "./attributed_lot.js";
@@ -61,6 +62,8 @@ export interface EvidenceComp {
   entry?: string | null;
   hammerGBP: number | null;
   realisedGBP: number | null;
+  /** Currency the hammer was bid in; GBP prices are converted at the sale-date rate. */
+  currency?: string | null;
   saleDate: string | null;
   house: string | null;
   saleId: string | null;
@@ -292,14 +295,14 @@ export function assembleValuationEvidence(input: {
 }): ValuationEvidence {
   const { graph, claim, vea, appraiserInput } = input;
   const items: EvidenceComp[] = (graph.comps?.comparables ?? []).map((c) => ({
-    tier: c.tier, hammerGBP: c.hammerPriceGBP ?? null, realisedGBP: c.priceRealisedGBP ?? null, saleDate: c.saleDate ?? null,
+    tier: c.tier, hammerGBP: c.hammerPriceGBP ?? null, realisedGBP: c.priceRealisedGBP ?? null, currency: c.priceCurrency ?? null, saleDate: c.saleDate ?? null,
     house: c.institutionName ?? null, saleId: c.saleId ?? null, lotNumber: c.lotNumber ?? null, workTitle: c.workTitle ?? null,
     listingUrl: c.listingUrl ?? null, attrs: priceAttrsOfComparable(c),
   }));
   // Suite sales join as their own tier, counted independently of the other tiers exactly as the
   // BLEND-1.4 calibration was fitted (a sale may also sit in tier 2/3; the fitted weights absorb it).
   for (const c of graph.suite ?? []) {
-    items.push({ tier: "same_suite", entry: c.entry, hammerGBP: c.hammerGBP, realisedGBP: null, saleDate: c.saleDate, house: c.house, saleId: null, lotNumber: null, workTitle: c.workTitle, listingUrl: c.listingUrl, attrs: {} as PriceAttrs });
+    items.push({ tier: "same_suite", entry: c.entry, hammerGBP: c.hammerGBP, realisedGBP: null, currency: c.currency, saleDate: c.saleDate, house: c.house, saleId: null, lotNumber: null, workTitle: c.workTitle, listingUrl: c.listingUrl, attrs: {} as PriceAttrs });
   }
   const tierCounts = { same_work: 0, same_suite: 0, same_artist_technique: 0, same_artist: 0 };
   for (const c of items) tierCounts[c.tier]++;
@@ -339,7 +342,7 @@ const median = (xs: number[]): number | null => {
  */
 export function evidenceToBlendInputs(ev: ValuationEvidence, opts: { proofPolicy?: ProofPolicy | null } = {}): BlendInputs {
   const tierComps = (tier: EvidenceComp["tier"]) =>
-    ev.comps.items.filter((c) => c.tier === tier && c.hammerGBP != null && c.hammerGBP > 0).map((c) => ({ hammerGBP: c.hammerGBP!, saleDate: c.saleDate, house: c.house }));
+    ev.comps.items.filter((c) => c.tier === tier && c.hammerGBP != null && c.hammerGBP > 0).map((c) => ({ hammerGBP: c.hammerGBP!, saleDate: c.saleDate, house: c.house, currency: c.currency ?? null, fxLogShift: fxLogShift(c.currency, c.saleDate, ev.valuationDate.value) }));
   const tierBlock = (tier: "same_artist_technique" | "same_artist") => {
     const all = ev.comps.items.filter((c) => c.tier === tier);
     const hammers = tierComps(tier);

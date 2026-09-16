@@ -130,29 +130,8 @@ export function stage3aValuation(ev: ValuationEvidence, cal: BlendCalibration, m
 
 // ── the displayed estimate ─────────────────────────────────────────────────────
 
-const FX_PATH = join(process.cwd(), "knowledge_graph/fx_gbp_ecb.json");
-let fxCache: { base: string; rates: Record<string, Record<string, number>> } | null | undefined;
-/**
- * Units of `currency` per GBP at the latest ECB reference rate on or before `date` (else the
- * latest available), from the committed series knowledge_graph/fx_gbp_ecb.json (the same rates
- * the graph's GBP prices were converted with). Null when the currency is not in the series.
- */
-export function gbpRate(currency: string, date: string | null): { rate: number; date: string } | null {
-  if (currency.toUpperCase() === "GBP") return { rate: 1, date: date ?? "n/a" };
-  if (fxCache === undefined) {
-    try { fxCache = JSON.parse(readFileSync(FX_PATH, "utf8")); }
-    catch (err: any) { console.warn(`[Stage 3a] FX series unreadable at ${FX_PATH}: ${err?.message ?? err}`); fxCache = null; }
-  }
-  if (!fxCache) return null;
-  const days = Object.keys(fxCache.rates).sort();
-  const cut = date ? days.filter((d) => d <= date.slice(0, 10)) : days;
-  for (let i = (cut.length ? cut : days).length - 1; i >= 0; i--) {
-    const d = (cut.length ? cut : days)[i];
-    const r = fxCache.rates[d]?.[currency.toUpperCase()];
-    if (r && r > 0) return { rate: r, date: d };
-  }
-  return null;
-}
+export { gbpRate } from "./knowledge_graph/fx_series.js";
+import { gbpRate } from "./knowledge_graph/fx_series.js";
 
 /** Auction-style rounding: tens below 100, else two significant figures; low rounded down, high up. */
 export function roundEstimate(x: number, dir: "down" | "up" | "nearest" = "nearest"): number {

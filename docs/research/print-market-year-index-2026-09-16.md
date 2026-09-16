@@ -2,7 +2,8 @@
 
 **Date:** 2026-09-16
 **Status:** Research note. The GBP-only index is built (`blend/house_offsets_gbp_years.json`) and
-tested in the Stage 3a temporal gate. It is **not adopted**: production still reads the
+tested in the Stage 3a temporal gate, as is re-pricing dollar comps at the valuation-date rate.
+Neither is **adopted**: production still reads the
 all-currency index in `blend/house_offsets.json` through BLEND-1.4.
 **Context:** Stage 3a moves every comparable sale to the market level of the year before the
 valuation (plan `docs/plans/2026-09-16-stage3-blend-valuation.md`, phase 1b). Walking through a
@@ -112,8 +113,8 @@ mid-2024 draw mostly on recent comps: only 72 have a median comp six or more yea
 
 - **Dollar comps still carry currency drift.** A sterling index corrects the market level, not the
   conversion. A 2015 Bonhams New York comp converted at 2015's $1.53 still reads about 14% low
-  against 2025's $1.32. The fuller fix would reconvert each foreign-currency comp at the valuation
-  date's rate before applying the sterling index. It is not built.
+  against 2025's $1.32. Re-pricing each foreign-currency comp at the valuation date's rate was
+  built and gated. It made no measurable difference (next section).
 - **Nominal, not real.** Neither index deflates by inflation.
 - **Thin early years.** Sterling-only years before 2010 have under 200 sales, and their bands are
   wide (roughly ±10–17%).
@@ -124,6 +125,56 @@ mid-2024 draw mostly on recent comps: only 72 have a median comp six or more yea
   cross-sectionally on all currencies. They show the same peak (about +0.37 log in 2021–22) and
   would carry the same pre-2019 currency drift. Untested.
 
+## Follow-up: re-pricing dollar comps at the valuation-date rate
+
+**Built, gated, not adopted.** Code is in place with the switch off, so production behaviour is
+unchanged.
+
+- `knowledge_graph/fx_series.ts`: `fxLogShift(currency, compDate, valuationDate)` = ln(rate at the
+  comp's sale) − ln(rate at the valuation date), using the committed ECB series. Adding it to a
+  comp's log GBP hammer re-prices the native hammer at the valuation date's rate.
+- `price_blend.ts`: `CompSale` carries `currency` and `fxLogShift`. `HouseOffsets.fxReconvert` applies
+  the shift before the house and time adjustments; the witness basis says so. BLEND-1.4 has no
+  `fxReconvert`, so nothing moves.
+- Live evidence now carries each comp's currency (`SourceRecord.priceCurrency` through the comparables
+  and same-suite queries) and computes the shift, ready if the switch is turned on.
+- Backtest: the harness comps predate the currency field. `tests/backtest/extract_comp_currency.ts`
+  recovers it from the graph by house, date and GBP hammer (10,349 non-sterling keys, none shared
+  with a sterling record). `refit_blend_calibration.ts --fx-reconvert` applies it. Of 179,154 backtest
+  comps, 56,699 (32%) are non-sterling, with a mean absolute shift of 0.079 log (about 8%).
+
+**Gate.** Four variants: year index all-currency or sterling-only, and re-pricing off or on. Scored on
+two splits: the standard one (fit before 2024-07, 1,495 lots) and an earlier one (fit before 2018,
+3,654 lots). The earlier split puts sterling's 2016 fall inside the scored lots' comp windows. At
+that split the year index and model priors were fitted on later sales too. That leak is the same
+for every variant, so the comparison between them stands, but the absolute figures are optimistic.
+
+| Split / lots | All-currency index | + re-pricing | Sterling index | + re-pricing |
+|---|---|---|---|---|
+| 2024: all (1,495) | 0.622, 78% | 0.620, 79% | 0.620, 79% | 0.623, 78% |
+| 2024: comps 25%+ non-sterling (444) | 0.648, 75% | 0.648, 77% | 0.645, 77% | 0.650, 76% |
+| 2024: … and median comp 3y+ (149) | 0.638, 78% | 0.638, 81% | 0.640, 80% | 0.638, 78% |
+| 2018: all (3,654) | 0.611, 79% | 0.610, 79% | 0.611, 79% | 0.610, 81% |
+| 2018: comps 25%+ non-sterling (1,174) | 0.623, 76% | 0.623, 76% | 0.625, 76% | 0.625, 78% |
+| 2018: … and median comp 3y+ (476) | 0.615, 77% | 0.613, 77% | 0.618, 77% | 0.613, 79% |
+| 2018: Bonhams (770) | 0.576, 78% | 0.576, 78% | 0.578, 78% | 0.577, 80% |
+
+MAE(log hammer), then the share inside the 80% range.
+
+**Reading.** Every variant is within 0.003 MAE of every other, in every group, at both splits: below
+anything this gate can resolve. Re-pricing does what it should to the level: it lowers the 2018-split
+over-pricing (geo ×1.07 → ×1.05, ×1.06 → ×1.04) and lifts coverage by a point or two. It does not
+make the median more accurate. Likely reasons:
+
+- the shift is small (8% on average) and applies to a third of the comps;
+- the blend's median leans on the pricing model and same-work comps, and heavy-tailed kernels damp
+  any one comp group;
+- sterling and dollar print prices need not move together. Re-pricing assumes a dollar print holds
+  its dollar value, which may be no truer than assuming it holds its sterling value.
+
+The correction is right in principle and harmless in practice. Adopting it, with or without the
+sterling index, is a presentation and consistency choice rather than an accuracy gain.
+
 ## Reproduce
 
     knowledge_graph/venv-embeddings/bin/python knowledge_graph/pricing_ml/house_offsets.py \
@@ -132,5 +183,7 @@ mid-2024 draw mostly on recent comps: only 72 have a median comp six or more yea
     npx tsx tests/backtest/refit_blend_calibration.ts --suite tests/backtest/comps_hammer/suite_comps.jsonl \
         --dry --offsets knowledge_graph/pricing_ml/blend/house_offsets_gbp_years.json
 
-Drop `--year-currency` (and `--offsets`) for the all-currency index. Every build now prints and
+Add `--fx-reconvert` for dollar re-pricing (after `npx tsx tests/backtest/extract_comp_currency.ts`),
+and `--split 2018-01-01` for the earlier split. Drop `--year-currency` (and `--offsets`) for the
+all-currency index. Every build now prints and
 stores its per-year bands (`yearBands`).

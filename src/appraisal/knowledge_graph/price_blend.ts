@@ -84,7 +84,19 @@ export interface BlendInputs {
   recentSameHouseAppearance: { sold: boolean; daysAgo: number } | null;
 }
 
-export interface CompSale { hammerGBP: number; saleDate: string | null; house?: string | null }
+export interface CompSale {
+  hammerGBP: number;
+  saleDate: string | null;
+  house?: string | null;
+  /** Currency the hammer was bid in (SourceRecord.priceCurrency). */
+  currency?: string | null;
+  /**
+   * log(rate at the comp's sale date) - log(rate at the valuation date), rates in units of
+   * `currency` per GBP; 0 for sterling. Adding it re-prices the native hammer at the valuation
+   * date's rate. Callers compute it (fx_series.ts); applied only when offsets.fxReconvert is set.
+   */
+  fxLogShift?: number | null;
+}
 
 export interface PriceContribution { term: string; logEffect: number }
 
@@ -201,6 +213,13 @@ export interface HouseOffsets {
    * only, never for Stage 3.
    */
   timeAdjust?: "none" | "prior_year" | "sale_year";
+  /**
+   * Re-price foreign-currency comps at the valuation date's exchange rate before the time
+   * adjustment (2026-09-16). A graph hammer is converted at its sale-date rate, so a 2015 dollar
+   * comp carries sterling's later fall against the dollar; the year index corrects the market
+   * level, not the conversion. Uses each comp's `fxLogShift`.
+   */
+  fxReconvert?: boolean;
 }
 
 /** Index level for a year, clamped to the measured range (the nearest measured year otherwise). */
@@ -434,10 +453,14 @@ function compShift(offsets: HouseOffsets | null | undefined, target: string | nu
   return houseOffsetOf(offsets, target).log - houseOffsetOf(offsets, compHouse).log;
 }
 
+function fxNote(comps: CompSale[], offsets: HouseOffsets | null | undefined): string {
+  return offsets?.fxReconvert && comps.some((c) => c.fxLogShift) ? ", foreign-currency hammers re-priced at the valuation-date exchange rate" : "";
+}
+
 function rebasedLogs(comps: CompSale[], inp: BlendInputs, offsets: HouseOffsets | null | undefined): number[] {
   return comps
     .filter((c) => c.hammerGBP > 0)
-    .map((c) => ln(c.hammerGBP) + compShift(offsets, inp.targetHouse, c.house) + timeShift(offsets, c.saleDate, inp.saleDate))
+    .map((c) => ln(c.hammerGBP) + compShift(offsets, inp.targetHouse, c.house) + timeShift(offsets, c.saleDate, inp.saleDate) + (offsets?.fxReconvert ? c.fxLogShift ?? 0 : 0))
     .sort((a, b) => a - b);
 }
 
@@ -471,19 +494,19 @@ export function rawWitnesses(inp: BlendInputs, offsets?: HouseOffsets | null): R
     // Age of the NEWEST comp at the valuation date: several recent sales are the tightest
     // evidence there is; the same count of decade-old sales is not.
     const age = latest && inp.saleDate ? (yearsBetween(latest, inp.saleDate) <= RECENT_COMP_YEARS ? "recent" : "old") : null;
-    const rebased = (offsets && sw.some((c) => c.house) ? `, re-based to ${inp.targetHouse ?? "the pooled house level"}` : "") + (offsets?.timeAdjust && offsets.timeAdjust !== "none" && offsets.yearEffects ? ", market-adjusted to the valuation date" : "");
+    const rebased = (offsets && sw.some((c) => c.house) ? `, re-based to ${inp.targetHouse ?? "the pooled house level"}` : "") + (offsets?.timeAdjust && offsets.timeAdjust !== "none" && offsets.yearEffects ? ", market-adjusted to the valuation date" : "") + fxNote(sw, offsets);
     out.push({ source: "same_work", rawMu: medianOfSorted(logs), keys: age ? [`${band}|${age}`, band] : [band], basis: `${sw.length} prior sale${sw.length === 1 ? "" : "s"} of this work, latest ${latest ?? "undated"}${rebased}`, rawSamples: logs });
   }
   const suite = (inp.sameSuite ?? []).filter((c) => c.hammerGBP > 0);
   if (suite.length) {
     const logs = rebasedLogs(suite, inp, offsets);
-    out.push({ source: "same_suite", rawMu: medianOfSorted(logs), keys: [sameWorkBand(suite.length)], basis: `${suite.length} sale${suite.length === 1 ? "" : "s"} of works under the same catalogue entry`, rawSamples: logs });
+    out.push({ source: "same_suite", rawMu: medianOfSorted(logs), keys: [sameWorkBand(suite.length)], basis: `${suite.length} sale${suite.length === 1 ? "" : "s"} of works under the same catalogue entry${fxNote(suite, offsets)}`, rawSamples: logs });
   }
   const tier = (t: BlendInputs["sameArtistTechnique"], source: WitnessSource, label: string) => {
     if (!t || t.n <= 0 || !(t.medianHammerGBP > 0)) return;
     const logs = t.comps?.length ? rebasedLogs(t.comps, inp, offsets) : [];
     const mu = logs.length ? medianOfSorted(logs) : ln(t.medianHammerGBP);
-    out.push({ source, rawMu: mu, keys: [], basis: `median of ${t.n} ${label} sales${logs.length && offsets ? `, re-based to ${inp.targetHouse ?? "the pooled house level"}` : ""}` });
+    out.push({ source, rawMu: mu, keys: [], basis: `median of ${t.n} ${label} sales${logs.length && offsets ? `, re-based to ${inp.targetHouse ?? "the pooled house level"}` : ""}${fxNote(t.comps ?? [], offsets)}` });
   };
   tier(inp.sameArtistTechnique, "same_artist_technique", "same-artist, same-technique");
   tier(inp.sameArtist, "same_artist", "same-artist");

@@ -941,3 +941,8 @@ sterling-only index (`blend/house_offsets_gbp_years.json`, house offsets unchang
 gate it ties production with a slight edge (MAE 0.620 vs 0.622, cover 79% vs 78%). Adopting it
 needs a BLEND refit with `--offsets`. Reconverting dollar comps at the valuation-date rate is the
 open follow-up.
+
+Dollar-comp re-pricing at the valuation-date exchange rate was built (`fx_series.ts`,
+`HouseOffsets.fxReconvert`, comp currency carried through evidence) and gated at 2024 and 2018
+splits, with both year indices. All four variants are within 0.003 MAE in every group. Not adopted;
+the switch is off in BLEND-1.4. Details in the research note.

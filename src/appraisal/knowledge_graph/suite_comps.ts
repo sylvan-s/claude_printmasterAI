@@ -23,7 +23,7 @@ export const GENERIC_CATALOGUE_PREFIXES = new Set([
 ]);
 export const isGenericCataloguePrefix = (prefix: string | null | undefined): boolean => GENERIC_CATALOGUE_PREFIXES.has(foldPrefix(prefix ?? ""));
 
-export interface SuiteComp { hammerGBP: number; saleDate: string; house: string | null; work: string; workTitle: string | null; entry: string; listingUrl: string | null }
+export interface SuiteComp { hammerGBP: number; currency: string | null; saleDate: string; house: string | null; work: string; workTitle: string | null; entry: string; listingUrl: string | null }
 export interface CatalogueEntryRow { key: string; label: string; works: string[] }
 
 const ENTRIES = `
@@ -36,7 +36,7 @@ WHERE w.id IN $ids AND s.sourceType = 'auction' AND s.sold = true AND s.hammerPr
   AND substring(s.saleDate, 0, 10) >= $since AND substring(s.saleDate, 0, 10) < $until
   AND ($saleId IS NULL OR NOT (s.saleId = $saleId AND s.lotNumber = $lotNumber))
   AND ($listingUrl IS NULL OR s.listingUrl IS NULL OR s.listingUrl <> $listingUrl)
-RETURN DISTINCT s.hammerPriceGBP AS hammer, substring(s.saleDate, 0, 10) AS date, s.institutionName AS house, w.id AS work, w.name AS title, s.listingUrl AS url
+RETURN DISTINCT s.hammerPriceGBP AS hammer, s.priceCurrency AS currency, substring(s.saleDate, 0, 10) AS date, s.institutionName AS house, w.id AS work, w.name AS title, s.listingUrl AS url
 ORDER BY date DESC
 `;
 
@@ -81,7 +81,7 @@ export async function querySuiteComps(input: {
       saleId: input.excludeSaleLot?.saleId ?? null, lotNumber: input.excludeSaleLot?.lotNumber ?? null, listingUrl: input.excludeListingUrl ?? null,
     });
     return {
-      comps: res.records.map((r) => ({ hammerGBP: r.get("hammer") as number, saleDate: r.get("date") as string, house: (r.get("house") as string) ?? null, work: r.get("work") as string, workTitle: (r.get("title") as string) ?? null, entry: siblings.get(r.get("work") as string)!, listingUrl: (r.get("url") as string) ?? null })),
+      comps: res.records.map((r) => ({ hammerGBP: r.get("hammer") as number, currency: (r.get("currency") as string) ?? null, saleDate: r.get("date") as string, house: (r.get("house") as string) ?? null, work: r.get("work") as string, workTitle: (r.get("title") as string) ?? null, entry: siblings.get(r.get("work") as string)!, listingUrl: (r.get("url") as string) ?? null })),
       error: null,
     };
   } catch (err: any) {

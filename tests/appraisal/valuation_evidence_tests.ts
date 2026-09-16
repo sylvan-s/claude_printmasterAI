@@ -93,11 +93,11 @@ const graph: LotGraphEvidence = {
   });
   eq("tier counts include a comp with no hammer", ev.comps.tierCounts, { same_work: 2, same_suite: 0, same_artist_technique: 2, same_artist: 1 });
   const withSuite = assembleValuationEvidence({
-    builtAt: "t", reportedArtist: "X", canonicalArtist: "X", claim, vea, graph: { ...graph, suite: [{ hammerGBP: 700, saleDate: "2022-05-01", house: "Bonhams", work: "sib", workTitle: "Sibling plate", entry: "Vallier 153", listingUrl: null }] },
+    builtAt: "t", reportedArtist: "X", canonicalArtist: "X", claim, vea, graph: { ...graph, suite: [{ hammerGBP: 700, currency: "GBP", saleDate: "2022-05-01", house: "Bonhams", work: "sib", workTitle: "Sibling plate", entry: "Vallier 153", listingUrl: null }] },
     targetHouse: { value: "Forum Auctions", source: "catalogue" }, valuationDate: { value: "2024-06-01", source: "catalogue" },
   });
   eq("suite comps join as their own tier with the joining entry", [withSuite.comps.tierCounts.same_suite, withSuite.comps.items.find((c) => c.tier === "same_suite")!.entry], [1, "Vallier 153"]);
-  eq("and reach the blend as sameSuite", evidenceToBlendInputs(withSuite).sameSuite, [{ hammerGBP: 700, saleDate: "2022-05-01", house: "Bonhams" }]);
+  eq("and reach the blend as sameSuite", evidenceToBlendInputs(withSuite).sameSuite, [{ hammerGBP: 700, saleDate: "2022-05-01", house: "Bonhams", currency: "GBP", fxLogShift: 0 }]);
   eq("printed estimate kept for display", ev.printedEstimate, { low: 900, high: 1200, currency: "GBP" });
   eq("condition from the image, appraiser claims alongside", [ev.condition.grade, ev.condition.defects[0], ev.condition.source], ["GOOD", "foxing (minor)", "vea"]);
   const b = evidenceToBlendInputs(ev);

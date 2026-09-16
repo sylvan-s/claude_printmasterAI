@@ -27,6 +27,7 @@
     "test:price-blend": "tsx tests/knowledge_graph/price_blend_tests.ts",
     "test:file-price-profile": "tsx tests/knowledge_graph/file_price_profile_tests.ts",
     "test:suite-comps": "tsx tests/knowledge_graph/suite_comps_tests.ts",
+    "test:fx-series": "tsx tests/knowledge_graph/fx_series_tests.ts",
     "test:valuation-evidence": "tsx tests/appraisal/valuation_evidence_tests.ts",
     "test:stage3a": "tsx tests/appraisal/stage3a_blend_tests.ts",
     "test:stage3a-waterfall": "tsx tests/appraisal/stage3a_waterfall_tests.ts",

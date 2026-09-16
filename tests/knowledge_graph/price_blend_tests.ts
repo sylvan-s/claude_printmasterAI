@@ -117,6 +117,18 @@ const offsets: HouseOffsets = {
   ok("basis says the comps were market-adjusted", w[0].basis.includes("market-adjusted"));
 }
 
+// ── foreign-currency re-pricing ────────────────────────────────────────────────
+{
+  const idx = { version: "T", referenceHouse: "Bonhams", houses: { Bonhams: { log: 0, se: 0 } }, pooledFallback: { log: 0, betweenHouseSd: 0 } } as HouseOffsets;
+  const lot = inputs({ estimate: null, sameWork: [{ hammerGBP: 1000, saleDate: "2015-01-01", currency: "USD", fxLogShift: -0.2 }, { hammerGBP: 1000, saleDate: "2015-01-01", currency: "GBP", fxLogShift: 0 }] });
+  const off = rawWitnesses(lot, idx)[0];
+  eq("fxReconvert off: the shift is ignored", off.rawSamples!.map((x) => +x.toFixed(6)), [LN(1000), LN(1000)].map((x) => +x.toFixed(6)));
+  const on = rawWitnesses(lot, { ...idx, fxReconvert: true })[0];
+  close("fxReconvert on: the dollar comp moves by its shift", on.rawSamples![0], LN(1000) - 0.2);
+  close("fxReconvert on: the sterling comp does not move", on.rawSamples![1], LN(1000));
+  ok("basis says foreign hammers were re-priced", on.basis.includes("re-priced at the valuation-date exchange rate") && !off.basis.includes("re-priced"));
+}
+
 // ── house mix on the artist-level witnesses ────────────────────────────────────
 {
   // Two houses whose lots sell at the same level against same-work comps, but House B sells an

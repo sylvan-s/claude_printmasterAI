@@ -20,6 +20,8 @@ import type { HouseOffsets } from "../../src/appraisal/knowledge_graph/price_ble
 import type { ArtistPriceProfile } from "../../src/appraisal/knowledge_graph/artist_price_profile";
 import { queryArtistPriceProfileFromFile, loadPriorsBuild, STAGE3A_PRIORS_DIR } from "../../src/appraisal/knowledge_graph/file_price_profile";
 import { lotAttrsWithSources, attrsValues } from "../../src/appraisal/valuation_evidence";
+import { fxLogShift } from "../../src/appraisal/knowledge_graph/fx_series";
+import { compCurrencyKey } from "./extract_comp_currency";
 
 const argv = process.argv.slice(2);
 const arg = (n: string, d?: string) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i + 1] : d; };
@@ -31,13 +33,27 @@ const D = "tests/backtest/comps_hammer";
 const SUITE = arg("suite");
 /** House offsets and year index (house_offsets.py output). */
 const OFFSETS = arg("offsets", "knowledge_graph/pricing_ml/blend/house_offsets.json")!;
+/** Re-price non-sterling comps at the lot's sale-date rate (currency from extract_comp_currency.ts). */
+const FX = argv.includes("--fx-reconvert");
 /** Report only; write no calibration. */
 const DRY = argv.includes("--dry");
 
 async function main() {
   const build = loadPriorsBuild()!;
   const means = JSON.parse(readFileSync(`${STAGE3A_PRIORS_DIR}/column_means.json`, "utf8"));
-  const offsets: HouseOffsets = { ...JSON.parse(readFileSync(OFFSETS, "utf8")), timeAdjust: "prior_year" };
+  const offsets: HouseOffsets = { ...JSON.parse(readFileSync(OFFSETS, "utf8")), timeAdjust: "prior_year", ...(FX ? { fxReconvert: true } : {}) };
+  // Currency is always annotated (so reports can group by it); only --fx-reconvert applies the shift.
+  const currencyOf: Record<string, string> = JSON.parse(readFileSync("tests/backtest/comps_hammer/comp_currency.json", "utf8")).keys;
+  const fxCount = { comps: 0, foreign: 0, shiftAbs: 0 };
+  const withFx = <T extends { hammerGBP: number; saleDate: string | null; house?: string | null }>(cs: T[] | undefined, valuationDate: string): T[] | undefined => {
+    if (!cs) return cs;
+    return cs.map((c) => {
+      const currency = currencyOf[compCurrencyKey(c.house, c.saleDate, c.hammerGBP)] ?? "GBP";
+      const shift = fxLogShift(currency, c.saleDate, valuationDate);
+      fxCount.comps++; if (currency !== "GBP") { fxCount.foreign++; fxCount.shiftAbs += Math.abs(shift); }
+      return { ...c, currency, fxLogShift: shift };
+    });
+  };
   console.log(`house offsets ${OFFSETS} (year index: ${(offsets as any).yearIndexCurrency ?? "all"})`);
   const policy = { columnMeans: means.columns, premium: DEFAULT_PROOF_PREMIUM };
   const profiles = new Map<string, ArtistPriceProfile | null>();
@@ -52,10 +68,17 @@ async function main() {
     const attrs = attrsValues(lotAttrsWithSources({ claim }));
     const pred = profile ? priorsModelPrediction(attrs, profile, { saleDate: r.saleDate, house: r.blend.inputs.targetHouse, proofPolicy: policy }) : null;
     const suite = (suiteByKey.get(r.key) ?? []).map((c: any) => ({ hammerGBP: c.hammerGBP, saleDate: c.saleDate, house: c.house }));
-    const inputs: BlendInputs = { ...r.blend.inputs, estimate: null, priors: pred && profile ? { mu: pred.mu, basis: profile.basis, earlierSales: profile.earlierSales, contributions: pred.contributions } : null, ...(SUITE ? { sameSuite: suite } : {}) };
+    const bi = r.blend.inputs;
+    const fxInputs = {
+      sameWork: withFx(bi.sameWork, r.saleDate)!,
+      sameArtistTechnique: bi.sameArtistTechnique ? { ...bi.sameArtistTechnique, comps: withFx(bi.sameArtistTechnique.comps, r.saleDate) } : null,
+      sameArtist: bi.sameArtist ? { ...bi.sameArtist, comps: withFx(bi.sameArtist.comps, r.saleDate) } : null,
+    };
+    const inputs: BlendInputs = { ...bi, ...fxInputs, estimate: null, priors: pred && profile ? { mu: pred.mu, basis: profile.basis, earlierSales: profile.earlierSales, contributions: pred.contributions } : null, ...(SUITE ? { sameSuite: withFx(suite, r.saleDate) } : {}) };
     rows.push({ r, fit: { inputs, hammerGBP: r.hammer }, area: attrs.areaCm2 ?? null, proof: attrs.proof ?? "unknown", suite: suite.length });
   }
   const basis = [...profiles.values()].reduce((t, p) => { const k = p?.basis ?? "none"; t[k] = (t[k] ?? 0) + 1; return t; }, {} as Record<string, number>);
+  console.log(`fx re-pricing ${FX ? "ON" : "off"}: ${fxCount.foreign} of ${fxCount.comps} comps non-sterling, mean |shift| ${(fxCount.shiftAbs / Math.max(fxCount.foreign, 1)).toFixed(3)} log`);
   console.log(`model file ${build.version} (${build.built_at}); ${rows.length} sold lots, ${profiles.size} artists by basis ${JSON.stringify(basis)}`);
 
   // 1. temporal gate
@@ -85,6 +108,14 @@ async function main() {
   console.log(`  ${"median comp age <3y".padEnd(24)}${score(late.filter((x) => (compAge(x) ?? -1) >= 0 && compAge(x)! < 3))}`);
   console.log(`  ${"median comp age 3-5y".padEnd(24)}${score(late.filter((x) => (compAge(x) ?? -1) >= 3 && compAge(x)! < 6))}`);
   console.log(`  ${"median comp age 6y+".padEnd(24)}${score(late.filter((x) => (compAge(x) ?? -1) >= 6))}`);
+  {
+    const foreign = (x: (typeof rows)[number]) => {
+      const i = x.fit.inputs, cs = [...i.sameWork, ...(i.sameSuite ?? []), ...(i.sameArtistTechnique?.comps ?? []), ...(i.sameArtist?.comps ?? [])];
+      return cs.length ? cs.filter((c) => c.currency && c.currency !== "GBP").length / cs.length : 0;
+    };
+    console.log(`  ${"comps 25%+ non-sterling".padEnd(24)}${score(late.filter((x) => foreign(x) >= 0.25))}`);
+    console.log(`  ${"  ...and median age 3y+".padEnd(24)}${score(late.filter((x) => foreign(x) >= 0.25 && (compAge(x) ?? -1) >= 3))}`);
+  }
   if (suiteByKey.size || argv.includes("--suite-groups")) {
     const suiteKeys = new Set([...(suiteByKey.size ? suiteByKey : new Map(readFileSync(arg("suite-groups")!, "utf8").split("\n").filter(Boolean).map((l) => { const x = JSON.parse(l); return [x.key, x.comps]; }))).entries()].filter(([, c]) => (c as any[]).length).map(([k]) => k));
     console.log(`  ${"lots with suite comps".padEnd(24)}${score(late.filter((x) => suiteKeys.has(x.r.key)))}`);
