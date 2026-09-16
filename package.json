@@ -29,6 +29,7 @@
     "test:stage3a": "tsx tests/appraisal/stage3a_blend_tests.ts",
     "test:stage3a-waterfall": "tsx tests/appraisal/stage3a_waterfall_tests.ts",
     "test:stage3b": "tsx tests/appraisal/stage3b_narration_tests.ts",
+    "test:stage3-report-fields": "tsx tests/appraisal/stage3_report_fields_tests.ts",
     "test:estimate-model": "tsx tests/knowledge_graph/estimate_model_tests.ts",
     "test:research-comps": "tsx tests/knowledge_graph/research_comps_tests.ts",
     "compare:stage2b": "tsx tests/backtest/compare_stage2b_models.ts",

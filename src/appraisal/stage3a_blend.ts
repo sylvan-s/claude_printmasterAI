@@ -7,8 +7,8 @@
  * THE DISPLAYED ESTIMATE (user decision 2026-09-16, after the phase-4 Stage 3 trial): the report's
  * auctionEstimate is Stage 3a's 80% range, converted from GBP at the ECB rate. The aim is a fair
  * price from the print's inherent value and past market comps, not a forecast of a hammer that
- * the house's own estimate sways. The LLM Stage 3 estimate is kept beside it for audit
- * (`llmAuctionEstimate`) and is shown only when Stage 3a cannot price the lot.
+ * the house's own estimate sways. Since the LLM pricing call was removed (same day), the LLM Stage 3
+ * runs only as the fallback when Stage 3a cannot price the lot.
  *
  * Decisions this encodes (2026-09-16): the printed estimate is never a witness (no_estimate
  * regime always; it is compared, not blended); house mix off, one like-for-like house offset;

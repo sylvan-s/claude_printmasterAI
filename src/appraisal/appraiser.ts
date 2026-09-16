@@ -69,6 +69,7 @@ import { stage3aValuation, stage3aAuctionEstimate, loadBlendCalibration, type St
 import { loadColumnMeans } from "./stage3a_waterfall.js";
 import { allowedFigures, checkFigures, narrationText, stage3bUserText, STAGE3B_SYSTEM, STAGE3B_SCHEMA, STAGE3B_VERSION, type ValuationNarrative } from "./stage3b_narration.js";
 import { gbpRate } from "./stage3a_blend.js";
+import { stage3ReportFields } from "./stage3_report_fields.js";
 import {
   mergeClaimIntoAppraiserInput, verifyAttributedLot, routeAttributedLot, synthesizeAttributionResult,
   buildAttributedLotValuationBlock, isAuthorshipClaim, ESTIMATE_DRIFT, deriveMisattributionRisk, workTitleFromImageMatch, veaNotRun,
@@ -3395,24 +3396,44 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
   }
 
   /**
-   * Stage 3a sets the displayed estimate (user decision 2026-09-16: a fair price from inherent
-   * value and past comps, not an estimate-anchored forecast). The LLM Stage 3 estimate moves to
-   * llmAuctionEstimate for audit and stays displayed only when Stage 3a cannot price the lot or
-   * convert to the report currency. Never throws.
+   * Stage 3 from Stage 2's evidence, with no LLM pricing call (2026-09-16). Stage 3a sets the
+   * estimate (a fair price from inherent value and past comps, not an estimate-anchored forecast),
+   * Stage 3b narrates it, and the remaining report fields are built in code (stage3_report_fields.ts).
+   * Returns the reason instead when Stage 3a cannot price the lot or convert to the currency — the
+   * caller then falls back to the LLM Stage 3 call. Never throws.
    */
-  protected async applyStage3a(report: PrintAnalysisReport, currency: string): Promise<void> {
-    const r = this.stage3aShadow(report.valuationEvidence ?? null);
-    report.stage3a = r;
-    const est = r ? stage3aAuctionEstimate(r, currency, report.valuationEvidence?.valuationDate.value ?? null) : null;
-    if (r && est) {
-      report.llmAuctionEstimate = report.auctionEstimate;
-      report.auctionEstimate = est;
-      report.estimateSource = { source: "stage3a", note: `Stage 3a ${r.calibrationVersion}, evidence ${r.evidenceTier}` };
-      report.valuationNarrative = await this.runStage3bNarration(r, est, report);
-    } else {
-      report.estimateSource = { source: "llm", note: !report.valuationEvidence ? "no valuation evidence was built" : !r ? "Stage 3a had no witness to price from (no artist identity, comps or price profile)" : `no ECB rate for ${currency}` };
-      console.warn(`[Stage 3a] displayed estimate falls back to the LLM: ${report.estimateSource.note}`);
+  protected async stage3FromEvidence(
+    ev: ValuationEvidence | null, attr: AttributionResearchResult, vea: VisualExtractionResult, triage: TriageResult | null | undefined, currency: string,
+  ): Promise<{ priced: true; valuation: Partial<PrintAnalysisReport>; stage3a: Stage3aResult; narrative: ValuationNarrative | null } | { priced: false; stage3a: Stage3aResult | null; reason: string }> {
+    if (!ev) return { priced: false, stage3a: null, reason: "no valuation evidence was built" };
+    const r = this.computeStage3a(ev);
+    if (!r) return { priced: false, stage3a: null, reason: "Stage 3a had no witness to price from (no artist identity, comps or price profile)" };
+    const est = stage3aAuctionEstimate(r, currency, ev.valuationDate.value);
+    if (!est) return { priced: false, stage3a: r, reason: `no ECB rate for ${currency}` };
+    try {
+      const narrative = await this.runStage3bNarration(r, est, ev);
+      return { priced: true, stage3a: r, narrative, valuation: { auctionEstimate: est, ...stage3ReportFields(ev, attr, vea, triage) } };
+    } catch (err: any) {
+      return { priced: false, stage3a: r, reason: `building the report fields failed: ${err?.message ?? err}` };
     }
+  }
+
+  protected stage3Label(source: NonNullable<PrintAnalysisReport["estimateSource"]>, llmModel: string): string {
+    return source.source === "stage3a" ? `stage3a + narration ${this.config.stage3bModel || "claude-haiku-4-5"}` : `${llmModel} (fallback)`;
+  }
+
+  /** Stage 3 for both appraise paths: evidence-priced when possible, else the LLM call as the fallback. */
+  protected async runStage3(
+    ev: ValuationEvidence | null, attr: AttributionResearchResult, vea: VisualExtractionResult, triage: TriageResult | null | undefined, currency: string,
+    llmFallback: () => Promise<Partial<PrintAnalysisReport>>,
+  ): Promise<{ valuation: Partial<PrintAnalysisReport>; stage3a: Stage3aResult | null; narrative: ValuationNarrative | null; estimateSource: NonNullable<PrintAnalysisReport["estimateSource"]> }> {
+    const res = await this.stage3FromEvidence(ev, attr, vea, triage, currency);
+    // `in` narrows here; boolean discriminants do not without strictNullChecks.
+    if ("valuation" in res) {
+      return { valuation: res.valuation, stage3a: res.stage3a, narrative: res.narrative, estimateSource: { source: "stage3a", note: `Stage 3a ${res.stage3a.calibrationVersion}, evidence ${res.stage3a.evidenceTier}; no LLM pricing call` } };
+    }
+    console.warn(`[Stage 3] Stage 3a cannot price this lot (${res.reason}); falling back to the LLM Stage 3 call`);
+    return { valuation: await llmFallback(), stage3a: res.stage3a, narrative: null, estimateSource: { source: "llm", note: res.reason } };
   }
 
   /**
@@ -3420,13 +3441,12 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
    * allowed list; one retry naming the rejected figures, then no narration rather than a wrong one.
    * Never throws.
    */
-  protected async runStage3bNarration(r: Stage3aResult, est: AuctionEstimate, report: PrintAnalysisReport): Promise<ValuationNarrative | null> {
+  protected async runStage3bNarration(r: Stage3aResult, est: AuctionEstimate, ev: ValuationEvidence | null): Promise<ValuationNarrative | null> {
     const model = this.config.stage3bModel || "claude-haiku-4-5";
     try {
-      const fx = gbpRate(est.currency, report.valuationEvidence?.valuationDate.value ?? null);
+      const fx = gbpRate(est.currency, ev?.valuationDate.value ?? null);
       if (!fx) return null;
-      const allowed = allowedFigures(r, est, fx.rate, report.valuationEvidence);
-      const ev = report.valuationEvidence;
+      const allowed = allowedFigures(r, est, fx.rate, ev);
       const base = stage3bUserText(r, est, allowed, { artist: ev?.artist.canonical ?? ev?.artist.reported ?? null, title: ev?.identity.matchedName ?? null });
       const rejected: string[] = [];
       for (let attempt = 1; attempt <= 2; attempt++) {
@@ -3449,7 +3469,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
   }
 
   /** Stage 3a on the evidence. Never throws. */
-  protected stage3aShadow(ev: ValuationEvidence | null): Stage3aResult | null {
+  protected computeStage3a(ev: ValuationEvidence | null): Stage3aResult | null {
     if (!ev) return null;
     try {
       const cal = loadBlendCalibration();
@@ -3879,17 +3899,17 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
 
     const t3 = Date.now();
-    emit({ stage: "stage3", status: "start", message: "Synthesising auction estimate and appraisal statement…", percent: 82 });
-    console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
-    const evidencePromise = this.buildValuationEvidence({
+    emit({ stage: "stage3", status: "start", message: "Pricing from the pricing model and market comps…", percent: 82 });
+    console.log(`[Timing] Stage 3 (Valuation) starting — Stage 3a/3b, LLM ${stage3Model} only as fallback`);
+    const valuationEvidence = await this.buildValuationEvidence({
       appraisal: input, vea, attr, appraiserInput,
       canonicalArtist: triageResult?.artistAttribution?.artistIdentity?.canonicalArtistName ?? null,
     });
-    const valuation = await this.runStage3Valuation(
+    const s3 = await this.runStage3(valuationEvidence, attr, vea, triageResult, currency, () => this.runStage3Valuation(
       vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput,
       triageResult?.artistAttribution?.artistIdentity?.canonicalArtistName ?? null,
-    );
-    const valuationEvidence = await evidencePromise;
+    ));
+    const valuation = s3.valuation;
     console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });
@@ -3902,9 +3922,11 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     report.valuationEvidence = valuationEvidence;
-    await this.applyStage3a(report, currency);
+    report.stage3a = s3.stage3a;
+    report.valuationNarrative = s3.narrative;
+    report.estimateSource = s3.estimateSource;
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
-    report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${stage3Model}]`;
+    report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${this.stage3Label(s3.estimateSource, stage3Model)}]`;
     report.promptVersion = "4stage";
     return report;
   }
@@ -4173,14 +4195,14 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     }
 
     const t3 = Date.now();
-    emit({ stage: "stage3", status: "start", message: "Synthesising an evidence-based estimate…", percent: 82 });
-    console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
-    const block = buildAttributedLotValuationBlock({ claim, verification, routing, comps, workFacts, profile, appraiserInput });
-    const evidencePromise = this.buildValuationEvidence({ appraisal: input, vea, attr, appraiserInput, canonicalArtist: canonical, claim });
-    const valuation = await this.runStage3Valuation(
+    emit({ stage: "stage3", status: "start", message: "Pricing from the pricing model and market comps…", percent: 82 });
+    console.log(`[Timing] Stage 3 (Valuation) starting — Stage 3a/3b, LLM ${stage3Model} only as fallback`);
+    const valuationEvidence = await this.buildValuationEvidence({ appraisal: input, vea, attr, appraiserInput, canonicalArtist: canonical, claim });
+    const s3 = await this.runStage3(valuationEvidence, attr, vea, triageResult, currency, () => this.runStage3Valuation(
       vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput, canonical,
-      { workIds: work?.workIds ?? [], untilDate: claim.saleDate ?? null, block, systemSuffix: VALUATION_ATTRIBUTED_LOT_SUFFIX },
-    );
+      { workIds: work?.workIds ?? [], untilDate: claim.saleDate ?? null, block: buildAttributedLotValuationBlock({ claim, verification, routing, comps, workFacts, profile, appraiserInput }), systemSuffix: VALUATION_ATTRIBUTED_LOT_SUFFIX },
+    ));
+    const valuation = s3.valuation;
     console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });
@@ -4191,8 +4213,10 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     report.stage1dResult = stage1d ? { ...stage1d, dinov2QueryVector: undefined } : stage1d;
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
-    report.valuationEvidence = await evidencePromise;
-    await this.applyStage3a(report, currency);
+    report.valuationEvidence = valuationEvidence;
+    report.stage3a = s3.stage3a;
+    report.valuationNarrative = s3.narrative;
+    report.estimateSource = s3.estimateSource;
     const mid = claim.estimateLow && claim.estimateHigh ? (claim.estimateLow + claim.estimateHigh) / 2 : null;
     report.attributedLot = {
       claim, verification, routing, researchCompWrite, stage2bGate,
@@ -4201,7 +4225,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
       driftAnchor: mid ? mid * ESTIMATE_DRIFT : null,
     };
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
-    report.modelUsed = `Attributed-lot [S1: ${this.config.skipVea ? "skip" : stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${routing.stage2bSkipped ? "skipped" : stage2bModelUsed}${stage2bGate?.escalatedTo ? ` (escalated from ${stage2bGate.firstModel})` : ""} | S3: ${stage3Model}]`;
+    report.modelUsed = `Attributed-lot [S1: ${this.config.skipVea ? "skip" : stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${routing.stage2bSkipped ? "skipped" : stage2bModelUsed}${stage2bGate?.escalatedTo ? ` (escalated from ${stage2bGate.firstModel})` : ""} | S3: ${this.stage3Label(s3.estimateSource, stage3Model)}]`;
     report.promptVersion = "attributed-lot";
     return report;
   }

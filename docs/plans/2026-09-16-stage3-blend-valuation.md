@@ -634,3 +634,36 @@ widest, lowest ranges.
 - the LLM Stage 3 call still runs for the other report fields (cost unchanged);
 - publishable confidence bounds (logged);
 - the artist-identity task (running separately).
+
+## LLM Stage 3 pricing call removed (2026-09-16)
+
+Stage 3a prices, Stage 3b narrates, and the old LLM Stage 3 call no longer runs when Stage 3a can
+price the lot.
+- `MultiStageAppraiser.runStage3` runs on both paths:
+  1. build the evidence;
+  2. `stage3FromEvidence` produces the Stage 3a estimate, the narration and the report fields;
+  3. only when Stage 3a cannot price (no evidence, no witness, no ECB rate for the currency) does
+     it call `runStage3Valuation`, the old LLM Stage 3, as the fallback.
+- `report.estimateSource` says which happened and why. `modelUsed` shows
+  `S3: stage3a + narration <model>` or `S3: <model> (fallback)`.
+- On the attributed-lot path the attributed-lot prompt block is only built for the fallback.
+- The report fields the LLM used to write are now built in code (`stage3_report_fields.ts`,
+  `test:stage3-report-fields` 14):
+  - **recentAuctionSales:** the evidence comps, same work first then newest, capped at 8. The
+    price shows what buyers paid with the hammer beside it; condition is never invented.
+  - **editionSizeAndPrintNumber:** sourced proof and edition size plus Stage 2b's edition notes.
+  - **isLikelyReproductionOrPoster:** set only by a direct finding (Stage 2a divergence
+    "reproduction", Stage 1a image class DIGITAL_REPRODUCTION). Posthumous or reprint editions
+    and HIGH reprint risk go in the explanation. My first rule also flagged those and disagreed
+    with the LLM on 3 of 33 saved runs (posthumous Gauguin woodcuts, a high-risk Munch); the
+    narrowed rule agrees on 32/33.
+  - **nextSteps:** Stage 2b's unresolved-question actions and examination flags, plus unstated
+    attributes, missing condition report, no house chosen and unresolved work identity.
+- Checked on saved report A0777/5 at zero pricing cost: estimate £960–5,600 from Stage 3a, 8
+  recent sales, next steps and edition filled. The only model call was the narration ($0.0062).
+  The fallback throws if touched on a priceable lot and is called when there is no evidence.
+- Cost per appraisal falls by the old Stage 3 call: `report_valuation` was $0.02–0.04 on Haiku in
+  the trial and saved runs, replaced by ~$0.006 of narration.
+- Kept: `runStage3Valuation` itself (the fallback, `ThreeStageAppraiser` and
+  `tests/backtest/stage3_trial.ts` use it), `llmAuctionEstimate` in the type for reports saved
+  while both ran.

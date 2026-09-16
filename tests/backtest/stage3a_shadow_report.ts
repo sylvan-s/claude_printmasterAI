@@ -66,8 +66,10 @@ async function main() {
     const res = JSON.parse(readFileSync(join(DIR, d, "result.json"), "utf8"));
     const claim: CatalogueAttribution = res.catalogueAttribution;
     const shadow: Stage3aResult | null = res.report?.stage3a ?? (RECOMPUTE ? await recompute(res) : null);
-    // Since 2026-09-16 auctionEstimate IS Stage 3a when it priced; the LLM's own lives in llmAuctionEstimate.
-    const llm = res.report?.llmAuctionEstimate ?? res.report?.auctionEstimate;
+    // Runs from before 2026-09-16 carry the LLM estimate as auctionEstimate; for a while both ran
+    // (llmAuctionEstimate); since the LLM pricing call was removed, a Stage 3a-priced run has no LLM
+    // estimate at all, so there is nothing to compare it with.
+    const llm = res.report?.llmAuctionEstimate ?? (res.report?.estimateSource?.source === "stage3a" ? null : res.report?.auctionEstimate);
     const out = await hammerOf(claim?.house, claim?.saleId, claim?.lotNumber);
     rows.push({ d, claim, shadow, llm, out, source: res.report?.stage3a ? "recorded" : RECOMPUTE ? "recomputed" : "none" });
   }

@@ -75,7 +75,8 @@ export interface PrintAnalysisReport {
   /** Stage 3a's deterministic price from that evidence (src/appraisal/stage3a_blend.ts). Since
    *  2026-09-16 it IS the displayed auctionEstimate whenever it could price the lot. */
   stage3a?: Stage3aResult | null;
-  /** The LLM Stage 3 estimate, kept for audit when Stage 3a supplied auctionEstimate. */
+  /** Legacy: the LLM Stage 3 estimate kept for audit while both ran (2026-09-16, before the LLM
+   *  pricing call was removed). Absent on newer reports. */
   llmAuctionEstimate?: AuctionEstimate | null;
   /** Which stage produced auctionEstimate, and why when it is the fallback. */
   estimateSource?: { source: "stage3a" | "llm"; note: string };

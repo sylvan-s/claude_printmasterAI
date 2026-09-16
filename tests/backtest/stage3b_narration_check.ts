@@ -34,7 +34,7 @@ async function main() {
     const ev = assembleValuationEvidence({ builtAt: "check", reportedArtist: row.artist, canonicalArtist: row.canonicalArtist, claim, graph, targetHouse: { value: claim.house, source: "catalogue" }, valuationDate: { value: row.saleDate, source: "catalogue" } });
     const r = stage3aValuation(ev, cal, means)!;
     const est = stage3aAuctionEstimate(r, CURRENCY, row.saleDate)!;
-    const n = await app.narrate(r, est, { valuationEvidence: ev } as any);
+    const n = await app.narrate(r, est, ev);
     console.log(`\n═══ ${t.key} ${row.artist} — ${row.title} (hammer £${row.hammer}); estimate ${est.formattedEstimate}; ${r.evidenceTier}`);
     if (!n) { console.log("  NARRATION DROPPED (figure guard failed twice)"); continue; }
     accepted++; if (n.guard.attempts > 1) retried++;
