@@ -25,6 +25,7 @@
     "test:price-profile": "tsx tests/knowledge_graph/price_profile_tests.ts",
     "test:price-attrs": "tsx tests/knowledge_graph/price_attrs_tests.ts",
     "test:price-blend": "tsx tests/knowledge_graph/price_blend_tests.ts",
+    "test:valuation-evidence": "tsx tests/appraisal/valuation_evidence_tests.ts",
     "test:estimate-model": "tsx tests/knowledge_graph/estimate_model_tests.ts",
     "test:research-comps": "tsx tests/knowledge_graph/research_comps_tests.ts",
     "compare:stage2b": "tsx tests/backtest/compare_stage2b_models.ts",

@@ -392,3 +392,58 @@ number", not "the house chose to print one".
 
 **Decision:** the production build stays PRICING-PRIORS-1.2. `catalogue_cited` is opt-in for a
 future re-test, and the contribution chart has no citation bar. Nothing was written to the graph.
+
+## Phase 3 result (2026-09-16): ValuationEvidence built and attached to every report; parity with the calibration holds
+
+**Built.**
+- `src/appraisal/valuation_evidence.ts`:
+  - `readLotGraphEvidence` does the graph reads the blend was **calibrated** on: a 10-year comps
+    window before the valuation date, up to 60 comps, work identity resolved first, the artist
+    profile and the work facts. These are deliberately not Stage 3's current LLM reads (from
+    2015, 40 comps). It never throws; a failed read becomes a warning.
+  - `lotAttrsWithSources` gives every pricing attribute a value and its source. Precedence:
+    catalogue claim > appraiser notes (1c) > Stage 2b (process only) > image (1a) > default.
+    Defaults are the training reference levels.
+  - `assembleValuationEvidence` and `evidenceToBlendInputs` are pure. The printed estimate is
+    carried for display only and never reaches the blend.
+- `MultiStageAppraiser.buildValuationEvidence` runs at the end of Stage 2 on both the four-stage
+  and attributed-lot paths, in parallel with the LLM Stage 3, and sets
+  `report.valuationEvidence`. The LLM Stage 3 does not read it.
+- `AppraisalInput.targetHouse` is new. Without it the lot's own house is used, else none (pooled
+  offset).
+- `price_attrs.detectCopyType` ports the ingests' copy-type rule.
+- Tests: `npm run test:valuation-evidence` (26); price-attrs 34, attributed-lot 107 and
+  price-blend 80 still pass. Whole-project `tsc` is clean.
+
+**Parity gate** (`tests/backtest/valuation_evidence_parity.ts --per-file 150 --seed 3`, zero LLM).
+It rebuilds evidence from 450 calibration lots' catalogue fields, runs live graph reads,
+converts to blend inputs and compares with what the harness recorded:
+
+| house | same-work comps | tier 2 | tier 3 | priors mean | blended price within 1% |
+|---|---|---|---|---|---|
+| Bonhams (150) | 100% | 100% | 100% | 95% | 97% |
+| Forum (150) | 100% | 100% | 100% | 91% | 92% |
+| Roseberys (150) | 100% | 100% | 100% | 86% | 88% |
+
+Overall |log price gap|: median 0.000, p90 0.000, max 0.762.
+
+**Two defects the gate caught and fixed on the way:**
+1. **Proof class.** Catalogue text "numbered from the edition of 100" classed as
+   `edition_unnumbered`, but every training lot went through the ingests' copy type, which
+   defaults to "numbered". This hit 38 of 40 Forum/Roseberys lots in the smoke run.
+2. **Size and technique in text.** Sizes printed only in the medium line ("16.5x16cm") were not
+   read, and "silkscreen" did not map to screenprint.
+
+**The remaining mismatches are calibration-record data gaps, not builder errors.** The evidence
+is often the more correct side:
+- About 6% of Roseberys graph records carry no dimensions although the catalogue CSV has them,
+  so those calibration lots were priced "area unknown".
+- Some graph records lost proof wording the catalogue has ("from the edition of 20 artist's
+  proofs").
+- Where the CSV gives the sheet and the graph the plate, the two sides disagree by construction.
+
+Logged; no sweep run.
+
+**Also logged:** the ingests' BAT copy-type keyword is the bare substring "bon", so it matches
+"carbon" and "ribbon". It is mirrored as-is in `detectCopyType`, so lots are classed like their
+training neighbours.

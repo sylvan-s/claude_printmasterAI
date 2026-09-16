@@ -63,6 +63,7 @@ import { parseDimensions, extractCatalogueRefs, detectEditionSize } from "../sha
 import { queryWorkFacts, queryArtistPriceProfile, writeResearchComps, type WorkFacts, type ComparablesResult, type ArtistPriceProfile } from "./knowledge_graph/index.js";
 import { mapTechniqueToAckgVocabulary as mapClaimTechnique } from "./stage2a_query_plan";
 import { VALUATION_ATTRIBUTED_LOT_SUFFIX } from "./prompts";
+import { readLotGraphEvidence, assembleValuationEvidence, type ValuationEvidence, type Sourced } from "./valuation_evidence.js";
 import {
   mergeClaimIntoAppraiserInput, verifyAttributedLot, routeAttributedLot, synthesizeAttributionResult,
   buildAttributedLotValuationBlock, isAuthorshipClaim, ESTIMATE_DRIFT, deriveMisattributionRisk, workTitleFromImageMatch, veaNotRun,
@@ -148,6 +149,12 @@ export interface AppraisalInput {
   // "comp" for the item it's describing would make the valuation circular rather
   // than independent.
   testingExcludeSourceListing?: string;
+  /**
+   * The auction house the valuation is FOR (graph institution name, e.g. "Forum Auctions").
+   * Drives the house price-level factor (plan 2026-09-16). Absent: the lot's own house on the
+   * attributed-lot path, else no house — the pooled offset, and the report says so.
+   */
+  targetHouse?: string | null;
 }
 
 export interface AppraisalMethod {
@@ -3328,6 +3335,58 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     }
   }
 
+  /**
+   * Stage 2's structured valuation evidence (plan 2026-09-16 phase 3). Calibrated graph reads,
+   * attributes with provenance, target house and date. Attached to the report only: the LLM
+   * Stage 3 below does not read it until phase 4. Never throws — a failure is logged and the
+   * report carries null.
+   */
+  protected async buildValuationEvidence(input: {
+    appraisal: AppraisalInput;
+    vea: VisualExtractionResult;
+    attr: AttributionResearchResult | null;
+    appraiserInput: AppraiserInputResult | null | undefined;
+    canonicalArtist: string | null;
+    claim?: CatalogueAttribution | null;
+  }): Promise<ValuationEvidence | null> {
+    try {
+      const { appraisal, vea, attr, appraiserInput, claim } = input;
+      const conclusion = (attr as any)?.attributionConclusion ?? {};
+      const reportedArtist: string | null = claim?.artist ?? conclusion.attributedArtist ?? null;
+      const excluded = parseExcludedListing(appraisal.testingExcludeSourceListing);
+      const saleLot = excluded.saleLot ?? (claim?.saleId && claim.lotNumber != null ? { saleId: claim.saleId, lotNumber: claim.lotNumber } : null);
+      const valuationDate: Sourced<string> = claim?.saleDate
+        ? { value: claim.saleDate.slice(0, 10), source: "catalogue" }
+        : { value: new Date().toISOString().slice(0, 10), source: "default", note: "no sale date: priced as of today" };
+      const targetHouse: Sourced<string | null> = appraisal.targetHouse
+        ? { value: appraisal.targetHouse, source: "input" }
+        : claim?.house
+          ? { value: claim.house, source: "catalogue" }
+          : { value: null, source: "default", note: "no house chosen: pooled house offset, wider range" };
+      const graph = await readLotGraphEvidence({
+        canonicalArtist: input.canonicalArtist ?? reportedArtist,
+        workTitle: claim?.title ?? conclusion.workTitle ?? null,
+        catalogueRefs: claim?.catalogueRefs?.length ? claim.catalogueRefs.join("; ") : (appraiserInput?.catalogueReferences ?? []).map((r) => r.ref).filter(Boolean).join("; ") || null,
+        techniqueText: claim?.medium ?? conclusion.technique ?? vea?.printingTechniques?.[0]?.technique ?? null,
+        valuationDate: valuationDate.value,
+        excludeSaleLot: saleLot,
+        excludeListingUrl: excluded.listingUrl ?? claim?.lotUrl ?? null,
+        via: claim ? "claim" : "stage2b",
+      });
+      const ev = assembleValuationEvidence({
+        builtAt: new Date().toISOString(), reportedArtist, canonicalArtist: input.canonicalArtist,
+        claim, appraiserInput, attr, vea, graph, targetHouse, valuationDate,
+        webComps: partitionCitedComps((attr as any)?.auctionComps).cited,
+      });
+      const defaulted = Object.entries(ev.attrs).filter(([, v]) => v.source === "default").map(([k]) => k);
+      console.log(`[Valuation evidence] ${ev.artist.canonical ?? ev.artist.reported ?? "no artist"}: comps same_work ${ev.comps.tierCounts.same_work} / technique ${ev.comps.tierCounts.same_artist_technique} / artist ${ev.comps.tierCounts.same_artist}; profile ${ev.profile?.basis ?? "none"}; house ${ev.targetHouse.value ?? "pooled"} (${ev.targetHouse.source}); defaulted attrs: ${defaulted.join(", ") || "none"}${ev.warnings.length ? `; warnings: ${ev.warnings.join(" | ")}` : ""}`);
+      return ev;
+    } catch (err: any) {
+      console.warn(`[Valuation evidence] build failed, report carries none: ${err?.message ?? err}`);
+      return null;
+    }
+  }
+
   protected async runStage3Valuation(
     vea: VisualExtractionResult,
     attr: AttributionResearchResult,
@@ -3744,10 +3803,15 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const t3 = Date.now();
     emit({ stage: "stage3", status: "start", message: "Synthesising auction estimate and appraisal statement…", percent: 82 });
     console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
+    const evidencePromise = this.buildValuationEvidence({
+      appraisal: input, vea, attr, appraiserInput,
+      canonicalArtist: triageResult?.artistAttribution?.artistIdentity?.canonicalArtistName ?? null,
+    });
     const valuation = await this.runStage3Valuation(
       vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput,
       triageResult?.artistAttribution?.artistIdentity?.canonicalArtistName ?? null,
     );
+    const valuationEvidence = await evidencePromise;
     console.log(`[Timing] Stage 3 (Valuation) done — ${((Date.now() - t3) / 1000).toFixed(1)}s`);
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });
@@ -3759,6 +3823,7 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     report.stage1dResult = stage1d ? { ...stage1d, dinov2QueryVector: undefined } : stage1d;
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
+    report.valuationEvidence = valuationEvidence;
     const stage1bModel = this.config.stage1bModel || DEFAULT_STAGE1B_MODEL;
     report.modelUsed = `4-Stage [S1: ${stage1Model} | S1b: ${runVisualSearch ? stage1bModel : "skip"} | S1c: ${STAGE1C_MODEL} | S1d: ${runEmbeddingMatch ? "dinov2-large+clip" : "skip"} | S2a: ${stage2aModel} | S2b: ${stage2bModel} | S3: ${stage3Model}]`;
     report.promptVersion = "4stage";
@@ -4032,6 +4097,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     emit({ stage: "stage3", status: "start", message: "Synthesising an evidence-based estimate…", percent: 82 });
     console.log(`[Timing] Stage 3 (Valuation) starting — model: ${stage3Model}`);
     const block = buildAttributedLotValuationBlock({ claim, verification, routing, comps, workFacts, profile, appraiserInput });
+    const evidencePromise = this.buildValuationEvidence({ appraisal: input, vea, attr, appraiserInput, canonicalArtist: canonical, claim });
     const valuation = await this.runStage3Valuation(
       vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput, canonical,
       { workIds: work?.workIds ?? [], untilDate: claim.saleDate ?? null, block, systemSuffix: VALUATION_ATTRIBUTED_LOT_SUFFIX },
@@ -4046,6 +4112,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     report.stage1dResult = stage1d ? { ...stage1d, dinov2QueryVector: undefined } : stage1d;
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
+    report.valuationEvidence = await evidencePromise;
     const mid = claim.estimateLow && claim.estimateHigh ? (claim.estimateLow + claim.estimateHigh) / 2 : null;
     report.attributedLot = {
       claim, verification, routing, researchCompWrite, stage2bGate,

@@ -10,7 +10,7 @@ export { resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery } 
 export { queryArtistDinoFloor } from "./artist_dino_floor.js";
 export { queryArtistPriceProfile, adjustmentBetween, editionBand, areaBand, periodOf, nationalityGroup, segmentKey, pickSegmentDefault, multipliersFrom } from "./artist_price_profile.js";
 export type { ArtistPriceProfile, PriceAttrs, PriceAdjustment, PriceProfileBasis, SignatureClass, ProofClass, EditionBand, AreaBand } from "./artist_price_profile.js";
-export { priceAttrsOfComparable, priceAttrsOfLot, signatureClass, proofClass, editionSizeOf, dimsCm, primaryProcess, PROCESSES } from "./price_attrs.js";
+export { priceAttrsOfComparable, priceAttrsOfLot, signatureClass, proofClass, detectCopyType, editionSizeOf, dimsCm, primaryProcess, PROCESSES } from "./price_attrs.js";
 export { blendPrices, blendWitnesses, calibratedWitnesses, rawWitnesses, priorsModelPrediction, fitBlendCalibration, defaultCalibration, hurdleFrom, crpsOnGrid, sameWorkBand, WITNESS_SOURCES } from "./price_blend.js";
 export type { BlendInputs, BlendCalibration, BlendRegime, PriceBlend, PriceWitness, PriceContribution, WitnessSource, FitRow } from "./price_blend.js";
 export { estimateFeaturesOf, fitEstimateModel, predictLogEstimate, residualsByHouse, ESTIMATE_MODEL_COLUMNS, ESTIMATE_PREDICTOR_SOURCES } from "./estimate_model.js";

@@ -45,6 +45,29 @@ export function signatureClass(signed: boolean | string | null | undefined, text
   return "unsigned";
 }
 
+/**
+ * The ingests' copy type (bonhams_ingest / forum_ingest / roseberys_ingest detect_copy_type,
+ * identical keyword tables): the first proof keyword found, else "numbered". Every graph lot the
+ * price model and the blend calibration learned from carries this, so a lot described only by
+ * catalogue text must be classified through it too, or "numbered from the edition of 100" reads
+ * as edition_unnumbered here and numbered in training (measured 2026-09-16: proof class differed
+ * on 38 of 40 Forum/Roseberys parity lots). Mirrored faithfully, including the bare "bon" BAT
+ * keyword that also matches "carbon" or "ribbon" — logged, not fixed here, so the lot is classed
+ * the way its training neighbours were.
+ */
+const COPY_TYPE_KEYWORDS: Array<[string, string[]]> = [
+  ["AP", ["artist's proof", "artists proof", " ap ", "'ap'", "inscribed ap"]],
+  ["HC", ["hors commerce", " hc ", "'hc'", "inscribed hc"]],
+  ["PP", ["printer's proof", "printers proof", " pp "]],
+  ["BAT", ["bon", " bat "]],
+  ["TP", ["trial proof", " tp "]],
+];
+export function detectCopyType(...texts: (string | null | undefined)[]): string {
+  const t = ` ${texts.filter(Boolean).join(" ")} `.toLowerCase();
+  for (const [label, kws] of COPY_TYPE_KEYWORDS) if (kws.some((k) => t.includes(k))) return label;
+  return "numbered";
+}
+
 /** train_price_model.proof_class — the first three tests are case-SENSITIVE, as in the trainer. */
 export function proofClass(copyType: string | null | undefined, text: string | null | undefined): ProofClass {
   const raw = text ?? "";

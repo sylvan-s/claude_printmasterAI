@@ -1,5 +1,6 @@
 import type { Stage2bComp, CompStorabilityReport } from "./appraisal/comp_storability.js";
 import type { AttributedLotReport } from "./appraisal/attributed_lot.js";
+import type { ValuationEvidence } from "./appraisal/valuation_evidence.js";
 
 export interface AuctionEstimate {
   lowEstimate: number;
@@ -66,6 +67,9 @@ export interface PrintAnalysisReport {
   stage2Result?: AttributionResearchResult;
   /** Present only on the attributed-lot entry path (src/appraisal/attributed_lot.ts). */
   attributedLot?: AttributedLotReport;
+  /** Stage 2's structured valuation evidence (src/appraisal/valuation_evidence.ts, plan 2026-09-16 phase 3).
+   *  Persisted for audit and for Stage 3a; the LLM Stage 3 does not read it yet. */
+  valuationEvidence?: ValuationEvidence | null;
   pipelineMeta?: {
     specialistConfigUsed: string;
     humanEscalationRequired: boolean;
