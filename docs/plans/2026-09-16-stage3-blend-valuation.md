@@ -358,3 +358,37 @@ which a production calibration fitted on every house does not suffer from.
 mix off. Applying it would make prices slightly worse overall, and a chart bar for it would show
 a correction that does not generalise. Options: keep it off and show one house bar (price level
 only); or apply it anyway for the Bonhams gain. Not wired into anything.
+
+**Decided 2026-09-16:** house mix stays off. The chart shows ONE house bar, the like-for-like price
+level from `house_offsets.json`. The `houseMix` code stays in place for a later re-test (for
+example once more post-2024 lots exist) but is never fitted into the production calibration.
+
+## Phase 2 result (2026-09-16): catalogue citation fails its gate, not added to the model
+
+`build_priors.py --with-citation` adds a 0/1 `catalogue_cited` elasticity column (presence
+only: which catalogue is an artist proxy). Same export (`all_sales_with_subject.csv`), same
+temporal cut (2024-07-01):
+
+| earlier sales | without | with |
+|---|---|---|
+| 5–15 | 0.693 | 0.688 |
+| 15–40 (k=30) | 0.684 | 0.686 |
+| 40–100 | 0.633 | 0.631 |
+| 100–300 | 0.604 | 0.607 |
+| 300+ | 0.688 | 0.697 |
+| **all, chosen kappa 30** | **0.652** | **0.654** |
+
+The effect is real descriptively. Within Bonhams, with artist, year, signature, edition,
+process and area held fixed, a cited lot sells for ×1.42. Across 146 shrunk artists the median
+multiplier is ×1.15, but the per-artist range runs from Miró ×0.91 and Picasso ×0.97 to Warhol
+×2.03 and Rembrandt ×2.47. It does not help predict later sales. Two likely reasons:
+
+- Citation is a cataloguing choice. Bonhams cites 51% of lots, Roseberys 8.5%, and the cited
+  share fell from ~0.45–0.53 before 2014 to ~0.35 after 2022.
+- A cited lot is already a better lot on attributes the model has.
+
+For Stage 3 the column would also change meaning. There it would be "Stage 2b found a catalogue
+number", not "the house chose to print one".
+
+**Decision:** the production build stays PRICING-PRIORS-1.2. `catalogue_cited` is opt-in for a
+future re-test, and the contribution chart has no citation bar. Nothing was written to the graph.

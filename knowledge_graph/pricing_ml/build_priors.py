@@ -1,7 +1,19 @@
 """
 PrintMasterAI — a database of price-feature elasticities per artist, with priors from similar
 artists where an artist's own sales are too few to estimate them.
-Version: PRICING-PRIORS-1.2
+Version: PRICING-PRIORS-1.2 (default); PRICING-PRIORS-1.3 with --with-citation, which FAILED its gate
+
+1.3 (2026-09-16, opt-in, not adopted) adds `catalogue_cited` (1 iff the lot's catalogue text cites a catalogue
+raisonne, i.e. train_price_model's has_citation), per plan docs/plans/2026-09-16-stage3-blend-
+valuation.md phase 2. Only presence, not WHICH catalogue: within one artist the catalogue is
+nearly constant (Bloch = Picasso), so the identity is an artist proxy the per-artist level
+already carries. Citation practice is house-specific (Bonhams cites 51% of lots, Roseberys 8.5%),
+which the house columns absorb. Temporal gate (cut 2024-07-01, same export): MAE(log) at the
+chosen kappa 0.654 with the column vs 0.652 without. It helped only the 5-15-sale band (0.693 ->
+0.688) and hurt 100-300 and 300+ (0.687 -> 0.696). The effect is real descriptively (x1.42 within
+Bonhams with artist, year, signature, edition, process and area held fixed; median shrunk artist
+x1.15, but x0.91 Miro to x2.47 Rembrandt) and does not carry to later sales, so the production
+build stays 1.2 and the chart never shows citation.
 
 1.2 (2026-09-14) adds three CLIP-subject indicator columns: subject_is_abstract,
 subject_is_comic_satirical, subject_is_surreal (1 iff DigitalImage.clipSubject is that category
@@ -228,7 +240,10 @@ def main():
     ap.add_argument("--cut", default="2024-07-01")
     ap.add_argument("--min-year", default="2010")
     ap.add_argument("--out-dir", default=os.path.join(HERE, "priors"))
+    ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
+    if args.with_citation:
+        BINARY.append("catalogue_cited")
 
     df = pd.read_csv(args.csv, low_memory=False)
     source_rows = int(len(df))          # rows in the export, before any filter: the freshness check compares this to the graph
@@ -238,6 +253,7 @@ def main():
     feat = build_features(df)
     for col, cat in SUBJECT_FLAGS.items():
         feat[col] = (feat["subject"] == cat).astype(float)
+    feat["catalogue_cited"] = feat["has_citation"].astype(float)
     y = np.log(df["hammerGBP"].astype(float))
     train = (df["saleDate"] < args.cut).values
     test = ~train
@@ -374,7 +390,7 @@ def main():
     # 5. write the priors database
     os.makedirs(args.out_dir, exist_ok=True)
     built_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    db = {"version": "PRICING-PRIORS-1.2", "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
+    db = {"version": "PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2", "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
           "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
           "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),
           "reference_levels": REFS, "elasticity_columns": cols, "year_effects": year_eff, "continuous_medians": med,
