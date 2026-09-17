@@ -3970,7 +3970,8 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
       const r = await writeResearchComps({
         comps,
         canonicalArtistName: canonical,
-        conceptualWorkIds: work?.workIds ?? [],
+        // Spelling variants widen what is READ, never what is written to.
+        conceptualWorkIds: work?.strictWorkIds ?? work?.workIds ?? [],
         workBasis: work?.basis ?? null,
         originatingAppraisalId: [claim.house, claim.saleId, claim.lotNumber].filter((x) => x != null).join("-") || claim.lotUrl || "unknown",
         attributionLevel: (attr as any)?.attributionConclusion?.attributionLevel ?? null,
@@ -4104,7 +4105,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
         profile = await queryArtistPriceProfile(canonical);
         if (profile) console.log(`[Attributed lot] price profile: basis ${profile.basis}${profile.earlierSales != null ? `, ${profile.earlierSales} earlier sales` : ""}${profile.segment ? `, segment ${profile.segment}` : ""}`);
         let wi = await resolveWorkIdentity({ artistName: canonical, title: claim.title ?? "", catalogueRefs: claim.catalogueRefs?.length ? claim.catalogueRefs.join("; ") : null, excludeSaleLot: saleLot });
-        work = { via: "claim", basis: wi.basis, workIds: wi.workIds, matchedNames: wi.matchedNames, ambiguousAt: wi.ambiguousAt, ambiguousNames: wi.ambiguousNames };
+        work = { via: "claim", basis: wi.basis, workIds: wi.workIds, strictWorkIds: wi.strictWorkIds, matchedNames: wi.matchedNames, ambiguousAt: wi.ambiguousAt, ambiguousNames: wi.ambiguousNames };
         console.log(`[Attributed lot] work identity: ${wi.basis ? `"${wi.matchedNames[0]}" via ${wi.basis} (${wi.workIds.length} node(s))` : wi.ambiguousAt ? `AMBIGUOUS at ${wi.ambiguousAt}: ${wi.ambiguousNames.slice(0, 4).join(" | ")}` : "unresolved"}`);
         if (!wi.basis && !wi.ambiguousAt) {
           // The image may name the node the title could not: same artist, DINOv2 above the
@@ -4114,7 +4115,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
             const wi2 = await resolveWorkIdentity({ artistName: canonical, title: imageTitle, excludeSaleLot: saleLot });
             if (wi2.basis === "exact_title" && wi2.workIds.length) {
               wi = wi2;
-              work = { via: "image_match", basis: wi2.basis, workIds: wi2.workIds, matchedNames: wi2.matchedNames, ambiguousAt: null, ambiguousNames: [] };
+              work = { via: "image_match", basis: wi2.basis, workIds: wi2.workIds, strictWorkIds: wi2.strictWorkIds, matchedNames: wi2.matchedNames, ambiguousAt: null, ambiguousNames: [] };
               console.log(`[Attributed lot] work identity via image match: "${wi2.matchedNames[0]}" (${wi2.workIds.length} node(s)) — Stage 1d best match, DINOv2 ${stage1d?.dinov2SimilarityScore?.toFixed(3) ?? "?"}`);
             }
           }
