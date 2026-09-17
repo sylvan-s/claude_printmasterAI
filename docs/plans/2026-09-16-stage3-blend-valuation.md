@@ -957,3 +957,21 @@ Bonhams, 2025" (`REFERENCE_PRINT` in `stage3a_waterfall.ts`; the edition-size te
 Each bar is now beta * (lot - reference) and is zero where the lot matches. Display only: the
 model price and Stage 3a median are unchanged, and the bars still sum to them exactly.
 Condition and CLIP subject are not in the reference because neither is priced.
+
+### 2026-09-17: model file rebuilt, calibration BLEND-1.5
+
+After the Forum edition-size repair (branch `fix/edition-fraction-parsing`, 2,229 fraction
+sizes cleared in the graph) the Stage 3a model file was rebuilt from a fresh export
+(`build_priors.py --size-terms shape-bands+xl --out-dir .../priors_stage3a`, `column_means.py`
+likewise), and the calibration refit with
+`refit_blend_calibration.ts --version BLEND-1.5 --suite tests/backtest/comps_hammer/suite_comps.jsonl`.
+
+- Training rows 31,920 -> 34,622. Forum sales now enter (7.9% of the house mix; the 2026-09-16
+  build had none), with the earlier Roseberys dims and BAT repairs.
+- Temporal gate (1,495 lots after 2024-07-01): MAE(log) 0.622 -> 0.619, 80% cover 78% -> 79%;
+  lots with suite comps 0.507 -> 0.494; with suite comps and no same-work comps 0.453 -> 0.439.
+- Hockney *Self-Portrait* (G.E.L. 1649, Bonhams 2026-04-23, hammer £6,000): median £1,648 ->
+  £1,630, estimate £640–4,200. The edition step is still x0.48 (Hockney <=30 x0.83 against 31–75
+  x1.64, plus the edition-size term), while his signed non-offset sales differ by ~10% (median
+  £4,480 against £5,000). The Forum bug did not cause it: the old file had no Forum rows. Open:
+  test dropping the edition-size term or merging <=30 with 31–75, on the same gate.
