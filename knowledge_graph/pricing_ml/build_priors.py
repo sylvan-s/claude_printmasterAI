@@ -85,7 +85,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, HuberRegressor
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from train_price_model import build_features  # noqa: E402
@@ -242,6 +242,7 @@ def segment_defaults(entries: dict, cols) -> dict:
 
 
 def main():
+    global KAPPAS
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("csv")
     ap.add_argument("--cut", default="2024-07-01")
@@ -256,11 +257,19 @@ def main():
     ap.add_argument("--reproduction", choices=["none", "offset", "offset+poster"], default="offset+poster",
                     help="offset = photomechanical prints (offset, photolithograph) as their own technique; +poster adds a poster flag "
                          "(2026-09-17 priors review: 25%% of 'lithograph' rows were offset prints)")
+    ap.add_argument("--alpha", type=float, default=ALPHA, help="ridge penalty of the per-artist fits (2026-09-17 outlier review)")
+    ap.add_argument("--loss", choices=["ridge", "huber"], default="ridge", help="per-artist fit loss; huber down-weights sales far from the fit")
+    ap.add_argument("--huber-epsilon", type=float, default=1.35)
+    ap.add_argument("--trim-mad", type=float, default=0.0, help="refit each artist without sales more than K robust SDs from their first fit (0 = off)")
+    ap.add_argument("--shrink-by", choices=["artist", "level"], default="artist",
+                    help="artist = kappa against the artist's total earlier sales (1.2); level = against the sales carrying that level")
     ap.add_argument("--dump-test", default=None, help="write test-period rows with the chosen-kappa prediction to this CSV")
     ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
     if args.with_citation:
         BINARY.append("catalogue_cited")
+    if args.shrink_by == "level":
+        KAPPAS = [0, 3, 10, 30, 60, 120]   # level supports are far smaller than artist totals
     import train_price_model as _tpm
     _tpm.OFFSET_PROCESS = args.reproduction != "none"
     if args.reproduction != "offset+poster":
@@ -333,14 +342,30 @@ def main():
 
     # 2. own fits per artist on deflated log price (attributes only), with per-level support
     own_beta, own_support, own_n, level = {}, {}, {}, {}
+    trimmed = {}
     for a, n in n_art.items():
         m = train & (df["artist"] == a).values
         own_n[a] = int(n)
         if n < MIN_OWN:
             continue
-        r = Ridge(alpha=ALPHA).fit(X[m], ydefl[m])
+        def fit(rows):
+            if args.loss == "huber":
+                return HuberRegressor(epsilon=args.huber_epsilon, alpha=args.alpha, max_iter=2000).fit(X[rows].values, ydefl[rows].values)
+            return Ridge(alpha=args.alpha).fit(X[rows], ydefl[rows])
+        r = fit(m)
+        if args.trim_mad > 0:
+            e = ydefl[m].values - r.predict(X[m].values if args.loss == "huber" else X[m])
+            dev = np.abs(e - np.median(e)); scale = 1.4826 * np.median(dev)
+            if scale > 0 and (dev > args.trim_mad * scale).any():
+                keep = m.copy(); keep[np.where(m)[0][dev > args.trim_mad * scale]] = False
+                trimmed[a] = int(m.sum() - keep.sum())
+                m = keep
+                r = fit(m)
         own_beta[a] = pd.Series(r.coef_, index=cols)
         own_support[a] = level_support(feat[m], cols)
+
+    if args.trim_mad > 0:
+        print(f"trimmed {sum(trimmed.values())} sales beyond {args.trim_mad} robust SDs across {len(trimmed)} artists")
 
     # 3. descriptors and neighbours (donors only). Descriptors need only MIN_DESC sales: an
     #    artist with 5 sales can be PLACED (price level, signed share, period) even though their
@@ -391,7 +416,8 @@ def main():
         out = pri.copy()
         for col in cols:
             if sup.get(col, 0) >= MIN_LEVEL_ROWS:
-                out[col] = (n * own[col] + kappa * pri[col]) / (n + kappa)
+                w = sup.get(col, 0) if args.shrink_by == "level" else n
+                out[col] = (w * own[col] + kappa * pri[col]) / (w + kappa)
         return out
 
     def predict(a, beta, rows):
@@ -443,6 +469,7 @@ def main():
         out = df.loc[pred.index, ["artist", "house", "saleDate", "hammerGBP", "editionSize"]].copy()
         out["edition_band"] = feat.loc[pred.index, "edition_band"]
         out["row"] = pred.index
+        out["sourceId"] = df.loc[pred.index, "sourceId"].values
         out["y"] = y[pred.index]
         out["pred"] = pred
         os.makedirs(os.path.dirname(os.path.abspath(args.dump_test)), exist_ok=True)
