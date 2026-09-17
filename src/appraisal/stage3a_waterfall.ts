@@ -1,15 +1,16 @@
 /**
  * The contribution waterfall for one lot's Stage 3a price (plan docs/plans/2026-09-16-stage3-
- * blend-valuation.md, phase 5). Exact, not approximate: for the log-linear pricing model the SHAP
- * value of column j is beta_j * (x_j - E[x_j]), with E over the model's training rows
- * (knowledge_graph/pricing_ml/priors/column_means.json). In log space:
+ * blend-valuation.md, phase 5). Exact, not approximate: the model is log-linear, so each bar is
+ * beta_j * (x_j - r_j), where r is a named REFERENCE PRINT (user direction 2026-09-17):
+ * "<artist>, <technique>: numbered, hand-signed, edition 31-75, large, Bonhams, 2025". In log space:
  *
- *   this artist, this technique   level + technique beta + sum_(other j) beta_j E[x_j] + E[house level] + E[year effect]
- * + signature / proof / edition / size   sum over the attribute's columns of beta_j (x_j - E[x_j]);
- *                                 for an AP / HC / trial proof, proof = the clamped proof premium, and
- *                                 edition = 0 when no edition is stated (price_blend PROOF_POLICY_CLASSES)
- * + sale house (like-for-like)    offset(target) - E[offset]
- * + sale year                     yearEffect(year) - E[year effect]
+ *   the reference print          level + technique beta + sum_(other j) beta_j r_j + offset(Bonhams) + yearEffect(2025)
+ * + signature / proof / edition / size   sum over the attribute's columns of beta_j (x_j - r_j);
+ *                                 for an AP / HC / trial proof, proof = the proof columns at the training
+ *                                 mix plus the clamped premium, and when no edition is stated the edition
+ *                                 columns sit at the training mix (price_blend PROOF_POLICY_CLASSES)
+ * + sale house (like-for-like)    offset(target) - offset(Bonhams)
+ * + sale year                     yearEffect(year) - yearEffect(2025)
  * + model calibration             the priors witness's calibration bias
  * = pricing model price           exactly the priors witness the blend used
  * + market comps                  log(Stage 3a median) - log(pricing model price)
@@ -102,6 +103,26 @@ function lotColumns(profile: ArtistPriceProfile, ev: ValuationEvidence): Record<
   return out;
 }
 
+/**
+ * The print every chart starts from. Each value is a level the model has (or a point on a continuous
+ * term); "large" is the shape-band reference, so it contributes nothing. The edition-size term needs
+ * a number inside the 31-75 band: 50, close to the band's geometric middle (48).
+ */
+export const REFERENCE_PRINT = {
+  signature: "hand", proof: "numbered", editionBand: "31-75", editionSize: 50,
+  areaBand: "1800-7500", house: "Bonhams", year: "2025",
+} as const;
+const REFERENCE_LABEL = "numbered, hand-signed, edition 31–75, large, Bonhams, 2025";
+
+/** The reference print's value on a model column (0/1 for levels, a log value for continuous terms). */
+function referenceX(col: string, profile: ArtistPriceProfile): number {
+  const R = REFERENCE_PRINT;
+  if (col === "edition_log") return Math.log(R.editionSize);
+  if (col === "area_log") return profile.continuousMedians.area_log ?? 0;   // pre-shape-band builds only
+  if (col === "area_log_xl") return 0;
+  return col === `signature_${R.signature}` || col === `proof_${R.proof}` || col === `edition_band_${R.editionBand}` || col === `area_band_${R.areaBand}` ? 1 : 0;
+}
+
 /** Plain names for the shape size bands (build_priors --size-terms shape-bands[+xl]), by sheet side. */
 const SIZE_BAND_NAMES: Record<string, string> = {
   "<400": "small, up to 20 cm a side",
@@ -132,7 +153,7 @@ function attrLabel(dim: string, ev: ValuationEvidence, policyProof: boolean, neu
       ? `${LABELS.proof}: ${IMPRESSION_STATUS[a.proof.value] ?? pretty(a.proof.value)} (${src(a.proof)}; modest proof premium, ${Math.round((DEFAULT_PROOF_PREMIUM.min - 1) * 100)}-${Math.round((DEFAULT_PROOF_PREMIUM.max - 1) * 100)}%)`
       : `${LABELS.proof}: ${IMPRESSION_STATUS[a.proof.value] ?? pretty(a.proof.value)} (${src(a.proof)})`;
     case "edition": return neutralEdition
-      ? `${LABELS.edition}: not stated, not held against an impression outside the edition`
+      ? `${LABELS.edition}: not stated, priced at the average edition for an impression outside the edition`
       : `${LABELS.edition}: ${a.editionSize.value ?? "unknown"} (${src(a.editionSize)})`;
     case "size": return sizeLabel(ev, profile);
     default: return dim;
@@ -143,9 +164,9 @@ function attrLabel(dim: string, ev: ValuationEvidence, policyProof: boolean, neu
  * The waterfall from Stage 2's evidence to Stage 3a's median. `medianGBP` is Stage 3a's median
  * before rounding. Returns null only when there is no median to reach.
  *
- * The chart starts at THIS ARTIST AND TECHNIQUE (user direction 2026-09-16): the artist's model
- * with the lot's technique and every other attribute at the training mix, the training house mix
- * and the average market year. Each later bar moves from there.
+ * The chart starts at THIS ARTIST AND TECHNIQUE (user direction 2026-09-16) as a named reference
+ * print (REFERENCE_PRINT, 2026-09-17), not the training mix: the reader can see what each bar is
+ * measured against. Each later bar moves from there.
  */
 export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration, means: ColumnMeans, medianGBP: number): Waterfall | null {
   if (!(medianGBP > 0)) return null;
@@ -174,33 +195,39 @@ export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration,
     for (const [col, { dim, x }] of Object.entries(cols)) {
       const beta = profile.elasticities[col];
       if (beta == null || !Number.isFinite(beta)) continue;
-      const m = means.columns[col] ?? 0;
       if (dim === "process") { baseline += beta * x; continue; }   // the technique is part of the start
-      baseline += beta * m;
-      if ((policyProof && dim === "proof") || (neutralEdition && dim === "edition")) continue;
-      byDim[dim] = (byDim[dim] ?? 0) + beta * (x - m);
+      const r = referenceX(col, profile);
+      baseline += beta * r;
+      if ((policyProof && dim === "proof") || (neutralEdition && dim === "edition")) { byDim[dim] = (byDim[dim] ?? 0) - beta * r; continue; }
+      byDim[dim] = (byDim[dim] ?? 0) + beta * (x - r);
     }
     if (policyProof) {
-      // The same clamp priorsModelPrediction applies: the artist's proof effect against the mix.
-      const mix = Object.keys(profile.elasticities).filter((c) => c.startsWith("proof_")).reduce((t, c) => t + (profile.elasticities[c] ?? 0) * (means.columns[c] ?? 0), 0);
+      // What priorsModelPrediction prices: the proof (and, with no edition, the edition) columns at the
+      // training mix, plus the artist's proof effect against that mix clamped to the premium range.
+      const atMix = (prefix: string) => Object.keys(profile.elasticities).filter((c) => c.startsWith(prefix)).reduce((t, c) => t + (profile.elasticities[c] ?? 0) * (means.columns[c] ?? 0), 0);
+      const mix = atMix("proof_");
       const measured = (profile.elasticities[`proof_${ev.attrs.proof.value}`] ?? 0) - mix;
-      byDim.proof = Math.min(Math.log(DEFAULT_PROOF_PREMIUM.max), Math.max(Math.log(DEFAULT_PROOF_PREMIUM.min), measured));
-      if (neutralEdition) byDim.edition = 0;
+      byDim.proof = (byDim.proof ?? 0) + mix + Math.min(Math.log(DEFAULT_PROOF_PREMIUM.max), Math.max(Math.log(DEFAULT_PROOF_PREMIUM.min), measured));
+      if (neutralEdition) {
+        const bLog = profile.elasticities.edition_log;
+        byDim.edition = (byDim.edition ?? 0) + atMix("edition_band_") + (bLog != null && Number.isFinite(bLog) ? bLog * (means.columns.edition_log ?? profile.continuousMedians.edition_log ?? 0) : 0);
+      }
     }
     const off = cal.houseOffsets;
     const houseLog = off ? houseOffsetOf(off, ev.targetHouse.value).log : 0;
-    const meanHouse = off ? Object.entries(means.houseShares).reduce((t, [h, sh]) => t + sh * houseOffsetOf(off, h).log, 0) : 0;
-    baseline += meanHouse + means.meanYearEffect;
+    const refHouse = off ? houseOffsetOf(off, REFERENCE_PRINT.house).log : 0;
+    const refYear = profile.yearEffects[REFERENCE_PRINT.year] ?? 0;
+    baseline += refHouse + refYear;
     const year = ev.valuationDate.value.slice(0, 4);
     const yearEff = profile.yearEffects[year] ?? 0;
     const tech = ev.attrs.process.value && ev.attrs.process.value !== "other" ? ev.attrs.process.value : "technique not stated";
     const who = ev.artist.canonical ?? ev.artist.reported ?? "Unknown artist";
     running = baseline;
-    bars.push({ key: "baseline", label: `${who}, ${tech}: typical print (${profile.basis === "shrunk" ? `${profile.earlierSales} own sales` : profile.basis === "prior" ? "priced from similar artists" : "segment default"})`, kind: "baseline", logEffect: 0, multiplier: 1, fromGBP: Math.round(Math.exp(baseline)), toGBP: Math.round(Math.exp(baseline)) });
+    bars.push({ key: "baseline", label: `${who}, ${tech}: ${REFERENCE_LABEL} (${profile.basis === "shrunk" ? `${profile.earlierSales} own sales` : profile.basis === "prior" ? "priced from similar artists" : "segment default"})`, kind: "baseline", logEffect: 0, multiplier: 1, fromGBP: Math.round(Math.exp(baseline)), toGBP: Math.round(Math.exp(baseline)) });
     // Bar key "impression" (the impression-status step); the model dimension behind it is "proof".
     for (const dim of ["signature", "proof", "edition", "size"]) if (dim in byDim) push(dim === "proof" ? "impression" : dim, attrLabel(dim, ev, policyProof, neutralEdition, profile), "factor", byDim[dim]);
-    if (off) push("house", `Sale house: ${ev.targetHouse.value ?? "none chosen (pooled level)"}`, "factor", houseLog - meanHouse);
-    push("year", `Market level: ${year}`, "factor", yearEff - means.meanYearEffect);
+    if (off) push("house", `Sale house: ${ev.targetHouse.value ?? "none chosen (pooled level)"}`, "factor", houseLog - refHouse);
+    push("year", `Market level: ${year}`, "factor", yearEff - refYear);
     push("calibration", "Model calibration on realised hammers", "factor", priors.mu - priors.rawMu);
     const gap = priors.mu - running;
     if (Math.abs(gap) > 1e-6) {

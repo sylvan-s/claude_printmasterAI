@@ -946,3 +946,14 @@ Dollar-comp re-pricing at the valuation-date exchange rate was built (`fx_series
 `HouseOffsets.fxReconvert`, comp currency carried through evidence) and gated at 2024 and 2018
 splits, with both year indices. All four variants are within 0.003 MAE in every group. Not adopted;
 the switch is off in BLEND-1.4. Details in the research note.
+
+### 2026-09-17: waterfall starts at a named reference print
+
+The chart's starting bar was the artist + technique with every other driver at the training mix
+(76% hand-signed, 14% artist's proofs, a spread of editions and sizes, 78% Bonhams, average year),
+so a matching lot still showed non-zero bars and "unsigned" read as a cut from a part-signed mix.
+User direction: start at "<artist>, <technique>: numbered, hand-signed, edition 31–75, large,
+Bonhams, 2025" (`REFERENCE_PRINT` in `stage3a_waterfall.ts`; the edition-size term is read at 50).
+Each bar is now beta * (lot - reference) and is zero where the lot matches. Display only: the
+model price and Stage 3a median are unchanged, and the bars still sum to them exactly.
+Condition and CLIP subject are not in the reference because neither is priced.

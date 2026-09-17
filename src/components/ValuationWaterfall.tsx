@@ -4,8 +4,8 @@ import type { ValuationNarrative } from "../appraisal/stage3b_narration";
 
 /**
  * How the fair-value price was built (plan docs/plans/2026-09-16-stage3-blend-valuation.md,
- * phase 5): the Stage 3a contribution waterfall on a log price axis, from a typical print by this
- * artist in this technique to this lot's median, with Stage 3b's narration beside it. Bars are in GBP in the report and
+ * phase 5): the Stage 3a contribution waterfall on a log price axis, from a reference print by this
+ * artist in this technique (stage3a_waterfall REFERENCE_PRINT) to this lot's median, with Stage 3b's narration beside it. Bars are in GBP in the report and
  * converted with the view's own currency function, so they match the headline range.
  */
 interface Props {

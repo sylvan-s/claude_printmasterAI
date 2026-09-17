@@ -43,17 +43,22 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   ok("start + every step = log median (start rounded to the pound)", close(start + steps, Math.log(median), 1e-3));
   const priors = calibratedWitnesses(evidenceToBlendInputs(e, { proofPolicy: { columnMeans: means.columns, premium: { min: 1.05, max: 1.1 } } }), cal, "no_estimate").witnesses.find((x) => x.source === "priors_model")!;
   const modelSteps = w.bars.slice(0, w.bars.findIndex((b) => b.key === "model")).filter((b) => b.kind === "factor").reduce((t, b) => t + b.logEffect, 0);
-  // Exact start in log space: level + technique beta + other betas at the mix + mean house + mean year.
+  // Exact start in log space: level + technique beta + the reference print (hand-signed, numbered,
+  // edition 31-75 at 50, size at the model reference) + Bonhams (0) + 2025 (no effect in this profile).
   const p = e.profile!;
-  const exactStart = p.level + 0.15 /* process_etching */ + [["signature_hand", 0.7], ["proof_unknown", -0.1], ["edition_band_31-75", 0.2], ["area_band_>1800", 0.3], ["edition_log", -0.1], ["area_log", 0.2]].reduce((t, [c, b]) => t + (b as number) * (means.columns[c as string] ?? 0), 0)
-    + (0.78 * 0 + 0.2 * Math.log(0.92) + 0.02 * Math.log(0.92)) + 0.03;
+  const exactStart = p.level + 0.15 /* process_etching */ + 0.7 /* signature_hand */ + 0.2 /* edition_band_31-75 */ + -0.1 * Math.log(50) + 0.2 * Math.log(2400);
   ok("start + model bars = the priors witness price the blend used, exactly", close(exactStart + modelSteps, priors.mu));
   eq("no gap note on a consistent build", w.notes, []);
   eq("bar order: starts at artist + technique, no artist or technique bar", w.bars.map((b) => b.key), ["baseline", "signature", "impression", "edition", "size", "house", "year", "calibration", "model", "comps", "total", "condition"]);
-  ok("start label names the artist and technique", w.bars[0].label.startsWith("X, etching: typical print"));
-  ok("signature bar is beta * (1 - share)", close(w.bars.find((b) => b.key === "signature")!.logEffect, 0.7 * (1 - 0.75)));
-  ok("proof bar for a numbered (reference) lot is -beta * share of unknown", close(w.bars.find((b) => b.key === "impression")!.logEffect, -(-0.1) * 0.2));
-  ok("house bar is the lot's level minus the training mix's level", close(w.bars.find((b) => b.key === "house")!.logEffect, Math.log(0.85) - (0.2 * Math.log(0.92) + 0.02 * Math.log(0.92)))); // Skinner is unmeasured here: pooled
+  ok("start label names the artist and technique", w.bars[0].label.startsWith("X, etching: numbered, hand-signed, edition 31–75, large, Bonhams, 2025 ("));
+  ok("signature bar is zero for a hand-signed lot (the reference)", close(w.bars.find((b) => b.key === "signature")!.logEffect, 0));
+  const unsigned = { ...e, attrs: { ...e.attrs, signature: { value: "unsigned", source: "catalogue" } } } as any;
+  const wU = valuationWaterfall(unsigned, cal, means, stage3aValuation(unsigned, cal, means)!.medianGBP)!;
+  ok("signature bar for an unsigned lot is -beta(hand)", close(wU.bars.find((b) => b.key === "signature")!.logEffect, -0.7) && wU.notes.length === 0);
+  ok("proof bar is zero for a numbered lot (the reference)", close(w.bars.find((b) => b.key === "impression")!.logEffect, 0));
+  ok("edition bar for 50 in the 31-75 band is zero (the reference)", close(w.bars.find((b) => b.key === "edition")!.logEffect, 0));
+  ok("house bar is the lot's house against Bonhams", close(w.bars.find((b) => b.key === "house")!.logEffect, Math.log(0.85)));
+  ok("year bar is the lot's year against 2025", close(w.bars.find((b) => b.key === "year")!.logEffect, 0.12));
   ok("calibration bar is the witness bias", close(w.bars.find((b) => b.key === "calibration")!.logEffect, Math.log(0.8)));
   ok("labels carry the attribute source", w.bars.find((b) => b.key === "impression")!.label.includes("not stated: model default"));
   ok("the step is labelled impression status in plain words", w.bars.find((b) => b.key === "impression")!.label.startsWith("Impression status: numbered impression"));
@@ -71,12 +76,14 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   const rHc = stage3aValuation(hc, cal, means)!;
   const wHc = valuationWaterfall(hc, cal, means, rHc.medianGBP)!;
   const bar = (k: string) => wHc.bars.find((b) => b.key === k)!;
-  eq("proof without an edition: edition bar is zero and says so", [bar("edition").logEffect, bar("edition").label], [0, "Edition: not stated, not held against an impression outside the edition"]);
+  // Edition columns at the training mix, against the reference (31-75 band, edition 50).
+  const editionAtMix = 0.2 * 0.15 + -0.1 * 4.2 - (0.2 + -0.1 * Math.log(50));
+  eq("proof without an edition: edition at the average edition, and says so", [close(bar("edition").logEffect, editionAtMix), bar("edition").label], [true, "Edition: not stated, priced at the average edition for an impression outside the edition"]);
   ok("hors commerce reads as outside the numbered edition", bar("impression").label.startsWith("Impression status: hors commerce (outside the numbered edition)"));
   const hcEd = { ...hc, attrs: { ...hc.attrs, editionSize: { value: 25, source: "catalogue" } } };
   const wEd = valuationWaterfall(hcEd, cal, means, stage3aValuation(hcEd, cal, means)!.medianGBP)!;
   ok("proof with a stated edition: the edition still prices it", wEd.bars.find((b) => b.key === "edition")!.logEffect !== 0 && wEd.bars.find((b) => b.key === "edition")!.label.startsWith("Edition: 25") && wEd.notes.length === 0);
-  ok("proof: a large fitted proof effect is clamped to +10%", close(bar("impression").logEffect, Math.log(1.1)));
+  ok("proof: a large fitted proof effect is clamped to +10%", close(bar("impression").logEffect, -0.1 * 0.2 /* proof columns at the mix */ + Math.log(1.1)));
   ok("proof: label says modest proof premium", bar("impression").label.includes("modest proof premium, 5-10%"));
   const hcPriors = calibratedWitnesses(evidenceToBlendInputs(hc, { proofPolicy: { columnMeans: means.columns, premium: { min: 1.05, max: 1.1 } } }), cal, "no_estimate").witnesses.find((x) => x.source === "priors_model")!;
   const hcModelSteps = wHc.bars.slice(0, wHc.bars.findIndex((b) => b.key === "model")).filter((b) => b.kind === "factor").reduce((t, b) => t + b.logEffect, 0);
@@ -93,11 +100,11 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   const sizeBar = (cm2: number | null) => { const x = at(cm2); const r = stage3aValuation(x, cal, shapeMeans)!; return valuationWaterfall(x, cal, shapeMeans, r.medianGBP)!; };
   const small = sizeBar(297);
   eq("small sheet label names the band and side", small.bars.find((b) => b.key === "size")!.label, "Size: small, up to 20 cm a side (297 cm², catalogue)");
-  ok("small sheet bar is the band effect against the mix", close(small.bars.find((b) => b.key === "size")!.logEffect, -0.2 * (1 - 0.05) - 0.25 * 0.08 - 0.4 * 0.05));
+  ok("small sheet bar is the band effect against large", close(small.bars.find((b) => b.key === "size")!.logEffect, -0.2));   // large is the reference size
   const big = sizeBar(30000);
   const bigBar = big.bars.find((b) => b.key === "size")!;
   ok("extra-large label gives the band and the per-doubling growth", bigBar.label.startsWith("Size: extra large, over 87 cm a side (30,000 cm², catalogue; larger still: x1.32 per doubling of area"));
-  ok("extra-large bar adds the step and the log-area term above 7,500 cm²", close(bigBar.logEffect, -0.2 * (0 - 0.05) + 0.25 * (1 - 0.08) + 0.4 * (Math.log(30000 / 7500) - 0.05)));
+  ok("extra-large bar adds the step and the log-area term above 7,500 cm²", close(bigBar.logEffect, 0.25 + 0.4 * Math.log(30000 / 7500)));
   eq("the chart still reaches the model price exactly (no gap note)", big.notes, []);
   eq("unknown size says so", sizeBar(null).bars.find((b) => b.key === "size")!.label, "Size: not stated (not stated: model default)");
 }
