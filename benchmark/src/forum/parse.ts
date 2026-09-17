@@ -22,6 +22,9 @@
  */
 import { artistNameLeakTokens, artistSurnameToken } from "../../../src/shared/text_extraction";
 
+/** "numbered 21/30", "numbered '12/50'", "No. 3/8". Never a bare fraction, never one followed by mm, cm or an inch mark. */
+export const NUMBERED_FRACTION_RE = /\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201C\u201D]?\d+\s*\/\s*(\d+)\b(?!\s*(?:mm\b|cm\b|["\u201D]))/i;
+
 export type ArtistQualifier =
   | "certain" | "attributed" | "circle" | "studio" | "follower" | "after" | "unknown";
 
@@ -208,7 +211,9 @@ export function parseDescription(html: string): ParsedLot {
       ? body.match(/\b((?:signed|inscribed|numbered|stamped|dated|titled)[^.]*?)(?:, on |, printed| \d{2,4} x)/i)?.[1]?.trim() ?? null
       : null);
 
-  const editionSizeMatch = body.match(/edition of (\d+)/i) ?? body.match(/\b\d+\s*\/\s*(\d+)\b/);
+  // "n/N" counts only after "numbered" / "no.": a bare fraction is almost always imperial
+  // dimensions ("510 x 647mm (20 x 25 3/8in)" read as an edition of 8). 2026-09-17 repair.
+  const editionSizeMatch = body.match(/edition of (\d+)/i) ?? body.match(NUMBERED_FRACTION_RE);
   const editionSize = editionSizeMatch ? Number(editionSizeMatch[1]) : null;
   const editionLine = body.match(/((?:an? )?(?:artist'?s|printer'?s)? ?proof[^,]*|from the (?:total )?edition of \d+[^,]*|numbered from[^,]*)/i)?.[1]?.trim() ?? null;
 
