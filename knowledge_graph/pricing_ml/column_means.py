@@ -67,6 +67,9 @@ def main():
         REFS["area_band"] = "1800-7500"
     for col, cat in SUBJECT_FLAGS.items():
         feat[col] = (feat["subject"] == cat).astype(float)
+    # Continuous terms the build dropped (edition_log under --edition-terms bands) are not columns here.
+    for c in [c for c in CONT if c not in cols]:
+        CONT.remove(c)
     train = (df["saleDate"] < cut).values
     X = design(feat, columns=cols)
     for c in CONT:

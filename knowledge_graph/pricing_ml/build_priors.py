@@ -249,7 +249,7 @@ def main():
     ap.add_argument("--out-dir", default=os.path.join(HERE, "priors"))
     ap.add_argument("--size-terms", choices=["both", "bands", "shape-bands", "shape-bands+log", "shape-bands+xl"], default="both",
                     help="both = area bands + per-doubling area_log (1.2); bands = area bands only (2026-09-16 check: the two are collinear and pulled against each other for thin artists)")
-    ap.add_argument("--edition-terms", choices=["both", "bands", "slope", "hinge"], default="both",
+    ap.add_argument("--edition-terms", choices=["both", "bands", "slope", "hinge"], default="bands",
                     help="both = edition bands + log edition (1.2); bands = bands only; slope = log edition + an unknown flag; "
                          "hinge = piecewise-linear log edition (knots 30/75/150/300) + an unknown flag. 2026-09-17 collinearity test: "
                          "the bands explain 87%% of log edition")

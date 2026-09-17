@@ -219,6 +219,8 @@ export function adjustmentBetween(lot: PriceAttrs, comp: PriceAttrs, profile: Ar
     logAdj += delta;
   }
   for (const [col, lv, cv] of cont) {
+    // A build without the term (edition_log under --edition-terms bands) is not an unknown column.
+    if (!(col in profile.elasticities)) continue;
     const beta = profile.elasticities[col];
     if (beta == null || !Number.isFinite(beta)) { if (lv != null || cv != null) unknown.add(col); continue; }
     const median = profile.continuousMedians[col];

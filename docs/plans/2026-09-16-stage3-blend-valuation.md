@@ -1019,3 +1019,20 @@ hand-drawn lithographs), inflating screenprint premiums (Banksy x3.98) and muddy
   Bonhams 0.593 -> 0.590, Forum 0.642 -> 0.634, Roseberys 0.591 -> 0.584.
 - Also fixed: the VEA edition read. The 0bbb643 edition rule rejected a bare "12/75" inscription
   transcription; a whole-field fraction read off the print counts again.
+
+### 2026-09-17: edition as bands only (BLEND-1.8)
+
+The collinearity check found the edition bands explain 87% of the log-edition term (VIF 7.6
+market-wide, median 34 within artists), so the two pulled against each other and the chart's
+edition bar netted opposite signs (Hockney: <=30 x0.46 against a slope favouring small editions).
+`build_priors.py --edition-terms bands` is now the default. Live code already skips an absent
+continuous term; `adjustmentBetween` no longer reports it as an unknown column.
+
+- Priors only, sales from 2024-07-01: MAE(log) 0.656 -> 0.658 (the 2026-09-17 four-way test put
+  bands-only vs both at +0.002, interval crossing zero).
+- Blend gate (BLEND-1.8): 0.614 -> 0.617, 80% cover 80% -> 80%; Bonhams 0.590 -> 0.606,
+  Roseberys 0.584 -> 0.594, Forum 0.634 -> 0.631; suite-comp lots 0.496 -> 0.509.
+- Adopted for a readable edition bar at a small accuracy cost (user direction). To revert:
+  `--edition-terms both`, rebuild, refit.
+- Hockney *Self-Portrait* (hammer £6,000): edition step x0.54 -> x0.75 (<=30 x1.16 vs 31-75
+  x1.55); median £2,849, estimate £1,000–7,600, now covering the hammer.

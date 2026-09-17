@@ -1,8 +1,8 @@
 {
  "version": "COLUMN-MEANS-1.0",
- "builtAt": "2026-09-17T06:49:57Z",
- "priorsVersion": "PRICING-PRIORS-1.2-shape-bands+xl+offset+poster",
- "priorsBuiltAt": "2026-09-17T06:49:49+00:00",
+ "builtAt": "2026-09-17T06:56:37Z",
+ "priorsVersion": "PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands",
+ "priorsBuiltAt": "2026-09-17T06:56:29+00:00",
  "trainRows": 34622,
  "baselineLogHammer": 6.959555633692023,
  "columns": {
@@ -39,14 +39,13 @@
   "house_Forum Auctions": 0.07888048061925942,
   "house_Roseberys London": 0.18849286580786784,
   "house_Skinner": 0.014095084050603663,
-  "edition_log": 4.5392400349293105,
   "area_log_xl": 0.03196671558843918,
   "subject_is_abstract": 0.06339899485876033,
   "subject_is_comic_satirical": 0.02039165848304546,
   "subject_is_surreal": 0.00904049448327653,
   "poster": 0.02466639708855641
  },
- "meanYearEffect": 0.04433849977860438,
+ "meanYearEffect": 0.04456914856231465,
  "houseShares": {
   "Bonhams": 0.718531569522269,
   "Roseberys London": 0.18849286580786784,
