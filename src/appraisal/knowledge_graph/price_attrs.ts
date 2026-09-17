@@ -102,9 +102,9 @@ export function proofClass(copyType: string | null | undefined, text: string | n
  * catalogue text it is almost always an inch fraction ("19 1/2 x 15 1/4in"), which gave 6,257
  * training rows editions of 2/4/8/16. Only explicit wording counts, in this order.
  */
-const NUMBERED_RE = /\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201c\u201d]?\d+\s*\/\s*(\d{1,5})\b(?!\s*(?:mm\b|cm\b|["\u201d]))/i;
-const EDITION_OF_RE = /\bedition of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,5})\b/i;
-const ONE_OF_RE = /\bone of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,5})\s+(?:impressions|copies|examples)\b/i;
+const NUMBERED_RE = /\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201c\u201d]?\d+\s*\/\s*(\d{1,3}(?:,\d{3})+|\d{1,5})\b(?!\s*(?:mm\b|cm\b|["\u201d]))/i;
+const EDITION_OF_RE = /\bedition of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,3}(?:,\d{3})+|\d{1,5})\b/i;
+const ONE_OF_RE = /\bone of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,3}(?:,\d{3})+|\d{1,5})\s+(?:impressions|copies|examples)\b/i;
 
 /** train_price_model.edition_size — declared when positive, else "numbered n/N", "edition of N", "one of N impressions". */
 export function editionSizeOf(declared: number | null | undefined, text: string | null | undefined): number | null {
@@ -112,7 +112,8 @@ export function editionSizeOf(declared: number | null | undefined, text: string 
   const t = text ?? "";
   for (const rx of [NUMBERED_RE, EDITION_OF_RE, ONE_OF_RE]) {
     const m = t.match(rx);
-    if (m && Number(m[1]) > 0) return Number(m[1]);
+    const n = m ? Number(m[1].replace(/,/g, "")) : 0;   // "edition of 1,000" is 1000, not 1
+    if (n > 0) return n;
   }
   return null;
 }

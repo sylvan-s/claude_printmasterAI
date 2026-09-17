@@ -189,7 +189,7 @@ export function extractCatalogueRefs(text: string): string[] {
  * before the 2026-09-17 repair.
  */
 export function detectEditionSize(text: string): number | null {
-  const m = text.match(/\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201C\u201D]?\d+\s*\/\s*(\d+)\b(?!\s*(?:mm\b|cm\b|["\u201D]))/i)
-    ?? text.match(/edition\s+of\s+(\d+)/i);
-  return m ? Number(m[1]) : null;
+  const m = text.match(/\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201C\u201D]?\d+\s*\/\s*(\d{1,3}(?:,\d{3})+|\d+)\b(?!\s*(?:mm\b|cm\b|["\u201D]))/i)
+    ?? text.match(/edition\s+of\s+(\d{1,3}(?:,\d{3})+|\d+)/i);
+  return m ? Number(m[1].replace(/,/g, "")) : null;   // "edition of 1,000" is 1000, not 1
 }

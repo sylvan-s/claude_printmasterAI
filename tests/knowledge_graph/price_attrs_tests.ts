@@ -54,6 +54,11 @@ eq("No. n/N", editionSizeOf(null, "screenprint, No. 45/250"), 250);
 eq("edition of approximately", editionSizeOf(null, "from an edition of approximately 50, printed by Ron Fuller"), 50);
 eq("edition of c.", editionSizeOf(null, "from the edition of c. 100"), 100);
 eq("zero is not an edition", editionSizeOf(null, "numbered 0/0"), null);
+// 2026-09-17: thousands separators
+eq("edition of 1,000", editionSizeOf(null, "an artist's proof, aside from the edition of 1,000"), 1000);
+eq("numbered n/1,000", editionSizeOf(null, "signed and numbered 441/1,000 in pencil"), 1000);
+eq("comma after a small number is punctuation", editionSizeOf(null, "from the edition of 50, printed by Mourlot"), 50);
+eq("numbering beats a later edition of 5,000", editionSizeOf(null, "numbered 12/50 (there was also an unsigned edition of 5,000)"), 50);
 eq("dims fraction is not 'numbered'", proofClass(null, "offset poster, 735 x 545mm (29 x 21 1/2in)"), "unknown");
 eq("numbered wording is numbered", proofClass(null, "signed and numbered 21/30 in pencil"), "numbered");
 

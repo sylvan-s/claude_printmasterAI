@@ -1036,3 +1036,25 @@ continuous term; `adjustmentBetween` no longer reports it as an unknown column.
   `--edition-terms both`, rebuild, refit.
 - Hockney *Self-Portrait* (hammer £6,000): edition step x0.54 -> x0.75 (<=30 x1.16 vs 31-75
   x1.55); median £2,849, estimate £1,000–7,600, now covering the hammer.
+
+### 2026-09-17: edition numbers with thousands separators (BLEND-1.9)
+
+The junk-sales review found "aside from the edition of 1,000" stored as an edition of 1: every
+edition parser's number pattern stopped at the comma, so mass editions and posters sat in the
+<=30 band. Fixed in `bonhams_parsing.py` (1.2; Bonhams, Skinner, Swann ingests),
+`train_price_model.py` / `price_attrs.ts` (parity on 55,044 rows), `text_extraction.ts` and the
+Forum parser.
+
+- Graph repair `repair_edition_thousands.py` (EDITION-THOUSANDS-REPAIR-1.0), applied: 229
+  EditionRuns (Bonhams 212, Skinner 12, Swann 3, Roseberys 2), fixed only where the stored size
+  was the leading group of the separated number; 0 held. Old values in
+  `declaredSizeBeforeThousands`. Guard `check_edition_thousands.py` passes.
+- Re-export changed editionSize on 179 sales and nothing else. Model file and column means rebuilt.
+- Priors only: 0.658 -> 0.657. Blend gate (BLEND-1.9): MAE(log) 0.617 -> **0.615**, 80% cover
+  80% -> 81%; Bonhams 0.606 -> 0.597, Roseberys 0.594 -> 0.592, Forum 0.631 -> 0.630.
+- The <=30-below-31-75 pattern for Warhol, Picasso and Lichtenstein remains: work composition.
+
+Same review: ~300 genuine non-print sales (printing plates, drawings, whole suites, posthumous or
+not-by-the-artist editions) and 3,575 photographs are in the export. Excluding them did not
+improve held-out print accuracy (0.6538 -> 0.6550 / 0.6556) and they rarely share a work with
+ordinary prints, so they stay; excluding photographs is a scope decision, not an accuracy one.

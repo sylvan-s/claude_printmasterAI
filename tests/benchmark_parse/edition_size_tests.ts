@@ -40,6 +40,10 @@ const CASES: [string, number | null][] = [
   // "numbered n/N" wins over "edition of", matching the price model (train_price_model.py / price_attrs.ts)
   ["Lithograph, signed and numbered 12/50 in pencil (there was also an unsigned edition of 500), 560 x 760mm (22 x 29 7/8in)", 50],
   ["Screenprint, from the edition of 250 (there were also 25 artist's proofs), numbered 7/250 in pencil", 250],
+  // thousands separators (2026-09-17): "1,000" is one number
+  ["Lithograph, an artist's proof aside from the edition of 1,000, 266 x 229mm (10 1/2 x 9in)", 1000],
+  ["Offset lithograph, signed and numbered 441/1,000 in pencil", 1000],
+  ["Lithograph, from the edition of 50, printed by Mourlot, 500 x 650mm (19 5/8 x 25 5/8in)", 50],
 ];
 
 for (const [body, want] of CASES) {

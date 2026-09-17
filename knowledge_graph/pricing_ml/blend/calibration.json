@@ -1,7 +1,7 @@
 {
-  "version": "BLEND-1.8",
-  "fittedAt": "2026-09-17T06:58:18.416Z",
-  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands@2026-09-17T06:56:29+00:00, offline refit",
+  "version": "BLEND-1.9",
+  "fittedAt": "2026-09-17T07:42:51.612Z",
+  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands@2026-09-17T07:40:51+00:00, offline refit",
   "witnesses": {
     "estimate": {
       "df": 5,
@@ -111,23 +111,23 @@
       "df": 5,
       "byKey": {
         "segment": {
-          "bias": -1.2865100228158695,
-          "sigma": 1.1196177550751778,
+          "bias": -1.2927997534771505,
+          "sigma": 1.1251724494409558,
           "n": 836
         },
         "all": {
-          "bias": -0.3142098053437019,
-          "sigma": 0.7819812057801604,
+          "bias": -0.31898613590046976,
+          "sigma": 0.7847084629048798,
           "n": 5094
         },
         "shrunk": {
-          "bias": -0.20198935751384317,
-          "sigma": 0.6731624082325457,
+          "bias": -0.20545839743998462,
+          "sigma": 0.6788668774636935,
           "n": 3770
         },
         "prior": {
-          "bias": -0.24965739007335896,
-          "sigma": 0.5859712515463061,
+          "bias": -0.25337440454762206,
+          "sigma": 0.5768320035847769,
           "n": 488
         }
       }
@@ -153,19 +153,19 @@
       "weights": {
         "estimate": 0,
         "same_work": 3,
-        "same_suite": 1,
+        "same_suite": 1.5,
         "same_artist_technique": 0.5,
         "same_artist": 0.25,
         "priors_model": 1.5
       },
       "temperature": 2,
       "fitLots": 5094,
-      "fitMaeLog": 0.6073245463083493,
-      "fitCoverage80": 0.7964271692186886,
+      "fitMaeLog": 0.6086616222442417,
+      "fitCoverage80": 0.7940714566156263,
       "temperatureByTier": {
         "same_work_3+": 2.5,
         "same_work_1-2": 3,
-        "same_suite": 1.75,
+        "same_suite": 2,
         "same_artist_technique": 1.75,
         "same_artist": 1.75,
         "priors_model": 1.5

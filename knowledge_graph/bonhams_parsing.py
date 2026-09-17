@@ -1,7 +1,10 @@
 """
 PrintMasterAI — free-text/HTML parsing helpers for the Bonhams Group 'Prints &
 Multiples' export (bonhams_ingest.py)
-Version: BONHAMS-PARSING-1.1
+Version: BONHAMS-PARSING-1.2
+
+1.2 (2026-09-17): edition numbers may carry thousands separators. "Aside from the edition of
+1,000" had been stored as an edition of 1 (see repair_edition_thousands.py).
 
 Unlike Roseberys/Forum (already parsed into columns by an external tool before this
 project ever saw them), this source is raw per-lot catalog HTML — much closer to the
@@ -288,17 +291,18 @@ def detect_signed(detail_text):
 
 
 # ---- Edition size ----
-_NUMBERED_FRACTION_RE = re.compile(r"number(?:ed)?\s+['\"]?[ivxlcdm\d]+\s*/\s*(\d+)", re.IGNORECASE)
-_EDITION_OF_RE = re.compile(r"edition of\s+(\d+)", re.IGNORECASE)
+_EDITION_NUMBER = r"(\d{1,3}(?:,\d{3})+|\d+)"   # "1,000" is one number
+_NUMBERED_FRACTION_RE = re.compile(r"number(?:ed)?\s+['\"]?[ivxlcdm\d]+\s*/\s*" + _EDITION_NUMBER, re.IGNORECASE)
+_EDITION_OF_RE = re.compile(r"edition of\s+" + _EDITION_NUMBER, re.IGNORECASE)
 
 
 def extract_edition_size(detail_text):
     m = _NUMBERED_FRACTION_RE.search(detail_text)
     if m:
-        return int(m.group(1))
+        return int(m.group(1).replace(",", ""))
     m = _EDITION_OF_RE.search(detail_text)
     if m:
-        return int(m.group(1))
+        return int(m.group(1).replace(",", ""))
     return None
 
 
