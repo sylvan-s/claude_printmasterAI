@@ -975,3 +975,25 @@ likewise), and the calibration refit with
   x1.64, plus the edition-size term), while his signed non-offset sales differ by ~10% (median
   £4,480 against £5,000). The Forum bug did not cause it: the old file had no Forum rows. Open:
   test dropping the edition-size term or merging <=30 with 31–75, on the same gate.
+
+### 2026-09-17: edition sizes read only from explicit wording; model file rebuilt, BLEND-1.6
+
+`train_price_model.edition_size` fell back to the first bare "n/N" in the description when no
+edition was declared. In catalogue text that is almost always an inch fraction
+("(19 1/2 x 15 1/4in)" → 2; "5/8 … one of approximately 50" → 8), so 6,069 training rows (mostly
+Bonhams) sat in the wrong edition band, 5,673 of them in <=30. `proof_class` used the same bare
+fraction to call a print numbered (291 rows). Now, in order: declared, "numbered/No. n/N",
+"edition of [approximately/about/circa/c.] N", "one of [approximately] N impressions/copies/
+examples"; a bare fraction never counts. Mirrored in `price_attrs.ts`; `test:price-attrs` agrees
+on all 55,044 exported rows.
+
+- Training <=30 band 8,834 → 2,996 rows; 5,673 → unknown, 142 → their real band.
+- Pricing model alone (sales from 2024-07-01, k=60): MAE(log) 0.657 → 0.659, a tie. The test
+  rows carried the same misreading, so the fake <=30 label was partly an accidental "poster with
+  inch dimensions" signal.
+- Blend gate (BLEND-1.6, 1,495 lots): 0.619 → 0.621, cover 79% → 78%; Bonhams 0.611 → 0.593,
+  Roseberys 0.596 → 0.591, Forum 0.632 → 0.642. Adopted as a correctness fix on a tie.
+- Hockney *Self-Portrait* (G.E.L. 1649, hammer £6,000): median £1,630 → £2,172, estimate
+  £810–5,700; edition step x0.48 → x0.54 (<=30 now 34 genuine rows). Still open: the <=30 band
+  and the edition-size slope pull against each other, and edition × technique / size
+  interactions are untested market-wide.

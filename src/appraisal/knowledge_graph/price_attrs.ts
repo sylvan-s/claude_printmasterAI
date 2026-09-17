@@ -75,19 +75,28 @@ export function proofClass(copyType: string | null | undefined, text: string | n
   if (/artist'?s proof|épreuve d'artiste|epreuve d'artiste|\bE\.?A\.?\b|\bA\.?P\.?\b/.test(raw)) return "artist_proof";
   if (/hors commerce|\bH\.?C\.?\b/.test(raw)) return "hors_commerce";
   if (/trial proof|épreuve d'essai|epreuve d'essai|bon à tirer|bon a tirer|\bB\.?A\.?T\.?\b/.test(raw)) return "trial_proof";
-  if (/\d+\s*\/\s*\d+/.test(t) || String(copyType ?? "").toLowerCase() === "numbered") return "numbered";
+  if (NUMBERED_RE.test(t) || String(copyType ?? "").toLowerCase() === "numbered") return "numbered";
   if (/from the edition of|edition of \d/.test(t)) return "edition_unnumbered";
   return "unknown";
 }
 
-/** train_price_model.edition_size — declared when positive, else "x/N", else "edition of N". */
+/**
+ * Edition wording, mirroring train_price_model.py (2026-09-17). A bare "n/N" is NOT an edition: in
+ * catalogue text it is almost always an inch fraction ("19 1/2 x 15 1/4in"), which gave 6,257
+ * training rows editions of 2/4/8/16. Only explicit wording counts, in this order.
+ */
+const NUMBERED_RE = /\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201c\u201d]?\d+\s*\/\s*(\d{1,5})\b(?!\s*(?:mm\b|cm\b|["\u201d]))/i;
+const EDITION_OF_RE = /\bedition of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,5})\b/i;
+const ONE_OF_RE = /\bone of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,5})\s+(?:impressions|copies|examples)\b/i;
+
+/** train_price_model.edition_size — declared when positive, else "numbered n/N", "edition of N", "one of N impressions". */
 export function editionSizeOf(declared: number | null | undefined, text: string | null | undefined): number | null {
   if (declared != null && Number.isFinite(declared) && declared > 0) return declared;
   const t = text ?? "";
-  let m = t.match(/\d+\s*\/\s*(\d{1,4})/);
-  if (m) return Number(m[1]);
-  m = t.match(/edition of (?:approximately |about )?(\d{1,5})/i);
-  if (m) return Number(m[1]);
+  for (const rx of [NUMBERED_RE, EDITION_OF_RE, ONE_OF_RE]) {
+    const m = t.match(rx);
+    if (m && Number(m[1]) > 0) return Number(m[1]);
+  }
   return null;
 }
 

@@ -35,16 +35,27 @@ eq("Artist's proof capitalised misses (trainer quirk)", proofClass(null, "Artist
 eq("artist's proof lower hits", proofClass(null, "an artist's proof aside from the edition of 50"), "artist_proof");
 eq("HC", proofClass(null, "screenprint, H.C."), "hors_commerce");
 eq("BAT", proofClass(null, "bon à tirer"), "trial_proof");
-eq("numbered by fraction", proofClass(null, "numbered 3/75"), "numbered");
+eq("numbered by numbered fraction", proofClass(null, "numbered 3/75"), "numbered");
 eq("numbered by copyType", proofClass("numbered", "lithograph"), "numbered");
 eq("AP copyType alone is NOT read (trainer reads text only)", proofClass("AP", "lithograph"), "unknown");
 eq("edition unnumbered", proofClass(null, "from the edition of 200"), "edition_unnumbered");
 
 console.log("editionSizeOf");
 eq("declared wins", editionSizeOf(50, "numbered 3/75"), 50);
-eq("fraction", editionSizeOf(null, "numbered 3/75"), 75);
+eq("numbered fraction", editionSizeOf(null, "numbered 3/75"), 75);
 eq("edition of", editionSizeOf(0, "from the edition of approximately 300"), 300);
 eq("none", editionSizeOf(null, "lithograph"), null);
+// 2026-09-17: a bare fraction is dimensions, never an edition
+eq("inch fraction is not an edition", editionSizeOf(null, "Offset lithographic poster, 1966, 735 x 545mm (29 x 21 1/2in)"), null);
+eq("fraction before 'one of approximately 50'", editionSizeOf(null, "Etching, signed, 5/8 plate mark, one of approximately 50 impressions"), 50);
+eq("numbered beats a later edition of", editionSizeOf(null, "signed and numbered 12/50 in pencil (there was also an unsigned edition of 500)"), 50);
+eq("numbered in pencil n/N", editionSizeOf(null, "numbered in pencil 3/8, 250 x 200mm (9 7/8 x 7 7/8in)"), 8);
+eq("No. n/N", editionSizeOf(null, "screenprint, No. 45/250"), 250);
+eq("edition of approximately", editionSizeOf(null, "from an edition of approximately 50, printed by Ron Fuller"), 50);
+eq("edition of c.", editionSizeOf(null, "from the edition of c. 100"), 100);
+eq("zero is not an edition", editionSizeOf(null, "numbered 0/0"), null);
+eq("dims fraction is not 'numbered'", proofClass(null, "offset poster, 735 x 545mm (29 x 21 1/2in)"), "unknown");
+eq("numbered wording is numbered", proofClass(null, "signed and numbered 21/30 in pencil"), "numbered");
 
 console.log("dimsCm");
 eq("cm string", dimsCm("30.0x34.0cm"), [30, 34]);

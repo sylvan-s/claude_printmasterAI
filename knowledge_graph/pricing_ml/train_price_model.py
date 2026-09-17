@@ -97,11 +97,21 @@ def proof_class(copy_type, text):
         return "hors_commerce"
     if re.search(r"trial proof|épreuve d'essai|epreuve d'essai|bon à tirer|bon a tirer|\bB\.?A\.?T\.?\b", text or ""):
         return "trial_proof"
-    if re.search(r"\d+\s*/\s*\d+", t) or str(copy_type).lower() == "numbered":
+    if NUMBERED_RE.search(t) or str(copy_type).lower() == "numbered":
         return "numbered"
     if re.search(r"from the edition of|edition of \d", t):
         return "edition_unnumbered"
     return "unknown"
+
+
+# Edition wording (2026-09-17). A bare "n/N" is NOT an edition: in catalogue text it is almost
+# always an inch fraction, "(19 1/2 x 15 1/4in)", and the old fallback took the first one it
+# found — 6,257 training rows (mostly Bonhams) got editions of 2/4/8/16, and "5/8 ... one of
+# approximately 50 impressions" read as 8. Only explicit wording counts now, in this order.
+# Mirrored exactly in src/appraisal/knowledge_graph/price_attrs.ts (npm run test:price-attrs).
+NUMBERED_RE = re.compile(r"\b(?:numbered|no\.)\s*(?:in pencil\s*)?['\"\u2018\u2019\u201c\u201d]?\d+\s*/\s*(\d{1,5})\b(?!\s*(?:mm\b|cm\b|[\"\u201d]))", re.I)
+EDITION_OF_RE = re.compile(r"\bedition of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,5})\b", re.I)
+ONE_OF_RE = re.compile(r"\bone of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,5})\s+(?:impressions|copies|examples)\b", re.I)
 
 
 def edition_size(declared, text):
@@ -111,12 +121,10 @@ def edition_size(declared, text):
     except (TypeError, ValueError):
         pass
     t = text or ""
-    m = re.search(r"\d+\s*/\s*(\d{1,4})", t)
-    if m:
-        return float(m.group(1))
-    m = re.search(r"edition of (?:approximately |about )?(\d{1,5})", t, re.I)
-    if m:
-        return float(m.group(1))
+    for rx in (NUMBERED_RE, EDITION_OF_RE, ONE_OF_RE):
+        m = rx.search(t)
+        if m and int(m.group(1)) > 0:
+            return float(m.group(1))
     return np.nan
 
 
