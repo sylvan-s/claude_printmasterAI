@@ -43,7 +43,7 @@ const appraiser: any = {
 {
   const fromVea = lotAttrsWithSources({ vea });
   eq("VEA only: every attribute sourced from the image", Object.fromEntries(Object.entries(fromVea).map(([k, v]) => [k, [v.value, v.source]])), {
-    signature: ["hand", "vea"], proof: ["numbered", "vea"], editionSize: [75, "vea"], areaCm2: [1200, "vea"], process: ["screenprint", "vea"],
+    signature: ["hand", "vea"], proof: ["numbered", "vea"], editionSize: [75, "vea"], areaCm2: [1200, "vea"], process: ["screenprint", "vea"], poster: [false, "default"],
   });
   const withNotes = lotAttrsWithSources({ vea, appraiserInput: appraiser });
   eq("appraiser notes outrank the image", [withNotes.signature.source, withNotes.proof.value, withNotes.editionSize.value, withNotes.areaCm2.value], ["appraiser", "artist_proof", 90, 500]);
@@ -51,10 +51,10 @@ const appraiser: any = {
   const claim: any = { artist: "X", title: "T", medium: "Etching with aquatint", editionNote: "signed and numbered from the edition of 50", signed: true, editionSize: 50, dimensions: [{ kind: "sheet", widthCm: 50, heightCm: 60 }, { kind: "plate", widthCm: 30, heightCm: 40 }] };
   const withClaim = lotAttrsWithSources({ vea, appraiserInput: appraiser, claim });
   eq("the catalogue outranks everything; plate before sheet", Object.fromEntries(Object.entries(withClaim).map(([k, v]) => [k, [v.value, v.source]])), {
-    signature: ["hand", "catalogue"], proof: ["numbered", "catalogue"], editionSize: [50, "catalogue"], areaCm2: [1200, "catalogue"], process: ["aquatint", "catalogue"],
+    signature: ["hand", "catalogue"], proof: ["numbered", "catalogue"], editionSize: [50, "catalogue"], areaCm2: [1200, "catalogue"], process: ["aquatint", "catalogue"], poster: [false, "catalogue"],
   });
   const nothing = lotAttrsWithSources({ vea: { overallExtractionConfidence: 0 } as any });
-  eq("VEA not run and no other source: all defaulted", Object.values(nothing).map((v) => v.source), ["default", "default", "default", "default", "default"]);
+  eq("VEA not run and no other source: all defaulted", Object.values(nothing).map((v) => v.source), ["default", "default", "default", "default", "default", "default"]);
   eq("defaults are the training reference levels", [nothing.signature.value, nothing.proof.value, nothing.editionSize.value, nothing.areaCm2.value, nothing.process.value], ["unsigned", "numbered", null, null, "other"]);
   const s2b = lotAttrsWithSources({ attr: { attributionConclusion: { technique: "lithograph" } } as any });
   eq("Stage 2b supplies the process when nothing better does", [s2b.process.value, s2b.process.source], ["lithograph", "stage2b"]);

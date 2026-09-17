@@ -100,7 +100,9 @@ CONT = ["edition_log", "area_log"]
 # classified as subject X" vs. "everything else" (other confident subjects AND unclassified
 # both code to 0). See the 1.2 changelog note above for why only these three.
 SUBJECT_FLAGS = {"subject_is_abstract": "abstract", "subject_is_comic_satirical": "comic_satirical", "subject_is_surreal": "surreal"}
-BINARY = list(SUBJECT_FLAGS.keys())
+# poster: the object is a poster (train_price_model.is_poster), adopted 2026-09-17 with the offset technique.
+BINARY = list(SUBJECT_FLAGS.keys()) + ["poster"]
+EDITION_HINGES = ["edition_hinge_30", "edition_hinge_75", "edition_hinge_150", "edition_hinge_300"]
 XL_AREA_CM2 = 7500       # the extra-large threshold (size_shape.py): the xl area term starts here
 MIN_LEVEL_ROWS = 3        # an artist's own coefficient for a level is trusted only with this many rows on it
 MIN_OWN = 15              # below this many earlier sales an artist gets the prior outright
@@ -135,6 +137,8 @@ def level_support(feat_rows: pd.DataFrame, columns):
             out[col] = int((feat_rows[col] > 0).sum())   # only extra-large sheets carry this term
         elif col in CONT:
             out[col] = int(feat_rows[col].notna().sum())
+        elif col in EDITION_HINGES:
+            out[col] = int((feat_rows[col] > 0).sum())
         elif col in BINARY:
             out[col] = int(feat_rows[col].sum())
         else:
@@ -245,10 +249,29 @@ def main():
     ap.add_argument("--out-dir", default=os.path.join(HERE, "priors"))
     ap.add_argument("--size-terms", choices=["both", "bands", "shape-bands", "shape-bands+log", "shape-bands+xl"], default="both",
                     help="both = area bands + per-doubling area_log (1.2); bands = area bands only (2026-09-16 check: the two are collinear and pulled against each other for thin artists)")
+    ap.add_argument("--edition-terms", choices=["both", "bands", "slope", "hinge"], default="both",
+                    help="both = edition bands + log edition (1.2); bands = bands only; slope = log edition + an unknown flag; "
+                         "hinge = piecewise-linear log edition (knots 30/75/150/300) + an unknown flag. 2026-09-17 collinearity test: "
+                         "the bands explain 87%% of log edition")
+    ap.add_argument("--reproduction", choices=["none", "offset", "offset+poster"], default="offset+poster",
+                    help="offset = photomechanical prints (offset, photolithograph) as their own technique; +poster adds a poster flag "
+                         "(2026-09-17 priors review: 25%% of 'lithograph' rows were offset prints)")
+    ap.add_argument("--dump-test", default=None, help="write test-period rows with the chosen-kappa prediction to this CSV")
     ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
     if args.with_citation:
         BINARY.append("catalogue_cited")
+    import train_price_model as _tpm
+    _tpm.OFFSET_PROCESS = args.reproduction != "none"
+    if args.reproduction != "offset+poster":
+        BINARY.remove("poster")
+    if args.edition_terms == "bands":
+        CONT.remove("edition_log")
+    if args.edition_terms in ("slope", "hinge"):
+        REFS.pop("edition_band")
+        BINARY.append("edition_unknown")
+    if args.edition_terms == "hinge":
+        BINARY.extend(EDITION_HINGES)
     if args.size_terms in ("bands", "shape-bands", "shape-bands+xl"):
         CONT.remove("area_log")
     if args.size_terms == "shape-bands+xl":
@@ -275,6 +298,11 @@ def main():
     for col, cat in SUBJECT_FLAGS.items():
         feat[col] = (feat["subject"] == cat).astype(float)
     feat["catalogue_cited"] = feat["has_citation"].astype(float)
+    feat["edition_unknown"] = feat["edition_log"].isna().astype(float)
+    ed_filled = feat["edition_log"].fillna(feat.loc[(df["saleDate"] < args.cut).values, "edition_log"].median())
+    for col in EDITION_HINGES:
+        # zero for an unknown edition (its level is carried by edition_unknown), else log edition past the knot
+        feat[col] = ((ed_filled - math.log(int(col.rsplit("_", 1)[1]))).clip(lower=0) * (1 - feat["edition_unknown"]))
     y = np.log(df["hammerGBP"].astype(float))
     train = (df["saleDate"] < args.cut).values
     test = ~train
@@ -378,6 +406,7 @@ def main():
     print(hdr)
     total = {k: [] for k in KAPPAS}
     total_rows = 0
+    dumped = {}
     for lo, hi in bands:
         arts = [a for a in n_art.index if lo <= own_n[a] < hi and a in priors]
         rows_idx = test & df["artist"].isin(arts).values
@@ -404,14 +433,27 @@ def main():
         print(line)
         for k in KAPPAS:
             total[k].append((mae(yt, p_k[k])[0], int(rows_idx.sum())))
+            dumped.setdefault(k, []).append(pd.Series(p_k[k], index=df.index[rows_idx]))
         total_rows += int(rows_idx.sum())
     best_k = min(KAPPAS, key=lambda k: sum(m * n for m, n in total[k]) / max(1, sum(n for _, n in total[k])))
     print(f"\nkappa chosen on all test rows: {best_k}   (" + "  ".join(f"k={k}: {sum(m * n for m, n in total[k]) / max(1, sum(n for _, n in total[k])):.3f}" for k in KAPPAS) + ")")
 
+    if args.dump_test:
+        pred = pd.concat(dumped[best_k])
+        out = df.loc[pred.index, ["artist", "house", "saleDate", "hammerGBP", "editionSize"]].copy()
+        out["edition_band"] = feat.loc[pred.index, "edition_band"]
+        out["row"] = pred.index
+        out["y"] = y[pred.index]
+        out["pred"] = pred
+        os.makedirs(os.path.dirname(os.path.abspath(args.dump_test)), exist_ok=True)
+        out.to_csv(args.dump_test, index=False)
+
     # 5. write the priors database
     os.makedirs(args.out_dir, exist_ok=True)
     built_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    db = {"version": ("PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2") + ("" if args.size_terms == "both" else f"-{args.size_terms}"), "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
+    version = ("PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2") + ("" if args.size_terms == "both" else f"-{args.size_terms}")
+    version += ("" if args.reproduction == "none" else f"+{args.reproduction}") + ("" if args.edition_terms == "both" else f"+edition-{args.edition_terms}")
+    db = {"version": version, "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
           "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
           "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),
           "reference_levels": REFS, "elasticity_columns": cols, "year_effects": year_eff, "continuous_medians": med,

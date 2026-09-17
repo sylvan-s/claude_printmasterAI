@@ -997,3 +997,25 @@ on all 55,044 exported rows.
   £810–5,700; edition step x0.48 → x0.54 (<=30 now 34 genuine rows). Still open: the <=30 band
   and the edition-size slope pull against each other, and edition × technique / size
   interactions are untested market-wide.
+
+### 2026-09-17: offset prints and posters priced in their own right (BLEND-1.7)
+
+The per-artist priors review found reproductions unmodelled: "offset lithograph" matched
+"lithograph", so 25% of the reference technique was offset prints (x0.51 of the same artist's
+hand-drawn lithographs), inflating screenprint premiums (Banksy x3.98) and muddying edition terms.
+
+- `train_price_model.py`: photomechanical prints (offset, photolithograph) are the technique
+  `offset` unless a hand process is named first; `is_poster` flags the object (lithographic /
+  offset / exhibition poster, "from the poster edition"; not "there was also a poster edition",
+  "List Art Poster" editions or inscriptions). Mirrored in `price_attrs.ts`; parity holds on all
+  55,044 exported rows. `build_priors.py --reproduction offset+poster` is the default.
+- Live: `priorsModelPrediction` and `adjustmentBetween` read the `poster` column; lot evidence
+  carries `attrs.poster` from the catalogue text; the waterfall shows a Poster bar only for posters
+  and names the technique "offset print".
+- Offline A/B (priors only, 8,576 test rows): 0.659 -> 0.656, artist bootstrap -0.0033
+  [-0.0067, +0.0000]. Offset median x0.74 (76 artists), poster x0.68 (46); Banksy screenprint
+  x3.98 -> x3.01, Hirst x2.79 -> x1.45. It did not change the edition-band oddities.
+- Blend gate (BLEND-1.7, 1,495 lots): MAE(log) 0.621 -> **0.614**, 80% cover 78% -> 80%;
+  Bonhams 0.593 -> 0.590, Forum 0.642 -> 0.634, Roseberys 0.591 -> 0.584.
+- Also fixed: the VEA edition read. The 0bbb643 edition rule rejected a bare "12/75" inscription
+  transcription; a whole-field fraction read off the print counts again.

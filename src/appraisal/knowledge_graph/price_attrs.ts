@@ -27,11 +27,28 @@ export const PROCESSES = ["linocut", "aquatint", "drypoint", "etching", "engravi
 
 const blobOf = (texts: (string | null | undefined)[]): string => texts.filter((t): t is string => typeof t === "string").join(" ").toLowerCase();
 
+/**
+ * train_price_model.PHOTOMECH_RE / POSTER_RE (2026-09-17). Offset prints and photolithographs are
+ * their own technique, "offset", unless a hand process is named first; a poster is the object,
+ * not a word in an inscription or a publisher's name.
+ */
+const PHOTOMECH_RE = /\boffset\b|photo-?lithograph|photo-?mechanical/;
+const POSTER_RE = new RegExp(
+  "(?:lithographic|offset|screenprint(?:ed)?|silkscreen|exhibition|film|travel|advertising|olympic)\\s+posters?\\b"
+  + "|\\bposters?\\s+(?:in colou?rs?|printed|for\\b|designed)|^\\s*posters?\\b|\\bposters?\\s*/\\s*lithograph"
+  + "|lithograph(?:ic)?\\s+posters?\\b|\\bfrom the (?:unsigned |unnumbered )?poster edition");
+
+/** train_price_model.is_poster */
+export function isPoster(text: string | null | undefined): boolean {
+  return typeof text === "string" && POSTER_RE.test(text.toLowerCase());
+}
+
 /** train_price_model.primary_process */
 export function primaryProcess(texts: (string | null | undefined)[]): string {
   const blob = blobOf(texts);
-  for (const p of PROCESSES) if (blob.includes(p)) return p;
-  return "other";
+  const first = PROCESSES.find((p) => blob.includes(p)) ?? "other";
+  if ((first === "lithograph" || first === "collotype" || first === "other") && PHOTOMECH_RE.test(blob)) return "offset";
+  return first;
 }
 
 /** train_price_model.signature_class */
@@ -126,6 +143,7 @@ export function priceAttrsOfComparable(c: Pick<AuctionComparable, "techniques" |
     editionSize: editionSizeOf(c.editionSize, c.rawMedium),
     areaCm2: dims ? dims[0] * dims[1] : null,
     process: primaryProcess([...(c.techniques ?? []), c.rawMedium]),
+    poster: isPoster(c.rawMedium),
   };
 }
 
@@ -157,5 +175,6 @@ export function priceAttrsOfLot(lot: {
     editionSize: editionSizeOf(lot.editionSize, lot.text),
     areaCm2: area,
     process: primaryProcess([...(lot.techniques ?? []), lot.text]),
+    poster: isPoster(lot.text),
   };
 }

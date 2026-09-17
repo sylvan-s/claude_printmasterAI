@@ -1,8 +1,8 @@
 {
  "version": "COLUMN-MEANS-1.0",
- "builtAt": "2026-09-17T05:55:24Z",
- "priorsVersion": "PRICING-PRIORS-1.2-shape-bands+xl",
- "priorsBuiltAt": "2026-09-17T05:55:17+00:00",
+ "builtAt": "2026-09-17T06:49:57Z",
+ "priorsVersion": "PRICING-PRIORS-1.2-shape-bands+xl+offset+poster",
+ "priorsBuiltAt": "2026-09-17T06:49:49+00:00",
  "trainRows": 34622,
  "baselineLogHammer": 6.959555633692023,
  "columns": {
@@ -31,7 +31,8 @@
   "process_engraving": 0.014874935012419849,
   "process_etching": 0.10383571139737739,
   "process_linocut": 0.024810813933337183,
-  "process_other": 0.161140315406389,
+  "process_offset": 0.07385477442088845,
+  "process_other": 0.16096701519265208,
   "process_pochoir": 0.0009242678065969615,
   "process_screenprint": 0.19406735601640576,
   "process_woodcut": 0.02657269943966264,
@@ -42,9 +43,10 @@
   "area_log_xl": 0.03196671558843918,
   "subject_is_abstract": 0.06339899485876033,
   "subject_is_comic_satirical": 0.02039165848304546,
-  "subject_is_surreal": 0.00904049448327653
+  "subject_is_surreal": 0.00904049448327653,
+  "poster": 0.02466639708855641
  },
- "meanYearEffect": 0.04249806405155639,
+ "meanYearEffect": 0.04433849977860438,
  "houseShares": {
   "Bonhams": 0.718531569522269,
   "Roseberys London": 0.18849286580786784,

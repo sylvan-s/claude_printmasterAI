@@ -35,6 +35,7 @@ import {
   dimsCm,
   editionSizeOf,
   primaryProcess,
+  isPoster,
   type ArtistPriceProfile,
   type BlendInputs,
   type ComparablesResult,
@@ -85,6 +86,8 @@ export interface ValuationEvidence {
     editionSize: Sourced<number | null>;
     areaCm2: Sourced<number | null>;
     process: Sourced<string>;
+    /** The object is a poster (price_attrs.isPoster). Optional: evidence built before 2026-09-17 has none. */
+    poster?: Sourced<boolean>;
   };
   /** The house the price is AT (graph institution name). Null value: no house chosen, pooled offset. */
   targetHouse: Sourced<string | null>;
@@ -162,7 +165,11 @@ export function lotAttrsWithSources(input: {
   if (claimEd != null) editionSize = { value: claimEd, source: "catalogue" };
   else if (ai?.inscriptionClaims?.editionSizeClaim) editionSize = { value: ai.inscriptionClaims.editionSizeClaim, source: "appraiser" };
   else if (veaRan(vea)) {
-    const n = (vea!.editionInfo ?? []).map((e) => editionSizeOf(null, e.transcription)).find((x) => x != null);
+    // A pencil inscription read off the print: "12/75" on its own IS the edition number, so a whole-
+    // field fraction counts here. editionSizeOf rejects bare fractions because in catalogue text they
+    // are inch dimensions; an inscription transcription carries no dimensions.
+    const inscribed = (t: string | null | undefined) => { const m = (t ?? "").match(/^\s*\d+\s*\/\s*(\d{1,5})\s*$/); return m && Number(m[1]) > 0 ? Number(m[1]) : null; };
+    const n = (vea!.editionInfo ?? []).map((e) => inscribed(e.transcription) ?? editionSizeOf(null, e.transcription)).find((x) => x != null);
     if (n != null) editionSize = { value: n, source: "vea", note: "read from the edition inscription" };
   }
 
@@ -194,11 +201,16 @@ export function lotAttrsWithSources(input: {
     const p = proc(vea!.printingTechniques.map((t) => t.technique).join(", "));
     if (p !== "other") process = { value: p, source: "vea" };
   }
-  return { signature, proof, editionSize, areaCm2, process };
+  // Poster: from the catalogue text only, as the trainer read rawMedium. No catalogue text: not a poster.
+  const poster: Sourced<boolean> = claim && claimText
+    ? { value: isPoster(claimText), source: "catalogue" }
+    : { value: false, source: "default", note: "no catalogue text; the model's reference (not a poster)" };
+  return { signature, proof, editionSize, areaCm2, process, poster };
 }
 
 export const attrsValues = (a: ValuationEvidence["attrs"]): PriceAttrs => ({
   signature: a.signature.value, proof: a.proof.value, editionSize: a.editionSize.value, areaCm2: a.areaCm2.value, process: a.process.value,
+  poster: a.poster?.value ?? false,
 });
 
 // ── graph reads ────────────────────────────────────────────────────────────────

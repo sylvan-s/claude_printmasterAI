@@ -68,7 +68,7 @@ export function loadColumnMeans(path = MEANS_PATH): ColumnMeans | null {
   return m;
 }
 
-const LABELS: Record<string, string> = { signature: "Signature", proof: "Impression status", edition: "Edition", size: "Size" };
+const LABELS: Record<string, string> = { signature: "Signature", proof: "Impression status", edition: "Edition", size: "Size", poster: "Poster" };
 /** Plain names for the proof classes: where the impression sits relative to the numbered edition. */
 const IMPRESSION_STATUS: Record<string, string> = {
   numbered: "numbered impression",
@@ -100,6 +100,7 @@ function lotColumns(profile: ArtistPriceProfile, ev: ValuationEvidence): Record<
   if ("edition_log" in profile.elasticities) out.edition_log = { dim: "edition", x: logOr(a.editionSize, profile.continuousMedians.edition_log ?? 0) };
   if ("area_log" in profile.elasticities) out.area_log = { dim: "size", x: logOr(a.areaCm2, profile.continuousMedians.area_log ?? 0) };
   if ("area_log_xl" in profile.elasticities) out.area_log_xl = { dim: "size", x: xlAreaLog(a.areaCm2) };
+  if ("poster" in profile.elasticities) out.poster = { dim: "poster", x: a.poster ? 1 : 0 };
   return out;
 }
 
@@ -156,6 +157,7 @@ function attrLabel(dim: string, ev: ValuationEvidence, policyProof: boolean, neu
       ? `${LABELS.edition}: not stated, priced at the average edition for an impression outside the edition`
       : `${LABELS.edition}: ${a.editionSize.value ?? "unknown"} (${src(a.editionSize)})`;
     case "size": return sizeLabel(ev, profile);
+    case "poster": return `${LABELS.poster}: ${a.poster?.value ? "yes" : "no"} (${a.poster ? src(a.poster) : "not stated: model default"})`;
     default: return dim;
   }
 }
@@ -220,12 +222,12 @@ export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration,
     baseline += refHouse + refYear;
     const year = ev.valuationDate.value.slice(0, 4);
     const yearEff = profile.yearEffects[year] ?? 0;
-    const tech = ev.attrs.process.value && ev.attrs.process.value !== "other" ? ev.attrs.process.value : "technique not stated";
+    const tech = ev.attrs.process.value === "offset" ? "offset print" : ev.attrs.process.value && ev.attrs.process.value !== "other" ? ev.attrs.process.value : "technique not stated";
     const who = ev.artist.canonical ?? ev.artist.reported ?? "Unknown artist";
     running = baseline;
     bars.push({ key: "baseline", label: `${who}, ${tech}: ${REFERENCE_LABEL} (${profile.basis === "shrunk" ? `${profile.earlierSales} own sales` : profile.basis === "prior" ? "priced from similar artists" : "segment default"})`, kind: "baseline", logEffect: 0, multiplier: 1, fromGBP: Math.round(Math.exp(baseline)), toGBP: Math.round(Math.exp(baseline)) });
     // Bar key "impression" (the impression-status step); the model dimension behind it is "proof".
-    for (const dim of ["signature", "proof", "edition", "size"]) if (dim in byDim) push(dim === "proof" ? "impression" : dim, attrLabel(dim, ev, policyProof, neutralEdition, profile), "factor", byDim[dim]);
+    for (const dim of ["signature", "proof", "edition", "size", "poster"]) if (dim in byDim && (dim !== "poster" || ev.attrs.poster?.value)) push(dim === "proof" ? "impression" : dim, attrLabel(dim, ev, policyProof, neutralEdition, profile), "factor", byDim[dim]);
     if (off) push("house", `Sale house: ${ev.targetHouse.value ?? "none chosen (pooled level)"}`, "factor", houseLog - refHouse);
     push("year", `Market level: ${year}`, "factor", yearEff - refYear);
     push("calibration", "Model calibration on realised hammers", "factor", priors.mu - priors.rawMu);

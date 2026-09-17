@@ -50,8 +50,10 @@ export interface PriceAttrs {
   editionSize?: number | null;
   /** Sheet (else image/plate) area in cm². Drives both the band and the per-doubling term. */
   areaCm2?: number | null;
-  /** Primary process word as train_price_model.py's PROCESSES: lithograph, etching, screenprint, ... */
+  /** Primary process word as train_price_model.py's PROCESSES: lithograph, etching, screenprint, ... or "offset". */
   process?: string | null;
+  /** The object is a poster (train_price_model.is_poster). A 0/1 model column, not a level family. */
+  poster?: boolean | null;
 }
 
 export interface ArtistPriceProfile {
@@ -210,6 +212,12 @@ export function adjustmentBetween(lot: PriceAttrs, comp: PriceAttrs, profile: Ar
     ["edition_log", lot.editionSize, comp.editionSize],
     ["area_log", lot.areaCm2, comp.areaCm2],
   ];
+  const bp = profile.elasticities.poster;
+  if (bp != null && Number.isFinite(bp) && !!lot.poster !== !!comp.poster) {
+    const delta = bp * ((lot.poster ? 1 : 0) - (comp.poster ? 1 : 0));
+    factors.push({ attribute: "poster", lot: lot.poster ? "poster" : "not a poster", comp: comp.poster ? "poster" : "not a poster", factor: Math.exp(delta) });
+    logAdj += delta;
+  }
   for (const [col, lv, cv] of cont) {
     const beta = profile.elasticities[col];
     if (beta == null || !Number.isFinite(beta)) { if (lv != null || cv != null) unknown.add(col); continue; }

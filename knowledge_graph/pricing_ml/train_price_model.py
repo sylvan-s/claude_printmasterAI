@@ -66,12 +66,30 @@ def technique_family(texts):
     return "unknown"
 
 
+# Photomechanical printing (2026-09-17 priors review): "offset lithograph" contained "lithograph", so
+# offset prints and photolithographs sat in the reference technique — 25% of "lithograph" rows, at
+# x0.51 of the same artist's hand-drawn lithographs. They are now their own technique, "offset",
+# unless a hand process (etching, screenprint...) is named first. Adopted 2026-09-17 (priors-only
+# MAE 0.659 -> 0.656 with the poster flag). Mirrored in price_attrs.ts primaryProcess / isPoster.
+OFFSET_PROCESS = True
+PHOTOMECH_RE = re.compile(r"\boffset\b|photo-?lithograph|photo-?mechanical")
+# A poster is the object, not a word in an inscription or a publisher's name ("List Poster and
+# Print Program" editions are signed, numbered screenprints).
+POSTER_RE = re.compile(r"(?:lithographic|offset|screenprint(?:ed)?|silkscreen|exhibition|film|travel|advertising|olympic)\s+posters?\b"
+                       r"|\bposters?\s+(?:in colou?rs?|printed|for\b|designed)|^\s*posters?\b|\bposters?\s*/\s*lithograph"
+                       r"|lithograph(?:ic)?\s+posters?\b|\bfrom the (?:unsigned |unnumbered )?poster edition")
+
+
+def is_poster(text):
+    return int(bool(POSTER_RE.search(text.lower()))) if isinstance(text, str) else 0
+
+
 def primary_process(texts):
     blob = " ".join(t for t in texts if isinstance(t, str)).lower()
-    for p in PROCESSES:
-        if p in blob:
-            return p
-    return "other"
+    first = next((p for p in PROCESSES if p in blob), "other")
+    if OFFSET_PROCESS and first in ("lithograph", "collotype", "other") and PHOTOMECH_RE.search(blob):
+        return "offset"
+    return first
 
 
 def signature_class(signed, text):
@@ -265,6 +283,7 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     out["publisher"] = df["rawMedium"].apply(publisher)
     out["paper"] = [paper_class(p, m) for p, m in zip(papers, df["rawMedium"])]
     out["book_or_set"] = df["rawMedium"].apply(is_book_or_set)
+    out["poster"] = df["rawMedium"].apply(is_poster)
     wy = pd.to_numeric(df["workYear"], errors="coerce")
     out["work_year"] = wy
     out["work_decade"] = wy.apply(lambda y: f"{int(y) // 10 * 10}s" if pd.notna(y) else "unknown")

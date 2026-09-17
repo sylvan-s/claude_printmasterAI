@@ -109,5 +109,22 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   eq("unknown size says so", sizeBar(null).bars.find((b) => b.key === "size")!.label, "Size: not stated (not stated: model default)");
 }
 
+// ── poster flag and offset technique (2026-09-17) ─────────────────────────────────
+{
+  const e = ev();
+  const prof = { ...e.profile!, elasticities: { ...e.profile!.elasticities, poster: -0.6, process_offset: -0.3 } };
+  const lot = (poster: boolean, process = "etching") => ({ ...e, profile: prof, attrs: { ...e.attrs, process: { value: process, source: "catalogue" }, poster: { value: poster, source: "catalogue" } } }) as any;
+  const run = (x: any) => valuationWaterfall(x, cal, means, stage3aValuation(x, cal, means)!.medianGBP)!;
+  const wp = run(lot(true));
+  const bar = wp.bars.find((b) => b.key === "poster");
+  ok("a poster lot gets a Poster bar worth the artist's poster term", !!bar && close(bar.logEffect, -0.6) && bar.label === "Poster: yes (catalogue)");
+  eq("poster: the chart still reaches the model price exactly (no gap note)", wp.notes, []);
+  ok("not a poster: no Poster bar", !run(lot(false)).bars.some((b) => b.key === "poster"));
+  const wo = run(lot(false, "offset"));
+  ok("offset technique is named in the start and priced in it", wo.bars[0].label.startsWith("X, offset print:") && wo.notes.length === 0);
+  const noPoster = { ...e, attrs: { ...e.attrs } } as any; delete noPoster.attrs.poster;
+  ok("evidence built before the poster flag still charts", run(noPoster).notes.length === 0);
+}
+
 console.log(`\nstage3a waterfall tests: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
