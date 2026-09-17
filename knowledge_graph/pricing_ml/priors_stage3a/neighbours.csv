@@ -9,16 +9,16 @@ Pablo Picasso,Marino Marini,0.04744549892547098
 Pablo Picasso,Francis Bacon,0.03865851840793129
 Pablo Picasso,Ben Nicholson,0.03508426284544819
 Pablo Picasso,Rufino Tamayo,0.06741644224588712
-Marc Chagall . Charles Sorlier,Henri Matisse,0.2364146108073406
-Marc Chagall . Charles Sorlier,Fernand Léger,0.12915268256610488
-Marc Chagall . Charles Sorlier,Raoul Dufy,0.07579802037116252
-Marc Chagall . Charles Sorlier,Georges Braque,0.15488524325841735
-Marc Chagall . Charles Sorlier,Léonard Tsuguharu Foujita,0.07516280822194461
-Marc Chagall . Charles Sorlier,Pierre Bonnard,0.06136709732918592
-Marc Chagall . Charles Sorlier,Bernard Buffet,0.07133100526633122
-Marc Chagall . Charles Sorlier,Henri de Toulouse-Lautrec,0.09454287154333851
-Marc Chagall . Charles Sorlier,Camille Pissarro,0.06244585006191782
-Marc Chagall . Charles Sorlier,Zao Wou-Ki,0.038899810574256566
+Marc Chagall,Henri Matisse,0.2364146108073406
+Marc Chagall,Fernand Léger,0.12915268256610488
+Marc Chagall,Raoul Dufy,0.07579802037116252
+Marc Chagall,Georges Braque,0.15488524325841735
+Marc Chagall,Léonard Tsuguharu Foujita,0.07516280822194461
+Marc Chagall,Pierre Bonnard,0.06136709732918592
+Marc Chagall,Bernard Buffet,0.07133100526633122
+Marc Chagall,Henri de Toulouse-Lautrec,0.09454287154333851
+Marc Chagall,Camille Pissarro,0.06244585006191782
+Marc Chagall,Zao Wou-Ki,0.038899810574256566
 Joan Miró,Pablo Picasso,0.35611567844151776
 Joan Miró,Antoni Tàpies,0.0795698040082609
 Joan Miró,Salvador Dalí,0.23504665463631016
@@ -139,7 +139,7 @@ Sam Francis,James Rosenquist,0.09664639464940585
 Sam Francis,Ed Ruscha,0.10111352539787698
 Sam Francis,Jasper Johns,0.087870358860538
 Sam Francis,Alex Katz,0.07893393506560328
-Henri Matisse,Marc Chagall . Charles Sorlier,0.3606790970592638
+Henri Matisse,Marc Chagall,0.3606790970592638
 Henri Matisse,Fernand Léger,0.09589888663716171
 Henri Matisse,Léonard Tsuguharu Foujita,0.06738328141705328
 Henri Matisse,Raoul Dufy,0.0570387273993968
@@ -210,7 +210,7 @@ David Shrigley,Bambi,0.058386784145556925
 David Shrigley,Ai Weiwei,0.06057662621984244
 David Shrigley,Peter Doig,0.053225007971111266
 Georges Braque,Léonard Tsuguharu Foujita,0.10601515752383486
-Georges Braque,Marc Chagall . Charles Sorlier,0.279802839748486
+Georges Braque,Marc Chagall,0.279802839748486
 Georges Braque,Fernand Léger,0.09270712579368422
 Georges Braque,Jacques Villon,0.06820920804753683
 Georges Braque,Raoul Dufy,0.06620237366716958
@@ -262,7 +262,7 @@ Robert Rauschenberg,Christo and Jeanne-Claude,0.07766085471660422
 Henri de Toulouse-Lautrec,Pierre Bonnard,0.08402864259723228
 Henri de Toulouse-Lautrec,Raoul Dufy,0.0669324210077676
 Henri de Toulouse-Lautrec,Edgar Degas,0.0672840032866214
-Henri de Toulouse-Lautrec,Marc Chagall . Charles Sorlier,0.24170892514781406
+Henri de Toulouse-Lautrec,Marc Chagall,0.24170892514781406
 Henri de Toulouse-Lautrec,Fernand Léger,0.07592094597083494
 Henri de Toulouse-Lautrec,Henri Matisse,0.1301612534166424
 Henri de Toulouse-Lautrec,Pierre-Auguste Renoir,0.11197992765393332
@@ -508,7 +508,7 @@ Camille Pissarro,Henri Matisse,0.14531036869909794
 Camille Pissarro,Georges Braque,0.13415295632266916
 Camille Pissarro,Léonard Tsuguharu Foujita,0.06558190677962084
 Camille Pissarro,Paul César Helleu,0.053743039971317984
-Camille Pissarro,Marc Chagall . Charles Sorlier,0.22685297385041367
+Camille Pissarro,Marc Chagall,0.22685297385041367
 Frank Stella,Helen Frankenthaler,0.09078084643575832
 Frank Stella,Robert Motherwell,0.14974246214052392
 Frank Stella,Ellsworth Kelly,0.08849662506897235
@@ -609,7 +609,7 @@ Giorgio de Chirico,Elisabeth Frink,0.08215907371265456
 Giorgio de Chirico,Man Ray,0.07522779997203174
 Giorgio de Chirico,Graham Sutherland,0.06905772865985121
 Giorgio de Chirico,Alexander Calder,0.09801628731148364
-Fernand Léger,Marc Chagall . Charles Sorlier,0.32381241823516305
+Fernand Léger,Marc Chagall,0.32381241823516305
 Fernand Léger,Raoul Dufy,0.07609133160728182
 Fernand Léger,Henri Matisse,0.1520069841960766
 Fernand Léger,Georges Braque,0.1280916140996222
@@ -673,7 +673,7 @@ Bernard Buffet,Georges Braque,0.15381259116922574
 Bernard Buffet,Fernand Léger,0.09410228900658862
 Bernard Buffet,Raoul Dufy,0.0685597744140801
 Bernard Buffet,Léonard Tsuguharu Foujita,0.07534711316772348
-Bernard Buffet,Marc Chagall . Charles Sorlier,0.25783986666818487
+Bernard Buffet,Marc Chagall,0.25783986666818487
 Bernard Buffet,Zao Wou-Ki,0.05822101267871692
 Bernard Buffet,Pierre Bonnard,0.05658411725692153
 Bernard Buffet,Sonia Delaunay,0.06437537480462584
@@ -826,7 +826,7 @@ Sonia Delaunay,Léonard Tsuguharu Foujita,0.07325351388162205
 Sonia Delaunay,Raoul Dufy,0.06122035317431257
 Sonia Delaunay,Fernand Léger,0.08004637535956552
 Sonia Delaunay,Karel Appel,0.06393790036762183
-Sonia Delaunay,Marc Chagall . Charles Sorlier,0.23956647851410684
+Sonia Delaunay,Marc Chagall,0.23956647851410684
 Sonia Delaunay,Victor Vasarely,0.10229571496245246
 Sonia Delaunay,Pierre Bonnard,0.05888128636616666
 Lill Tschudi,Sybil Andrews,0.14588358269670035
@@ -990,7 +990,7 @@ Joe Tilson,Albert Irvin,0.05088455423213194
 Joe Tilson,David Shrigley,0.10797160080860099
 Joe Tilson,Victor Pasmore,0.08504258098270043
 Léonard Tsuguharu Foujita,Georges Braque,0.1923454619851857
-Léonard Tsuguharu Foujita,Marc Chagall . Charles Sorlier,0.24970961069651776
+Léonard Tsuguharu Foujita,Marc Chagall,0.24970961069651776
 Léonard Tsuguharu Foujita,Jacques Villon,0.06252533143069373
 Léonard Tsuguharu Foujita,Fernand Léger,0.08216360454901563
 Léonard Tsuguharu Foujita,Henri Matisse,0.13853130476286837
@@ -1132,7 +1132,7 @@ George Bellows,René Magritte,0.05008219370006619
 Pierre Bonnard,Raoul Dufy,0.07846022461869144
 Pierre Bonnard,Henri de Toulouse-Lautrec,0.13642073726679343
 Pierre Bonnard,Fernand Léger,0.07913916277673233
-Pierre Bonnard,Marc Chagall . Charles Sorlier,0.23613880828300107
+Pierre Bonnard,Marc Chagall,0.23613880828300107
 Pierre Bonnard,Georges Braque,0.1177226491434467
 Pierre Bonnard,Camille Pissarro,0.07385025737557616
 Pierre Bonnard,Edgar Degas,0.053552264093823534
@@ -1201,7 +1201,7 @@ Ai Weiwei,Antony Gormley,0.06443771720536917
 Ai Weiwei,Grayson Perry,0.06453050799722726
 Raoul Dufy,Fernand Léger,0.10341232633933534
 Raoul Dufy,Pierre Bonnard,0.07353413196181136
-Raoul Dufy,Marc Chagall . Charles Sorlier,0.2606886745443983
+Raoul Dufy,Marc Chagall,0.2606886745443983
 Raoul Dufy,Georges Braque,0.1269249828253028
 Raoul Dufy,Henri Matisse,0.1214475884497836
 Raoul Dufy,Bernard Buffet,0.0667780326455124
@@ -1271,7 +1271,7 @@ Bruce McLean,John Hoyland,0.06108621124202669
 Bruce McLean,Patrick Heron,0.048166355079628645
 Invader,Mr Brainwash,0.0899654789734718
 Invader,Fernand Léger,0.08614065358018787
-Invader,Marc Chagall . Charles Sorlier,0.23748644961083307
+Invader,Marc Chagall,0.23748644961083307
 Invader,Georges Braque,0.1254900817423351
 Invader,Léonard Tsuguharu Foujita,0.0639749241191407
 Invader,Raoul Dufy,0.05644207509478859
@@ -1303,7 +1303,7 @@ Zao Wou-Ki,Léonard Tsuguharu Foujita,0.0766220434747458
 Zao Wou-Ki,Bernard Buffet,0.08687742827687477
 Zao Wou-Ki,Georges Braque,0.13322618037914394
 Zao Wou-Ki,Sonia Delaunay,0.07065637248169186
-Zao Wou-Ki,Marc Chagall . Charles Sorlier,0.2310500446299669
+Zao Wou-Ki,Marc Chagall,0.2310500446299669
 Zao Wou-Ki,Rufino Tamayo,0.10141810095998041
 Zao Wou-Ki,Henri Matisse,0.1172748185806986
 Zao Wou-Ki,Fernand Léger,0.0670892650756139
@@ -1541,7 +1541,7 @@ Will Barnet,Alberto Giacometti,0.06429069291869749
 Will Barnet,Grant Wood,0.0658736552735169
 Louise Bourgeois,Zao Wou-Ki,0.06599484210515535
 Louise Bourgeois,Léonard Tsuguharu Foujita,0.07348575693870266
-Louise Bourgeois,Marc Chagall . Charles Sorlier,0.25596255661071976
+Louise Bourgeois,Marc Chagall,0.25596255661071976
 Louise Bourgeois,Georges Braque,0.13455396010230591
 Louise Bourgeois,Henri Matisse,0.14007609232151183
 Louise Bourgeois,Bernard Buffet,0.07863878451718435
@@ -1576,7 +1576,7 @@ Maurice de Vlaminck,Fernand Léger,0.08064602332361037
 Maurice de Vlaminck,Jacques Villon,0.06096540166053731
 Maurice de Vlaminck,Paul César Helleu,0.05204803476750304
 Maurice de Vlaminck,Pierre Bonnard,0.05726937101917101
-Maurice de Vlaminck,Marc Chagall . Charles Sorlier,0.2226061228219629
+Maurice de Vlaminck,Marc Chagall,0.2226061228219629
 Maurice de Vlaminck,Henri Matisse,0.12328278927042956
 Maurice de Vlaminck,Bernard Buffet,0.06818414206579992
 Gary Hume,Patrick Caulfield,0.1416650487294049
@@ -1654,7 +1654,7 @@ Jean Cocteau,Pierre Bonnard,0.07642145358868714
 Jean Cocteau,Bernard Buffet,0.08962326852368006
 Jean Cocteau,Fernand Léger,0.08814623757467685
 Jean Cocteau,Henri de Toulouse-Lautrec,0.11477629313007907
-Jean Cocteau,Marc Chagall . Charles Sorlier,0.2261487377800883
+Jean Cocteau,Marc Chagall,0.2261487377800883
 Jean Cocteau,Georges Braque,0.1135779610326728
 Jean Cocteau,Edgar Degas,0.05108012725583141
 Jean Cocteau,Pierre-Auguste Renoir,0.1038866500644284
@@ -1718,7 +1718,7 @@ Marie Laurencin,Fernand Léger,0.07846961436017899
 Marie Laurencin,Bernard Buffet,0.07375717720973507
 Marie Laurencin,Pierre Bonnard,0.056871368353264166
 Marie Laurencin,Louis Icart,0.06717959463074655
-Marie Laurencin,Marc Chagall . Charles Sorlier,0.2114461547291398
+Marie Laurencin,Marc Chagall,0.2114461547291398
 Lynn Chadwick,Graham Sutherland,0.10430588432269992
 Lynn Chadwick,Elisabeth Frink,0.1165985139980585
 Lynn Chadwick,Allen Jones,0.09487367517783128
@@ -1751,7 +1751,7 @@ George Grosz,Christo and Jeanne-Claude,0.08729990118360417
 George Grosz,Marino Marini,0.08820380784742558
 Wassily Kandinsky,Henri Matisse,0.16698123967889075
 Wassily Kandinsky,Fernand Léger,0.08429760761054382
-Wassily Kandinsky,Marc Chagall . Charles Sorlier,0.2437559281941887
+Wassily Kandinsky,Marc Chagall,0.2437559281941887
 Wassily Kandinsky,Raoul Dufy,0.05936354380108021
 Wassily Kandinsky,Edgar Degas,0.05725131543100818
 Wassily Kandinsky,Léonard Tsuguharu Foujita,0.058781379916129375
@@ -1953,7 +1953,7 @@ Alphonse Mucha,Alberto Giacometti,0.07758024295720774
 Alphonse Mucha,Henri de Toulouse-Lautrec,0.13840882061745896
 Alphonse Mucha,René Magritte,0.07818772948648003
 Alphonse Mucha,Pierre Bonnard,0.0671150434303956
-Alphonse Mucha,Marc Chagall . Charles Sorlier,0.24981010807616472
+Alphonse Mucha,Marc Chagall,0.24981010807616472
 Alphonse Mucha,Francis Bacon,0.07005487744434073
 Alphonse Mucha,Alexander Calder,0.12036711143671236
 Alphonse Mucha,Raoul Dufy,0.062338547584531674
@@ -1962,14 +1962,14 @@ Alphonse Mucha,John James Audubon,0.07201255789416967
 Le Corbusier (Charles-Edouard Jeanneret),Raoul Dufy,0.08479363628528237
 Le Corbusier (Charles-Edouard Jeanneret),Georges Braque,0.1613931887410285
 Le Corbusier (Charles-Edouard Jeanneret),Fernand Léger,0.0959075949770875
-Le Corbusier (Charles-Edouard Jeanneret),Marc Chagall . Charles Sorlier,0.2568613336189266
+Le Corbusier (Charles-Edouard Jeanneret),Marc Chagall,0.2568613336189266
 Le Corbusier (Charles-Edouard Jeanneret),Pierre Bonnard,0.06567123254851376
 Le Corbusier (Charles-Edouard Jeanneret),Bernard Buffet,0.07518830902412808
 Le Corbusier (Charles-Edouard Jeanneret),Léonard Tsuguharu Foujita,0.05878940225744339
 Le Corbusier (Charles-Edouard Jeanneret),Henri Matisse,0.10506989955595233
 Le Corbusier (Charles-Edouard Jeanneret),Jacques Villon,0.043454315840852686
 Le Corbusier (Charles-Edouard Jeanneret),Camille Pissarro,0.05287108715078489
-Jean Dubuffet,Marc Chagall . Charles Sorlier,0.307432548805936
+Jean Dubuffet,Marc Chagall,0.307432548805936
 Jean Dubuffet,Henri Matisse,0.14733758338095634
 Jean Dubuffet,Fernand Léger,0.08370056888086078
 Jean Dubuffet,Raoul Dufy,0.05563489547368084
@@ -2512,7 +2512,7 @@ Emil Nolde,Mary Cassatt,0.07877505660969004
 Paul Signac,Pierre Bonnard,0.07296195869199196
 Paul Signac,Raoul Dufy,0.06544429205196794
 Paul Signac,Camille Pissarro,0.08969205664092336
-Paul Signac,Marc Chagall . Charles Sorlier,0.25092730413747455
+Paul Signac,Marc Chagall,0.25092730413747455
 Paul Signac,Henri Matisse,0.1341752308470622
 Paul Signac,Georges Braque,0.1252580922103955
 Paul Signac,Fernand Léger,0.07580645107699052
@@ -2522,7 +2522,7 @@ Paul Signac,Henri de Toulouse-Lautrec,0.0841871029414832
 Serge Poliakoff,Sonia Delaunay,0.08671158096435462
 Serge Poliakoff,Georges Braque,0.15623118494556174
 Serge Poliakoff,Bernard Buffet,0.08453143190280797
-Serge Poliakoff,Marc Chagall . Charles Sorlier,0.26006045453299165
+Serge Poliakoff,Marc Chagall,0.26006045453299165
 Serge Poliakoff,Fernand Léger,0.08176644547329721
 Serge Poliakoff,Léonard Tsuguharu Foujita,0.06485430612260308
 Serge Poliakoff,Raoul Dufy,0.05727273590604188
@@ -2538,7 +2538,7 @@ Niki de Saint Phalle,Raoul Dufy,0.06190798294058116
 Niki de Saint Phalle,Victor Vasarely,0.10663286987053333
 Niki de Saint Phalle,Zao Wou-Ki,0.05489665188400207
 Niki de Saint Phalle,Sonia Delaunay,0.066584593710447
-Niki de Saint Phalle,Marc Chagall . Charles Sorlier,0.22483746364957088
+Niki de Saint Phalle,Marc Chagall,0.22483746364957088
 Antonio Da Canal Il Canaletto,James A. M. Whistler,0.17274084914421378
 Antonio Da Canal Il Canaletto,Giovanni Battista Piranesi,0.1539764149812107
 Antonio Da Canal Il Canaletto,Édouard Manet,0.07882605224777374
@@ -2582,7 +2582,7 @@ Horst P. Horst,George Bellows,0.07219988762875987
 Jules Chéret,Henri de Toulouse-Lautrec,0.14083395252920292
 Jules Chéret,Pierre Bonnard,0.07267771791861452
 Jules Chéret,Raoul Dufy,0.06495508220870601
-Jules Chéret,Marc Chagall . Charles Sorlier,0.2225272607034718
+Jules Chéret,Marc Chagall,0.2225272607034718
 Jules Chéret,Fernand Léger,0.07310411262083188
 Jules Chéret,Bernard Buffet,0.07056823396712571
 Jules Chéret,Edgar Degas,0.055902332917516805
@@ -2692,7 +2692,7 @@ Augustus Edwin John,James A. M. Whistler,0.10841569946508409
 Brassaï,Georges Braque,0.1606320208484563
 Brassaï,Léonard Tsuguharu Foujita,0.07798103105205768
 Brassaï,Jacques Villon,0.06266685622306639
-Brassaï,Marc Chagall . Charles Sorlier,0.24175351315770277
+Brassaï,Marc Chagall,0.24175351315770277
 Brassaï,Camille Pissarro,0.08442527663725036
 Brassaï,Henri Matisse,0.13371352746489398
 Brassaï,Fernand Léger,0.07587375322391854
@@ -2717,7 +2717,7 @@ André Masson,Fernand Léger,0.08594864340463608
 André Masson,Sonia Delaunay,0.06817399984257379
 André Masson,Pierre Bonnard,0.05777090849865976
 André Masson,Jacques Villon,0.056049063664233754
-André Masson,Marc Chagall . Charles Sorlier,0.2185785663515033
+André Masson,Marc Chagall,0.2185785663515033
 André Masson,Louis Icart,0.06664842777305933
 José Clemente Orozco,Alberto Giacometti,0.10418275290898636
 José Clemente Orozco,Giorgio de Chirico,0.1105412446333371
@@ -2800,7 +2800,7 @@ Jean-Michel Basquiat,Jonas Wood,0.06042856685638352
 Jean-Michel Basquiat,Jasper Johns,0.07162919212123171
 Jean-Michel Basquiat,Julian Opie,0.07254474625835355
 Pierre Soulages,Sonia Delaunay,0.08546934488882423
-Pierre Soulages,Marc Chagall . Charles Sorlier,0.2600542687504785
+Pierre Soulages,Marc Chagall,0.2600542687504785
 Pierre Soulages,Fernand Léger,0.08593612334963244
 Pierre Soulages,Georges Braque,0.1339005965914676
 Pierre Soulages,Invader,0.05913557216001523
@@ -2915,7 +2915,7 @@ Honoré Daumier,Camille Pissarro,0.10586605113690255
 Honoré Daumier,Edgar Degas,0.06948400182791116
 Honoré Daumier,Raoul Dufy,0.061111886328230086
 Honoré Daumier,Henri Matisse,0.1278486639952999
-Honoré Daumier,Marc Chagall . Charles Sorlier,0.22155019071272583
+Honoré Daumier,Marc Chagall,0.22155019071272583
 Honoré Daumier,Édouard Manet,0.05422589837631887
 Honoré Daumier,Fernand Léger,0.06694557317322665
 Honoré Daumier,James Jacques Joseph Tissot,0.06312094125821921
@@ -2931,7 +2931,7 @@ Peter Milton,Stanley William Hayter,0.1027845332570092
 Peter Milton,Anders Zorn,0.07005572733480492
 Henri Cartier-Bresson,Georges Braque,0.1557155142666757
 Henri Cartier-Bresson,Léonard Tsuguharu Foujita,0.07536740929789634
-Henri Cartier-Bresson,Marc Chagall . Charles Sorlier,0.2519148843922493
+Henri Cartier-Bresson,Marc Chagall,0.2519148843922493
 Henri Cartier-Bresson,Jacques Villon,0.06119782934306408
 Henri Cartier-Bresson,Henri Matisse,0.13762416297762536
 Henri Cartier-Bresson,Paul César Helleu,0.05417526688073921
@@ -2992,7 +2992,7 @@ Brice Marden,Wayne Thiebaud,0.06475733783085649
 Edouard Vuillard,Pierre Bonnard,0.09505552566806272
 Edouard Vuillard,Henri de Toulouse-Lautrec,0.1319183380142488
 Edouard Vuillard,Raoul Dufy,0.06769861611855639
-Edouard Vuillard,Marc Chagall . Charles Sorlier,0.22987771361549494
+Edouard Vuillard,Marc Chagall,0.22987771361549494
 Edouard Vuillard,Fernand Léger,0.07113573620723758
 Edouard Vuillard,Henri Matisse,0.11219457444212616
 Edouard Vuillard,Edgar Degas,0.05019070826159674
@@ -3085,7 +3085,7 @@ Odilon Redon,Pierre Bonnard,0.06468462276774554
 Odilon Redon,Raoul Dufy,0.06249396761219777
 Odilon Redon,Henri Matisse,0.13197080937146305
 Odilon Redon,Fernand Léger,0.07332436552688956
-Odilon Redon,Marc Chagall . Charles Sorlier,0.21855585183914447
+Odilon Redon,Marc Chagall,0.21855585183914447
 Odilon Redon,Camille Pissarro,0.07442143580953846
 Odilon Redon,Georges Braque,0.08544619210816132
 Odilon Redon,Pierre-Auguste Renoir,0.08383524706686941
@@ -3172,7 +3172,7 @@ Piero Dorazio,William Scott,0.06785147772126805
 Théophile Alexandre Steinlen,Raoul Dufy,0.07560940957088975
 Théophile Alexandre Steinlen,Pierre Bonnard,0.07049407889879315
 Théophile Alexandre Steinlen,Fernand Léger,0.08939946835310698
-Théophile Alexandre Steinlen,Marc Chagall . Charles Sorlier,0.2297771999755654
+Théophile Alexandre Steinlen,Marc Chagall,0.2297771999755654
 Théophile Alexandre Steinlen,Henri de Toulouse-Lautrec,0.10893251302762455
 Théophile Alexandre Steinlen,Pierre-Auguste Renoir,0.10504841681599474
 Théophile Alexandre Steinlen,Edgar Degas,0.05030443831039953
@@ -3405,7 +3405,7 @@ JR,Fernand Léger,0.09085734375648119
 JR,Raoul Dufy,0.06829645328431734
 JR,Georges Braque,0.14653554917903097
 JR,Mr Brainwash,0.07863381598866515
-JR,Marc Chagall . Charles Sorlier,0.25246472517421065
+JR,Marc Chagall,0.25246472517421065
 JR,Léonard Tsuguharu Foujita,0.06835254020799265
 JR,Pierre Bonnard,0.06256554455635521
 JR,Allen Jones,0.07135594559583763
@@ -3776,7 +3776,7 @@ André Derain,Léonard Tsuguharu Foujita,0.06802837864582711
 André Derain,Pierre Bonnard,0.06121872797713095
 André Derain,Henri Matisse,0.13105236549036398
 André Derain,Edgar Degas,0.058845522992229955
-André Derain,Marc Chagall . Charles Sorlier,0.22522830476726957
+André Derain,Marc Chagall,0.22522830476726957
 André Derain,Camille Pissarro,0.07244259424245893
 André Derain,Georges Rouault,0.07165856072285678
 Lisa Gray,Man Ray,0.09953391651094116
@@ -3823,7 +3823,7 @@ Aristide Maillol,Raoul Dufy,0.07141892955642674
 Aristide Maillol,Fernand Léger,0.0839842690481282
 Aristide Maillol,Henri Matisse,0.1422012804673545
 Aristide Maillol,Edgar Degas,0.06341556720566624
-Aristide Maillol,Marc Chagall . Charles Sorlier,0.22720533659796596
+Aristide Maillol,Marc Chagall,0.22720533659796596
 Aristide Maillol,Pierre Bonnard,0.058223864278598686
 Aristide Maillol,Georges Braque,0.1179133610956898
 Aristide Maillol,Léonard Tsuguharu Foujita,0.0597562423534706
@@ -4423,7 +4423,7 @@ Robert Doisneau,Georges Braque,0.1492865965360068
 Robert Doisneau,Jacques Villon,0.06567739879352856
 Robert Doisneau,Léonard Tsuguharu Foujita,0.07176095820549314
 Robert Doisneau,Camille Pissarro,0.08875733083455699
-Robert Doisneau,Marc Chagall . Charles Sorlier,0.24219427509363645
+Robert Doisneau,Marc Chagall,0.24219427509363645
 Robert Doisneau,Henri Matisse,0.13492120846463793
 Robert Doisneau,Paul César Helleu,0.05414500398224487
 Robert Doisneau,Raoul Dufy,0.05684623768451441
@@ -4728,7 +4728,7 @@ Jean Dufy,Zao Wou-Ki,0.060010108899192775
 Jean Dufy,Fernand Léger,0.08127849290042477
 Jean Dufy,Giorgio de Chirico,0.08129302740974119
 Jean Dufy,Léonard Tsuguharu Foujita,0.06719491615001313
-Jean Dufy,Marc Chagall . Charles Sorlier,0.2360783523455051
+Jean Dufy,Marc Chagall,0.2360783523455051
 Bryan Ingham,Julian Trevelyan,0.11919501356233535
 Bryan Ingham,Stanley William Hayter,0.13616429158334284
 Bryan Ingham,Paula Rego,0.09259093284808614
@@ -4973,7 +4973,7 @@ Maurice Utrillo,Fernand Léger,0.12001006062827724
 Maurice Utrillo,Raoul Dufy,0.07609165573288591
 Maurice Utrillo,Georges Braque,0.13796106496530558
 Maurice Utrillo,Léonard Tsuguharu Foujita,0.06904833967805615
-Maurice Utrillo,Marc Chagall . Charles Sorlier,0.24482496655654243
+Maurice Utrillo,Marc Chagall,0.24482496655654243
 Maurice Utrillo,Henri Matisse,0.1309816752739817
 Maurice Utrillo,Bernard Buffet,0.07073869408139327
 Maurice Utrillo,Pierre Bonnard,0.055824174497643216
@@ -5035,7 +5035,7 @@ Jean (Hans) Arp,Fernand Léger,0.09549086177499701
 Jean (Hans) Arp,Léonard Tsuguharu Foujita,0.07655478846081179
 Jean (Hans) Arp,Jacques Villon,0.06381127850263626
 Jean (Hans) Arp,Paul César Helleu,0.051668962437127854
-Jean (Hans) Arp,Marc Chagall . Charles Sorlier,0.22202612041172917
+Jean (Hans) Arp,Marc Chagall,0.22202612041172917
 Jean (Hans) Arp,Henri Matisse,0.1258191707397882
 Jean (Hans) Arp,Bernard Buffet,0.06785312938524157
 Jean (Hans) Arp,Pierre Bonnard,0.05256011328368409
@@ -5317,7 +5317,7 @@ Jacques Lipchitz,Bernard Buffet,0.08218362278028621
 Jacques Lipchitz,Fernand Léger,0.0826491882974925
 Jacques Lipchitz,Raoul Dufy,0.060703836061501724
 Jacques Lipchitz,Louis Icart,0.0703705499313227
-Jacques Lipchitz,Marc Chagall . Charles Sorlier,0.21066545479901047
+Jacques Lipchitz,Marc Chagall,0.21066545479901047
 Jacques Lipchitz,Pierre Bonnard,0.05274036918783289
 Max Weber,Rockwell Kent,0.13189799565929816
 Max Weber,Paul Landacre,0.10142322469092721
@@ -5828,7 +5828,7 @@ Théodore Géricault,Édouard Manet,0.059120518365193615
 Théodore Géricault,Pierre-Auguste Renoir,0.12513786661079068
 Théodore Géricault,James Jacques Joseph Tissot,0.06829490986757752
 Théodore Géricault,Fernand Léger,0.06937078018561332
-Théodore Géricault,Marc Chagall . Charles Sorlier,0.20565499522143285
+Théodore Géricault,Marc Chagall,0.20565499522143285
 Robert Gibbings,Paul Landacre,0.12137026660566091
 Robert Gibbings,Rockwell Kent,0.11638843358633538
 Robert Gibbings,Lill Tschudi,0.1296179113326037
@@ -5918,7 +5918,7 @@ Robert Delaunay,Fernand Léger,0.08584429840714823
 Robert Delaunay,Jacques Villon,0.061668499576608714
 Robert Delaunay,Sonia Delaunay,0.07094251329882768
 Robert Delaunay,Paul César Helleu,0.054600249718747995
-Robert Delaunay,Marc Chagall . Charles Sorlier,0.2286988511217799
+Robert Delaunay,Marc Chagall,0.2286988511217799
 Glenn Brown,Tracey Emin,0.15414573862249753
 Glenn Brown,Antony Gormley,0.07398998227856296
 Glenn Brown,Stik,0.06105493306434181
@@ -5987,7 +5987,7 @@ Lucien Clergue,Zao Wou-Ki,0.06070855009833822
 Lucien Clergue,Mr Brainwash,0.07539363120043115
 Lucien Clergue,Raoul Dufy,0.0629944752862553
 Lucien Clergue,Paul César Helleu,0.05801121579826209
-Lucien Clergue,Marc Chagall . Charles Sorlier,0.24956209349028705
+Lucien Clergue,Marc Chagall,0.24956209349028705
 Lucien Clergue,Fernand Léger,0.08007213055425792
 Ernst Haas,Christo and Jeanne-Claude,0.09473990376935928
 Ernst Haas,Bob Dylan,0.09040087356394216
@@ -6264,7 +6264,7 @@ Maurice Denis,Raoul Dufy,0.08146594622920131
 Maurice Denis,Fernand Léger,0.08652338996915519
 Maurice Denis,Henri de Toulouse-Lautrec,0.11660881252083026
 Maurice Denis,Bernard Buffet,0.07517130202379424
-Maurice Denis,Marc Chagall . Charles Sorlier,0.22612946732227393
+Maurice Denis,Marc Chagall,0.22612946732227393
 Maurice Denis,Georges Braque,0.11538048249410593
 Maurice Denis,Edgar Degas,0.05039024368929355
 Maurice Denis,Henri Matisse,0.10762500821214172
@@ -7685,7 +7685,7 @@ Maurice Estève,Pierre Bonnard,0.06917892203571442
 Maurice Estève,Sonia Delaunay,0.07651642200342834
 Maurice Estève,Raoul Dufy,0.06510055569927742
 Maurice Estève,Léonard Tsuguharu Foujita,0.06715853628720853
-Maurice Estève,Marc Chagall . Charles Sorlier,0.2399908209899772
+Maurice Estève,Marc Chagall,0.2399908209899772
 Maurice Estève,Fernand Léger,0.0782765961381838
 Maurice Estève,Zao Wou-Ki,0.05594388387921727
 Maurice Estève,Giorgio de Chirico,0.06991498135514591
@@ -8112,7 +8112,7 @@ Adolf Arthur Dehn,Allen Jones,0.08684391695714853
 Adolphe Mouron Cassandre,Raoul Dufy,0.07076789302956144
 Adolphe Mouron Cassandre,Fernand Léger,0.08769512085309149
 Adolphe Mouron Cassandre,Henri de Toulouse-Lautrec,0.12785037868185364
-Adolphe Mouron Cassandre,Marc Chagall . Charles Sorlier,0.2453864608291703
+Adolphe Mouron Cassandre,Marc Chagall,0.2453864608291703
 Adolphe Mouron Cassandre,Pierre Bonnard,0.06132369450520499
 Adolphe Mouron Cassandre,Edgar Degas,0.05833151067028667
 Adolphe Mouron Cassandre,Henri Matisse,0.1278409094942276
@@ -8703,7 +8703,7 @@ Paul Colin,Raoul Dufy,0.07813681161121491
 Paul Colin,Pierre Bonnard,0.07219319729474287
 Paul Colin,Henri de Toulouse-Lautrec,0.13132909767342263
 Paul Colin,Fernand Léger,0.08099664031164365
-Paul Colin,Marc Chagall . Charles Sorlier,0.22623005483077427
+Paul Colin,Marc Chagall,0.22623005483077427
 Paul Colin,Edgar Degas,0.05763370442367381
 Paul Colin,Bernard Buffet,0.07055752521000334
 Paul Colin,Pierre-Auguste Renoir,0.10832877713688803
@@ -8714,7 +8714,7 @@ Eugène Grasset,Pierre Bonnard,0.07212919814209345
 Eugène Grasset,Raoul Dufy,0.06455560821061834
 Eugène Grasset,Bernard Buffet,0.072057708820186
 Eugène Grasset,Fernand Léger,0.0727775012491718
-Eugène Grasset,Marc Chagall . Charles Sorlier,0.21859524667344657
+Eugène Grasset,Marc Chagall,0.21859524667344657
 Eugène Grasset,Edgar Degas,0.056703207474009205
 Eugène Grasset,Pierre-Auguste Renoir,0.11705357565952329
 Eugène Grasset,Georges Rouault,0.07557955307988536
@@ -8775,7 +8775,7 @@ Willy Ronis,Louis Icart,0.08935959520554297
 Willy Ronis,Jacques Villon,0.07028137394279833
 Willy Ronis,Paul César Helleu,0.06474006441859634
 Willy Ronis,Zao Wou-Ki,0.06224156838428775
-Willy Ronis,Marc Chagall . Charles Sorlier,0.24492093346107777
+Willy Ronis,Marc Chagall,0.24492093346107777
 Willy Ronis,Fernand Léger,0.0779953922211507
 Willy Ronis,Sonia Delaunay,0.0686419339640173
 Willy Ronis,Raoul Dufy,0.05852592010562342
@@ -8824,7 +8824,7 @@ Jean-Pierre Cassigneul,Raoul Dufy,0.0729972600734535
 Jean-Pierre Cassigneul,Pierre Bonnard,0.07171071887242127
 Jean-Pierre Cassigneul,Georges Braque,0.1446837856811911
 Jean-Pierre Cassigneul,Fernand Léger,0.08706696665765225
-Jean-Pierre Cassigneul,Marc Chagall . Charles Sorlier,0.22895828981614022
+Jean-Pierre Cassigneul,Marc Chagall,0.22895828981614022
 Jean-Pierre Cassigneul,Léonard Tsuguharu Foujita,0.05868872215186708
 Jean-Pierre Cassigneul,Sonia Delaunay,0.06192881464216946
 Jean-Pierre Cassigneul,Giorgio de Chirico,0.060349325664552055
@@ -8924,7 +8924,7 @@ Henri Fantin-Latour,Georges Braque,0.14697402938359114
 Henri Fantin-Latour,Raoul Dufy,0.06629719759688944
 Henri Fantin-Latour,Bernard Buffet,0.08153670507058881
 Henri Fantin-Latour,Léonard Tsuguharu Foujita,0.06481640271597201
-Henri Fantin-Latour,Marc Chagall . Charles Sorlier,0.2309341758221609
+Henri Fantin-Latour,Marc Chagall,0.2309341758221609
 Henri Fantin-Latour,Fernand Léger,0.076409870696325
 Henri Fantin-Latour,Camille Pissarro,0.07652538233707615
 Henri Fantin-Latour,Henri Matisse,0.1142074309307953
@@ -9008,7 +9008,7 @@ Théo Tobiasse,Raoul Dufy,0.06277441896693804
 Théo Tobiasse,Zao Wou-Ki,0.057788510913755316
 Théo Tobiasse,Fernand Léger,0.07971858156334925
 Théo Tobiasse,Pierre Bonnard,0.06029144590864447
-Théo Tobiasse,Marc Chagall . Charles Sorlier,0.23156507158929365
+Théo Tobiasse,Marc Chagall,0.23156507158929365
 Phyllida Barlow,Bruce McLean,0.07741502779790504
 Phyllida Barlow,Joe Tilson,0.08423621814186336
 Phyllida Barlow,John Piper,0.16772559257886782
@@ -9133,7 +9133,7 @@ Bernard Cathelin,Bernard Buffet,0.09649103267747076
 Bernard Cathelin,Georges Braque,0.14612520572252652
 Bernard Cathelin,Raoul Dufy,0.0680590481155048
 Bernard Cathelin,Fernand Léger,0.08403564804125045
-Bernard Cathelin,Marc Chagall . Charles Sorlier,0.25208490684424123
+Bernard Cathelin,Marc Chagall,0.25208490684424123
 Bernard Cathelin,Sonia Delaunay,0.06865628457090679
 Bernard Cathelin,Pierre Bonnard,0.057999744632419324
 Bernard Cathelin,Léonard Tsuguharu Foujita,0.06156141151158856
@@ -9168,7 +9168,7 @@ Henri Privat-Livemont,Alexander Calder,0.1242032703341465
 Henri Privat-Livemont,William Scott,0.06320525130013142
 Henri Privat-Livemont,Raoul Dufy,0.06330289398243731
 Henri Privat-Livemont,George Bellows,0.06413167348616783
-Henri Privat-Livemont,Marc Chagall . Charles Sorlier,0.24739716926820773
+Henri Privat-Livemont,Marc Chagall,0.24739716926820773
 Willard E. Worden,James Abbott McNeill Whistler,0.15548921207564284
 Willard E. Worden,Man Ray,0.11455712636966668
 Willard E. Worden,John James Audubon,0.08936995400719414
@@ -9714,7 +9714,7 @@ Eugène Carrière,Georges Braque,0.16469005549754975
 Eugène Carrière,Raoul Dufy,0.07665538021525421
 Eugène Carrière,Bernard Buffet,0.09492345203788705
 Eugène Carrière,Fernand Léger,0.08660599136026277
-Eugène Carrière,Marc Chagall . Charles Sorlier,0.2420719982780684
+Eugène Carrière,Marc Chagall,0.2420719982780684
 Eugène Carrière,Léonard Tsuguharu Foujita,0.0656574824320863
 Eugène Carrière,Sonia Delaunay,0.06723789614008106
 Eugène Carrière,Jacques Villon,0.050463853456530455
@@ -10063,7 +10063,7 @@ Frank Horvat,Léonard Tsuguharu Foujita,0.08048248808364292
 Frank Horvat,Georges Braque,0.1514681275637634
 Frank Horvat,Zao Wou-Ki,0.06428061577484002
 Frank Horvat,Invader,0.06339097342145832
-Frank Horvat,Marc Chagall . Charles Sorlier,0.24833838221520307
+Frank Horvat,Marc Chagall,0.24833838221520307
 Frank Horvat,Jacques Villon,0.060753435605852155
 Frank Horvat,Henri Matisse,0.13436708999215238
 Frank Horvat,Mr Brainwash,0.06828422197542598
@@ -10503,7 +10503,7 @@ Andreas Feininger,Georges Braque,0.16321742638750822
 Andreas Feininger,Léonard Tsuguharu Foujita,0.0811913691840935
 Andreas Feininger,Fernand Léger,0.08729588302026943
 Andreas Feininger,Louis Icart,0.07812011171968966
-Andreas Feininger,Marc Chagall . Charles Sorlier,0.24061855651201747
+Andreas Feininger,Marc Chagall,0.24061855651201747
 Andreas Feininger,Jacques Villon,0.05851541407001716
 Andreas Feininger,Paul César Helleu,0.05383909527262548
 Andreas Feininger,Henri Matisse,0.12804062347395118
@@ -10656,7 +10656,7 @@ Françoise Gilot,Léonard Tsuguharu Foujita,0.07125925859346792
 Françoise Gilot,Sonia Delaunay,0.07536958759393975
 Françoise Gilot,Fernand Léger,0.08109926925034434
 Françoise Gilot,Pierre Bonnard,0.06176324255754248
-Françoise Gilot,Marc Chagall . Charles Sorlier,0.22621181312805425
+Françoise Gilot,Marc Chagall,0.22621181312805425
 Françoise Gilot,Jacques Villon,0.05596995635646496
 Françoise Gilot,Louis Icart,0.06666065182575595
 Norman Wilkinson,Graham Sutherland,0.10291617278197875
@@ -11206,7 +11206,7 @@ Bernard Villemot,Henri de Toulouse-Lautrec,0.1135052827616079
 Bernard Villemot,Sonia Delaunay,0.06694178135596968
 Bernard Villemot,Fernand Léger,0.07460536126908088
 Bernard Villemot,Georges Braque,0.11908769188096845
-Bernard Villemot,Marc Chagall . Charles Sorlier,0.22113969060575786
+Bernard Villemot,Marc Chagall,0.22113969060575786
 Bernard Villemot,Georges Rouault,0.07880784128579078
 Bernard Villemot,Pierre-Auguste Renoir,0.11223285559539475
 Ronald Grierson,Paul Landacre,0.10294444060033858
@@ -11347,7 +11347,7 @@ Yves Klein,Fernand Léger,0.08700044522363566
 Yves Klein,Pierre Bonnard,0.06456038713835337
 Yves Klein,Bernard Buffet,0.07818566337972571
 Yves Klein,Georges Braque,0.13053281288456509
-Yves Klein,Marc Chagall . Charles Sorlier,0.23996478730582685
+Yves Klein,Marc Chagall,0.23996478730582685
 Yves Klein,Léonard Tsuguharu Foujita,0.06483943337061736
 Daido Moriyama,René Magritte,0.08110790691802583
 Daido Moriyama,Marino Marini,0.09454477649638995
@@ -11435,7 +11435,7 @@ Leslie Ragan,Alberto Giacometti,0.06486809980932985
 Leslie Ragan,Henri de Toulouse-Lautrec,0.11530037155223294
 Leslie Ragan,John James Audubon,0.06676629652065134
 Leslie Ragan,Raoul Dufy,0.05586625390957959
-Leslie Ragan,Marc Chagall . Charles Sorlier,0.2222467414721083
+Leslie Ragan,Marc Chagall,0.2222467414721083
 Leslie Ragan,William Scott,0.05477880361263002
 Leslie Ragan,Alexander Calder,0.10585946194586587
 Leslie Ragan,David Hockney,0.17752106335929024
@@ -12245,7 +12245,7 @@ Fernand Toussaint,Roy Lichtenstein,0.12188022119440448
 Fernand Toussaint,René Magritte,0.057209655106763284
 Fernand Toussaint,Keith Haring,0.09321702340207572
 Fernand Toussaint,John James Audubon,0.058153274625569094
-Fernand Toussaint,Marc Chagall . Charles Sorlier,0.19263189622899896
+Fernand Toussaint,Marc Chagall,0.19263189622899896
 Fernand Toussaint,David Hockney,0.15455154558306708
 Fernand Toussaint,Alberto Giacometti,0.05080715261166369
 Fernand Toussaint,Henri Matisse,0.10673635870713351
@@ -13863,7 +13863,7 @@ Jean-Gabriel Domergue,Pierre Bonnard,0.07474974860277206
 Jean-Gabriel Domergue,Raoul Dufy,0.07133460457056519
 Jean-Gabriel Domergue,Henri de Toulouse-Lautrec,0.12769630992749872
 Jean-Gabriel Domergue,Bernard Buffet,0.07656370254625207
-Jean-Gabriel Domergue,Marc Chagall . Charles Sorlier,0.23359557201649905
+Jean-Gabriel Domergue,Marc Chagall,0.23359557201649905
 Jean-Gabriel Domergue,Fernand Léger,0.07603806471728974
 Jean-Gabriel Domergue,Georges Braque,0.1150204879387869
 Jean-Gabriel Domergue,Pierre-Auguste Renoir,0.11163414264734096
@@ -14116,7 +14116,7 @@ Andre Lanskoy,Georges Braque,0.15540444786674237
 Andre Lanskoy,Pierre Bonnard,0.06918207038472216
 Andre Lanskoy,Léonard Tsuguharu Foujita,0.06999463373798066
 Andre Lanskoy,Jacques Villon,0.05999066023366518
-Andre Lanskoy,Marc Chagall . Charles Sorlier,0.2362927322930393
+Andre Lanskoy,Marc Chagall,0.2362927322930393
 Andre Lanskoy,Sonia Delaunay,0.06820485796503385
 Andre Lanskoy,Paul César Helleu,0.05079209967730125
 Philip-Lorca diCorcia,Connor Brothers,0.1626385702272478
