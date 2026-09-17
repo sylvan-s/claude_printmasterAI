@@ -39,6 +39,8 @@ def main():
     ap.add_argument("csv")
     ap.add_argument("--priors", default=os.path.join(HERE, "priors", "artist_elasticities.json"))
     ap.add_argument("--out", default=os.path.join(HERE, "priors", "column_means.json"))
+    ap.add_argument("--target", choices=["hammer", "estimate-mid", "estimate-low"], default="estimate-mid",
+                    help="must match the priors build (build_priors.py --target); with a lots export use the sale-date GBP estimate")
     ap.add_argument("--size-terms", choices=["both", "bands", "shape-bands", "shape-bands+log", "shape-bands+xl"], default="both",
                     help="must match the priors build (build_priors.py --size-terms)")
     args = ap.parse_args()
@@ -53,6 +55,20 @@ def main():
     df = df[df["artist"].notna()].reset_index(drop=True)
     feat = build_features(df)
     feat["after"] = not_direct_mask(df).astype(float).values
+    # The fair price is a SOLD lot's estimate: the unsold column's reference (0) is the chart's scale, so
+    # its mean is recorded as 0 whatever the lots mix (build_priors.py --unsold-flag).
+    feat["unsold"] = 0.0
+    if args.target == "hammer":
+        y_all = np.log(df["hammerGBP"].astype(float).where(df["hammerGBP"].astype(float) > 0))
+    elif "estimateMidGBP" in df.columns:
+        y_all = np.log(df["estimateMidGBP" if args.target == "estimate-mid" else "estimateLowGBPSaleDate"].astype(float))
+    else:
+        fx0 = df["fxRateToGBP"].astype(float).where(df["fxRateToGBP"].astype(float) > 0)
+        lo0 = df["estimateLowGBP"].astype(float).where(df["estimateLowGBP"].astype(float) > 0).fillna(df["estimateLow"].astype(float) / fx0)
+        hi0 = df["estimateHighGBP"].astype(float).where(df["estimateHighGBP"].astype(float) > 0).fillna(df["estimateHigh"].astype(float) / fx0)
+        y_all = np.log((lo0 + hi0) / 2 if args.target == "estimate-mid" else lo0)
+    keep = (y_all.notna() & np.isfinite(y_all)).values
+    df, feat, y_all = df[keep].reset_index(drop=True), feat[keep].reset_index(drop=True), y_all[keep].reset_index(drop=True)
     if args.size_terms.startswith("shape-bands"):
         # Mirrors build_priors.py: bands cut where the measured price curve bends.
         area = np.exp(feat["area_log"])
@@ -77,7 +93,7 @@ def main():
         if c in X:
             X[c] = X[c].fillna(db["continuous_medians"][c])
     Xt = X[train]
-    y = np.log(df.loc[train, "hammerGBP"].astype(float))
+    y = y_all[train]
     years = pd.to_datetime(df.loc[train, "saleDate"]).dt.year.astype(str)
     ye = db["year_effects"]
     year_eff = years.map(lambda yr: ye.get(yr, 0.0))

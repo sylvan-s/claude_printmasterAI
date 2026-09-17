@@ -234,7 +234,7 @@ export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration,
     for (const dim of ["after", "signature", "proof", "edition", "size", "poster", "object"]) if (dim in byDim && (dim !== "poster" || ev.attrs.poster?.value) && (dim !== "after" || ev.attrs.after?.value) && (dim !== "object" || ev.attrs.object?.value)) push(dim === "proof" ? "impression" : dim, attrLabel(dim, ev, policyProof, neutralEdition, profile), "factor", byDim[dim]);
     if (off) push("house", `Sale house: ${ev.targetHouse.value ?? "none chosen (pooled level)"}`, "factor", houseLog - refHouse);
     push("year", `Market level: ${year}`, "factor", yearEff - refYear);
-    push("calibration", "Model calibration on realised hammers", "factor", priors.mu - priors.rawMu);
+    push("calibration", "Model calibration to house estimates", "factor", priors.mu - priors.rawMu);
     const gap = priors.mu - running;
     if (Math.abs(gap) > 1e-6) {
       notes.push(`model bars fall ${gap.toFixed(4)} log short of the model price; folded into the starting point`);
@@ -244,7 +244,7 @@ export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration,
     bars.push({ key: "model", label: "Pricing model price", kind: "subtotal", logEffect: 0, multiplier: 1, fromGBP: Math.round(Math.exp(running)), toGBP: Math.round(Math.exp(running)) });
   } else {
     running = means.baselineLogHammer;
-    bars.push({ key: "baseline", label: `Average sold print (${means.trainRows.toLocaleString("en-GB")} auction sales)`, kind: "baseline", logEffect: 0, multiplier: 1, fromGBP: Math.round(Math.exp(running)), toGBP: Math.round(Math.exp(running)) });
+    bars.push({ key: "baseline", label: `Average house estimate (${means.trainRows.toLocaleString("en-GB")} auction lots)`, kind: "baseline", logEffect: 0, multiplier: 1, fromGBP: Math.round(Math.exp(running)), toGBP: Math.round(Math.exp(running)) });
     notes.push(profile ? "the pricing model carried no weight for this lot" : "no pricing model for this artist: the price comes from market comps alone");
   }
 

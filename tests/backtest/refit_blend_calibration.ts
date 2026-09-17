@@ -35,6 +35,8 @@ const SUITE = arg("suite");
 const OFFSETS = arg("offsets", "knowledge_graph/pricing_ml/blend/house_offsets.json")!;
 /** Re-price non-sterling comps at the lot's sale-date rate (currency from extract_comp_currency.ts). */
 const FX = argv.includes("--fx-reconvert");
+/** Calibrate the pricing-model witness against the house mid estimate (fair-price scale) instead of the hammer; comps stay on hammers. */
+const PRIORS_OUTCOME = (arg("priors-outcome", "estimate") as "hammer" | "estimate");
 /** Report only; write no calibration. */
 const DRY = argv.includes("--dry");
 
@@ -75,7 +77,9 @@ async function main() {
       sameArtist: bi.sameArtist ? { ...bi.sameArtist, comps: withFx(bi.sameArtist.comps, r.saleDate) } : null,
     };
     const inputs: BlendInputs = { ...bi, ...fxInputs, estimate: null, priors: pred && profile ? { mu: pred.mu, basis: profile.basis, earlierSales: profile.earlierSales, contributions: pred.contributions } : null, ...(SUITE ? { sameSuite: withFx(suite, r.saleDate) } : {}) };
-    rows.push({ r, fit: { inputs, hammerGBP: r.hammer }, area: attrs.areaCm2 ?? null, proof: attrs.proof ?? "unknown", suite: suite.length });
+    const est = bi.estimate;
+    const mid = est && est.lowGBP > 0 && est.highGBP > 0 ? (est.lowGBP + est.highGBP) / 2 : null;
+    rows.push({ r, fit: { inputs, hammerGBP: r.hammer, estimateMidGBP: mid }, area: attrs.areaCm2 ?? null, proof: attrs.proof ?? "unknown", suite: suite.length });
   }
   const basis = [...profiles.values()].reduce((t, p) => { const k = p?.basis ?? "none"; t[k] = (t[k] ?? 0) + 1; return t; }, {} as Record<string, number>);
   console.log(`fx re-pricing ${FX ? "ON" : "off"}: ${fxCount.foreign} of ${fxCount.comps} comps non-sterling, mean |shift| ${(fxCount.shiftAbs / Math.max(fxCount.foreign, 1)).toFixed(3)} log`);
@@ -83,15 +87,20 @@ async function main() {
 
   // 1. temporal gate
   const early = rows.filter((x) => x.r.saleDate < SPLIT), late = rows.filter((x) => x.r.saleDate >= SPLIT);
-  const gateCal = fitBlendCalibration(early.map((x) => x.fit), { version: `${VERSION}-gate`, fittedOn: `lots before ${SPLIT}`, df: 5, houseOffsets: offsets });
+  const gateCal = fitBlendCalibration(early.map((x) => x.fit), { version: `${VERSION}-gate`, fittedOn: `lots before ${SPLIT}`, df: 5, houseOffsets: offsets, priorsOutcome: PRIORS_OUTCOME });
+  console.log(`pricing-model witness calibrated against: ${PRIORS_OUTCOME === "estimate" ? "house mid estimate" : "hammer"}; comps against hammer`);
   const score = (sub: typeof rows) => {
-    let n = 0, mae = 0, geo = 0, cover = 0;
+    let n = 0, mae = 0, geo = 0, cover = 0, ne = 0, maeE = 0, geoE = 0, coverE = 0;
     for (const x of sub) {
       const b = blendPrices(x.fit.inputs, gateCal, "no_estimate"); if (!b) continue;
       const y = Math.log(x.r.hammer), e = Math.log(b.medianGBP) - y;
       n++; mae += Math.abs(e); geo += e; if (y >= Math.log(b.p10GBP) && y <= Math.log(b.p90GBP)) cover++;
+      if (x.fit.estimateMidGBP) {
+        const ye = Math.log(x.fit.estimateMidGBP), ee = Math.log(b.medianGBP) - ye;
+        ne++; maeE += Math.abs(ee); geoE += ee; if (ye >= Math.log(b.p10GBP) && ye <= Math.log(b.p90GBP)) coverE++;
+      }
     }
-    return `n=${String(n).padStart(4)}  MAE(log) ${(mae / n).toFixed(3)}  80% cover ${(100 * cover / n).toFixed(0)}%  geo x${Math.exp(geo / n).toFixed(2)}`;
+    return `n=${String(n).padStart(4)}  hammer: MAE(log) ${(mae / n).toFixed(3)} cover ${(100 * cover / n).toFixed(0)}% geo x${Math.exp(geo / n).toFixed(2)}  | mid estimate: MAE(log) ${(maeE / ne).toFixed(3)} cover ${(100 * coverE / ne).toFixed(0)}% geo x${Math.exp(geoE / ne).toFixed(2)}`;
   };
   const size = (a: number | null) => a == null ? "size unknown" : a < 400 ? "under 400 cm²" : a < 1800 ? "400-1,800 cm²" : a < 7500 ? "1,800-7,500 cm²" : "over 7,500 cm²";
   console.log(`\nTemporal gate: fit on ${early.length} lots before ${SPLIT}, score ${late.length} after`);
@@ -124,7 +133,7 @@ async function main() {
 
   // 2. production fit on every lot
   if (DRY) { console.log(`\n--dry: no calibration written; gate weights ${JSON.stringify(gateCal.regimes.no_estimate.weights)}, same_suite keys ${JSON.stringify(gateCal.witnesses.same_suite?.byKey ?? {})}`); await closeDriver(); return; }
-  const cal = fitBlendCalibration(rows.map((x) => x.fit), { version: VERSION, fittedOn: `all ${rows.length} sold lots (forum, roseberys, bonhams), priors ${build.version}@${build.built_at}, offline refit`, df: 5, houseOffsets: offsets });
+  const cal = fitBlendCalibration(rows.map((x) => x.fit), { version: VERSION, fittedOn: `all ${rows.length} sold lots (forum, roseberys, bonhams), priors ${build.version}@${build.built_at}, offline refit; pricing-model witness calibrated to ${PRIORS_OUTCOME === "estimate" ? "house mid estimates" : "hammers"}, comps to hammers`, df: 5, houseOffsets: offsets, priorsOutcome: PRIORS_OUTCOME });
   writeFileSync(OUT, JSON.stringify(cal, null, 2) + "\n");
   const r = cal.regimes.no_estimate;
   console.log(`\n${VERSION} written to ${OUT}: weights ${JSON.stringify(r.weights)}, temperature ${r.temperature} by tier ${JSON.stringify(r.temperatureByTier)}, fit MAE ${r.fitMaeLog.toFixed(3)}, cover ${(100 * r.fitCoverage80).toFixed(0)}%`);

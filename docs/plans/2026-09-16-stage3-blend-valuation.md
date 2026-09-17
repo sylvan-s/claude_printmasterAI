@@ -1108,3 +1108,37 @@ From the second per-artist priors review.
   open guard is to stop the slope at an artist's largest sold sheet.
 - Blend gate (BLEND-1.11): MAE(log) 0.615 -> 0.614, 80% cover 81% -> 80%; Bonhams 0.606 -> 0.603,
   Forum 0.628 -> 0.627, Roseberys 0.593 -> 0.591.
+
+### 2026-09-17: fair price fitted to house estimates, not hammers (BLEND-2.0)
+
+User direction: the pricing model's dependent variable is the house MID estimate. Auctioneers price a
+print's fundamentals, hammers add noise, and far more lots are estimated than sold. Comps stay
+realised hammers and pull the price toward what prints sell for; they are not rebased.
+
+- **Evidence:** on the same sold lots, the estimate is less noisy. For works sold 3+ times, the
+  within-work SD of log price (year-adjusted) is hammer 0.343 vs mid estimate 0.273; same house
+  0.333 vs 0.256.
+- **Export:** `export_sales.py --lots` writes every dated auction lot with an estimate, sold or not,
+  with a `sold` flag and the estimate in GBP at the SALE-DATE ECB rate (backfill_fx_gbp's rate book,
+  no graph write). 77,433 lots since 2010 against ~45k sold with hammers, including Swann (14,074,
+  never in the hammer model). It reproduces the stored rate on 100% of 45,136 sold rows. Unsold
+  estimates for the same work sit x1.28 above sold ones, with the same within-work SD, hence the flag.
+- **Model:** `build_priors.py --target estimate-mid --unsold-flag on` (now the defaults) on
+  all_lots.csv: 60,899 training rows (was 34,622), 533 own-fit artists (was 334). The per-artist
+  unsold term has a median of x1.16; live lots price with it at 0 (a sold lot's estimate).
+  Priors-only, on 8,565 held-out sold lots against their mid estimate: 0.5589 vs the rescaled hammer
+  model's 0.5692 (P 0.95) and a sold-only estimate model's 0.5713. The gain is the extra data.
+- **Calibration:** `fitBlendCalibration({ priorsOutcome: "estimate" })` fits the pricing-model
+  witness's bias and spread against the lot's mid estimate. Comps witnesses, weights and temperature
+  are still fitted on hammers. `column_means.py --target` reads the lots file.
+- **Gate (1,495 lots):** vs mid estimate MAE(log) 0.575 -> **0.548**, 80% cover 83% -> 85%, price
+  level x0.84 -> x0.91 of the estimate; vs hammer 0.614 -> **0.605**, cover 80% -> 81%. Better at
+  every house.
+- **Wording:** calibration bar "Model calibration to house estimates", no-model start "Average
+  house estimate (N auction lots)"; report caption, valuationContext and the narration prompt
+  describe the fair-price basis.
+- **Hockney Self-Portrait:** £2,323 (800–6,400); edition x0.75, calibration x0.84, comps x0.78.
+  The narration said the smaller edition "adds value", against a x0.75 bar: the figure guard cannot
+  catch a wrong direction (next fix).
+- **Open:** the graph still holds Bonhams' current-rate GBP estimates on unsold rows (the export
+  corrects them for the model).

@@ -34,7 +34,7 @@ export function recentSalesFromEvidence(ev: ValuationEvidence): RecentSale[] {
       artist: ev.artist.canonical ?? ev.artist.reported ?? "",
       technique: c.attrs.process && c.attrs.process !== "other" ? c.attrs.process : "not recorded",
       saleDate: c.saleDate?.slice(0, 10) ?? "undated",
-      // What buyers paid, with the hammer beside it: the fair-value range is on the hammer basis.
+      // What buyers paid, with the hammer beside it: the fair-value range is before buyer's premium.
       priceRealized: c.realisedGBP != null && c.realisedGBP > 0
         ? `${gbp(c.realisedGBP)}${c.hammerGBP ? ` (hammer ${gbp(c.hammerGBP)})` : ""}`
         : `hammer ${gbp(c.hammerGBP!)}`,

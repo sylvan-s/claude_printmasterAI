@@ -51,7 +51,7 @@ export interface Stage3aWitness {
 export interface Stage3aResult {
   version: typeof STAGE3A_VERSION;
   calibrationVersion: string;
-  /** The 80% range and its median, hammer basis, GBP. */
+  /** The 80% range and its median, GBP: fair-price basis (pricing model fitted to house estimates; hammer comps). */
   lowGBP: number;
   medianGBP: number;
   highGBP: number;
@@ -197,8 +197,8 @@ export function stage3aAuctionEstimate(r: Stage3aResult, currency: string, valua
     formattedEstimate: `${low} - ${high} ${cur}`,
     valuationContext:
       `A fair-value range from the print's own attributes and past market sales, not a forecast anchored on any house estimate. `
-      + `It is the 80% range of a calibrated blend of the artist's pricing model and realised hammer prices (Stage 3a, calibration ${r.calibrationVersion}), `
-      + `median ${median.toLocaleString("en-GB")} ${cur}, ${houseNote}. Hammer basis: buyer's premium is additional.${fxNote}`
+      + `It is the 80% range of a calibrated blend of the artist's pricing model, fitted to auction houses' estimates for sold and unsold lots, and realised hammer prices, which pull it toward what prints sell for (Stage 3a, calibration ${r.calibrationVersion}), `
+      + `median ${median.toLocaleString("en-GB")} ${cur}, ${houseNote}. Before buyer's premium.${fxNote}`
       + (r.printedEstimate?.midpointOverMedian ? ` The house's printed estimate midpoint is x${r.printedEstimate.midpointOverMedian} this median; it is shown for reference and does not enter the price.` : "")
       + ` Condition: ${r.condition.note}.`,
     valuationReasoning: {

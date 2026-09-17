@@ -49,8 +49,8 @@ export function allowedFigures(r: Stage3aResult, est: AuctionEstimate, fxRate: n
   // The proof policy's stated band, which the chart label prints ("modest proof premium, 5-10%").
   out.push({ label: "proof premium floor (%)", value: Math.round((DEFAULT_PROOF_PREMIUM.min - 1) * 100), kind: "percent" });
   out.push({ label: "proof premium cap (%)", value: Math.round((DEFAULT_PROOF_PREMIUM.max - 1) * 100), kind: "percent" });
-  const trainRows = r.waterfall?.bars[0]?.label.match(/\(([\d,]+) auction sales\)/)?.[1];
-  if (trainRows) out.push({ label: "auction sales behind the average sold print", value: Number(trainRows.replace(/,/g, "")), kind: "count" });
+  const trainRows = r.waterfall?.bars[0]?.label.match(/\(([\d,]+) auction (?:sales|lots)\)/)?.[1];
+  if (trainRows) out.push({ label: "auction lots behind the average house estimate", value: Number(trainRows.replace(/,/g, "")), kind: "count" });
   // A multiplier may also be written as a percentage change: x0.85 is "15% lower", x1.37 "37% higher".
   for (const m of out.filter((a) => a.kind === "multiplier")) out.push({ label: `${m.label} as a % change`, value: Math.round(Math.abs(m.value - 1) * 100), kind: "percent" });
   // Individual comps the narration may cite: the hammer (in the report currency) and the year.
@@ -119,7 +119,8 @@ HOW TO READ THE CHART (get this right; it is the most common error)
 - "Offset print" as the technique means an offset lithograph or photolithograph (photomechanically printed), priced as its own technique, not as a hand-drawn lithograph. A "Poster" step appears only when the lot is a poster; it is this artist's measured poster discount or premium. An "Attribution" step appears only when the house catalogues the lot as "after" (or "manner of", "attributed to") the artist: it is NOT the artist's own print, and the step is this artist's measured discount for such lots. Say so plainly, and never describe such a lot as by the artist. An "Object multiple" step appears only when the lot is printed or made on a non-paper support (aluminium, Plexiglas, steel, canvas, wood) or is a cast object; it is this artist's measured difference for such multiples.
 - "Impression status" is where this impression sits relative to the numbered edition (numbered, artist's proof, hors commerce, trial proof). It is NOT a catalogue raisonné citation. For an artist's proof, hors commerce or trial proof it is a modest proof premium of 5-10%; if no edition is stated, the edition step prices it at the average edition rather than as an unknown-edition penalty.
 - "Size" compares this sheet with a large sheet (42-87 cm a side); the bands are named by sheet side (small up to 30 cm, medium 30-42 cm, large 42-87 cm, extra large over 87 cm, where larger still adds value per doubling).
-- "Sale house" is the house's like-for-like price level against Bonhams. "Market level" is the valuation year's market against 2025. "Model calibration" corrects the model to realised hammers.
+- "Sale house" is the house's like-for-like price level against Bonhams. "Market level" is the valuation year's market against 2025. "Model calibration" corrects the pricing model to houses' own estimates for comparable lots.
+- The price is a FAIR PRICE: the pricing model is fitted to auction houses' estimates (how specialists price a print's fundamentals, sold and unsold lots alike), and the market comps are realised hammer prices, which pull it toward what prints actually sell for. It is not a hammer forecast.
 - "Same catalogue entry" comps are sales of OTHER works catalogued under the same catalogue raisonné entry as this print (e.g. other plates of the same book, "Vallier 153"): close relatives, not this exact work.
 - "Market comps" is the pull from realised sales, re-based to the target house and to the valuation date; the comps come from several houses and years, not one house.
 
@@ -148,9 +149,9 @@ export function stage3bUserText(r: Stage3aResult, est: AuctionEstimate, allowed:
   const chart = (r.waterfall?.bars ?? []).map((b) => ({ step: b.label, kind: b.kind, multiplier: b.kind === "factor" || b.kind === "comps" ? b.multiplier : undefined }));
   return [
     `LOT: ${lot.artist ?? "unknown artist"}${lot.title ? ` — "${lot.title}"` : ""}`,
-    `FAIR-VALUE RANGE: ${est.lowEstimate}–${est.highEstimate} ${est.currency} (80% range; hammer basis)`,
+    `FAIR-VALUE RANGE: ${est.lowEstimate}–${est.highEstimate} ${est.currency} (80% range; fair price: house-estimate basis, pulled toward realised hammers by the comps)`,
     `STRONGEST EVIDENCE: ${r.evidenceTier.replace(/_/g, " ")}`,
-    `CONTRIBUTION CHART (average sold print -> this lot; multipliers apply in order):\n${JSON.stringify(chart)}`,
+    `CONTRIBUTION CHART (reference print -> this lot; multipliers apply in order):\n${JSON.stringify(chart)}`,
     `WITNESSES BLENDED: ${JSON.stringify(r.witnesses.map((w) => ({ source: w.source, basis: w.basis, weight: w.effectiveWeight })))}`,
     `CONDITION: ${r.condition.grade ?? "not assessed"} — ${r.condition.note}`,
     `CAVEATS: ${JSON.stringify(r.caveats)}`,

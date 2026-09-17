@@ -1,7 +1,7 @@
 {
-  "version": "BLEND-1.11",
-  "fittedAt": "2026-09-17T08:38:31.244Z",
-  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands+after-factor+object@2026-09-17T08:36:27+00:00, offline refit",
+  "version": "BLEND-2.0",
+  "fittedAt": "2026-09-17T09:18:56.807Z",
+  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands+after-factor+object+target-estimate-mid+unsold-flag@2026-09-17T09:13:55+00:00, offline refit; pricing-model witness calibrated to house mid estimates, comps to hammers",
   "witnesses": {
     "estimate": {
       "df": 5,
@@ -110,25 +110,25 @@
     "priors_model": {
       "df": 5,
       "byKey": {
-        "segment": {
-          "bias": -1.2780678328483108,
-          "sigma": 1.1165242890332336,
-          "n": 836
+        "prior": {
+          "bias": -0.27310440479603226,
+          "sigma": 0.5030955430909795,
+          "n": 433
         },
         "all": {
-          "bias": -0.31726212823882527,
-          "sigma": 0.7797283742495784,
+          "bias": -0.24843691103472398,
+          "sigma": 0.6783043413067007,
           "n": 5094
         },
         "shrunk": {
-          "bias": -0.2105555867932538,
-          "sigma": 0.6710664818674733,
-          "n": 3770
+          "bias": -0.16925333843874846,
+          "sigma": 0.6146346921520185,
+          "n": 3994
         },
-        "prior": {
-          "bias": -0.2464547186956736,
-          "sigma": 0.59279543566734,
-          "n": 488
+        "segment": {
+          "bias": -1.1625374342380583,
+          "sigma": 0.9602919543923192,
+          "n": 667
         }
       }
     }
@@ -156,19 +156,19 @@
         "same_suite": 1.5,
         "same_artist_technique": 0.5,
         "same_artist": 0.25,
-        "priors_model": 1.5
+        "priors_model": 1
       },
-      "temperature": 2,
+      "temperature": 1.75,
       "fitLots": 5094,
-      "fitMaeLog": 0.6055966002981922,
-      "fitCoverage80": 0.7968197879858657,
+      "fitMaeLog": 0.6253932166328651,
+      "fitCoverage80": 0.7938751472320377,
       "temperatureByTier": {
         "same_work_3+": 2.5,
         "same_work_1-2": 3,
         "same_suite": 1.75,
-        "same_artist_technique": 1.75,
-        "same_artist": 1.75,
-        "priors_model": 1.5
+        "same_artist_technique": 1.5,
+        "same_artist": 1.5,
+        "priors_model": 1.3
       }
     }
   },

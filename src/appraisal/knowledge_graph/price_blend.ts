@@ -670,7 +670,12 @@ export const MIN_KEY_LOTS = 20;
 const WEIGHT_GRID = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3];
 const TEMPERATURE_GRID = [0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.15, 1.3, 1.5, 1.75, 2, 2.5, 3, 4];
 
-export interface FitRow { inputs: BlendInputs; hammerGBP: number }
+/**
+ * `estimateMidGBP`: the lot's house mid estimate. With `priorsOutcome: "estimate"` the pricing-model
+ * witness is calibrated against it (the fair-price scale, 2026-09-17) while every comps witness is still
+ * calibrated against the hammer, so realised sales keep pulling the price toward what prints sell for.
+ */
+export interface FitRow { inputs: BlendInputs; hammerGBP: number; estimateMidGBP?: number | null }
 
 /** Plan-table figures, for tests and for a first look before a fit exists. Not for Stage 3. */
 export function defaultCalibration(): BlendCalibration {
@@ -713,17 +718,18 @@ function scoreRows(rows: FitRow[], cal: BlendCalibration, regime: BlendRegime): 
  * the posterior median, then a temperature for 80% interval coverage — separately for the
  * with-estimate and no-estimate regimes. Deterministic. Fit on one house, score on another.
  */
-export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fittedOn: string; fittedAt?: string; df?: number | null; divergenceThreshold?: number; houseOffsets?: HouseOffsets | null; houseMix?: boolean }): BlendCalibration {
+export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fittedOn: string; fittedAt?: string; df?: number | null; divergenceThreshold?: number; houseOffsets?: HouseOffsets | null; houseMix?: boolean; priorsOutcome?: "hammer" | "estimate" }): BlendCalibration {
   const df = opts.df === undefined ? 5 : opts.df;
   const witnesses = {} as Record<WitnessSource, WitnessCalibration>;
   for (const src of WITNESS_SOURCES) witnesses[src] = { df, byKey: {} };
   const resid: Record<WitnessSource, Record<string, number[]>> = { estimate: {}, same_work: {}, same_suite: {}, same_artist_technique: {}, same_artist: {}, priors_model: {} };
+  const outcome = (r: FitRow, src: WitnessSource): number =>
+    src === "priors_model" && opts.priorsOutcome === "estimate" && r.estimateMidGBP != null && r.estimateMidGBP > 0 ? ln(r.estimateMidGBP) : ln(r.hammerGBP);
   for (const r of rows) {
-    const y = ln(r.hammerGBP);
     // Residuals are taken AFTER re-basing, so the bias left for a witness is what the house
     // offset does not explain — and a Roseberys fit carries over to a Forum lot.
     for (const w of rawWitnesses(r.inputs, opts.houseOffsets)) {
-      const e = y - w.rawMu;
+      const e = outcome(r, w.source) - w.rawMu;
       if (!Number.isFinite(e)) continue;
       for (const k of [...w.keys, "all"]) (resid[w.source][k] ??= []).push(e);
     }
@@ -742,11 +748,10 @@ export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fit
     const left: Record<string, Record<string, number[]>> = {};
     for (const r of rows) {
       if (!r.inputs.targetHouse) continue;
-      const y = ln(r.hammerGBP);
       for (const w of rawWitnesses(r.inputs, opts.houseOffsets)) {
         if (!HOUSE_MIX_SOURCES.includes(w.source)) continue;
         const c = lookup(witnesses[w.source], w.keys);
-        const e = y - w.rawMu - (c?.bias ?? 0);
+        const e = outcome(r, w.source) - w.rawMu - (c?.bias ?? 0);
         if (Number.isFinite(e)) ((left[w.source] ??= {})[r.inputs.targetHouse] ??= []).push(e);
       }
     }

@@ -284,6 +284,11 @@ def main():
                     help="on = a per-artist column for object multiples (prints on aluminium, Plexiglas, canvas...; 2026-09-17)")
     ap.add_argument("--xl-cap", type=float, default=0.0,
                     help="cap the extra-large per-doubling multiplier (e.g. 1.5); 0 = uncapped. 2026-09-17: Peter Blake x3.17, Motherwell x2.90 per doubling")
+    ap.add_argument("--target", choices=["hammer", "estimate-mid", "estimate-low"], default="estimate-mid",
+                    help="the dependent variable (2026-09-17 fair-price test): log hammer, or the house's log mid / low estimate in GBP")
+    ap.add_argument("--unsold-flag", choices=["on", "off"], default="on",
+                    help="with a lots export (export_sales.py --lots): a per-artist 'unsold' column, so unsold lots' higher "
+                         "estimates (x1.28 for the same work, 2026-09-17) do not lift the fair price; ignored without a sold column")
     ap.add_argument("--dump-test", default=None, help="write test-period rows with the chosen-kappa prediction to this CSV")
     ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
@@ -329,6 +334,11 @@ def main():
         not_direct = not_direct[~not_direct].reset_index(drop=True)
     feat = build_features(df)
     feat["after"] = not_direct.astype(float).values
+    has_sold = "sold" in df.columns
+    sold = df["sold"].astype(str).str.lower().eq("true") if has_sold else pd.Series(True, index=df.index)
+    feat["unsold"] = (~sold).astype(float).values
+    if has_sold and args.unsold_flag == "on" and args.target != "hammer":
+        BINARY.append("unsold")
     if args.size_terms.startswith("shape-bands"):
         area = np.exp(feat["area_log"])
         feat["area_band"] = np.select(
@@ -343,7 +353,21 @@ def main():
     for col in EDITION_HINGES:
         # zero for an unknown edition (its level is carried by edition_unknown), else log edition past the knot
         feat[col] = ((ed_filled - math.log(int(col.rsplit("_", 1)[1]))).clip(lower=0) * (1 - feat["edition_unknown"]))
-    y = np.log(df["hammerGBP"].astype(float))
+    fx_t = df["fxRateToGBP"].astype(float).where(df["fxRateToGBP"].astype(float) > 0)
+    low_t = df["estimateLowGBP"].astype(float).where(df["estimateLowGBP"].astype(float) > 0).fillna(df["estimateLow"].astype(float) / fx_t)
+    high_t = df["estimateHighGBP"].astype(float).where(df["estimateHighGBP"].astype(float) > 0).fillna(df["estimateHigh"].astype(float) / fx_t)
+    if args.target == "hammer":
+        y = np.log(df["hammerGBP"].astype(float).where(df["hammerGBP"].astype(float) > 0))
+    elif "estimateMidGBP" in df.columns:
+        # lots export: the estimate at the SALE-DATE rate, converted by export_sales.py --lots
+        y = np.log(df["estimateMidGBP" if args.target == "estimate-mid" else "estimateLowGBPSaleDate"].astype(float))
+    else:
+        y = np.log(((low_t + high_t) / 2) if args.target == "estimate-mid" else low_t)
+    if True:
+        keep = y.notna() & np.isfinite(y)
+        if not keep.all():
+            print(f"target {args.target}: dropping {int((~keep).sum())} rows without that price")
+            df, feat, y = df[keep.values].reset_index(drop=True), feat[keep.values].reset_index(drop=True), y[keep].reset_index(drop=True)
     train = (df["saleDate"] < args.cut).values
     test = ~train
     fx = df["fxRateToGBP"].astype(float).where(df["fxRateToGBP"].astype(float) > 0)
@@ -505,6 +529,18 @@ def main():
         out["row"] = pred.index
         out["sourceId"] = df.loc[pred.index, "sourceId"].values
         out["y"] = y[pred.index]
+        out["logHammer"] = np.log(df.loc[pred.index, "hammerGBP"].astype(float).where(df.loc[pred.index, "hammerGBP"].astype(float) > 0)).values
+        out["unsold"] = feat.loc[pred.index, "unsold"].values
+        out["sourceHouse"] = df.loc[pred.index, "house"].values
+        if "unsold" in cols:
+            # The fair price is a SOLD lot's estimate: the same prediction with the unsold column at 0.
+            j = cols.index("unsold")
+            no_flag = pred.copy()
+            for a in out["artist"].unique():
+                rr = out.index[out["artist"] == a]
+                beta = shrunk(a, best_k)
+                no_flag.loc[rr] = pred.loc[rr] - beta["unsold"] * feat.loc[rr, "unsold"].values
+            out["predSoldScale"] = no_flag.values
         out["pred"] = pred
         os.makedirs(os.path.dirname(os.path.abspath(args.dump_test)), exist_ok=True)
         out.to_csv(args.dump_test, index=False)
@@ -516,6 +552,7 @@ def main():
     version += ("" if args.reproduction == "none" else f"+{args.reproduction}") + ("" if args.edition_terms == "both" else f"+edition-{args.edition_terms}")
     version += "" if args.attribution == "all" else f"+{args.attribution}"
     version += "+object" if args.object_flag == "on" else ""
+    version += "" if args.target == "hammer" else f"+target-{args.target}" + ("+unsold-flag" if "unsold" in cols else "")
     db = {"version": version, "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
           "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
           "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),
