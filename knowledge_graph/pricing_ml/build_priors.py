@@ -101,7 +101,20 @@ CONT = ["edition_log", "area_log"]
 # both code to 0). See the 1.2 changelog note above for why only these three.
 SUBJECT_FLAGS = {"subject_is_abstract": "abstract", "subject_is_comic_satirical": "comic_satirical", "subject_is_surreal": "surreal"}
 # poster: the object is a poster (train_price_model.is_poster), adopted 2026-09-17 with the offset technique.
-BINARY = list(SUBJECT_FLAGS.keys()) + ["poster"]
+# after: the house attributes the sale as "after" / "manner of" / "attributed to" the artist, not their own
+# work (not_direct_mask), adopted 2026-09-17 as a per-artist column.
+BINARY = list(SUBJECT_FLAGS.keys()) + ["poster", "after"]
+
+# Mirrored in query_comparables.ts (NON_DIRECT_URL_RE) and valuation_evidence.ts (isDirectQualifier).
+NON_DIRECT_URL_RE = r"lot/\d+/(?:after|manner-of|circle-of|attributed-to|follower-of|school-of)-|/\d+-(?:after|manner-of|circle-of|attributed-to|follower-of|school-of)-"
+
+
+def not_direct_mask(df: pd.DataFrame) -> pd.Series:
+    """Not the artist's own work: the house's qualifier on ATTRIBUTED_TO is not "direct", or there is
+    no qualifier and the listing URL says after-/manner-of-/... (82 of 5,467 unqualified sales)."""
+    q = df["qualifier"] if "qualifier" in df else pd.Series(None, index=df.index)
+    url = df["listingUrl"].fillna("").str.lower().str.contains(NON_DIRECT_URL_RE)
+    return ((q.notna() & (q != "direct")) | (q.isna() & url)).astype(bool)
 EDITION_HINGES = ["edition_hinge_30", "edition_hinge_75", "edition_hinge_150", "edition_hinge_300"]
 XL_AREA_CM2 = 7500       # the extra-large threshold (size_shape.py): the xl area term starts here
 MIN_LEVEL_ROWS = 3        # an artist's own coefficient for a level is trusted only with this many rows on it
@@ -263,6 +276,9 @@ def main():
     ap.add_argument("--trim-mad", type=float, default=0.0, help="refit each artist without sales more than K robust SDs from their first fit (0 = off)")
     ap.add_argument("--shrink-by", choices=["artist", "level"], default="artist",
                     help="artist = kappa against the artist's total earlier sales (1.2); level = against the sales carrying that level")
+    ap.add_argument("--attribution", choices=["all", "direct-only", "after-factor"], default="after-factor",
+                    help="all = every sale counts as the artist's own (1.2); direct-only = drop 'after' / 'manner of' / 'attributed to' "
+                         "sales; after-factor = keep them with a per-artist 'after' column (2026-09-17)")
     ap.add_argument("--dump-test", default=None, help="write test-period rows with the chosen-kappa prediction to this CSV")
     ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
@@ -274,6 +290,8 @@ def main():
     _tpm.OFFSET_PROCESS = args.reproduction != "none"
     if args.reproduction != "offset+poster":
         BINARY.remove("poster")
+    if args.attribution != "after-factor":
+        BINARY.remove("after")
     if args.edition_terms == "bands":
         CONT.remove("edition_log")
     if args.edition_terms in ("slope", "hinge"):
@@ -297,7 +315,13 @@ def main():
     df = df[df["saleDate"] >= args.min_year]
     df = df[~df["rawMedium"].fillna("").str.lower().str.contains(r"\bthe book\b|the complete set|set of \d|portfolio of|\(vol\)")]
     df = df[df["artist"].notna()].reset_index(drop=True)
+    not_direct = not_direct_mask(df)
+    if args.attribution == "direct-only":
+        print(f"attribution: dropping {int(not_direct.sum())} sales not attributed directly to the artist")
+        df = df[~not_direct.values].reset_index(drop=True)
+        not_direct = not_direct[~not_direct].reset_index(drop=True)
     feat = build_features(df)
+    feat["after"] = not_direct.astype(float).values
     if args.size_terms.startswith("shape-bands"):
         area = np.exp(feat["area_log"])
         feat["area_band"] = np.select(
@@ -480,6 +504,7 @@ def main():
     built_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     version = ("PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2") + ("" if args.size_terms == "both" else f"-{args.size_terms}")
     version += ("" if args.reproduction == "none" else f"+{args.reproduction}") + ("" if args.edition_terms == "both" else f"+edition-{args.edition_terms}")
+    version += "" if args.attribution == "all" else f"+{args.attribution}"
     db = {"version": version, "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
           "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
           "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),

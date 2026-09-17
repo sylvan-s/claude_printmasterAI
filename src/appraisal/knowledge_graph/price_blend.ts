@@ -406,8 +406,10 @@ export function priorsModelPrediction(
     const xl = xlAreaLog(attrs.areaCm2);
     if (xl > 0) { contributions.push({ term: `extra-large size=${Math.round(attrs.areaCm2!)}`, logEffect: bxl * xl }); mu += bxl * xl; }
   }
-  const bp = profile.elasticities.poster;
-  if (attrs.poster && bp != null && Number.isFinite(bp) && bp !== 0) { contributions.push({ term: "poster", logEffect: bp }); mu += bp; }
+  for (const col of ["poster", "after"] as const) {
+    const b = profile.elasticities[col];
+    if (attrs[col] && b != null && Number.isFinite(b) && b !== 0) { contributions.push({ term: col, logEffect: b }); mu += b; }
+  }
   const hl = houseLevel(ctx.house);
   if (ctx.house && hl == null) unknown.add(`house_${ctx.house}`);
   if (hl && profile.referenceLevels.house !== hl) {

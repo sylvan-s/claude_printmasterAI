@@ -13,6 +13,7 @@
  * prefix + number equals a citation the lot prints (foldPrefix, as work identity matches citations).
  */
 import type { Session } from "neo4j-driver";
+import { NON_DIRECT_URL_RE } from "./query_comparables.js";
 import { getDriver, getDatabase } from "./client.js";
 import { citationsInRefs, citationsInTitle, foldPrefix } from "./work_identity.js";
 
@@ -36,6 +37,11 @@ WHERE w.id IN $ids AND s.sourceType = 'auction' AND s.sold = true AND s.hammerPr
   AND substring(s.saleDate, 0, 10) >= $since AND substring(s.saleDate, 0, 10) < $until
   AND ($saleId IS NULL OR NOT (s.saleId = $saleId AND s.lotNumber = $lotNumber))
   AND ($listingUrl IS NULL OR s.listingUrl IS NULL OR s.listingUrl <> $listingUrl)
+// Same attribution class as the lot (2026-09-17): see query_comparables ComparablesParams.attribution.
+OPTIONAL MATCH (s)-[att:ATTRIBUTED_TO]->(:Artist)
+WITH w, s, collect(att.qualifier) AS qs
+WITH w, s, any(q IN qs WHERE q IS NOT NULL AND q <> 'direct') OR (all(q IN qs WHERE q IS NULL) AND coalesce(s.listingUrl, '') =~ $nonDirectUrlRe) AS nonDirect
+WHERE $attribution IS NULL OR ($attribution = 'direct' AND NOT nonDirect) OR ($attribution = 'after' AND nonDirect)
 RETURN DISTINCT s.hammerPriceGBP AS hammer, s.priceCurrency AS currency, substring(s.saleDate, 0, 10) AS date, s.institutionName AS house, w.id AS work, w.name AS title, s.listingUrl AS url
 ORDER BY date DESC
 `;
@@ -69,6 +75,8 @@ export async function querySuiteComps(input: {
   untilDate: string;
   excludeSaleLot?: { saleId: string; lotNumber: number } | null;
   excludeListingUrl?: string | null;
+  /** The lot's attribution class; absent: no filter. */
+  attribution?: "direct" | "after" | null;
   entries?: CatalogueEntryRow[];
 }): Promise<{ comps: SuiteComp[]; error: string | null }> {
   const session = getDriver().session({ database: getDatabase() });
@@ -79,6 +87,7 @@ export async function querySuiteComps(input: {
     const res = await session.run(SALES, {
       ids: [...siblings.keys()], since: input.sinceDate, until: input.untilDate,
       saleId: input.excludeSaleLot?.saleId ?? null, lotNumber: input.excludeSaleLot?.lotNumber ?? null, listingUrl: input.excludeListingUrl ?? null,
+      attribution: input.attribution ?? null, nonDirectUrlRe: NON_DIRECT_URL_RE,
     });
     return {
       comps: res.records.map((r) => ({ hammerGBP: r.get("hammer") as number, currency: (r.get("currency") as string) ?? null, saleDate: r.get("date") as string, house: (r.get("house") as string) ?? null, work: r.get("work") as string, workTitle: (r.get("title") as string) ?? null, entry: siblings.get(r.get("work") as string)!, listingUrl: (r.get("url") as string) ?? null })),

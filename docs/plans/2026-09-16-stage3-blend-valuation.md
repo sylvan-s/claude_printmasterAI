@@ -1058,3 +1058,30 @@ Same review: ~300 genuine non-print sales (printing plates, drawings, whole suit
 not-by-the-artist editions) and 3,575 photographs are in the export. Excluding them did not
 improve held-out print accuracy (0.6538 -> 0.6550 / 0.6556) and they rarely share a work with
 ordinary prints, so they stay; excluding photographs is a scope decision, not an accuracy one.
+
+### 2026-09-17: "after the artist" priced and kept out of comps (BLEND-1.10)
+
+Cheap "Warhol" and "Banksy" sales turned out to be lots catalogued "after", "manner of" or
+"attributed to" the artist. The ingests record the house's qualifier on
+`(SourceRecord)-[:ATTRIBUTED_TO {qualifier}]->(Artist)`, but neither the price-model export nor the
+comps queries read it, so 1,727 "after" sales since 2010 counted as the artist's own work.
+
+- `export_sales.py` adds `qualifier` (same 55,044 rows, all other values identical).
+  `build_priors.not_direct_mask`: the qualifier is not "direct", or there is none and the listing
+  URL says after-/manner-of-/... (82 of 5,467 unqualified). `--attribution after-factor` is now
+  the default: a per-artist `after` column (4.0% of training rows).
+- Test (priors only): on 8,180 direct held-out sales 0.6467 -> 0.6424 (artist bootstrap -0.0044,
+  interval excludes 0); on 396 non-direct held-out sales 0.876 -> 0.824. Direct-only was as good
+  on direct sales but less reliable (P 0.84) and cannot price an "after" lot. The after multiplier
+  has a median of x0.54 (Warhol x0.22, Lichtenstein x0.41, Haring x0.49; Picasso x0.91, Chagall
+  x1.02). Warhol's level goes £1,439 -> £3,209 and hand-signed x2.50 -> x1.67.
+- Live: lot evidence `attrs.after` from the catalogue claim's `artistQualifier`
+  (`isDirectQualifier`); `priorsModelPrediction` / `adjustmentBetween` read the column; the
+  waterfall shows an Attribution bar only for such lots; the narration prompt forbids describing
+  them as the artist's own.
+- Comps: `queryAuctionComparables` and `querySuiteComps` take `attribution` and filter inside the
+  query, before tiering and LIMIT. Stage 3a passes "direct" unless the claim is qualified. Live
+  check: Warhol 765 comps = 676 direct (median £8,500) + 89 after (£420); no leaks either way.
+- Blend gate (BLEND-1.10): 0.615 / 81% cover, unchanged. The backtest lots are all direct and the
+  calibration harness uses comps recorded before the filter, so this gate cannot show the comps
+  change; re-recording the harness comps is the way to measure it.

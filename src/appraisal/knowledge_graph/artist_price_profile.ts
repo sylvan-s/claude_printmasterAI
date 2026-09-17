@@ -54,6 +54,8 @@ export interface PriceAttrs {
   process?: string | null;
   /** The object is a poster (train_price_model.is_poster). A 0/1 model column, not a level family. */
   poster?: boolean | null;
+  /** Not the artist's own work ("after", "manner of", ...): the model's per-artist "after" column. */
+  after?: boolean | null;
 }
 
 export interface ArtistPriceProfile {
@@ -212,10 +214,11 @@ export function adjustmentBetween(lot: PriceAttrs, comp: PriceAttrs, profile: Ar
     ["edition_log", lot.editionSize, comp.editionSize],
     ["area_log", lot.areaCm2, comp.areaCm2],
   ];
-  const bp = profile.elasticities.poster;
-  if (bp != null && Number.isFinite(bp) && !!lot.poster !== !!comp.poster) {
-    const delta = bp * ((lot.poster ? 1 : 0) - (comp.poster ? 1 : 0));
-    factors.push({ attribute: "poster", lot: lot.poster ? "poster" : "not a poster", comp: comp.poster ? "poster" : "not a poster", factor: Math.exp(delta) });
+  for (const [col, yes, no] of [["poster", "poster", "not a poster"], ["after", "after the artist", "the artist's own"]] as const) {
+    const b = profile.elasticities[col];
+    if (b == null || !Number.isFinite(b) || !!lot[col] === !!comp[col]) continue;
+    const delta = b * ((lot[col] ? 1 : 0) - (comp[col] ? 1 : 0));
+    factors.push({ attribute: col, lot: lot[col] ? yes : no, comp: comp[col] ? yes : no, factor: Math.exp(delta) });
     logAdj += delta;
   }
   for (const [col, lv, cv] of cont) {

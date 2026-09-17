@@ -50,7 +50,11 @@ OPTIONAL MATCH (i)-[:USES_TECHNIQUE]->(t:Technique)
 OPTIONAL MATCH (i)-[:PRINTED_ON]->(p:Paper)
 OPTIONAL MATCH (cw)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
 OPTIONAL MATCH (img:DigitalImage)-[:SHOWS]->(i)
-WITH a, s, i, er, cw,
+// The house's attribution of THIS sale to the artist ("after", "attributed_to", ...), which the
+// ingests write on ATTRIBUTED_TO, not on CREATED (2026-09-17: "after Warhol" posters were
+// being counted as Warhol's own sales).
+OPTIONAL MATCH (s)-[att:ATTRIBUTED_TO]->(a)
+WITH a, s, i, er, cw, collect(DISTINCT att.qualifier) AS qualifiers,
      collect(DISTINCT t.name) AS techniques,
      collect(DISTINCT p.name) AS papers,
      collect(DISTINCT CASE WHEN ce IS NULL THEN null ELSE cr.numberingPrefix + ' ' + ce.number END) AS citations,
@@ -68,7 +72,8 @@ RETURN a.name AS artist, a.ulanUrl AS artistUlan, a.nationality AS artistNationa
        er.declaredSize AS editionSize,
        i.plateDimensions AS plateDims, i.imageDimensions AS imageDims, i.sheetDimensions AS sheetDims,
        techniques, papers, [c IN citations WHERE c IS NOT NULL] AS citations,
-       img.clipSubject AS clipSubject, img.clipSubjectMargin AS clipSubjectMargin, img.clipSubjectConfident AS clipSubjectConfident
+       img.clipSubject AS clipSubject, img.clipSubjectMargin AS clipSubjectMargin, img.clipSubjectConfident AS clipSubjectConfident,
+       [q IN qualifiers WHERE q IS NOT NULL][0] AS qualifier
 ORDER BY saleDate
 """
 
@@ -77,6 +82,7 @@ FIELDS = [
     "estimateLow", "estimateHigh", "fxRateToGBP", "estimateLowGBP", "estimateHighGBP", "currency", "workId", "workName", "workYear", "impressionId",
     "sourceTitle", "rawMedium", "signed", "copyType", "editionSize", "plateDims", "imageDims", "sheetDims",
     "techniques", "papers", "citations", "clipSubject", "clipSubjectMargin", "clipSubjectConfident",
+    "qualifier",
 ]
 
 

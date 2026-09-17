@@ -38,6 +38,17 @@ const POSTER_RE = new RegExp(
   + "|\\bposters?\\s+(?:in colou?rs?|printed|for\\b|designed)|^\\s*posters?\\b|\\bposters?\\s*/\\s*lithograph"
   + "|lithograph(?:ic)?\\s+posters?\\b|\\bfrom the (?:unsigned |unnumbered )?poster edition");
 
+/**
+ * The attribution is the artist's own work: no qualifier, the house's unqualified "certain", the
+ * graph's "direct", or "unknown". Anything else ("after", "manner of", "attributed to", "circle of",
+ * "school of", "follower of", "studio of") is priced with the model's per-artist "after" column and
+ * compared only with other such lots (build_priors.not_direct_mask, 2026-09-17).
+ */
+export function isDirectQualifier(q: string | null | undefined): boolean {
+  const t = (q ?? "").trim().toLowerCase();
+  return t === "" || t === "certain" || t === "direct" || t === "unknown";
+}
+
 /** train_price_model.is_poster */
 export function isPoster(text: string | null | undefined): boolean {
   return typeof text === "string" && POSTER_RE.test(text.toLowerCase());

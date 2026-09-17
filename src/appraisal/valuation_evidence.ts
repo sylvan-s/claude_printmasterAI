@@ -36,6 +36,7 @@ import {
   editionSizeOf,
   primaryProcess,
   isPoster,
+  isDirectQualifier,
   type ArtistPriceProfile,
   type BlendInputs,
   type ComparablesResult,
@@ -88,6 +89,8 @@ export interface ValuationEvidence {
     process: Sourced<string>;
     /** The object is a poster (price_attrs.isPoster). Optional: evidence built before 2026-09-17 has none. */
     poster?: Sourced<boolean>;
+    /** Not the artist's own work (the catalogue's "after" / "manner of" ... qualifier). Optional: older evidence has none. */
+    after?: Sourced<boolean>;
   };
   /** The house the price is AT (graph institution name). Null value: no house chosen, pooled offset. */
   targetHouse: Sourced<string | null>;
@@ -205,12 +208,17 @@ export function lotAttrsWithSources(input: {
   const poster: Sourced<boolean> = claim && claimText
     ? { value: isPoster(claimText), source: "catalogue" }
     : { value: false, source: "default", note: "no catalogue text; the model's reference (not a poster)" };
-  return { signature, proof, editionSize, areaCm2, process, poster };
+  // After / manner of / attributed to: the house's qualifier on the catalogue claim. No claim: the artist's own.
+  const after: Sourced<boolean> = claim
+    ? { value: !isDirectQualifier(claim.artistQualifier), source: "catalogue", note: claim.artistQualifier ?? undefined }
+    : { value: false, source: "default", note: "no catalogue attribution; the model's reference (the artist's own work)" };
+  return { signature, proof, editionSize, areaCm2, process, poster, after };
 }
 
 export const attrsValues = (a: ValuationEvidence["attrs"]): PriceAttrs => ({
   signature: a.signature.value, proof: a.proof.value, editionSize: a.editionSize.value, areaCm2: a.areaCm2.value, process: a.process.value,
   poster: a.poster?.value ?? false,
+  after: a.after?.value ?? false,
 });
 
 // ── graph reads ────────────────────────────────────────────────────────────────
@@ -245,6 +253,8 @@ export async function readLotGraphEvidence(input: {
   /** Backtest / past-sale guards: the lot's own record never evidences itself. */
   excludeSaleLot?: { saleId: string; lotNumber: number } | null;
   excludeListingUrl?: string | null;
+  /** Comps must share the lot's attribution class: "direct" (default) never sees "after X" lots, "after" sees only them. */
+  attribution?: "direct" | "after";
   via: "claim" | "stage2b";
 }): Promise<LotGraphEvidence> {
   const warnings: string[] = [];
@@ -277,6 +287,7 @@ export async function readLotGraphEvidence(input: {
       artistName: artist, conceptualWorkIds: out.identity.workIds, workTitle: input.workTitle, technique,
       sinceDate: query.sinceDate, untilDate: query.untilDate, limit: query.limit,
       excludeSaleLot: input.excludeSaleLot ?? null, excludeListingUrl: input.excludeListingUrl ?? null,
+      attribution: input.attribution ?? "direct",
     });
   } catch (e: any) { warnings.push(`comparables read failed: ${e?.message ?? e}`); }
   // Same-suite comps, with the same window and self-exclusion; never the lot's own works'
@@ -284,6 +295,7 @@ export async function readLotGraphEvidence(input: {
   const suite = await querySuiteComps({
     artist, workIds: out.identity.workIds, catalogueRefs: input.catalogueRefs ?? null, title: input.workTitle,
     sinceDate: query.sinceDate, untilDate: query.untilDate, excludeSaleLot: input.excludeSaleLot ?? null, excludeListingUrl: input.excludeListingUrl ?? null,
+    attribution: input.attribution ?? "direct",
   });
   out.suite = suite.comps;
   if (suite.error) warnings.push(`same-suite read failed: ${suite.error}`);

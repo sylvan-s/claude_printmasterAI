@@ -30,7 +30,7 @@ import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from build_priors import design, CONT, REFS, SUBJECT_FLAGS, XL_AREA_CM2  # noqa: E402
+from build_priors import design, not_direct_mask, CONT, REFS, SUBJECT_FLAGS, XL_AREA_CM2  # noqa: E402
 from train_price_model import build_features  # noqa: E402
 
 
@@ -52,6 +52,7 @@ def main():
     df = df[~df["rawMedium"].fillna("").str.lower().str.contains(r"\bthe book\b|the complete set|set of \d|portfolio of|\(vol\)")]
     df = df[df["artist"].notna()].reset_index(drop=True)
     feat = build_features(df)
+    feat["after"] = not_direct_mask(df).astype(float).values
     if args.size_terms.startswith("shape-bands"):
         # Mirrors build_priors.py: bands cut where the measured price curve bends.
         area = np.exp(feat["area_log"])

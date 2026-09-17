@@ -50,7 +50,7 @@ import {
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { lookupArtistAcrossMuseums, type ArtistLookupResult } from "./reference_lookup/index.js";
-import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery, queryArtistDinoFloor, resolveWorkIdentity } from "./knowledge_graph/index.js";
+import { queryAckg, queryAckgWorks, scoreWorkTitleMatches, queryArtistStyleConsistency, queryImageEmbeddingMatches, queryAuctionComparables, parseExcludedListing, queryCatalogueRaisonneForArtist, formatCatalogueRaisonneBlock, recordCatalogueRaisonneFinding, queryEditionRuns, formatEditionRunsForClaude, resolveArtistIdentity, formatArtistIdentity, canonicalArtistForQuery, queryArtistDinoFloor, resolveWorkIdentity, isDirectQualifier } from "./knowledge_graph/index.js";
 import { assessComps, formatCompStorability, partitionCitedComps, describeUncitedComps, dropWebCompsAlreadyInGraph, type CompStorabilityReport } from "./comp_storability.js";
 import { assessStage2bResearch, stage2bResearchFailed, type Stage2bGateResult } from "./stage2b_gate.js";
 import { shouldNudgeForSearch, SEARCH_NUDGE_TEXT } from "./stage2b_nudge.js";
@@ -3379,6 +3379,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
         valuationDate: valuationDate.value,
         excludeSaleLot: saleLot,
         excludeListingUrl: excluded.listingUrl ?? claim?.lotUrl ?? null,
+        attribution: claim && !isDirectQualifier(claim.artistQualifier) ? "after" : "direct",
         via: claim ? "claim" : "stage2b",
       });
       const ev = assembleValuationEvidence({
