@@ -406,7 +406,7 @@ export function priorsModelPrediction(
     const xl = xlAreaLog(attrs.areaCm2);
     if (xl > 0) { contributions.push({ term: `extra-large size=${Math.round(attrs.areaCm2!)}`, logEffect: bxl * xl }); mu += bxl * xl; }
   }
-  for (const col of ["poster", "after"] as const) {
+  for (const col of ["poster", "after", "object"] as const) {
     const b = profile.elasticities[col];
     if (attrs[col] && b != null && Number.isFinite(b) && b !== 0) { contributions.push({ term: col, logEffect: b }); mu += b; }
   }

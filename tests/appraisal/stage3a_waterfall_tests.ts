@@ -129,6 +129,10 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   ok("an 'after' lot gets an Attribution bar worth the artist's after term, first among attributes", !!ab && close(ab.logEffect, -1.2) && wa.bars[1].key === "after" && ab.label.startsWith("Attribution: after the artist"));
   eq("after: the chart still reaches the model price exactly", wa.notes, []);
   ok("the artist's own print: no Attribution bar", !run(lot(false)).bars.some((b) => b.key === "after"));
+  const profO = { ...prof, elasticities: { ...prof.elasticities, object: 0.4 } };
+  const objLot = { ...e, profile: profO, attrs: { ...e.attrs, object: { value: true, source: "catalogue" } } } as any;
+  const wob = valuationWaterfall(objLot, cal, means, stage3aValuation(objLot, cal, means)!.medianGBP)!;
+  ok("an object multiple gets an Object multiple bar worth the artist's object term", close(wob.bars.find((b) => b.key === "object")?.logEffect ?? NaN, 0.4) && wob.notes.length === 0);
   const noPoster = { ...e, attrs: { ...e.attrs } } as any; delete noPoster.attrs.poster;
   ok("evidence built before the poster flag still charts", run(noPoster).notes.length === 0);
 }

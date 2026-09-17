@@ -1,7 +1,7 @@
 {
-  "version": "BLEND-1.10",
-  "fittedAt": "2026-09-17T08:06:24.766Z",
-  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands+after-factor@2026-09-17T08:04:24+00:00, offline refit",
+  "version": "BLEND-1.11",
+  "fittedAt": "2026-09-17T08:38:31.244Z",
+  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands+after-factor+object@2026-09-17T08:36:27+00:00, offline refit",
   "witnesses": {
     "estimate": {
       "df": 5,
@@ -111,23 +111,23 @@
       "df": 5,
       "byKey": {
         "segment": {
-          "bias": -1.2978177243073956,
-          "sigma": 1.1092462199886617,
+          "bias": -1.2780678328483108,
+          "sigma": 1.1165242890332336,
           "n": 836
         },
         "all": {
-          "bias": -0.32498094929765786,
-          "sigma": 0.7771731155619426,
+          "bias": -0.31726212823882527,
+          "sigma": 0.7797283742495784,
           "n": 5094
         },
         "shrunk": {
-          "bias": -0.2127862327071104,
-          "sigma": 0.6785167781383104,
+          "bias": -0.2105555867932538,
+          "sigma": 0.6710664818674733,
           "n": 3770
         },
         "prior": {
-          "bias": -0.24850794036864832,
-          "sigma": 0.5922220231821131,
+          "bias": -0.2464547186956736,
+          "sigma": 0.59279543566734,
           "n": 488
         }
       }
@@ -160,8 +160,8 @@
       },
       "temperature": 2,
       "fitLots": 5094,
-      "fitMaeLog": 0.6090358782745011,
-      "fitCoverage80": 0.7934825284648607,
+      "fitMaeLog": 0.6055966002981922,
+      "fitCoverage80": 0.7968197879858657,
       "temperatureByTier": {
         "same_work_3+": 2.5,
         "same_work_1-2": 3,

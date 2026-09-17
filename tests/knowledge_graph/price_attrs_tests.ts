@@ -9,7 +9,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import {
-  signatureClass, proofClass, editionSizeOf, dimsCm, primaryProcess, isPoster, priceAttrsOfComparable, priceAttrsOfLot,
+  signatureClass, proofClass, editionSizeOf, dimsCm, primaryProcess, isPoster, isObject, priceAttrsOfComparable, priceAttrsOfLot,
 } from "../../src/appraisal/knowledge_graph/price_attrs";
 
 let passed = 0, failed = 0;
@@ -27,6 +27,8 @@ eq("unsigned word, flag false", signatureClass(false, "unsigned, as issued"), "u
 eq("initialled", signatureClass(false, "initialled in pencil"), "initialled");
 eq("flag only", signatureClass(true, null), "hand");
 eq("nothing", signatureClass(null, ""), "unsigned");
+eq("incised signature is hand (2026-09-17)", signatureClass(null, "screenprint on Plexiglas, with incised signature and date"), "hand");
+eq("signature incised is hand", signatureClass(null, "screenprint on stainless steel, with the artist's signature incised"), "hand");
 
 console.log("proofClass");
 eq("A.P. case-sensitive hit", proofClass(null, "lithograph, A.P."), "artist_proof");
@@ -90,15 +92,24 @@ eq("publisher named Poster", isPoster("Screenprint, published by List Art Poster
 eq("inscription", isPoster("Lithograph, inscribed 'BAM poster HAMLET'"), false);
 eq("null", isPoster(null), false);
 
+console.log("isObject");
+eq("giclee on aluminium panel", isObject("Laminated giclée print in colours, 2021, on aluminium composite panel"), true);
+eq("screenprint on canvas", isObject("Screenprint in colors on canvas, signed in ink"), true);
+eq("porcelain plate", isObject("Porcelain plate with screenprint in colours"), true);
+eq("paper print laid on linen", isObject("Lithograph in colors on two sheets on wove paper, laid on linen"), false);
+eq("photograph mounted on aluminum", isObject("Platinum-palladium print, flush-mounted on aluminum"), false);
+eq("painting on canvas", isObject("Acrylic and spraypaint on canvas"), false);
+eq("print on paper", isObject("Lithograph in colours on Arches wove paper"), false);
+
 console.log("priceAttrsOfComparable / priceAttrsOfLot");
 eq("comp", priceAttrsOfComparable({
   techniques: ["Etching"], signed: true, editionSize: null, rawMedium: "etching, signed and numbered 12/50, sheet 30x40cm",
   copyType: "numbered", plateDimensions: null, imageDimensions: null, sheetDimensions: "30.0x40.0cm",
-}), { signature: "hand", proof: "numbered", editionSize: 50, areaCm2: 1200, process: "etching", poster: false });
+}), { signature: "hand", proof: "numbered", editionSize: 50, areaCm2: 1200, process: "etching", poster: false, object: false });
 eq("lot with structured dims", priceAttrsOfLot({ text: "lithograph in colours, signed", signed: true, editionSize: 75, widthCm: 20, heightCm: 30 }),
-  { signature: "hand", proof: "unknown", editionSize: 75, areaCm2: 600, process: "lithograph", poster: false });
+  { signature: "hand", proof: "unknown", editionSize: 75, areaCm2: 600, process: "lithograph", poster: false, object: false });
 eq("lot falls back to text dims", priceAttrsOfLot({ text: "woodcut, 10 x 12 cm", signed: false }),
-  { signature: "unsigned", proof: "unknown", editionSize: null, areaCm2: 120, process: "woodcut", poster: false });
+  { signature: "unsigned", proof: "unknown", editionSize: null, areaCm2: 120, process: "woodcut", poster: false, object: false });
 
 // ── cross-check against the Python on the trainer's own export, when present ──
 const EXPORT = "knowledge_graph/pricing_ml/data/all_sales.csv";
@@ -117,7 +128,7 @@ for _, r in df.iterrows():
     ed = m.edition_size(r["editionSize"], r["rawMedium"])
     d = m.dims_cm(r["plateDims"], r["imageDims"], r["sheetDims"], r["rawMedium"])
     out.append({"id": r["sourceId"], "signature": m.signature_class(r["signed"], r["rawMedium"]), "proof": m.proof_class(r["copyType"], r["rawMedium"]),
-                "editionSize": None if ed != ed else ed, "areaCm2": None if d is None else d[0]*d[1], "process": m.primary_process(techs + [r["rawMedium"]]), "poster": bool(m.is_poster(r["rawMedium"]))})
+                "editionSize": None if ed != ed else ed, "areaCm2": None if d is None else d[0]*d[1], "process": m.primary_process(techs + [r["rawMedium"]]), "poster": bool(m.is_poster(r["rawMedium"])), "object": bool(m.is_object(r["rawMedium"]))})
 print(json.dumps(out))
 `;
   // The trainer's own venv (scikit-learn 1.6, per pricing_ml/README.md); the system python3 is too old to import it.
@@ -136,7 +147,7 @@ print(json.dumps(out))
       copyType: r.copyType || null, plateDimensions: r.plateDims || null, imageDimensions: r.imageDims || null, sheetDimensions: r.sheetDims || null,
     });
     const near = (a: number | null, b: number | null) => (a == null && b == null) || (a != null && b != null && Math.abs(a - b) < 1e-6);
-    if (got.signature !== w.signature || got.proof !== w.proof || got.process !== w.process || got.poster !== w.poster || !near(got.editionSize, w.editionSize) || !near(got.areaCm2, w.areaCm2)) {
+    if (got.signature !== w.signature || got.proof !== w.proof || got.process !== w.process || got.poster !== w.poster || got.object !== w.object || !near(got.editionSize, w.editionSize) || !near(got.areaCm2, w.areaCm2)) {
       if (mismatches++ < 10) console.log(`  MISMATCH ${w.id}: ts=${JSON.stringify(got)} py=${JSON.stringify(w)}`);
     }
   }

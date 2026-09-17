@@ -1085,3 +1085,26 @@ comps queries read it, so 1,727 "after" sales since 2010 counted as the artist's
 - Blend gate (BLEND-1.10): 0.615 / 81% cover, unchanged. The backtest lots are all direct and the
   calibration harness uses comps recorded before the filter, so this gate cannot show the comps
   change; re-recording the harness comps is the way to measure it.
+
+### 2026-09-17: incised signatures and object multiples (BLEND-1.11); extra-large slope cap rejected
+
+From the second per-artist priors review.
+
+- **Incised signature is hand-signed.** "Incised signature" / "signature incised" had read as
+  unsigned (45 descriptions: Bridget Riley on Plexiglas, Rauschenberg, Soto, Pistoletto, Banksy).
+  Held-out priors MAE 0.6511 -> 0.6508 (artist bootstrap P 0.99); Bridget Riley hand-signed x0.90 ->
+  x1.72.
+- **Object multiple column** (`train_price_model.is_object`): a print or multiple ON aluminium,
+  Plexiglas, steel, canvas, wood..., or a cast/ceramic object. Not a paper print laid, mounted or
+  backed on such a support, and not a painting (487 sales, Hirst 217). Held-out 0.6511 -> 0.6497
+  (P 0.88); on object multiples 0.660 -> 0.604 (P 0.95). Per artist: Hirst x1.11, Banksy x0.80,
+  Opie x0.73, Lichtenstein x0.51, Vasarely x2.05, Connor Brothers x2.74 (whose hand-signed goes
+  x0.89 -> x1.27). Live: `isObject` in price_attrs (pattern copied verbatim from the Python),
+  prediction, comp adjustment, lot evidence, an "Object multiple" waterfall bar, narration prompt.
+  Parity holds on 55,044 rows.
+- **Extra-large slope cap: rejected.** Capping the per-doubling term made extra-large held-out sales
+  worse: x1.5 +0.0023 [+0.0003, +0.0050], x1.25 +0.0108. Steep slopes (Peter Blake x3.17 per
+  doubling) are partly real within the sizes sold. `--xl-cap` stays available, default off. The
+  open guard is to stop the slope at an artist's largest sold sheet.
+- Blend gate (BLEND-1.11): MAE(log) 0.615 -> 0.614, 80% cover 81% -> 80%; Bonhams 0.606 -> 0.603,
+  Forum 0.628 -> 0.627, Roseberys 0.593 -> 0.591.

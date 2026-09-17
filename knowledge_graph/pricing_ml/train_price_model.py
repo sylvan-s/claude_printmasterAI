@@ -80,6 +80,24 @@ POSTER_RE = re.compile(r"(?:lithographic|offset|screenprint(?:ed)?|silkscreen|ex
                        r"|lithograph(?:ic)?\s+posters?\b|\bfrom the (?:unsigned |unnumbered )?poster edition")
 
 
+INCISED_RE = re.compile(r"incised (?:signature|initials|with (?:the )?(?:artist's )?(?:signature|initials))|(?:signature|initials) incised")
+
+# Object multiple (2026-09-17): printed or made ON a non-paper object or panel (aluminium, Plexiglas,
+# steel, wood, canvas, porcelain...), or a cast / ceramic / vinyl object. Not a paper print laid,
+# mounted or backed on such a support, and not a painting (a print or multiple process must be named).
+OBJECT_SUBSTRATE = (r"(?:cut |brushed |polished |anodi[sz]ed |powder[- ]coated |galvani[sz]ed )?"
+                    r"(?:aluminium|aluminum|plexiglass?|perspex|acrylic (?:sheet|glass|block)|stainless steel|steel|metal|"
+                    r"wood(?:en)? (?:panel|board|block)|plywood|mdf|glass|mirror|ceramic|porcelain|enamel|vinyl|canvas|felt|leather|silk|resin)")
+OBJECT_RE = re.compile(
+    r"(?:print|screenprint|serigraph|lithograph|gicl[eé]e|inkjet|pigment|multiple|relief|embroidery)\b[^.;]{0,60}?"
+    r"(?<!laid )(?<!mounted )(?<!backed )(?<!lined )\bon (?:two |three |four )?" + OBJECT_SUBSTRATE + r"\b"
+    r"|^\s*(?:porcelain|ceramic|enamel|bronze|cast resin|resin|painted wood|wooden block|vinyl|skateboard)\b")
+
+
+def is_object(text):
+    return int(bool(OBJECT_RE.search(text.lower()))) if isinstance(text, str) else 0
+
+
 def is_poster(text):
     return int(bool(POSTER_RE.search(text.lower()))) if isinstance(text, str) else 0
 
@@ -99,6 +117,10 @@ def signature_class(signed, text):
     if re.search(r"signed in the plate|signed in the stone|plate[- ]signed|signed in the block", t):
         return "plate"
     if re.search(r"\bsigned\b", t) and not re.search(r"\bunsigned\b", t):
+        return "hand"
+    # A signature scratched into Plexiglas, metal or resin is the artist's hand (2026-09-17: Bridget
+    # Riley, Rauschenberg, Soto, Pistoletto, Banksy multiples had all read as unsigned).
+    if INCISED_RE.search(t):
         return "hand"
     if re.search(r"\binitial(l)?ed\b", t):
         return "initialled"
@@ -286,6 +308,7 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     out["paper"] = [paper_class(p, m) for p, m in zip(papers, df["rawMedium"])]
     out["book_or_set"] = df["rawMedium"].apply(is_book_or_set)
     out["poster"] = df["rawMedium"].apply(is_poster)
+    out["object"] = df["rawMedium"].apply(is_object)
     wy = pd.to_numeric(df["workYear"], errors="coerce")
     out["work_year"] = wy
     out["work_decade"] = wy.apply(lambda y: f"{int(y) // 10 * 10}s" if pd.notna(y) else "unknown")

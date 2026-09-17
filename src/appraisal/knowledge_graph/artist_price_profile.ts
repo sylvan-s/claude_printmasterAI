@@ -56,6 +56,8 @@ export interface PriceAttrs {
   poster?: boolean | null;
   /** Not the artist's own work ("after", "manner of", ...): the model's per-artist "after" column. */
   after?: boolean | null;
+  /** An object multiple: printed or made on aluminium, Plexiglas, steel, canvas, wood..., or a cast object. */
+  object?: boolean | null;
 }
 
 export interface ArtistPriceProfile {
@@ -214,7 +216,7 @@ export function adjustmentBetween(lot: PriceAttrs, comp: PriceAttrs, profile: Ar
     ["edition_log", lot.editionSize, comp.editionSize],
     ["area_log", lot.areaCm2, comp.areaCm2],
   ];
-  for (const [col, yes, no] of [["poster", "poster", "not a poster"], ["after", "after the artist", "the artist's own"]] as const) {
+  for (const [col, yes, no] of [["poster", "poster", "not a poster"], ["after", "after the artist", "the artist's own"], ["object", "object multiple", "print on paper"]] as const) {
     const b = profile.elasticities[col];
     if (b == null || !Number.isFinite(b) || !!lot[col] === !!comp[col]) continue;
     const delta = b * ((lot[col] ? 1 : 0) - (comp[col] ? 1 : 0));

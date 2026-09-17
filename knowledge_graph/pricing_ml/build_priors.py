@@ -103,7 +103,8 @@ SUBJECT_FLAGS = {"subject_is_abstract": "abstract", "subject_is_comic_satirical"
 # poster: the object is a poster (train_price_model.is_poster), adopted 2026-09-17 with the offset technique.
 # after: the house attributes the sale as "after" / "manner of" / "attributed to" the artist, not their own
 # work (not_direct_mask), adopted 2026-09-17 as a per-artist column.
-BINARY = list(SUBJECT_FLAGS.keys()) + ["poster", "after"]
+# object: an object multiple (train_price_model.is_object), adopted 2026-09-17.
+BINARY = list(SUBJECT_FLAGS.keys()) + ["poster", "after", "object"]
 
 # Mirrored in query_comparables.ts (NON_DIRECT_URL_RE) and valuation_evidence.ts (isDirectQualifier).
 NON_DIRECT_URL_RE = r"lot/\d+/(?:after|manner-of|circle-of|attributed-to|follower-of|school-of)-|/\d+-(?:after|manner-of|circle-of|attributed-to|follower-of|school-of)-"
@@ -279,6 +280,10 @@ def main():
     ap.add_argument("--attribution", choices=["all", "direct-only", "after-factor"], default="after-factor",
                     help="all = every sale counts as the artist's own (1.2); direct-only = drop 'after' / 'manner of' / 'attributed to' "
                          "sales; after-factor = keep them with a per-artist 'after' column (2026-09-17)")
+    ap.add_argument("--object-flag", choices=["on", "off"], default="on",
+                    help="on = a per-artist column for object multiples (prints on aluminium, Plexiglas, canvas...; 2026-09-17)")
+    ap.add_argument("--xl-cap", type=float, default=0.0,
+                    help="cap the extra-large per-doubling multiplier (e.g. 1.5); 0 = uncapped. 2026-09-17: Peter Blake x3.17, Motherwell x2.90 per doubling")
     ap.add_argument("--dump-test", default=None, help="write test-period rows with the chosen-kappa prediction to this CSV")
     ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
@@ -292,6 +297,8 @@ def main():
         BINARY.remove("poster")
     if args.attribution != "after-factor":
         BINARY.remove("after")
+    if args.object_flag != "on":
+        BINARY.remove("object")
     if args.edition_terms == "bands":
         CONT.remove("edition_log")
     if args.edition_terms in ("slope", "hinge"):
@@ -442,6 +449,9 @@ def main():
             if sup.get(col, 0) >= MIN_LEVEL_ROWS:
                 w = sup.get(col, 0) if args.shrink_by == "level" else n
                 out[col] = (w * own[col] + kappa * pri[col]) / (w + kappa)
+        if args.xl_cap > 0 and "area_log_xl" in out:
+            # the term is per unit of log area; x cap per doubling is log(cap) / log(2) per unit
+            out["area_log_xl"] = min(out["area_log_xl"], math.log(args.xl_cap) / math.log(2))
         return out
 
     def predict(a, beta, rows):
@@ -505,6 +515,7 @@ def main():
     version = ("PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2") + ("" if args.size_terms == "both" else f"-{args.size_terms}")
     version += ("" if args.reproduction == "none" else f"+{args.reproduction}") + ("" if args.edition_terms == "both" else f"+edition-{args.edition_terms}")
     version += "" if args.attribution == "all" else f"+{args.attribution}"
+    version += "+object" if args.object_flag == "on" else ""
     db = {"version": version, "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
           "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
           "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),

@@ -49,6 +49,15 @@ export function isDirectQualifier(q: string | null | undefined): boolean {
   return t === "" || t === "certain" || t === "direct" || t === "unknown";
 }
 
+/** train_price_model.INCISED_RE / OBJECT_RE, copied from the Python patterns verbatim (2026-09-17). */
+const INCISED_RE = new RegExp("incised (?:signature|initials|with (?:the )?(?:artist's )?(?:signature|initials))|(?:signature|initials) incised");
+const OBJECT_RE = new RegExp("(?:print|screenprint|serigraph|lithograph|gicl[e\u00e9]e|inkjet|pigment|multiple|relief|embroidery)\\b[^.;]{0,60}?(?<!laid )(?<!mounted )(?<!backed )(?<!lined )\\bon (?:two |three |four )?(?:cut |brushed |polished |anodi[sz]ed |powder[- ]coated |galvani[sz]ed )?(?:aluminium|aluminum|plexiglass?|perspex|acrylic (?:sheet|glass|block)|stainless steel|steel|metal|wood(?:en)? (?:panel|board|block)|plywood|mdf|glass|mirror|ceramic|porcelain|enamel|vinyl|canvas|felt|leather|silk|resin)\\b|^\\s*(?:porcelain|ceramic|enamel|bronze|cast resin|resin|painted wood|wooden block|vinyl|skateboard)\\b");
+
+/** train_price_model.is_object: printed or made ON a non-paper object or panel, or a cast / ceramic object. */
+export function isObject(text: string | null | undefined): boolean {
+  return typeof text === "string" && OBJECT_RE.test(text.toLowerCase());
+}
+
 /** train_price_model.is_poster */
 export function isPoster(text: string | null | undefined): boolean {
   return typeof text === "string" && POSTER_RE.test(text.toLowerCase());
@@ -68,6 +77,7 @@ export function signatureClass(signed: boolean | string | null | undefined, text
   if (/stamped signature|signature stamp|estate stamp/.test(t)) return "stamped";
   if (/signed in the plate|signed in the stone|plate[- ]signed|signed in the block/.test(t)) return "plate";
   if (/\bsigned\b/.test(t) && !/\bunsigned\b/.test(t)) return "hand";
+  if (INCISED_RE.test(t)) return "hand";   // an incised signature on Plexiglas / metal / resin (2026-09-17)
   if (/\binitial(l)?ed\b/.test(t)) return "initialled";
   if (signed === true || String(signed).toLowerCase() === "true") return "hand";
   return "unsigned";
@@ -156,6 +166,7 @@ export function priceAttrsOfComparable(c: Pick<AuctionComparable, "techniques" |
     areaCm2: dims ? dims[0] * dims[1] : null,
     process: primaryProcess([...(c.techniques ?? []), c.rawMedium]),
     poster: isPoster(c.rawMedium),
+    object: isObject(c.rawMedium),
   };
 }
 
@@ -188,5 +199,6 @@ export function priceAttrsOfLot(lot: {
     areaCm2: area,
     process: primaryProcess([...(lot.techniques ?? []), lot.text]),
     poster: isPoster(lot.text),
+    object: isObject(lot.text),
   };
 }

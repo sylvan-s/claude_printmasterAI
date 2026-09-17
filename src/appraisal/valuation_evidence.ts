@@ -37,6 +37,7 @@ import {
   primaryProcess,
   isPoster,
   isDirectQualifier,
+  isObject,
   type ArtistPriceProfile,
   type BlendInputs,
   type ComparablesResult,
@@ -91,6 +92,8 @@ export interface ValuationEvidence {
     poster?: Sourced<boolean>;
     /** Not the artist's own work (the catalogue's "after" / "manner of" ... qualifier). Optional: older evidence has none. */
     after?: Sourced<boolean>;
+    /** Object multiple (price_attrs.isObject), from the catalogue text. Optional: older evidence has none. */
+    object?: Sourced<boolean>;
   };
   /** The house the price is AT (graph institution name). Null value: no house chosen, pooled offset. */
   targetHouse: Sourced<string | null>;
@@ -212,13 +215,17 @@ export function lotAttrsWithSources(input: {
   const after: Sourced<boolean> = claim
     ? { value: !isDirectQualifier(claim.artistQualifier), source: "catalogue", note: claim.artistQualifier ?? undefined }
     : { value: false, source: "default", note: "no catalogue attribution; the model's reference (the artist's own work)" };
-  return { signature, proof, editionSize, areaCm2, process, poster, after };
+  const object: Sourced<boolean> = claim && claimText
+    ? { value: isObject(claimText), source: "catalogue" }
+    : { value: false, source: "default", note: "no catalogue text; the model's reference (a print on paper)" };
+  return { signature, proof, editionSize, areaCm2, process, poster, after, object };
 }
 
 export const attrsValues = (a: ValuationEvidence["attrs"]): PriceAttrs => ({
   signature: a.signature.value, proof: a.proof.value, editionSize: a.editionSize.value, areaCm2: a.areaCm2.value, process: a.process.value,
   poster: a.poster?.value ?? false,
   after: a.after?.value ?? false,
+  object: a.object?.value ?? false,
 });
 
 // ── graph reads ────────────────────────────────────────────────────────────────
