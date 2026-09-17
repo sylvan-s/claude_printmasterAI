@@ -289,6 +289,11 @@ def main():
     ap.add_argument("--unsold-flag", choices=["on", "off"], default="on",
                     help="with a lots export (export_sales.py --lots): a per-artist 'unsold' column, so unsold lots' higher "
                          "estimates (x1.28 for the same work, 2026-09-17) do not lift the fair price; ignored without a sold column")
+    ap.add_argument("--fit-all", action="store_true",
+                    help="production build (2026-09-17): fit on EVERY sale through today, so the stored year effects reach the "
+                         "latest year and the model reflects today's market; there is no held-out period, so pass --kappa from "
+                         "the cut build that chose it")
+    ap.add_argument("--kappa", type=int, default=None, help="use this kappa instead of choosing it on the held-out period")
     ap.add_argument("--dump-test", default=None, help="write test-period rows with the chosen-kappa prediction to this CSV")
     ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
@@ -369,6 +374,11 @@ def main():
             print(f"target {args.target}: dropping {int((~keep).sum())} rows without that price")
             df, feat, y = df[keep.values].reset_index(drop=True), feat[keep.values].reset_index(drop=True), y[keep].reset_index(drop=True)
     train = (df["saleDate"] < args.cut).values
+    if args.fit_all:
+        if args.kappa is None:
+            raise SystemExit("--fit-all needs --kappa (choose it with a cut build first)")
+        train = np.ones(len(df), dtype=bool)
+        print(f"fit-all: training on all {len(df)} rows through {df['saleDate'].max()[:10]}; kappa fixed at {args.kappa}")
     test = ~train
     fx = df["fxRateToGBP"].astype(float).where(df["fxRateToGBP"].astype(float) > 0)
     est = ((df["estimateLow"].astype(float) + df["estimateHigh"].astype(float)) / 2) / fx
@@ -519,10 +529,10 @@ def main():
             total[k].append((mae(yt, p_k[k])[0], int(rows_idx.sum())))
             dumped.setdefault(k, []).append(pd.Series(p_k[k], index=df.index[rows_idx]))
         total_rows += int(rows_idx.sum())
-    best_k = min(KAPPAS, key=lambda k: sum(m * n for m, n in total[k]) / max(1, sum(n for _, n in total[k])))
+    best_k = args.kappa if args.kappa is not None else min(KAPPAS, key=lambda k: sum(m * n for m, n in total[k]) / max(1, sum(n for _, n in total[k])))
     print(f"\nkappa chosen on all test rows: {best_k}   (" + "  ".join(f"k={k}: {sum(m * n for m, n in total[k]) / max(1, sum(n for _, n in total[k])):.3f}" for k in KAPPAS) + ")")
 
-    if args.dump_test:
+    if args.dump_test and not args.fit_all:
         pred = pd.concat(dumped[best_k])
         out = df.loc[pred.index, ["artist", "house", "saleDate", "hammerGBP", "editionSize"]].copy()
         out["edition_band"] = feat.loc[pred.index, "edition_band"]
@@ -553,7 +563,8 @@ def main():
     version += "" if args.attribution == "all" else f"+{args.attribution}"
     version += "+object" if args.object_flag == "on" else ""
     version += "" if args.target == "hammer" else f"+target-{args.target}" + ("+unsold-flag" if "unsold" in cols else "")
-    db = {"version": version, "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
+    version += "+fit-all" if args.fit_all else ""
+    db = {"version": version, "fit_all": bool(args.fit_all), "last_sale_date": str(df["saleDate"].max())[:10], "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
           "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
           "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),
           "reference_levels": REFS, "elasticity_columns": cols, "year_effects": year_eff, "continuous_medians": med,

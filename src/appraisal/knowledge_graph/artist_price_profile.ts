@@ -184,6 +184,21 @@ function levelOf(attrs: PriceAttrs): Record<string, string> {
   };
 }
 
+/**
+ * The market-level (year) effect for a valuation year (2026-09-17). A year the build did not measure
+ * takes the latest measured year at or before it (today's market carries forward; a future valuation
+ * date never falls back to an arbitrary zero), and a year before the series takes the earliest.
+ */
+export function yearEffectAt(yearEffects: Record<string, number> | null | undefined, year: string | number | null | undefined): number {
+  if (!yearEffects || year == null) return 0;
+  const y = String(year).slice(0, 4);
+  if (yearEffects[y] != null && Number.isFinite(yearEffects[y])) return yearEffects[y];
+  const years = Object.keys(yearEffects).filter((k) => Number.isFinite(yearEffects[k])).sort();
+  if (!years.length) return 0;
+  const before = years.filter((k) => k <= y);
+  return yearEffects[before.length ? before[before.length - 1] : years[0]];
+}
+
 function logOr(value: number | null | undefined, median: number | undefined): number {
   if (value != null && Number.isFinite(value) && value > 0) return Math.log(value);
   return median ?? 0;

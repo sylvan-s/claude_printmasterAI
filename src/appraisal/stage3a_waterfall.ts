@@ -23,7 +23,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { calibratedWitnesses, houseOffsetOf, isPolicyProof, xlAreaLog, DEFAULT_PROOF_PREMIUM, type BlendCalibration, type ProofPolicy } from "./knowledge_graph/price_blend.js";
-import { editionBand, areaBandFor, type ArtistPriceProfile } from "./knowledge_graph/artist_price_profile.js";
+import { editionBand, areaBandFor, yearEffectAt, type ArtistPriceProfile } from "./knowledge_graph/artist_price_profile.js";
 import { evidenceToBlendInputs, attrsValues, type ValuationEvidence } from "./valuation_evidence.js";
 
 export interface ColumnMeans {
@@ -113,9 +113,13 @@ function lotColumns(profile: ArtistPriceProfile, ev: ValuationEvidence): Record<
  */
 export const REFERENCE_PRINT = {
   signature: "hand", proof: "numbered", editionBand: "31-75", editionSize: 50,
-  areaBand: "1800-7500", house: "Bonhams", year: "2025",
+  areaBand: "1800-7500", house: "Bonhams",
 } as const;
-const REFERENCE_LABEL = "numbered, hand-signed, edition 31–75, large, Bonhams, 2025";
+/**
+ * The reference print is priced at the VALUATION YEAR's market (user direction 2026-09-17: the fair
+ * price is today's market level), so the chart has no market-level step: the year is part of the start.
+ */
+const referenceLabel = (year: string) => `numbered, hand-signed, edition 31–75, large, Bonhams, ${year} market`;
 
 /** The reference print's value on a model column (0/1 for levels, a log value for continuous terms). */
 function referenceX(col: string, profile: ArtistPriceProfile): number {
@@ -222,18 +226,18 @@ export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration,
     const off = cal.houseOffsets;
     const houseLog = off ? houseOffsetOf(off, ev.targetHouse.value).log : 0;
     const refHouse = off ? houseOffsetOf(off, REFERENCE_PRINT.house).log : 0;
-    const refYear = profile.yearEffects[REFERENCE_PRINT.year] ?? 0;
-    baseline += refHouse + refYear;
     const year = ev.valuationDate.value.slice(0, 4);
-    const yearEff = profile.yearEffects[year] ?? 0;
+    const refYear = yearEffectAt(profile.yearEffects, year);
+    baseline += refHouse + refYear;
+    const yearEff = refYear;
     const tech = ev.attrs.process.value === "offset" ? "offset print" : ev.attrs.process.value && ev.attrs.process.value !== "other" ? ev.attrs.process.value : "technique not stated";
     const who = ev.artist.canonical ?? ev.artist.reported ?? "Unknown artist";
     running = baseline;
-    bars.push({ key: "baseline", label: `${who}, ${tech}: ${REFERENCE_LABEL} (${profile.basis === "shrunk" ? `${profile.earlierSales} own sales` : profile.basis === "prior" ? "priced from similar artists" : "segment default"})`, kind: "baseline", logEffect: 0, multiplier: 1, fromGBP: Math.round(Math.exp(baseline)), toGBP: Math.round(Math.exp(baseline)) });
+    bars.push({ key: "baseline", label: `${who}, ${tech}: ${referenceLabel(year)} (${profile.basis === "shrunk" ? `${profile.earlierSales} own sales` : profile.basis === "prior" ? "priced from similar artists" : "segment default"})`, kind: "baseline", logEffect: 0, multiplier: 1, fromGBP: Math.round(Math.exp(baseline)), toGBP: Math.round(Math.exp(baseline)) });
     // Bar key "impression" (the impression-status step); the model dimension behind it is "proof".
     for (const dim of ["after", "signature", "proof", "edition", "size", "poster", "object"]) if (dim in byDim && (dim !== "poster" || ev.attrs.poster?.value) && (dim !== "after" || ev.attrs.after?.value) && (dim !== "object" || ev.attrs.object?.value)) push(dim === "proof" ? "impression" : dim, attrLabel(dim, ev, policyProof, neutralEdition, profile), "factor", byDim[dim]);
     if (off) push("house", `Sale house: ${ev.targetHouse.value ?? "none chosen (pooled level)"}`, "factor", houseLog - refHouse);
-    push("year", `Market level: ${year}`, "factor", yearEff - refYear);
+    void yearEff;   // the reference already carries the valuation year's market level (no market step)
     push("calibration", "Model calibration to house estimates", "factor", priors.mu - priors.rawMu);
     const gap = priors.mu - running;
     if (Math.abs(gap) > 1e-6) {
@@ -250,7 +254,13 @@ export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration,
 
   const comps = witnesses.filter((w) => w.source !== "priors_model" && w.weight > 0);
   const entries = [...new Set(ev.comps.items.filter((c) => c.tier === "same_suite" && c.entry).map((c) => c.entry!))];
-  const compName = (src: string) => (src === "same_suite" ? `same catalogue entry${entries.length ? ` (${entries.join(", ")})` : ""}` : pretty(src));
+  const similar = [...new Set(ev.comps.items.filter((c) => c.tier === "same_artist" && c.artist).map((c) => c.artist!))];
+  const compName = (src: string) =>
+    src === "same_suite" ? `same catalogue entry${entries.length ? ` (${entries.join(", ")})` : ""}`
+    : src === "same_work" ? "same work"
+    : src === "same_artist_technique" ? "same artist and technique, closest images"
+    : src === "same_artist" ? `similar artists${similar.length ? ` (${similar.join(", ")})` : ""}, same technique, closest images`
+    : pretty(src);
   push("comps", comps.length ? `Market comps: ${comps.map((w) => compName(w.source)).join(", ")}` : "No market comps", "comps", Math.log(medianGBP) - running);
   bars.push({ key: "total", label: "Fair-value median", kind: "total", logEffect: 0, multiplier: 1, fromGBP: Math.round(medianGBP), toGBP: Math.round(medianGBP) });
   bars.push({ key: "condition", label: `Condition: ${ev.condition.grade ?? "not assessed"} (noted, not priced)`, kind: "note", logEffect: 0, multiplier: 1, fromGBP: Math.round(medianGBP), toGBP: Math.round(medianGBP) });

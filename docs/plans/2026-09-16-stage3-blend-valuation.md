@@ -1142,3 +1142,41 @@ realised hammers and pull the price toward what prints sell for; they are not re
   catch a wrong direction (next fix).
 - **Open:** the graph still holds Bonhams' current-rate GBP estimates on unsold rows (the export
   corrects them for the model).
+
+### 2026-09-17: today's market level, five tiered comps, narration direction check (BLEND-2.2)
+
+**Today's market level (user direction).**
+- `build_priors.py --fit-all --kappa 60` builds the LIVE model on every lot through the last
+  completed sale (76,477 rows; year effects measured through 2026: 2022 x1.28, 2025 x1.11, 2026 x1.03).
+  The backtest-cut build is kept in `priors_stage3a_gate`, and the calibration refit reads it, so
+  residuals stay out-of-sample.
+- `yearEffectAt` carries the latest measured year forward for a later valuation year.
+- The waterfall's reference print is priced at the valuation year's market ("..., Bonhams, 2026
+  market"); the market-level bar is removed.
+- `export_sales.py --lots` drops unsold lots dated in the last 30 days or later (outcome pending: 149,
+  incl. Skinner's September 2026 sale).
+
+**Small-edition penalty, investigated.** Not general: <=30 vs 31-75 has a median of x1.03 over 130
+artists. It is series recognition (Hockney partly publisher, Lichtenstein the 1976 Entablature
+series, Warhol lesser series vs iconic ones), which same-work and CLIP comps address.
+
+**Five tiered comps (`select_comps.ts`, user direction).** At most 5 sold sales in the 10-year window,
+same attribution class, technique as a filter, no attribute adjustment:
+1. same work, nearest date;
+2. same artist, CLIP-closest (floor 0.88 in Neo4j's (1+cos)/2 scale; Hockney repeat sales p10 0.94,
+   other works median 0.84);
+3. similar artists (model neighbours), CLIP-closest.
+
+Stage 1d's CLIP vector is passed to Stage 3. Without one, tiers 2-3 fall back to date. Same-suite comps
+are no longer read.
+
+- Backtest comps were re-recorded with `tests/backtest/record_select5_comps.ts` (4,400 of 5,094 with a
+  vector). Gate: vs estimate MAE 0.547 -> **0.537**, vs hammer 0.609 -> **0.601**, coverage 83% / 79%.
+- 939 lots (18%) get no comps. The similar-artist tier is fitted at weight 0 (bias -0.61): next,
+  rebase it by artist level.
+- Hockney Self-Portrait: £3,400 (1,300-8,900).
+
+**Narration direction check (paused, user decision).** `checkDirections` rejects a narration that
+describes a chart step the wrong way round. It only judges sentences naming a single step or a
+"which/that" continuation, plus prompt rules 5-6. Live 30-lot runs still showed a few false
+contradictions; 45 unit tests.

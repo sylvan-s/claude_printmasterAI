@@ -14,7 +14,8 @@
  *   npx tsx tests/backtest/refit_blend_calibration.ts --version BLEND-1.3
  */
 import "dotenv/config";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { closeDriver, priorsModelPrediction, fitBlendCalibration, blendPrices, isPolicyProof, DEFAULT_PROOF_PREMIUM, type BlendInputs, type FitRow } from "../../src/appraisal/knowledge_graph/index";
 import type { HouseOffsets } from "../../src/appraisal/knowledge_graph/price_blend";
 import type { ArtistPriceProfile } from "../../src/appraisal/knowledge_graph/artist_price_profile";
@@ -29,6 +30,12 @@ const VERSION = arg("version", "BLEND-1.3")!;
 const SPLIT = arg("split", "2024-07-01")!;
 const OUT = arg("out", "knowledge_graph/pricing_ml/blend/calibration.json")!;
 const D = "tests/backtest/comps_hammer";
+/**
+ * The model the gate and the calibration are fitted with (2026-09-17). The live model file is a
+ * --fit-all build that has seen every backtest lot's sale, so residuals from it would be in-sample;
+ * the calibration is fitted on the backtest-cut build in priors_stage3a_gate and applied to the live one.
+ */
+const PRIORS_DIR = arg("priors-dir", existsSync(join(process.cwd(), "knowledge_graph/pricing_ml/priors_stage3a_gate")) ? join(process.cwd(), "knowledge_graph/pricing_ml/priors_stage3a_gate") : STAGE3A_PRIORS_DIR)!;
 /** Same-suite comps per lot (extract_suite_comps.ts). Given: the blend gets a same_suite witness. */
 const SUITE = arg("suite");
 /** House offsets and year index (house_offsets.py output). */
@@ -37,12 +44,15 @@ const OFFSETS = arg("offsets", "knowledge_graph/pricing_ml/blend/house_offsets.j
 const FX = argv.includes("--fx-reconvert");
 /** Calibrate the pricing-model witness against the house mid estimate (fair-price scale) instead of the hammer; comps stay on hammers. */
 const PRIORS_OUTCOME = (arg("priors-outcome", "estimate") as "hammer" | "estimate");
+/** "select5": replace each lot's recorded comps with the five-comp tiered selection (record_select5_comps.ts); same-suite comps are dropped. */
+const COMPS = arg("comps", "recorded")!;
 /** Report only; write no calibration. */
 const DRY = argv.includes("--dry");
 
 async function main() {
-  const build = loadPriorsBuild()!;
-  const means = JSON.parse(readFileSync(`${STAGE3A_PRIORS_DIR}/column_means.json`, "utf8"));
+  const build = loadPriorsBuild(PRIORS_DIR)!;
+  const means = JSON.parse(readFileSync(`${PRIORS_DIR}/column_means.json`, "utf8"));
+  console.log(`gate/calibration model: ${PRIORS_DIR}`);
   const offsets: HouseOffsets = { ...JSON.parse(readFileSync(OFFSETS, "utf8")), timeAdjust: "prior_year", ...(FX ? { fxReconvert: true } : {}) };
   // Currency is always annotated (so reports can group by it); only --fx-reconvert applies the shift.
   const currencyOf: Record<string, string> = JSON.parse(readFileSync("tests/backtest/comps_hammer/comp_currency.json", "utf8")).keys;
@@ -60,17 +70,21 @@ async function main() {
   const policy = { columnMeans: means.columns, premium: DEFAULT_PROOF_PREMIUM };
   const profiles = new Map<string, ArtistPriceProfile | null>();
   const rows: { r: any; fit: FitRow; area: number | null; proof: string; suite: number }[] = [];
-  const suiteByKey = new Map<string, any[]>(SUITE ? readFileSync(SUITE, "utf8").split("\n").filter(Boolean).map((l) => { const x = JSON.parse(l); return [x.key, x.comps] as [string, any[]]; }) : []);
+  const select5 = new Map<string, any>(COMPS === "select5" ? readFileSync(`${D}/select5_comps.jsonl`, "utf8").split("\n").filter(Boolean).map((l) => { const x = JSON.parse(l); return [x.key, x] as [string, any]; }) : []);
+  if (COMPS === "select5") console.log(`comps: five-comp tiered selection for ${select5.size} lots (same-suite dropped)`);
+  const suiteByKey = new Map<string, any[]>(SUITE && COMPS !== "select5" ? readFileSync(SUITE, "utf8").split("\n").filter(Boolean).map((l) => { const x = JSON.parse(l); return [x.key, x.comps] as [string, any[]]; }) : []);
   for (const f of ["forum", "roseberys", "bonhams"]) for (const l of readFileSync(`${D}/${f}_n2500_blend_house.jsonl`, "utf8").split("\n").filter(Boolean)) {
     const r = JSON.parse(l);
     if (!(r.sold && r.hammer > 0 && r.blend && r.canonicalArtist && !r.error)) continue;
-    if (!profiles.has(r.canonicalArtist)) profiles.set(r.canonicalArtist, await queryArtistPriceProfileFromFile(r.canonicalArtist));
+    if (!profiles.has(r.canonicalArtist)) profiles.set(r.canonicalArtist, await queryArtistPriceProfileFromFile(r.canonicalArtist, PRIORS_DIR));
     const profile = profiles.get(r.canonicalArtist)!;
     const claim: any = { artist: r.artist, title: r.title, medium: r.medium, editionNote: r.editionNote, editionSize: r.editionSize, signed: r.signed, dimensions: r.widthCm && r.heightCm ? [{ kind: "sheet", widthCm: r.widthCm, heightCm: r.heightCm }] : null };
     const attrs = attrsValues(lotAttrsWithSources({ claim }));
     const pred = profile ? priorsModelPrediction(attrs, profile, { saleDate: r.saleDate, house: r.blend.inputs.targetHouse, proofPolicy: policy }) : null;
     const suite = (suiteByKey.get(r.key) ?? []).map((c: any) => ({ hammerGBP: c.hammerGBP, saleDate: c.saleDate, house: c.house }));
-    const bi = r.blend.inputs;
+    const s5 = select5.get(r.key);
+    if (COMPS === "select5" && (!s5 || s5.error)) continue;
+    const bi = COMPS === "select5" ? { ...r.blend.inputs, sameWork: s5.sameWork, sameArtistTechnique: s5.sameArtistTechnique, sameArtist: s5.sameArtist } : r.blend.inputs;
     const fxInputs = {
       sameWork: withFx(bi.sameWork, r.saleDate)!,
       sameArtistTechnique: bi.sameArtistTechnique ? { ...bi.sameArtistTechnique, comps: withFx(bi.sameArtistTechnique.comps, r.saleDate) } : null,

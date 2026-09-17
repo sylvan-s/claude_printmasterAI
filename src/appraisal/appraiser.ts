@@ -67,7 +67,7 @@ import { VALUATION_ATTRIBUTED_LOT_SUFFIX } from "./prompts";
 import { readLotGraphEvidence, assembleValuationEvidence, type ValuationEvidence, type Sourced } from "./valuation_evidence.js";
 import { stage3aValuation, stage3aAuctionEstimate, loadBlendCalibration, type Stage3aResult } from "./stage3a_blend.js";
 import { loadColumnMeans } from "./stage3a_waterfall.js";
-import { allowedFigures, checkFigures, narrationText, stage3bUserText, STAGE3B_SYSTEM, STAGE3B_SCHEMA, STAGE3B_VERSION, type ValuationNarrative } from "./stage3b_narration.js";
+import { allowedFigures, checkDirections, checkFigures, narrationText, stage3bUserText, STAGE3B_SYSTEM, STAGE3B_SCHEMA, STAGE3B_VERSION, type ValuationNarrative } from "./stage3b_narration.js";
 import { gbpRate } from "./stage3a_blend.js";
 import { stage3ReportFields } from "./stage3_report_fields.js";
 import {
@@ -2657,6 +2657,7 @@ Return a single JSON object:
         attributionCaveat: STAGE1D_ATTRIBUTION_CAVEAT,
         hypothesisWarning: STAGE1D_HYPOTHESIS_WARNING,
         dinov2QueryVector: vectors.dinov2?.vector ?? null,
+        clipQueryVector: vectors.clip?.vector ?? null,
       };
     } catch (err: any) {
       console.warn(`[Stage 1d] Neo4j vector query failed — skipping: ${err.message}`);
@@ -3356,6 +3357,8 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     appraiserInput: AppraiserInputResult | null | undefined;
     canonicalArtist: string | null;
     claim?: CatalogueAttribution | null;
+    /** The lot image's CLIP vector (Stage 1d), for the CLIP-similar comp tiers. */
+    clipVector?: number[] | null;
   }): Promise<ValuationEvidence | null> {
     try {
       const { appraisal, vea, attr, appraiserInput, claim } = input;
@@ -3380,6 +3383,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
         excludeSaleLot: saleLot,
         excludeListingUrl: excluded.listingUrl ?? claim?.lotUrl ?? null,
         attribution: claim && !isDirectQualifier(claim.artistQualifier) ? "after" : "direct",
+        clipVector: input.clipVector ?? null,
         via: claim ? "claim" : "stage2b",
       });
       const ev = assembleValuationEvidence({
@@ -3439,7 +3443,8 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
 
   /**
    * Stage 3b: the model narrates the Stage 3a price. Every figure it writes is checked against the
-   * allowed list; one retry naming the rejected figures, then no narration rather than a wrong one.
+   * allowed list, and every step it describes against the chart's direction (checkDirections); one
+   * retry naming what was rejected, then no narration rather than a wrong one.
    * Never throws.
    */
   protected async runStage3bNarration(r: Stage3aResult, est: AuctionEstimate, ev: ValuationEvidence | null): Promise<ValuationNarrative | null> {
@@ -3450,17 +3455,25 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
       const allowed = allowedFigures(r, est, fx.rate, ev);
       const base = stage3bUserText(r, est, allowed, { artist: ev?.artist.canonical ?? ev?.artist.reported ?? null, title: ev?.identity.matchedName ?? null });
       const rejected: string[] = [];
+      const bars = r.waterfall?.bars ?? [];
+      let feedback = "";
       for (let attempt = 1; attempt <= 2; attempt++) {
-        const text = attempt === 1 ? base : `${base}\n\nYOUR PREVIOUS DRAFT QUOTED FIGURES NOT IN THE ALLOWED LIST: ${rejected.join(", ")}. Rewrite without them.`;
+        const text = attempt === 1 ? base : `${base}\n\n${feedback}`;
         const out: any = await this.callClaude(model, STAGE3B_SYSTEM, [{ type: "text", text }], "report_valuation_narrative", "Report the narration of the set price.", STAGE3B_SCHEMA);
         const bad = checkFigures(narrationText(out), allowed);
-        if (!bad.length) {
+        const wrongWay = checkDirections({ headline: out.headline ?? "", narrative: out.narrative ?? "", keyDrivers: out.keyDrivers ?? [] }, bars);
+        if (!bad.length && !wrongWay.length) {
           console.log(`[Stage 3b] narration accepted on attempt ${attempt}`);
           return { version: STAGE3B_VERSION, headline: out.headline, keyDrivers: out.keyDrivers ?? [], narrative: out.narrative, caveats: out.caveats ?? [], model, guard: { attempts: attempt, rejected } };
         }
-        rejected.push(...bad);
+        rejected.push(...bad, ...wrongWay.map((w) => `direction: ${w}`));
+        feedback = [
+          bad.length ? `YOUR PREVIOUS DRAFT QUOTED FIGURES NOT IN THE ALLOWED LIST: ${bad.join(", ")}. Rewrite without them.` : "",
+          wrongWay.length ? `YOUR PREVIOUS DRAFT GOT THESE STEPS THE WRONG WAY ROUND. Below x1 lowers the price, above x1 raises it:\n- ${wrongWay.join("\n- ")}\nRewrite so every step matches the chart.` : "",
+        ].filter(Boolean).join("\n\n");
         const txt = narrationText(out);
-        console.warn(`[Stage 3b] attempt ${attempt} quoted figures not in the allowed list: ${bad.map((b) => { const i = txt.indexOf(b); return `${b} in "…${txt.slice(Math.max(0, i - 70), i + b.length + 30).replace(/\n/g, " ")}…"`; }).join(" | ")}`);
+        if (bad.length) console.warn(`[Stage 3b] attempt ${attempt} quoted figures not in the allowed list: ${bad.map((b) => { const i = txt.indexOf(b); return `${b} in "…${txt.slice(Math.max(0, i - 70), i + b.length + 30).replace(/\n/g, " ")}…"`; }).join(" | ")}`);
+        if (wrongWay.length) console.warn(`[Stage 3b] attempt ${attempt} contradicted the chart: ${wrongWay.join(" | ")}`);
       }
       return null;
     } catch (err: any) {
@@ -3905,6 +3918,7 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const valuationEvidence = await this.buildValuationEvidence({
       appraisal: input, vea, attr, appraiserInput,
       canonicalArtist: triageResult?.artistAttribution?.artistIdentity?.canonicalArtistName ?? null,
+      clipVector: stage1d?.clipQueryVector ?? null,
     });
     const s3 = await this.runStage3(valuationEvidence, attr, vea, triageResult, currency, () => this.runStage3Valuation(
       vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput,
@@ -3919,7 +3933,7 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     report.stage1Result = vea;
     report.stage1cResult = appraiserInput;
     // Drop the transient query vector — it exists to reach Stage 2a, not to be stored.
-    report.stage1dResult = stage1d ? { ...stage1d, dinov2QueryVector: undefined } : stage1d;
+    report.stage1dResult = stage1d ? { ...stage1d, dinov2QueryVector: undefined, clipQueryVector: undefined } : stage1d;
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     report.valuationEvidence = valuationEvidence;
@@ -4198,7 +4212,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     const t3 = Date.now();
     emit({ stage: "stage3", status: "start", message: "Pricing from the pricing model and market comps…", percent: 82 });
     console.log(`[Timing] Stage 3 (Valuation) starting — Stage 3a/3b, LLM ${stage3Model} only as fallback`);
-    const valuationEvidence = await this.buildValuationEvidence({ appraisal: input, vea, attr, appraiserInput, canonicalArtist: canonical, claim });
+    const valuationEvidence = await this.buildValuationEvidence({ appraisal: input, vea, attr, appraiserInput, canonicalArtist: canonical, claim, clipVector: stage1d?.clipQueryVector ?? null });
     const s3 = await this.runStage3(valuationEvidence, attr, vea, triageResult, currency, () => this.runStage3Valuation(
       vea, attr, stage3Model, ai, currency, input.userNotes, input.testingExcludeSourceListing, appraiserInput, canonical,
       { workIds: work?.workIds ?? [], untilDate: claim.saleDate ?? null, block: buildAttributedLotValuationBlock({ claim, verification, routing, comps, workFacts, profile, appraiserInput }), systemSuffix: VALUATION_ATTRIBUTED_LOT_SUFFIX },
@@ -4211,7 +4225,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     const report = this.assembleReport(vea, attr, valuation, currency);
     report.stage1Result = vea;
     report.stage1cResult = appraiserInput;
-    report.stage1dResult = stage1d ? { ...stage1d, dinov2QueryVector: undefined } : stage1d;
+    report.stage1dResult = stage1d ? { ...stage1d, dinov2QueryVector: undefined, clipQueryVector: undefined } : stage1d;
     report.stage2Result = attr;
     report.stage2aResult = triageResult;
     report.valuationEvidence = valuationEvidence;

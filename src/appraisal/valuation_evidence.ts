@@ -49,12 +49,14 @@ import type { SignatureClass, ProofClass } from "./knowledge_graph/artist_price_
 import type { WorkIdentityBasis } from "./knowledge_graph/work_identity.js";
 import { mapTechniqueToAckgVocabulary } from "./stage2a_query_plan.js";
 import { queryArtistPriceProfileFromFile, loadPriorsBuild } from "./knowledge_graph/file_price_profile.js";
-import { querySuiteComps, type SuiteComp } from "./knowledge_graph/suite_comps.js";
+import { type SuiteComp } from "./knowledge_graph/suite_comps.js";
+import { selectComparables, MAX_COMPS } from "./knowledge_graph/select_comps.js";
 
 export const VALUATION_EVIDENCE_VERSION = "VE-1.0";
 /** The calibrated comps window and cap (comps_hammer_backtest.ts WINDOW_YEARS / limit). */
 export const EVIDENCE_COMPS_WINDOW_YEARS = 10;
-export const EVIDENCE_COMPS_LIMIT = 60;
+/** At most five comps (select_comps.ts MAX_COMPS, 2026-09-17). */
+export const EVIDENCE_COMPS_LIMIT = MAX_COMPS;
 
 export type EvidenceSource = "catalogue" | "appraiser" | "stage2b" | "vea" | "graph" | "input" | "default";
 export interface Sourced<T> { value: T; source: EvidenceSource; note?: string }
@@ -63,6 +65,9 @@ export interface EvidenceComp {
   tier: "same_work" | "same_suite" | "same_artist_technique" | "same_artist";
   /** same_suite only: the catalogue entry that joins this sale's work to the lot ("Vallier 153"). */
   entry?: string | null;
+  /** The comp's artist (a similar artist on the same_artist tier since 2026-09-17) and its CLIP similarity to the lot. */
+  artist?: string | null;
+  clipSimilarity?: number | null;
   hammerGBP: number | null;
   realisedGBP: number | null;
   /** Currency the hammer was bid in; GBP prices are converted at the sale-date rate. */
@@ -262,6 +267,8 @@ export async function readLotGraphEvidence(input: {
   excludeListingUrl?: string | null;
   /** Comps must share the lot's attribution class: "direct" (default) never sees "after X" lots, "after" sees only them. */
   attribution?: "direct" | "after";
+  /** The lot image's CLIP vector (Stage 1d); null: the CLIP tiers fall back to nearest sale date. */
+  clipVector?: number[] | null;
   via: "claim" | "stage2b";
 }): Promise<LotGraphEvidence> {
   const warnings: string[] = [];
@@ -290,22 +297,21 @@ export async function readLotGraphEvidence(input: {
     catch (e: any) { warnings.push(`work facts read failed: ${e?.message ?? e}`); }
   }
   try {
-    out.comps = await queryAuctionComparables({
-      artistName: artist, conceptualWorkIds: out.identity.workIds, workTitle: input.workTitle, technique,
-      sinceDate: query.sinceDate, untilDate: query.untilDate, limit: query.limit,
+    // Up to five tiered comps (select_comps.ts, 2026-09-17): same work, then same artist + technique by
+    // CLIP similarity, then similar artists + technique by CLIP similarity. Technique class from the
+    // lot's medium text, as the trainer reads it.
+    const process = input.techniqueText ? primaryProcess([technique, input.techniqueText]) : null;
+    out.comps = await selectComparables({
+      artist, workIds: out.identity.workIds, process, clipVector: input.clipVector ?? null,
+      neighbours: (out.profile?.neighbours ?? []).map((n) => n.name),
+      sinceDate: query.sinceDate, untilDate: query.untilDate, attribution: input.attribution ?? "direct",
       excludeSaleLot: input.excludeSaleLot ?? null, excludeListingUrl: input.excludeListingUrl ?? null,
-      attribution: input.attribution ?? "direct",
     });
   } catch (e: any) { warnings.push(`comparables read failed: ${e?.message ?? e}`); }
   // Same-suite comps, with the same window and self-exclusion; never the lot's own works'
   // sales, which the comparables query already carries as same_work.
-  const suite = await querySuiteComps({
-    artist, workIds: out.identity.workIds, catalogueRefs: input.catalogueRefs ?? null, title: input.workTitle,
-    sinceDate: query.sinceDate, untilDate: query.untilDate, excludeSaleLot: input.excludeSaleLot ?? null, excludeListingUrl: input.excludeListingUrl ?? null,
-    attribution: input.attribution ?? "direct",
-  });
-  out.suite = suite.comps;
-  if (suite.error) warnings.push(`same-suite read failed: ${suite.error}`);
+  // Same-suite comps are no longer read: the five-comp selection replaces that tier (2026-09-17).
+  out.suite = [];
   return out;
 }
 
@@ -329,6 +335,7 @@ export function assembleValuationEvidence(input: {
     tier: c.tier, hammerGBP: c.hammerPriceGBP ?? null, realisedGBP: c.priceRealisedGBP ?? null, currency: c.priceCurrency ?? null, saleDate: c.saleDate ?? null,
     house: c.institutionName ?? null, saleId: c.saleId ?? null, lotNumber: c.lotNumber ?? null, workTitle: c.workTitle ?? null,
     listingUrl: c.listingUrl ?? null, attrs: priceAttrsOfComparable(c),
+    artist: (c as any).artist ?? null, clipSimilarity: (c as any).clipSimilarity ?? null,
   }));
   // Suite sales join as their own tier, counted independently of the other tiers exactly as the
   // BLEND-1.4 calibration was fitted (a sale may also sit in tier 2/3; the fitted weights absorb it).

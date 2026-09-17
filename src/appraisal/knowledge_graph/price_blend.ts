@@ -37,7 +37,7 @@
  * Pure: no I/O, no randomness. Same inputs, same numbers.
  */
 import type { ArtistPriceProfile, PriceAttrs } from "./artist_price_profile.js";
-import { editionBand, areaBand, areaBandFor } from "./artist_price_profile.js";
+import { editionBand, areaBand, areaBandFor, yearEffectAt } from "./artist_price_profile.js";
 
 export type WitnessSource = "estimate" | "same_work" | "same_suite" | "same_artist_technique" | "same_artist" | "priors_model";
 export const WITNESS_SOURCES: WitnessSource[] = ["estimate", "same_work", "same_suite", "same_artist_technique", "same_artist", "priors_model"];
@@ -418,7 +418,7 @@ export function priorsModelPrediction(
     else unknown.add(`house_${hl}`);
   }
   const year = ctx.saleDate ? ctx.saleDate.slice(0, 4) : null;
-  const yearEff = year != null ? profile.yearEffects[year] ?? 0 : 0;
+  const yearEff = yearEffectAt(profile.yearEffects, year);
   if (yearEff !== 0) contributions.push({ term: `sale year ${year}`, logEffect: yearEff });
   mu += yearEff;
   contributions.unshift({ term: "artist level", logEffect: level });

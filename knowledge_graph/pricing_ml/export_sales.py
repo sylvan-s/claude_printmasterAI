@@ -108,6 +108,12 @@ def main():
         from backfill_fx_gbp import RateBook, load_rates
         book = RateBook(load_rates(False))
     unconvertible = 0
+    pending = 0
+    # A lot not yet marked sold within the last 30 days (or dated in the future) has no known outcome:
+    # upcoming sales and results the ingests have not picked up yet (2026-09-17: Skinner's September
+    # sale showed 126 lots, all "unsold"). Leave them out rather than train them as unsold.
+    from datetime import date, timedelta
+    pending_after = (date.today() - timedelta(days=30)).isoformat()
     driver = GraphDatabase.driver(os.environ["NEO4J_URI"], auth=(os.environ["NEO4J_USER"], os.environ["NEO4J_PASSWORD"]))
     os.makedirs(os.path.dirname(os.path.abspath(args.out)), exist_ok=True)
     n = 0
@@ -118,6 +124,9 @@ def main():
             row = {k: rec.get(k) for k in FIELDS}
             if args.lots:
                 row["sold"] = bool(rec.get("sold"))
+                if not row["sold"] and str(rec.get("saleDate"))[:10] > pending_after:
+                    pending += 1
+                    continue
                 cur = (rec.get("currency") or "GBP").upper()
                 day = str(rec.get("saleDate"))[:10]
                 rate, rate_day = (1.0, day) if cur == "GBP" else book.lookup(day, cur)
@@ -136,7 +145,7 @@ def main():
     driver.close()
     who = repr(args.artist) if args.artist else "all artists"
     kind = "lots with an estimate (sold and unsold)" if args.lots else "sold records"
-    print(f"{n} {kind} for {who} -> {args.out}" + (f"; {unconvertible} with no ECB rate for their currency/date" if args.lots else ""))
+    print(f"{n} {kind} for {who} -> {args.out}" + (f"; {unconvertible} with no ECB rate for their currency/date; {pending} unsold lots after {pending_after} left out (outcome pending)" if args.lots else ""))
 
 
 if __name__ == "__main__":

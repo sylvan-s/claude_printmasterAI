@@ -181,7 +181,8 @@ const profile: ArtistPriceProfile = {
   close("signed etching, edition 400, Roseberys, 2022", lot.mu, 6.0 + 0.1 * LN(100) + LN(2) + LN(0.5) + 0.1 * (LN(400) - LN(100)) + LN(1.5) + LN(0.8) + 0.3);
   eq("every non-reference attribute is a contribution", lot.contributions.map((c) => c.term), ["artist level", "signature=hand", "edition_band=>300", "process=etching", "edition size=400", "house=Roseberys London", "sale year 2022"]);
   const forum = priorsModelPrediction({ signature: null, proof: null, editionSize: null, areaCm2: null, process: "screenprint" }, profile, { saleDate: "2030-01-01", house: "Forum Auctions" });
-  close("unknown attrs take reference/median; unseen year is 0", forum.mu, 6.0 + 0.1 * LN(100));
+  // 2026-09-17: a year past the measured series carries the latest measured year forward (2024: 0.1), not 0
+  close("unknown attrs take reference/median; a later unseen year takes the latest measured year", forum.mu, 6.0 + 0.1 * LN(100) + 0.1);
   eq("unseen house, process and the levels this profile lacks are listed, not applied", forum.unknownColumns, ["area_band_unknown", "edition_band_unknown", "house_Forum Auctions", "process_screenprint", "proof_unknown"]);
 }
 

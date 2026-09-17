@@ -44,13 +44,13 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   const priors = calibratedWitnesses(evidenceToBlendInputs(e, { proofPolicy: { columnMeans: means.columns, premium: { min: 1.05, max: 1.1 } } }), cal, "no_estimate").witnesses.find((x) => x.source === "priors_model")!;
   const modelSteps = w.bars.slice(0, w.bars.findIndex((b) => b.key === "model")).filter((b) => b.kind === "factor").reduce((t, b) => t + b.logEffect, 0);
   // Exact start in log space: level + technique beta + the reference print (hand-signed, numbered,
-  // edition 31-75 at 50, size at the model reference) + Bonhams (0) + 2025 (no effect in this profile).
+  // edition 31-75 at 50, size at the model reference) + Bonhams (0) + the valuation year's market (2024: 0.12).
   const p = e.profile!;
-  const exactStart = p.level + 0.15 /* process_etching */ + 0.7 /* signature_hand */ + 0.2 /* edition_band_31-75 */ + -0.1 * Math.log(50) + 0.2 * Math.log(2400);
+  const exactStart = p.level + 0.15 /* process_etching */ + 0.7 /* signature_hand */ + 0.2 /* edition_band_31-75 */ + -0.1 * Math.log(50) + 0.2 * Math.log(2400) + 0.12;
   ok("start + model bars = the priors witness price the blend used, exactly", close(exactStart + modelSteps, priors.mu));
   eq("no gap note on a consistent build", w.notes, []);
-  eq("bar order: starts at artist + technique, no artist or technique bar", w.bars.map((b) => b.key), ["baseline", "signature", "impression", "edition", "size", "house", "year", "calibration", "model", "comps", "total", "condition"]);
-  ok("start label names the artist and technique", w.bars[0].label.startsWith("X, etching: numbered, hand-signed, edition 31–75, large, Bonhams, 2025 ("));
+  eq("bar order: starts at artist + technique, no artist or technique bar", w.bars.map((b) => b.key), ["baseline", "signature", "impression", "edition", "size", "house", "calibration", "model", "comps", "total", "condition"]);
+  ok("start label names the artist and technique", w.bars[0].label.startsWith("X, etching: numbered, hand-signed, edition 31–75, large, Bonhams, 2024 market ("));
   ok("signature bar is zero for a hand-signed lot (the reference)", close(w.bars.find((b) => b.key === "signature")!.logEffect, 0));
   const unsigned = { ...e, attrs: { ...e.attrs, signature: { value: "unsigned", source: "catalogue" } } } as any;
   const wU = valuationWaterfall(unsigned, cal, means, stage3aValuation(unsigned, cal, means)!.medianGBP)!;
@@ -58,7 +58,13 @@ const ev = (over: Partial<ValuationEvidence> = {}): ValuationEvidence => ({
   ok("proof bar is zero for a numbered lot (the reference)", close(w.bars.find((b) => b.key === "impression")!.logEffect, 0));
   ok("edition bar for 50 in the 31-75 band is zero (the reference)", close(w.bars.find((b) => b.key === "edition")!.logEffect, 0));
   ok("house bar is the lot's house against Bonhams", close(w.bars.find((b) => b.key === "house")!.logEffect, Math.log(0.85)));
-  ok("year bar is the lot's year against 2025", close(w.bars.find((b) => b.key === "year")!.logEffect, 0.12));
+  ok("no market-level step: the start is priced at the valuation year's market", !w.bars.some((b) => b.key === "year"));
+  {
+    const two = { ...e, profile: { ...e.profile!, yearEffects: { "2019": 0, "2024": 0.12 } } } as any;
+    const at = (d: string) => valuationWaterfall({ ...two, valuationDate: { value: d, source: "catalogue" } }, cal, means, median)!.bars[0].toGBP;
+    ok("the start carries the valuation year's market: 2024 start is x1.13 the 2019 start", close(Math.log(at("2024-06-01")) - Math.log(at("2019-06-01")), 0.12, 2e-3));
+    ok("a valuation year past the series carries the latest year forward", close(Math.log(at("2027-01-01")) - Math.log(at("2024-06-01")), 0, 2e-3));
+  }
   ok("calibration bar is the witness bias", close(w.bars.find((b) => b.key === "calibration")!.logEffect, Math.log(0.8)));
   ok("labels carry the attribute source", w.bars.find((b) => b.key === "impression")!.label.includes("not stated: model default"));
   ok("the step is labelled impression status in plain words", w.bars.find((b) => b.key === "impression")!.label.startsWith("Impression status: numbered impression"));

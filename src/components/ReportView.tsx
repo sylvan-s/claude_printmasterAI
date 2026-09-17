@@ -614,7 +614,7 @@ export default function ReportView({
             HOW THE FAIR VALUE WAS BUILT
           </span>
           <p className="text-[11px] text-rosebery-muted mb-5">
-            From a reference print by this artist in this technique (numbered, hand-signed, edition 31–75, large, Bonhams, 2025), through this print's own attributes, to the price the market comps support. The pricing model is fitted to auction houses' estimates; the comps are realised hammer prices. This lot's own printed estimate is not used.
+            From a reference print by this artist in this technique (numbered, hand-signed, edition 31–75, large, Bonhams, at the valuation year's market), through this print's own attributes, to the price the market comps support. The pricing model is fitted to auction houses' estimates; the comps are realised hammer prices. This lot's own printed estimate is not used.
           </p>
           <ValuationWaterfall
             waterfall={report.stage3a.waterfall}

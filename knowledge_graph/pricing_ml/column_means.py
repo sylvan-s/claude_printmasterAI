@@ -87,7 +87,8 @@ def main():
     # Continuous terms the build dropped (edition_log under --edition-terms bands) are not columns here.
     for c in [c for c in CONT if c not in cols]:
         CONT.remove(c)
-    train = (df["saleDate"] < cut).values
+    # A --fit-all production build trained on every row, so its mix is every row's.
+    train = np.ones(len(df), dtype=bool) if db.get("fit_all") else (df["saleDate"] < cut).values
     X = design(feat, columns=cols)
     for c in CONT:
         if c in X:

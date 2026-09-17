@@ -526,6 +526,8 @@ export interface Stage1dResult {
    *  style comparison against a candidate artist's catalogued works. Stripped before the
    *  result is stored — 1024 floats have no business in a saved report. */
   dinov2QueryVector?: number[] | null;
+  /** The lot image's CLIP vector, for Stage 3a's CLIP-similar comps (2026-09-17). Stripped from the report like the DINOv2 one. */
+  clipQueryVector?: number[] | null;
 }
 
 export interface TriageResult {
