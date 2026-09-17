@@ -68,6 +68,8 @@ export interface EvidenceComp {
   /** The comp's artist (a similar artist on the same_artist tier since 2026-09-17) and its CLIP similarity to the lot. */
   artist?: string | null;
   clipSimilarity?: number | null;
+  /** similar-artist comps: log price-level shift to the lot's artist, applied in the blend (not to the displayed hammer). */
+  artistLevelShift?: number | null;
   hammerGBP: number | null;
   realisedGBP: number | null;
   /** Currency the hammer was bid in; GBP prices are converted at the sale-date rate. */
@@ -301,7 +303,11 @@ export async function readLotGraphEvidence(input: {
     // CLIP similarity, then similar artists + technique by CLIP similarity. Technique class from the
     // lot's medium text, as the trainer reads it.
     const process = input.techniqueText ? primaryProcess([technique, input.techniqueText]) : null;
-    out.comps = await selectComparables({
+    const build = loadPriorsBuild();
+    const artistLevels: Record<string, number> = {};
+    if (out.profile) artistLevels[artist] = out.profile.level;
+    for (const n of out.profile?.neighbours ?? []) { const lvl = build?.artists?.[n.name]?.price_level_log; if (lvl != null && Number.isFinite(lvl)) artistLevels[n.name] = lvl; }
+    out.comps = await selectComparables({ artistLevels,
       artist, workIds: out.identity.workIds, process, clipVector: input.clipVector ?? null,
       neighbours: (out.profile?.neighbours ?? []).map((n) => n.name),
       sinceDate: query.sinceDate, untilDate: query.untilDate, attribution: input.attribution ?? "direct",
@@ -335,7 +341,7 @@ export function assembleValuationEvidence(input: {
     tier: c.tier, hammerGBP: c.hammerPriceGBP ?? null, realisedGBP: c.priceRealisedGBP ?? null, currency: c.priceCurrency ?? null, saleDate: c.saleDate ?? null,
     house: c.institutionName ?? null, saleId: c.saleId ?? null, lotNumber: c.lotNumber ?? null, workTitle: c.workTitle ?? null,
     listingUrl: c.listingUrl ?? null, attrs: priceAttrsOfComparable(c),
-    artist: (c as any).artist ?? null, clipSimilarity: (c as any).clipSimilarity ?? null,
+    artist: (c as any).artist ?? null, clipSimilarity: (c as any).clipSimilarity ?? null, artistLevelShift: (c as any).artistLevelShift ?? null,
   }));
   // Suite sales join as their own tier, counted independently of the other tiers exactly as the
   // BLEND-1.4 calibration was fitted (a sale may also sit in tier 2/3; the fitted weights absorb it).
@@ -379,8 +385,9 @@ const median = (xs: number[]): number | null => {
  * The printed estimate is NOT passed (user decision 2026-09-16: model + comps only).
  */
 export function evidenceToBlendInputs(ev: ValuationEvidence, opts: { proofPolicy?: ProofPolicy | null } = {}): BlendInputs {
+  // Similar-artist comps enter at the lot artist's price level (artistLevelShift, select_comps.ts).
   const tierComps = (tier: EvidenceComp["tier"]) =>
-    ev.comps.items.filter((c) => c.tier === tier && c.hammerGBP != null && c.hammerGBP > 0).map((c) => ({ hammerGBP: c.hammerGBP!, saleDate: c.saleDate, house: c.house, currency: c.currency ?? null, fxLogShift: fxLogShift(c.currency, c.saleDate, ev.valuationDate.value) }));
+    ev.comps.items.filter((c) => c.tier === tier && c.hammerGBP != null && c.hammerGBP > 0).map((c) => ({ hammerGBP: c.hammerGBP! * Math.exp(c.artistLevelShift ?? 0), saleDate: c.saleDate, house: c.house, currency: c.currency ?? null, fxLogShift: fxLogShift(c.currency, c.saleDate, ev.valuationDate.value) }));
   const tierBlock = (tier: "same_artist_technique" | "same_artist") => {
     const all = ev.comps.items.filter((c) => c.tier === tier);
     const hammers = tierComps(tier);

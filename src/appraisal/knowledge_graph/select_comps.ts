@@ -19,6 +19,11 @@
  *
  * The same_artist tier key is reused for similar artists so the blend's witness slots and calibration
  * keys stay as fitted; the evidence item carries `artist` so the chart and report can name them.
+ *
+ * Similar-artist comps are REBASED to the lot's artist (user direction 2026-09-17): each carries
+ * artistLevelShift = level(lot artist) - level(comp artist), the pricing model's artist price levels
+ * (log reference-print price, year-deflated), which the blend adds to the comp's log hammer. Unrebased
+ * they sat a median 46% below the lot (calibration bias -0.61) and were fitted at weight 0.
  */
 import neo4j from "neo4j-driver";
 import { getDriver, getDatabase } from "./client.js";
@@ -45,11 +50,15 @@ export interface SelectCompsInput {
   excludeListingUrl?: string | null;
   max?: number;
   clipFloor?: number;
+  /** Artist price levels (log), for the lot's artist and its neighbours; rebases similar-artist comps. */
+  artistLevels?: Record<string, number>;
 }
 
 export interface SelectedComp extends AuctionComparable {
   artist: string;
   clipSimilarity: number | null;
+  /** similar-artist tier only: log(lot artist level) - log(comp artist level); null when either level is unknown. */
+  artistLevelShift?: number | null;
 }
 
 const QUERY = `
@@ -146,7 +155,12 @@ export async function selectComparables(input: SelectCompsInput): Promise<Compar
   }
   if (picked.length < max && input.neighbours.length) {
     const pool = input.neighbours.filter((n) => n !== input.artist).slice(0, NEIGHBOUR_ARTISTS);
-    const sim = rankSimilar(await candidates(input, pool, null, null, "same_artist"), hasVector, floor);
+    const lv = input.artistLevels ?? {};
+    const own = lv[input.artist];
+    // A similar artist with no price level cannot be rebased, so it cannot stand in for this artist.
+    const sim = rankSimilar(await candidates(input, pool, null, null, "same_artist"), hasVector, floor)
+      .filter((c) => own != null && lv[c.artist] != null)
+      .map((c) => ({ ...c, artistLevelShift: own - lv[c.artist] }));
     picked.push(...sim.slice(0, max - picked.length));
     notes.push(`${sim.length} similar-artist ${hasVector ? `CLIP >= ${floor}` : "(by date)"}`);
   }

@@ -259,7 +259,7 @@ export function valuationWaterfall(ev: ValuationEvidence, cal: BlendCalibration,
     src === "same_suite" ? `same catalogue entry${entries.length ? ` (${entries.join(", ")})` : ""}`
     : src === "same_work" ? "same work"
     : src === "same_artist_technique" ? "same artist and technique, closest images"
-    : src === "same_artist" ? `similar artists${similar.length ? ` (${similar.join(", ")})` : ""}, same technique, closest images`
+    : src === "same_artist" ? `similar artists${similar.length ? ` (${similar.join(", ")})` : ""}, same technique, closest images, rebased to this artist's price level`
     : pretty(src);
   push("comps", comps.length ? `Market comps: ${comps.map((w) => compName(w.source)).join(", ")}` : "No market comps", "comps", Math.log(medianGBP) - running);
   bars.push({ key: "total", label: "Fair-value median", kind: "total", logEffect: 0, multiplier: 1, fromGBP: Math.round(medianGBP), toGBP: Math.round(medianGBP) });

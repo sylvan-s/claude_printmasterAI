@@ -13,7 +13,7 @@ import "dotenv/config";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { selectComparables } from "../../src/appraisal/knowledge_graph/select_comps";
-import { queryArtistPriceProfileFromFile } from "../../src/appraisal/knowledge_graph/file_price_profile";
+import { queryArtistPriceProfileFromFile, loadPriorsBuild } from "../../src/appraisal/knowledge_graph/file_price_profile";
 import { getDriver, getDatabase } from "../../src/appraisal/knowledge_graph/client";
 import { resolveWorkIdentity, closeDriver, primaryProcess } from "../../src/appraisal/knowledge_graph/index";
 import { mapTechniqueToAckgVocabulary } from "../../src/appraisal/stage2a_query_plan";
@@ -60,12 +60,16 @@ async function main() {
         ]);
         const process = r.medium ? primaryProcess([mapTechniqueToAckgVocabulary(r.medium), r.medium]) : null;
         const since = `${Number(r.saleDate.slice(0, 4)) - 10}${r.saleDate.slice(4, 10)}`;
-        const res = await selectComparables({
+        const build = loadPriorsBuild(GATE);
+        const artistLevels: Record<string, number> = {};
+        if (profile) artistLevels[r.canonicalArtist] = profile.level;
+        for (const nb of profile?.neighbours ?? []) { const lvl = build?.artists?.[nb.name]?.price_level_log; if (lvl != null && Number.isFinite(lvl)) artistLevels[nb.name] = lvl; }
+        const res = await selectComparables({ artistLevels,
           artist: r.canonicalArtist, workIds: wi.workIds ?? [], process, clipVector: vec, neighbours: (profile?.neighbours ?? []).map((n) => n.name),
           sinceDate: since, untilDate: r.saleDate.slice(0, 10), attribution: "direct", excludeSaleLot: saleLot, excludeListingUrl: r.listingUrl ?? null,
         });
         if (vec) withClip++;
-        const pick = (tier: string) => res.comparables.filter((c) => c.tier === tier && (c.hammerPriceGBP ?? 0) > 0).map((c) => ({ hammerGBP: c.hammerPriceGBP!, saleDate: c.saleDate, house: c.institutionName, artist: (c as any).artist ?? null, clip: (c as any).clipSimilarity ?? null }));
+        const pick = (tier: string) => res.comparables.filter((c) => c.tier === tier && (c.hammerPriceGBP ?? 0) > 0).map((c) => ({ hammerGBP: c.hammerPriceGBP! * Math.exp((c as any).artistLevelShift ?? 0), rawHammerGBP: c.hammerPriceGBP!, levelShift: (c as any).artistLevelShift ?? null, saleDate: c.saleDate, house: c.institutionName, artist: (c as any).artist ?? null, clip: (c as any).clipSimilarity ?? null }));
         const block = (tier: string) => { const cs = pick(tier); if (!cs.length) return null; const h = cs.map((c) => c.hammerGBP).sort((a, b) => a - b); return { n: cs.length, medianHammerGBP: h.length % 2 ? h[h.length >> 1] : (h[h.length / 2 - 1] + h[h.length / 2]) / 2, comps: cs }; };
         out[i] = JSON.stringify({ key: r.key, clip: !!vec, process, workIds: (wi.workIds ?? []).length, tierCounts: res.summary.tierCounts, sameWork: pick("same_work"), sameArtistTechnique: block("same_artist_technique"), sameArtist: block("same_artist") });
       } catch (e: any) {

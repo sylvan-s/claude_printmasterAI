@@ -113,5 +113,18 @@ const graph: LotGraphEvidence = {
   eq("no profile -> no priors witness", noProfile.priors, null);
 }
 
+// similar-artist comps enter the blend at the lot artist's price level (2026-09-17)
+{
+  const ev0: any = { valuationDate: { value: "2024-06-01", source: "catalogue" }, targetHouse: { value: "Bonhams", source: "catalogue" }, profile: null, attrs: lotAttrsWithSources({}), sellThrough: null,
+    comps: { items: [
+      { tier: "same_artist", hammerGBP: 1000, currency: "GBP", saleDate: "2023-01-01", house: "Bonhams", artist: "B", artistLevelShift: Math.log(2) },
+      { tier: "same_artist_technique", hammerGBP: 500, currency: "GBP", saleDate: "2023-01-01", house: "Bonhams", artist: "A" },
+    ] } };
+  const bi = evidenceToBlendInputs(ev0);
+  eq("a similar artist's £1,000 hammer enters at x2 (lot artist's level is double)", bi.sameArtist?.comps.map((c: any) => Math.round(c.hammerGBP)), [2000]);
+  eq("the artist's own comps are not shifted", bi.sameArtistTechnique?.comps.map((c: any) => c.hammerGBP), [500]);
+  eq("the displayed evidence hammer is unchanged", ev0.comps.items[0].hammerGBP, 1000);
+}
+
 console.log(`\nvaluation_evidence tests: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

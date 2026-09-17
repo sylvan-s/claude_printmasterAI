@@ -1180,3 +1180,13 @@ are no longer read.
 describes a chart step the wrong way round. It only judges sentences naming a single step or a
 "which/that" continuation, plus prompt rules 5-6. Live 30-lot runs still showed a few false
 contradictions; 45 unit tests.
+
+### 2026-09-17: similar-artist comps rebased by artist level (BLEND-2.3)
+
+Similar-artist comps enter the blend multiplied by exp(level(lot artist) - level(comp artist)),
+the pricing model's artist price levels. The displayed hammer is unchanged; similar artists with no
+level are dropped. 3,375 backtest shifts, median x0.71 (p10 x0.31, p90 x2.02). Witness bias
+-0.61 -> -0.31. BLEND-2.3 fits weight 0.25 (was 0). The overall gate is flat (vs estimate 0.537); the 51
+lots with only similar-artist comps improve at weight 1 (0.632 -> 0.587). Lots with NO comps (242 of
+1,495 gate lots, hammer MAE 0.93) are the worst bucket. User direction: they should use Stage 2b's
+web comparables (not started).

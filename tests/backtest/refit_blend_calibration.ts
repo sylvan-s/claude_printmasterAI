@@ -102,6 +102,10 @@ async function main() {
   // 1. temporal gate
   const early = rows.filter((x) => x.r.saleDate < SPLIT), late = rows.filter((x) => x.r.saleDate >= SPLIT);
   const gateCal = fitBlendCalibration(early.map((x) => x.fit), { version: `${VERSION}-gate`, fittedOn: `lots before ${SPLIT}`, df: 5, houseOffsets: offsets, priorsOutcome: PRIORS_OUTCOME });
+  // --force-weight source=w (diagnostic): score the gate with one witness weight pinned.
+  const forced = arg("force-weight");
+  if (forced) { const [src, w] = forced.split("="); (gateCal.regimes.no_estimate.weights as any)[src] = Number(w); console.log(`gate weight forced: ${src}=${w}`); }
+  console.log(`same_artist witness (gate fit): ${JSON.stringify(gateCal.witnesses.same_artist?.byKey ?? {})}`);
   console.log(`pricing-model witness calibrated against: ${PRIORS_OUTCOME === "estimate" ? "house mid estimate" : "hammer"}; comps against hammer`);
   const score = (sub: typeof rows) => {
     let n = 0, mae = 0, geo = 0, cover = 0, ne = 0, maeE = 0, geoE = 0, coverE = 0;
@@ -143,6 +147,11 @@ async function main() {
     const suiteKeys = new Set([...(suiteByKey.size ? suiteByKey : new Map(readFileSync(arg("suite-groups")!, "utf8").split("\n").filter(Boolean).map((l) => { const x = JSON.parse(l); return [x.key, x.comps]; }))).entries()].filter(([, c]) => (c as any[]).length).map(([k]) => k));
     console.log(`  ${"lots with suite comps".padEnd(24)}${score(late.filter((x) => suiteKeys.has(x.r.key)))}`);
     console.log(`  ${"  ...and no same-work".padEnd(24)}${score(late.filter((x) => suiteKeys.has(x.r.key) && !x.fit.inputs.sameWork.length))}`);
+  }
+  if (COMPS === "select5") {
+    const onlySimilar = (x: (typeof rows)[number]) => !x.fit.inputs.sameWork.length && !x.fit.inputs.sameArtistTechnique && !!x.fit.inputs.sameArtist;
+    console.log(`  ${"similar-artist comps only".padEnd(24)}${score(late.filter(onlySimilar))}`);
+    console.log(`  ${"no comps at all".padEnd(24)}${score(late.filter((x) => !x.fit.inputs.sameWork.length && !x.fit.inputs.sameArtistTechnique && !x.fit.inputs.sameArtist))}`);
   }
 
   // 2. production fit on every lot
