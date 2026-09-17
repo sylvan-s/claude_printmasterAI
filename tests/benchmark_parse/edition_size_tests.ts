@@ -35,8 +35,11 @@ const CASES: [string, number | null][] = [
   ["Screenprint, numbered in pencil 3/8, on wove paper", 8],
   ["Screenprint, No. 45/250, on wove paper, 500 x 700mm (19 5/8 x 27 1/2in)", 250],
   ["Etching, 1982, signed, titled, dated and numbered from the edition of 80 in pencil, 510 x 647mm (20 x 25 3/8in)", 80],
-  // "edition of" wins over a later fraction
+  // "edition of" still wins over a bare fraction
   ["Aquatint, from the edition of 150, 300 x 400mm (11 3/4 x 15 3/4in)", 150],
+  // "numbered n/N" wins over "edition of", matching the price model (train_price_model.py / price_attrs.ts)
+  ["Lithograph, signed and numbered 12/50 in pencil (there was also an unsigned edition of 500), 560 x 760mm (22 x 29 7/8in)", 50],
+  ["Screenprint, from the edition of 250 (there were also 25 artist's proofs), numbered 7/250 in pencil", 250],
 ];
 
 for (const [body, want] of CASES) {

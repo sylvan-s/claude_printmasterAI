@@ -182,12 +182,14 @@ export function extractCatalogueRefs(text: string): string[] {
 }
 
 /**
- * Edition size from "edition of N", else "numbered n/N". A bare "n/N" is NOT enough: in catalogue
- * text it is almost always an imperial fraction ("25 1/2in"), which read as editions of 2/4/8/16
- * on ~1,500 priced Forum and Roseberys sales before the 2026-09-17 repair.
+ * Edition size from "numbered n/N", else "edition of N" — the order train_price_model.py and
+ * price_attrs.ts use, so "numbered 12/50 (there was also an unsigned edition of 500)" is 50 here
+ * too. A bare "n/N" is NOT enough: in catalogue text it is almost always an imperial fraction
+ * ("25 1/2in"), which read as editions of 2/4/8/16 on ~1,500 priced Forum and Roseberys sales
+ * before the 2026-09-17 repair.
  */
 export function detectEditionSize(text: string): number | null {
-  const m = text.match(/edition\s+of\s+(\d+)/i)
-    ?? text.match(/\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201C\u201D]?\d+\s*\/\s*(\d+)\b(?!\s*(?:mm\b|cm\b|["\u201D]))/i);
+  const m = text.match(/\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201C\u201D]?\d+\s*\/\s*(\d+)\b(?!\s*(?:mm\b|cm\b|["\u201D]))/i)
+    ?? text.match(/edition\s+of\s+(\d+)/i);
   return m ? Number(m[1]) : null;
 }

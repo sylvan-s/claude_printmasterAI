@@ -213,7 +213,8 @@ export function parseDescription(html: string): ParsedLot {
 
   // "n/N" counts only after "numbered" / "no.": a bare fraction is almost always imperial
   // dimensions ("510 x 647mm (20 x 25 3/8in)" read as an edition of 8). 2026-09-17 repair.
-  const editionSizeMatch = body.match(/edition of (\d+)/i) ?? body.match(NUMBERED_FRACTION_RE);
+  // Numbered first, as in train_price_model.py: "numbered 12/50 (also an unsigned edition of 500)" is 50.
+  const editionSizeMatch = body.match(NUMBERED_FRACTION_RE) ?? body.match(/edition of (\d+)/i);
   const editionSize = editionSizeMatch ? Number(editionSizeMatch[1]) : null;
   const editionLine = body.match(/((?:an? )?(?:artist'?s|printer'?s)? ?proof[^,]*|from the (?:total )?edition of \d+[^,]*|numbered from[^,]*)/i)?.[1]?.trim() ?? null;
 
