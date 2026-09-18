@@ -64,7 +64,7 @@ from splink import DuckDBAPI, Linker, block_on
 
 from fit_splink_work_identity import (
     DETERMINISTIC_RECALL, U_SAMPLE_PAIRS, _require_env, build_records, settings,
-    technique_family,
+    technique_family, training_rules,
 )
 
 DEFAULT_MIN_WEIGHT = 0.0        # p >= 0.5; the 86.7%-recall band, see docstring
@@ -112,12 +112,16 @@ def designation_only_difference(title_a, title_b):
 EVIDENCE_QUERY = """
 MATCH (w:ConceptualWork) WHERE w.id IN $ids
 OPTIONAL MATCH (w)-[:PRINTED_AS]->(:EditionRun)-[:INCLUDES]->(i:Impression)
-OPTIONAL MATCH (i)<-[:SHOWS]-(img:DigitalImage) WHERE img.sourceUrl IS NOT NULL
-OPTIONAL MATCH (i)<-[:DOCUMENTS]-(s:SourceRecord)
+OPTIONAL MATCH (w)<-[:SHOWS]-(img_w:DigitalImage) WHERE img_w.sourceUrl IS NOT NULL
+OPTIONAL MATCH (i)<-[:SHOWS]-(img_i:DigitalImage) WHERE img_i.sourceUrl IS NOT NULL
+WITH w, i, coalesce(img_w, img_i) AS img
+OPTIONAL MATCH (i)<-[:DOCUMENTS]-(s_imp:SourceRecord)
+OPTIONAL MATCH (w)<-[:DOCUMENTS]-(s_cw:SourceRecord)
+WITH w, i, img, coalesce(s_imp, s_cw) AS s
 OPTIONAL MATCH (w)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
 OPTIONAL MATCH (i)-[:USES_TECHNIQUE]->(t:Technique)
-RETURN w.id AS workId, w.name AS name, w.dateCreated_year AS year,
-       collect(DISTINCT i.sourceTitle)  AS sourceTitles,
+RETURN w.id AS workId, coalesce(w.title, w.name) AS name, w.dateCreated_year AS year,
+       collect(DISTINCT coalesce(i.sourceTitle, s.sourceTitle, w.title, w.name)) AS sourceTitles,
        collect(DISTINCT i.rawMedium)    AS media,
        collect(DISTINCT t.name)         AS techniques,
        collect(DISTINCT img.sourceUrl)  AS imageUrls,
@@ -125,6 +129,7 @@ RETURN w.id AS workId, w.name AS name, w.dateCreated_year AS year,
        collect(DISTINCT [cr.numberingPrefix, ce.number]) AS citations,
        count(DISTINCT i) AS impressions
 """
+
 
 
 def numeric_prefix(number):
@@ -160,10 +165,11 @@ def catalogue_verdict(a_citations, b_citations):
 def fit(df):
     db_api = DuckDBAPI()
     linker = Linker(df, settings(), db_api=db_api)
+    deterministic, em_rules, coverage = training_rules(df)
     linker.training.estimate_probability_two_random_records_match(
-        ["l.title = r.title and l.entry = r.entry"], recall=DETERMINISTIC_RECALL)
+        deterministic, recall=DETERMINISTIC_RECALL)
     linker.training.estimate_u_using_random_sampling(max_pairs=U_SAMPLE_PAIRS)
-    for rule in (block_on("tech_family"), block_on("entry")):
+    for rule in em_rules:
         try:
             linker.training.estimate_parameters_using_expectation_maximisation(rule)
         except Exception as exc:
