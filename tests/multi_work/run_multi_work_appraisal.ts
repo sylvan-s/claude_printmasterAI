@@ -112,7 +112,17 @@ function workNotes(work: ParsedWork, lot: ParsedLot): string {
   if (work.edition_number) lines.push(`numbered ${work.edition_number}`);
   if (work.edition_size) lines.push(`from an edition of ${work.edition_size}`);
   if (work.year) lines.push(`dated ${work.year}`);
-  if (work.signed === true) lines.push("signed in pencil");
+  // Only report a signature when the catalogue pinned it to THIS work. The test is whether this
+  // work's evidence quote differs from its siblings' — identical quotes mean the model had no
+  // per-work evidence and guessed, which is what qwen-plus did on A0793 lot 20 ("one signed in
+  // pencil" over two sheets). That guess reached Stage 1c as a documented claim, Stage 2a logged
+  // it as a conflict against VEA's illegible read, and the lot routed to human escalation on a
+  // fact the catalogue never stated. Same rule as roseberys_multi_work_ingest.py.
+  const perWorkEvidence = new Set(lot.text.works.map((w) => w.evidence)).size === lot.text.works.length;
+  if (work.signed === true && perWorkEvidence) lines.push("signed in pencil");
+  else if (lot.text.works.some((w) => w.signed) && !perWorkEvidence) {
+    lines.push("the catalogue states that one sheet in the lot is signed in pencil, without saying which");
+  }
   const n = lot.text.works.length;
   lines.push(
     `This sheet was catalogued as one of ${n} works offered together in a single auction lot; ` +
