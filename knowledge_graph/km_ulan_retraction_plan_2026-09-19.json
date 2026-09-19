@@ -1,0 +1,463 @@
+{
+ "version": "KM-ULAN-RETRACT-1.0",
+ "auditedAt": "2026-09-19",
+ "source": "docs/audits/2026-09-19-km-artist-ulan-audit.md",
+ "note": "B,C,D,E,G approved 2026-09-19; F (stub records) approved separately. A (46 confirmed) is deliberately absent. Original Film Posters and Cinema Greats were deleted by the slug exclusion before this ran.",
+ "rows": [
+  {
+   "name": "Adam and Maurice-Pillard Verneuil",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500394726",
+   "group": "D",
+   "reason": "multi-person credit",
+   "works": 2
+  },
+  {
+   "name": "Albert Moore",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500224431",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 3
+  },
+  {
+   "name": "Adolphe William Bouguereau",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500635690",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Sir Edwin Henry Landseer",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500447639",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 2
+  },
+  {
+   "name": "The Yokohama Nursery Co Ltd",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500449627",
+   "group": "B",
+   "reason": "collection label / firm",
+   "works": 2
+  },
+  {
+   "name": "Tram by The National Archives",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500617482",
+   "group": "C",
+   "reason": "title in artist name",
+   "works": 1
+  },
+  {
+   "name": "The National Archives",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500437036",
+   "group": "B",
+   "reason": "collection label / firm",
+   "works": 7
+  },
+  {
+   "name": "Thai Fine Art",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500605650",
+   "group": "B",
+   "reason": "collection label / firm",
+   "works": 6
+  },
+  {
+   "name": "After Hans Holbein the Younger",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500005259",
+   "group": "E",
+   "reason": "'after X' credit",
+   "works": 3
+  },
+  {
+   "name": "Adeline Meilliez",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500034446",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Aldo Cosomati",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500064756",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 2
+  },
+  {
+   "name": "Alex Zeilinger",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500729166",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Alfred George Stevens",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500028090",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Anonymous",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500462488",
+   "group": "B",
+   "reason": "collection label / firm",
+   "works": 29
+  },
+  {
+   "name": "Rail by Anonymous",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500351388",
+   "group": "C",
+   "reason": "title in artist name",
+   "works": 1
+  },
+  {
+   "name": "Bassano Ltd",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500015945",
+   "group": "B",
+   "reason": "collection label / firm",
+   "works": 2
+  },
+  {
+   "name": "Barrie Clark",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500019266",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Barbara Cotton",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500132603",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 4
+  },
+  {
+   "name": "Bella Freud",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500351434",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 2
+  },
+  {
+   "name": "Bridget Davies",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500724660",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Carlo Egler",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500005063",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Caroline Maria Applebee",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500579481",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 4
+  },
+  {
+   "name": "Charles Burton",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500201008",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Charles Paine",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500094475",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Christopher James Dayman",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500073778",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 8
+  },
+  {
+   "name": "Christopher Richard Wynne Nevinson",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500225911",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Denise Duplock",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500193159",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Eduardo Benito",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500678324",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 7
+  },
+  {
+   "name": "Erin Clark",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500521638",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 7
+  },
+  {
+   "name": "Ellen Giggenbach",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500353137",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 4
+  },
+  {
+   "name": "Eric",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500116076",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 2
+  },
+  {
+   "name": "Em. Rodigas and R A Rolfe",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500019496",
+   "group": "D",
+   "reason": "multi-person credit",
+   "works": 1
+  },
+  {
+   "name": "Frederick Ramsdell",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500119096",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Gillian Condy",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500097329",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Gillman & Co",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500470147",
+   "group": "B",
+   "reason": "collection label / firm",
+   "works": 1
+  },
+  {
+   "name": "Hannah Cole",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500058487",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 5
+  },
+  {
+   "name": "Hannah 'Gluck' Gluckstein",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500376124",
+   "group": "F",
+   "reason": "unverifiable stub record",
+   "works": 1
+  },
+  {
+   "name": "the Sea by Hannah Cole",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500470220",
+   "group": "C",
+   "reason": "title in artist name",
+   "works": 1
+  },
+  {
+   "name": "Harriet Meserole",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500464064",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 2
+  },
+  {
+   "name": "Henry Clarke",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500347065",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Isabelle Carr",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500046155",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 3
+  },
+  {
+   "name": "J Bisson",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500107019",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "J. Howard Miller",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500001822",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 4
+  },
+  {
+   "name": "Jane Robbins",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500330712",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 8
+  },
+  {
+   "name": "Jan Beerstraaten",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500419469",
+   "group": "F",
+   "reason": "unverifiable stub record",
+   "works": 1
+  },
+  {
+   "name": "Jeremy Harnell",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500632897",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 6
+  },
+  {
+   "name": "Jeremy Mayes",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500197746",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 9
+  },
+  {
+   "name": "a Canal 2 by Jeremy Mayes",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500105302",
+   "group": "C",
+   "reason": "title in artist name",
+   "works": 1
+  },
+  {
+   "name": "Moonlight, from the Steps of the Grand Hotel by John Atkinson Grimshaw",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500158331",
+   "group": "C",
+   "reason": "title in artist name",
+   "works": 1
+  },
+  {
+   "name": "Keri Bevan",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500757161",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 11
+  },
+  {
+   "name": "Kem McNair",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500011956",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 2
+  },
+  {
+   "name": "Kelly Hall",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500198079",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Ladybird Books",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500352301",
+   "group": "B",
+   "reason": "collection label / firm",
+   "works": 1
+  },
+  {
+   "name": "Lydia Penrose",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500685003",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 14
+  },
+  {
+   "name": "Marion McConaghie",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500379282",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 16
+  },
+  {
+   "name": "Michelangelo",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500094712",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 2
+  },
+  {
+   "name": "Nick Cranston",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500476115",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 5
+  },
+  {
+   "name": "Nicola King",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500004862",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 10
+  },
+  {
+   "name": "Orla Kiely",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500120933",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "P J Bellenger",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500041587",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "P de Pannemaeker",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500679748",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Patrick Adam",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500676320",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Pierre Joseph Buchoz",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500440401",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 1
+  },
+  {
+   "name": "Pieter Brueghel The Younger",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500400084",
+   "group": "F",
+   "reason": "unverifiable stub record",
+   "works": 2
+  },
+  {
+   "name": "Sam Toft",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500037063",
+   "group": "G",
+   "reason": "ULAN is a different person",
+   "works": 7
+  }
+ ]
+}

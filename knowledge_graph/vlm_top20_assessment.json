@@ -1,0 +1,222 @@
+[
+  {
+    "pairId": 1,
+    "artist": "\u00c9douard Manet",
+    "posterTitle": "Berthe Morisot with a Bouquet of Violets, 1872",
+    "ackgTitle": "Berthe Morisot (Gu\u00e9rin 59)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "portrait berthe morisot",
+    "vlmEntities": "Berthe Morisot, Berthe Morisot with a Bouquet of Violets, Manet, Berthe Morisot",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 2,
+    "artist": "Claude Monet",
+    "posterTitle": "Water Lilies: Evening Effect",
+    "ackgTitle": "Massif de Nymph\u00e9as, Effet du Soir (W. 1522)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "",
+    "vlmEntities": "",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 3,
+    "artist": "Claude Monet",
+    "posterTitle": "The Water-Lily Pond",
+    "ackgTitle": "Le Bassin aux Nymph\u00e9as",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "claude monet artwork",
+    "vlmEntities": "Claude Monet: 1840-1926, The Art Institute of Chicago, The Water Lily Pond",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 4,
+    "artist": "Claude Monet",
+    "posterTitle": "The Japanese Bridge, 1899",
+    "ackgTitle": "Le Bassin aux Nymph\u00e9as",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "",
+    "vlmEntities": "",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 5,
+    "artist": "Claude Monet",
+    "posterTitle": "Water-Lilies and Willows",
+    "ackgTitle": "Bassin aux Nymph\u00e9as, les Rosiers (W. 1523)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "",
+    "vlmEntities": "",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 6,
+    "artist": "Paul C\u00e9zanne",
+    "posterTitle": "Mont Saint Victoire, 1900",
+    "ackgTitle": "Montagne Sainte Victoire (G.&P. E639)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "gora saint victoire cezanne",
+    "vlmEntities": "Painting, C\u00e9zanne's studio, Mont Sainte-Victoire seen from Bellevue",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 7,
+    "artist": "Paul C\u00e9zanne",
+    "posterTitle": "Bathers (Les Grandes Baigneuses)",
+    "ackgTitle": "Small Bathers (Venturi 1156)",
+    "verdict": "REJECTED (DISTINCT WORKS)",
+    "confidence": 98.0,
+    "vlmBestGuess": "cezanne paintings",
+    "vlmEntities": "The Large Bathers, The National Gallery, Painting",
+    "rationale": "Subject & VLM mismatch: Les Grandes Baigneuses (Large Bathers) oil painting is distinct from Venturi 1156 etching (Small Bathers)."
+  },
+  {
+    "pairId": 8,
+    "artist": "\u00c9douard Manet",
+    "posterTitle": "Au Bal - Marguerite de Conflans en Toilette de Bal",
+    "ackgTitle": "Toilette (Gu\u00e9rin 26)",
+    "verdict": "REJECTED (DISTINCT WORKS)",
+    "confidence": 98.0,
+    "vlmBestGuess": "watercolor paint",
+    "vlmEntities": "Au Bal \u2013 Marguerite de Conflans en toilette de bal, The Courtauld Gallery, Art",
+    "rationale": "Subject & VLM mismatch: Au Bal (Marguerite de Conflans) oil painting is distinct from Gu\u00e9rin 26 etching (La Toilette)."
+  },
+  {
+    "pairId": 9,
+    "artist": "Camille Pissarro",
+    "posterTitle": "The Boulevard Montmartre at Night",
+    "ackgTitle": "Boulevard Montmartre (Delteil 191)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "best impressionist paintings",
+    "vlmEntities": "The Boulevard Montmartre at Night, Painting, Impression, Sunrise",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 10,
+    "artist": "Camille Pissarro",
+    "posterTitle": "The Boulevard Montmartre at Night, 1897",
+    "ackgTitle": "Boulevard Montmartre (Delteil 191)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "best impressionist paintings",
+    "vlmEntities": "The Boulevard Montmartre at Night, Painting, Impression, Sunrise",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 11,
+    "artist": "Giorgio Morandi",
+    "posterTitle": "Natura Morta II, 1953",
+    "ackgTitle": "Natura Morta (Vitali 102)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "giorgio morandi natura mortal ll 1953",
+    "vlmEntities": "Still Life, Morandi: Master of Modern Still Life, Painting",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 12,
+    "artist": "Henry Moore",
+    "posterTitle": "Nine Studies for Family Group",
+    "ackgTitle": "Family Group (Cramer 12)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "middle ages",
+    "vlmEntities": "Middle Ages, Dark Ages, Era",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 13,
+    "artist": "Howard Hodgkin",
+    "posterTitle": "Afternoon, 1998-99",
+    "ackgTitle": "Venice Afternoon From Venetian View (Heenk 94)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 92.0,
+    "vlmBestGuess": "modern art",
+    "vlmEntities": "Painting, Art, Modern art",
+    "rationale": "VLM visual label match. Recognized poster entity: \"modern art\"."
+  },
+  {
+    "pairId": 14,
+    "artist": "Alexander Calder",
+    "posterTitle": "Atelier Mourlot Bank Street New York 1967",
+    "ackgTitle": "Atelier Mourlot (Czwiklitzer 58)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "acrylic paint",
+    "vlmEntities": "Acrylic Paint, Painting, Paint",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 15,
+    "artist": "Henri Matisse",
+    "posterTitle": "Verve IX, No.35-36, 1958 - Art Block",
+    "ackgTitle": "Verve Vol. IX, Nos. 35-36 (Duthuit 13)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "visual arts",
+    "vlmEntities": "Text messaging",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 16,
+    "artist": "Pablo Picasso",
+    "posterTitle": "Congr\u00e8s des peuples pour la paix, 1952",
+    "ackgTitle": "Owl, Glass and Flower - Galerie 65, Cannes (Mourlot 282)",
+    "verdict": "REJECTED (DISTINCT WORKS)",
+    "confidence": 98.0,
+    "vlmBestGuess": "paper",
+    "vlmEntities": "Paper, Papermaking, Deckle",
+    "rationale": "Subject mismatch: Congr\u00e8s des peuples (Peace Dove poster) is distinct from Mourlot 282 (Owl, Glass and Flower)."
+  },
+  {
+    "pairId": 17,
+    "artist": "Albrecht D\u00fcrer",
+    "posterTitle": "Knight, Death and the Devil",
+    "ackgTitle": "Knight, Death and the Devil (Bartsch 98)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "albrecht durer",
+    "vlmEntities": "Knight, Death and the Devil, Albertina, German Renaissance",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 18,
+    "artist": "Albrecht D\u00fcrer",
+    "posterTitle": "Self Portrait with Gloves, 1498",
+    "ackgTitle": "Knight, Death and the Devil (Bartsch 98)",
+    "verdict": "REJECTED (DISTINCT WORKS)",
+    "confidence": 98.0,
+    "vlmBestGuess": "albrecht d\u00fcrer self portrait 1493",
+    "vlmEntities": "Albrecht D\u00fcrer, Portrait of the Artist Holding a Thistle, Self-Portrait at the Age of Twenty Eight",
+    "rationale": "Subject mismatch: Self Portrait with Gloves (1498 painting) is distinct from Bartsch 98 (Knight, Death and the Devil engraving)."
+  },
+  {
+    "pairId": 19,
+    "artist": "Raoul Dufy",
+    "posterTitle": "Regates dans le Port de Trouville",
+    "ackgTitle": "R\u00e9gates aux papillons (Laffaille 850)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "watercolor paint",
+    "vlmEntities": "Watercolor painting, Painting, Art",
+    "rationale": "Title & artist conceptual match confirmed."
+  },
+  {
+    "pairId": 20,
+    "artist": "Salvador Dal\u00ed",
+    "posterTitle": "The Persistence of Memory, 1931",
+    "ackgTitle": "The Persistence of Memory (Field 74-1)",
+    "verdict": "CONFIRMED MERGE (SAME WORK)",
+    "confidence": 85.0,
+    "vlmBestGuess": "",
+    "vlmEntities": "",
+    "rationale": "Title & artist conceptual match confirmed."
+  }
+]
