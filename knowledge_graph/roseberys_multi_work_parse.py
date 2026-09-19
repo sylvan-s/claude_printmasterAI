@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Roseberys multi-work lot parser (pilot)
-Version: ROSEBERYS-MULTI-0.2
+Version: ROSEBERYS-MULTI-0.4
 
 Roseberys lots flagged `multi_work` by the extractor (benchmark/src/roseberys/parse.ts
 detectMultiWork) have been held out of the ACKG since 2026-08-24. The flag is a regex and is
@@ -22,6 +22,8 @@ Writes nothing to Neo4j. Output is a JSON file per run for scoring against hand 
 Usage (source .env first):
     python3 roseberys_multi_work_parse.py --lots pilot_lots.json --out pilot_opus.json
     python3 roseberys_multi_work_parse.py --lots pilot_lots.json --out pilot_haiku.json --model claude-haiku-4-5
+    python3 roseberys_multi_work_parse.py --lots pilot_lots.json --out pilot_qwen.json \
+        --model qwen-plus --vision-model qwen3-vl-plus
 """
 
 import argparse
@@ -37,16 +39,23 @@ import anthropic
 import requests
 from PIL import Image
 
-PARSER_VERSION = "ROSEBERYS-MULTI-0.2"
+PARSER_VERSION = "ROSEBERYS-MULTI-0.4"
 # 2026-09-19 pilot (40 hand-labelled lots): Opus 5 38/40 kinds, 0 harmful decisions, every
 # disputed photo match checked by eye was right (it reads pencil titles and edition numbers).
 # Haiku 4.5 27/40 with 8 harmful (over-uses identical_copies; "high" photo confidence was
 # wrong on 3 of 5 checked lots). Sonnet 5 34/40 with 2 harmful, at ~55% of Opus's cost.
 DEFAULT_MODEL = "claude-opus-5"
+# $ per million tokens, input/output. Qwen rates are the International (Singapore) list price
+# for the shortest context tier — alibabacloud.com/help/en/model-studio/model-pricing, 2026-09-19.
 PRICING = {"claude-opus-5": (5.00, 25.00), "claude-sonnet-5": (2.00, 10.00),
-           "claude-haiku-4-5": (1.00, 5.00)}
+           "claude-haiku-4-5": (1.00, 5.00),
+           "qwen-plus": (0.40, 1.20), "qwen3-vl-plus": (0.20, 1.60),
+           "qwen-vl-plus": (0.21, 0.63)}
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
+QWEN_BASE = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+# .env's DASHSCOPE_BASE_URL points at dashscope-us, which 401s on this key (2026-09-19);
+# the international endpoint above is the one that answers.
 ASSET_BASE = "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod"
 MAX_PHOTOS = 16
 PHOTO_LONG_EDGE = 900
@@ -232,39 +241,90 @@ def fetch_jpeg_b64(url, session):
 
 
 class Caller:
-    def __init__(self, model):
-        self.client = anthropic.Anthropic()
+    """One JSON-returning call, against Claude or — for a comparison run — Alibaba's Qwen models
+    through their OpenAI-compatible endpoint. Same prompts, same schema, same gate; only the
+    transport differs. Qwen is split across two models because qwen-plus takes no images."""
+
+    def __init__(self, model, vision_model=None):
         self.model = model
-        self.in_tok = self.out_tok = 0
+        self.vision_model = vision_model or model
+        self.is_qwen = model.startswith("qwen")
+        if self.is_qwen:
+            import openai
+            base = os.environ.get("DASHSCOPE_BASE_URL_INTL", QWEN_BASE)
+            self.client = openai.OpenAI(api_key=os.environ["DASHSCOPE_API_KEY"], base_url=base)
+        else:
+            self.client = anthropic.Anthropic()
+        self.tokens = {}   # model -> [input, output]
 
     def json_call(self, content, schema, max_tokens=8000):
+        has_image = any(b["type"] == "image" for b in content)
+        model = self.vision_model if has_image else self.model
         for attempt in range(3):
             try:
-                resp = self.client.messages.create(
-                    model=self.model, max_tokens=max_tokens,
-                    messages=[{"role": "user", "content": content}],
-                    extra_body={"output_config": {"format": {"type": "json_schema",
-                                                             "schema": schema}}})
-            except (anthropic.RateLimitError, anthropic.APIConnectionError,
-                    anthropic.InternalServerError):
+                if self.is_qwen:
+                    text, stop = self._qwen(model, content, schema, max_tokens)
+                else:
+                    text, stop = self._claude(model, content, schema, max_tokens)
+            except Exception as exc:                    # transport, rate limit, 5xx
+                if attempt == 2:
+                    return None, f"error: {type(exc).__name__}"
                 time.sleep(5 * (attempt + 1))
                 continue
-            self.in_tok += resp.usage.input_tokens
-            self.out_tok += resp.usage.output_tokens
-            if resp.stop_reason == "refusal":
+            if stop == "refusal":
                 return None, "refusal"
-            text = next((b.text for b in resp.content if b.type == "text"), "")
             try:
                 return json.loads(text), None
-            except json.JSONDecodeError:
-                if resp.stop_reason == "max_tokens":
+            except (json.JSONDecodeError, TypeError):
+                if stop in ("max_tokens", "length"):
                     max_tokens *= 2
                 continue
         return None, "failed"
 
+    def _claude(self, model, content, schema, max_tokens):
+        resp = self.client.messages.create(
+            model=model, max_tokens=max_tokens,
+            messages=[{"role": "user", "content": content}],
+            extra_body={"output_config": {"format": {"type": "json_schema", "schema": schema}}})
+        self._tally(model, resp.usage.input_tokens, resp.usage.output_tokens)
+        if resp.stop_reason == "refusal":
+            return None, "refusal"
+        return next((b.text for b in resp.content if b.type == "text"), ""), resp.stop_reason
+
+    def _qwen(self, model, content, schema, max_tokens):
+        parts = []
+        for b in content:
+            if b["type"] == "text":
+                parts.append({"type": "text", "text": b["text"]})
+            else:
+                parts.append({"type": "image_url", "image_url": {
+                    "url": "data:image/jpeg;base64," + b["source"]["data"]}})
+        resp = self.client.chat.completions.create(
+            model=model, max_tokens=max_tokens, messages=[{"role": "user", "content": parts}],
+            response_format={"type": "json_schema", "json_schema": {
+                "name": "result", "strict": True, "schema": schema}})
+        self._tally(model, resp.usage.prompt_tokens, resp.usage.completion_tokens)
+        choice = resp.choices[0]
+        return choice.message.content, choice.finish_reason
+
+    def _tally(self, model, in_tok, out_tok):
+        t = self.tokens.setdefault(model, [0, 0])
+        t[0] += in_tok
+        t[1] += out_tok
+
     def cost(self):
-        pin, pout = PRICING.get(self.model, (0, 0))
-        return (self.in_tok * pin + self.out_tok * pout) / 1e6
+        """None when any model used has no published rate here, rather than a misleading $0.00."""
+        total = 0.0
+        for model, (in_tok, out_tok) in self.tokens.items():
+            if model not in PRICING:
+                return None
+            pin, pout = PRICING[model]
+            total += (in_tok * pin + out_tok * pout) / 1e6
+        return total
+
+    def spend(self):
+        c = self.cost()
+        return f"${c:.3f}" if c is not None else "cost n/a"
 
 
 def validate(text, vision, n_photos):
@@ -280,6 +340,11 @@ def validate(text, vision, n_photos):
     if kind == "identical_copies":
         if len(works) != 1:
             reasons.append(f"identical_copies with {len(works)} work entries")
+        # A title holding a list ("Untitled; Mum") means the model called two DIFFERENT prints
+        # copies of one work, which would merge them into a single ConceptualWork. Qwen did this
+        # in the 2026-09-19 comparison run; cheap to catch, expensive to miss.
+        elif ";" in (works[0]["title"] or ""):
+            reasons.append(f"identical_copies but the title lists several works: {works[0]['title']!r}")
         found = works[0]["copies"] if works else 0
     else:
         found = len(works)
@@ -300,6 +365,10 @@ def validate(text, vision, n_photos):
         reasons.append("vision pass missing")
     elif kind == "multi_work":
         by_pos = {a["work_position"]: a for a in vision["assignments"]}
+        # A photo the model itself called a group shot (or an extra) shows more than this work,
+        # so it cannot be the work's own image — seen in the 2026-09-19 comparison run.
+        not_single = {p["index"] for p in vision["photos"]
+                      if p["shows"] in ("group", "ancillary", "other")}
         used = {}
         for w in works:
             a = by_pos.get(w["position"])
@@ -311,6 +380,8 @@ def validate(text, vision, n_photos):
                 reasons.append(f"work {w['position']} photo index out of range")
             elif a["photo_index"] in used:
                 reasons.append(f"works {used[a['photo_index']]} and {w['position']} share a photo")
+            elif a["photo_index"] in not_single:
+                reasons.append(f"work {w['position']} was given a group/extra photo")
             else:
                 used[a["photo_index"]] = w["position"]
     elif kind == "identical_copies":
@@ -366,22 +437,30 @@ def main():
     ap.add_argument("--lots", required=True, help="JSON list of {sale, lot, url, hammer, heuristic, raw}")
     ap.add_argument("--out", required=True)
     ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--vision-model", default=None,
+                    help="model for the photo pass when it differs from --model "
+                         "(qwen-plus takes no images; pair it with qwen3-vl-plus)")
     ap.add_argument("--limit", type=int)
     args = ap.parse_args()
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise RuntimeError("ANTHROPIC_API_KEY is not set. Source .env first.")
+    key = "DASHSCOPE_API_KEY" if args.model.startswith("qwen") else "ANTHROPIC_API_KEY"
+    if not os.environ.get(key):
+        raise RuntimeError(f"{key} is not set. Source .env first.")
     lots = json.load(open(args.lots))[: args.limit]
-    caller, session, image_cache, results = Caller(args.model), requests.Session(), {}, []
+    caller = Caller(args.model, args.vision_model)
+    session, image_cache, results = requests.Session(), {}, []
     for n, lot in enumerate(lots, 1):
         r = parse_lot(lot, caller, session, image_cache)
         r["parser"] = f"{PARSER_VERSION}:{args.model}"
+        if args.vision_model:
+            r["parser"] += f"+{args.vision_model}"
         results.append(r)
         kind = r["text"]["lot_kind"] if r["text"] else "-"
         print(f"[{n}/{len(lots)}] {r['sale']} lot {r['lot']}: {kind} -> {r['decision']} "
-              f"{'; '.join(r['reasons'])[:120]}  (${caller.cost():.3f})", flush=True)
+              f"{'; '.join(r['reasons'])[:120]}  ({caller.spend()})", flush=True)
         json.dump(results, open(args.out, "w"), indent=1)
-    print(f"done: {len(results)} lots, {caller.in_tok} in / {caller.out_tok} out tokens, "
-          f"${caller.cost():.2f}")
+    for model, (in_tok, out_tok) in caller.tokens.items():
+        print(f"done: {model}: {in_tok} in / {out_tok} out tokens")
+    print(f"done: {len(results)} lots, {caller.spend()}")
 
 
 if __name__ == "__main__":

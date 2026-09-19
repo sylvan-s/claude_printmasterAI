@@ -73,13 +73,15 @@ Stratified across the regex's sizing classes, 18 sales, including the known awkw
 Banksy Glastonbury set, Sorel portfolio). Artefacts, not committed (Roseberys copyright):
 `benchmark/data/roseberys_multi_work_pilot/`.
 
-| | Opus 5 | Sonnet 5 | Haiku 4.5 |
-|---|---|---|---|
-| Lot kind correct | **38/40** | 34/40 | 27/40 |
-| Harmful decisions (price on the wrong unit) | **0** | 2 | 8 |
-| Work count right, when it split | 19/19 | 18/18 | 18/18 |
-| Decisions: split / single / hold | 15 / 11 / 14 | 16 / 10 / 14 | 20 / 12 / 8 |
-| Cost for 40 lots | $1.97 | $1.10 | $0.32 |
+Scored under the 0.4 gate (see "Gate tightened" below).
+
+| | Opus 5 | Sonnet 5 | Haiku 4.5 | qwen-plus + qwen3-vl-plus |
+|---|---|---|---|---|
+| Lot kind correct | **38/40** | 34/40 | 27/40 | 30/40 |
+| Harmful decisions (price on the wrong unit) | **0** | 2 | 8 | 1 |
+| Work count right, when it split | 15/15 | 14/16 | 14/20 | 13/13 |
+| Decisions: split / single / hold | 15 / 11 / 14 | 16 / 10 / 14 | 20 / 12 / 8 | 13 / 11 / 16 |
+| Cost for 40 lots | $1.97 | $1.10 | $0.32 | **$0.06** |
 
 - **Haiku** over-uses `identical_copies`: it would split "a set of four posters" and "four
   etchings from a series" into copies of one work. It also put a 15-print Kitaj portfolio's price
@@ -89,6 +91,16 @@ Banksy Glastonbury set, Sorel portfolio). Artefacts, not committed (Roseberys co
   Breakfast", Maillol II/XX, the red-printed woodcut) and was right on every disputed match
   checked by eye (Richardson, Maillol, Topolski, Hockney, Rayson). Sonnet agreed with Opus on 62 of
   67 photo assignments.
+- **Qwen** (run 2026-09-19 at the user's request; qwen-plus takes no images, so the photo pass ran
+  on qwen3-vl-plus). It is ~33x cheaper than Opus per lot and its holds are mostly honest, but it
+  is materially weaker where it matters: it called two different Steadman etchings ("Untitled" and
+  "Mum") two copies of one work, which would have merged them into one ConceptualWork; it gave a
+  group shot to a single work twice; and on the Maillol lot it swapped works 1 and 3 with "high"
+  confidence — the same error Haiku made, and one verified wrong by eye (the entry's (i) is the
+  black woodcut numbered II/XX, (iii) the red one). It also held 4 lots Opus split correctly
+  (Topolski, Dylan's 8 named Drawn Blank prints, Malthouse, the Banksy set). Its photo assignments
+  matched Opus on 44 of 49. DashScope needs the international endpoint:
+  `.env`'s `DASHSCOPE_BASE_URL` (dashscope-us) 401s on this key.
 - **Opus's two misses**: Tracey Emin with a certificate went to `single_work_with_ancillary`
   instead of `single_work` (same decision, full price). The Kusama pumpkins in yellow and red were
   called identical copies instead of two colourways. The prompt was fixed in 0.2 and 4 lots were
@@ -100,6 +112,17 @@ Banksy Glastonbury set, Sorel portfolio). Artefacts, not committed (Roseberys co
 
 Of the 19 lots labelled as genuinely itemised multi-work, Opus split 15 correctly and held 4 on
 photo grounds.
+
+### Gate tightened (0.4), prompted by the Qwen run
+
+Two failures Qwen produced were cheap to catch in code, so the gate now holds a lot when:
+- a work is assigned a photo the model ITSELF labelled a group shot, an extra or "other" — such a
+  photo shows more than that one work;
+- `identical_copies` comes back with a title that lists several works (a ";" in the title).
+
+Re-validating all four stored runs against the new gate changed 3 Qwen decisions (2 of its 3 bad
+splits became holds, cutting its harmful count from 3 to 1) and changed nothing for Opus, Sonnet
+or Haiku — so the rules cost no good splits.
 
 **Cost at full scale** (Opus, measured $0.049/lot): about $180 for all 3,619 flagged lots, or
 about $90 through the Batch API. The vision pass is only paid for split candidates.
