@@ -124,8 +124,8 @@ RETURN w.id AS workId, coalesce(s.institutionName, s.sourceType, 'unknown') AS i
        collect(DISTINCT i.plateDimensions) + collect(DISTINCT i.imageDimensions) AS dims,
        collect(DISTINCT ce.number) AS entries,
        collect(DISTINCT [cr.numberingPrefix, ce.number]) AS citations,
-       collect(DISTINCT img.dinov2Embedding)[0..3] AS dinov2Embeddings,
-       collect(DISTINCT img.embedding)[0..3] AS clipEmbeddings
+       collect(DISTINCT img.embedding)[0..3] AS dinov2Embeddings,
+       collect(DISTINCT img.clipImageEmbedding)[0..3] AS clipEmbeddings
 """
 
 
@@ -326,7 +326,7 @@ def build_records(session, artist, catalogue):
     for n, r in enumerate(session.run(RECORDS_QUERY, artist=artist,
                                       cataloguePattern=f"(?i).*{catalogue}.*")):
         emb = _calc_centroid(r.get("dinov2Embeddings"), expected_dim=1024)
-        clip = _calc_centroid(r.get("clipEmbeddings"), expected_dim=768)
+        clip = _calc_centroid(r.get("clipEmbeddings"), expected_dim=512)
         width, height = parse_dims(r["dims"])
         titles = [t for t in r["titles"] if t]
         rows.append({

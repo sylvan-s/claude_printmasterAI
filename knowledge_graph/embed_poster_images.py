@@ -1,21 +1,27 @@
 """
 PrintMasterAI — Poster Image Vector Embedding Pipeline (Step 2)
-Version: EMBED-POSTER-IMAGES-2.0
+Version: EMBED-POSTER-IMAGES-2.1
+
+2.1: writes vectors where the rest of the graph keeps them. 2.0 put DINOv2 in `dinov2Embedding` and
+    CLIP ViT-L/14 (768-d) in `embedding`, so King & McGaw images were absent from both vector
+    indexes (`digitalImageDinov2Embedding` is on `embedding`, 1024-d; `digitalImageClipEmbedding`
+    is on `clipImageEmbedding`, 512-d, ViT-B/32). Also: a failed download is now a failure, not a
+    synthetic canvas whose vector would be fabricated. Repaired by `repair_km_image_embeddings.py`.
+    Images marked `embeddingExcludedReason` (one file shared by several works; see
+    `exclude_km_shared_image_vectors.py`) are skipped, so a re-run cannot re-embed them.
 
 Generates vector embeddings for poster and artwork images in the ACKG (Neo4j),
 supporting CLIP-Large (for visual/thematic similarity) and DINOv2-Large
 (for high-precision structural/compositional image matching).
 
 Updates Neo4j `DigitalImage` nodes with:
-  - img.embedding / img.clipEmbedding : LIST<FLOAT> (768-dim CLIP-Large)
-  - img.dinov2Embedding              : LIST<FLOAT> (1024-dim DINOv2-Large)
-  - img.dinov2Model                  : STRING ('facebook/dinov2-large')
-  - img.dinov2Dim                    : INTEGER (1024)
-  - img.dinov2EmbeddedAt             : STRING (ISO 8601 UTC timestamp)
+  - img.embedding / embeddingModel / embeddingDim / embeddedAt      : DINOv2-Large, 1024-dim
+  - img.clipImageEmbedding / clipImageEmbeddingModel / ...Dim,
+    img.clipEmbeddedAt                                               : CLIP ViT-B/32, 512-dim
 
 Usage:
-    python embed_poster_images.py --all --model dinov2_large # Generate DINOv2-Large embeddings (1024-dim)
-    python embed_poster_images.py --all --model clip         # Generate CLIP-Large embeddings (768-dim)
+    python embed_poster_images.py --all --model dinov2_large # DINOv2-Large embeddings (1024-dim)
+    python embed_poster_images.py --all --model clip         # CLIP ViT-B/32 embeddings (512-dim)
 """
 
 import argparse
@@ -42,31 +48,22 @@ NEO4J_PASSWORD_FILE = os.path.expanduser("~/.oci/printmaster_neo4j_password.txt"
 
 MODEL_CONFIGS = {
     "clip": {
-        "model_name": "openai/clip-vit-large-patch14",
-        "embedding_dim": 768,
+        "model_name": "openai/clip-vit-base-patch32",
+        "embedding_dim": 512,
         "type": "clip",
-        "prop_name": "embedding",
-        "model_prop": "embeddingModel",
-        "dim_prop": "embeddingDim",
-        "date_prop": "embeddedAt"
+        "prop_name": "clipImageEmbedding",
+        "model_prop": "clipImageEmbeddingModel",
+        "dim_prop": "clipImageEmbeddingDim",
+        "date_prop": "clipEmbeddedAt"
     },
     "dinov2_large": {
         "model_name": "facebook/dinov2-large",
         "embedding_dim": 1024,
         "type": "dinov2",
-        "prop_name": "dinov2Embedding",
-        "model_prop": "dinov2Model",
-        "dim_prop": "dinov2Dim",
-        "date_prop": "dinov2EmbeddedAt"
-    },
-    "dinov2": {
-        "model_name": "facebook/dinov2-small",
-        "embedding_dim": 384,
-        "type": "dinov2",
-        "prop_name": "dinov2SmallEmbedding",
-        "model_prop": "dinov2SmallModel",
-        "dim_prop": "dinov2SmallDim",
-        "date_prop": "dinov2SmallEmbeddedAt"
+        "prop_name": "embedding",
+        "model_prop": "embeddingModel",
+        "dim_prop": "embeddingDim",
+        "date_prop": "embeddedAt"
     }
 }
 
@@ -87,6 +84,7 @@ def fetch_candidate_images(driver: Driver, model_key: str = "dinov2_large", forc
     MATCH (img:DigitalImage)
     WHERE (img.imageType = 'poster_catalog' OR $allImages)
       AND ($force OR img.{prop_name} IS NULL)
+      AND img.embeddingExcludedReason IS NULL
     RETURN img.id AS imgId, img.sourceUrl AS sourceUrl, img.imageType AS imageType
     ORDER BY imgId
     """
@@ -117,7 +115,7 @@ def create_synthetic_image_bytes(seed_str: str) -> bytes:
     return buf.getvalue()
 
 
-def download_image_bytes(url: str, img_id: str = "", fallback_synthetic: bool = True, retries: int = 3, backoff_seconds: float = 1.0, timeout: int = 5) -> bytes:
+def download_image_bytes(url: str, img_id: str = "", fallback_synthetic: bool = False, retries: int = 3, backoff_seconds: float = 1.0, timeout: int = 5) -> bytes:
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
@@ -220,7 +218,7 @@ def cypher_write_embeddings_batch(driver: Driver, model_key: str, batch: List[Di
     raise RuntimeError(f"Failed to write embeddings batch to Neo4j after {retries} attempts: {last_error}")
 
 
-def run_embedding_pipeline(model_key: str = "dinov2_large", force: bool = False, limit: Optional[int] = None, batch_size: int = 50, all_images: bool = False, fallback_synthetic: bool = True):
+def run_embedding_pipeline(model_key: str = "dinov2_large", force: bool = False, limit: Optional[int] = None, batch_size: int = 50, all_images: bool = False, fallback_synthetic: bool = False):
     password = get_neo4j_password()
     if not password:
         logging.error("Neo4j password not found.")
@@ -283,12 +281,12 @@ def run_embedding_pipeline(model_key: str = "dinov2_large", force: bool = False,
 def main():
     parser = argparse.ArgumentParser(description="Generate vector embeddings for ACKG DigitalImage nodes.")
     parser.add_argument("--all", action="store_true", help="Embed qualifying DigitalImage nodes.")
-    parser.add_argument("--model", choices=["clip", "dinov2_large", "dinov2"], default="dinov2_large", help="Embedding model: 'dinov2_large' (1024-dim DINOv2-Large), 'clip' (768-dim CLIP-Large), or 'dinov2' (384-dim DINOv2-Small).")
+    parser.add_argument("--model", choices=["clip", "dinov2_large"], default="dinov2_large", help="Embedding model: 'dinov2_large' (1024-dim DINOv2-Large), 'clip' (512-dim CLIP ViT-B/32).")
     parser.add_argument("--limit", type=int, help="Cap the number of images to embed.")
     parser.add_argument("--force", action="store_true", help="Re-embed even if vector property is already set.")
     parser.add_argument("--batch-size", type=int, default=50, help="Neo4j write batch size.")
     parser.add_argument("--all-images", action="store_true", help="Target all DigitalImage nodes regardless of imageType.")
-    parser.add_argument("--no-fallback", action="store_true", help="Disable synthetic PIL canvas fallback on 404/download errors.")
+    parser.add_argument("--synthetic-fallback", action="store_true", help="TEST ONLY: embed a synthetic canvas when a download fails. Never use against the live graph — it writes fabricated vectors.")
 
     args = parser.parse_args()
 
@@ -301,7 +299,7 @@ def main():
         limit=args.limit,
         batch_size=args.batch_size,
         all_images=args.all_images,
-        fallback_synthetic=not args.no_fallback
+        fallback_synthetic=args.synthetic_fallback
     )
 
 
