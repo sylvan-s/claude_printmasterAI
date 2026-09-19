@@ -46,25 +46,36 @@ export function signatureClass(signed: boolean | string | null | undefined, text
 }
 
 /**
- * The ingests' copy type (bonhams_ingest / forum_ingest / roseberys_ingest detect_copy_type,
- * identical keyword tables): the first proof keyword found, else "numbered". Every graph lot the
- * price model and the blend calibration learned from carries this, so a lot described only by
- * catalogue text must be classified through it too, or "numbered from the edition of 100" reads
- * as edition_unnumbered here and numbered in training (measured 2026-09-16: proof class differed
- * on 38 of 40 Forum/Roseberys parity lots). Mirrored faithfully, including the bare "bon" BAT
- * keyword that also matches "carbon" or "ribbon" — logged, not fixed here, so the lot is classed
- * the way its training neighbours were.
+ * The ingests' copy type — knowledge_graph/copy_type.py detect_copy_type (COPY-TYPE-1.1), shared
+ * by the bonhams / forum / roseberys / swann ingests: the first proof rule matched, else
+ * "numbered". Every graph lot the price model and the blend calibration learned from carries this,
+ * so a lot described only by catalogue text must be classified through it too, or "numbered from
+ * the edition of 100" reads as edition_unnumbered here and numbered in training (measured
+ * 2026-09-16: proof class differed on 38 of 40 Forum/Roseberys parity lots). Change the two
+ * together. Through COPY-TYPE-1.0 the BAT keyword was the bare substring "bon", which made 353 of
+ * 512 graph BATs false (Bonnard, bonnet, Dibond, ribbon...); repaired by repair_copy_type_bat.py.
  */
-const COPY_TYPE_KEYWORDS: Array<[string, string[]]> = [
+const COPY_TYPE_KEYWORDS: Array<[string, string[] | null]> = [
   ["AP", ["artist's proof", "artists proof", " ap ", "'ap'", "inscribed ap"]],
   ["HC", ["hors commerce", " hc ", "'hc'", "inscribed hc"]],
   ["PP", ["printer's proof", "printers proof", " pp "]],
-  ["BAT", ["bon", " bat "]],
+  ["BAT", null], // BAT_PATTERNS, on the original-case text
   ["TP", ["trial proof", " tp "]],
 ];
+// Python's (?<!\w)/(?!\w) are Unicode-aware; JS \b is not, so the boundaries are spelled out.
+const W = "[\\p{L}\\p{N}_]";
+const BAT_PATTERNS = [
+  new RegExp(`(?<!${W})bon[\\s-]*[àáâa][\\s-]*tir(?:er|é|e)(?!${W})`, "iu"),
+  // "B.A.T. Suisse SA" is a Geneva publisher, not an annotation.
+  new RegExp(`(?<!${W})B\\.\\s?A\\.\\s?T(?!${W})(?!\\.?\\s*Suisse)\\.?`, "iu"),
+  new RegExp(`(?<!${W})(?:BAT|BaT)(?!${W})`, "u"),
+];
 export function detectCopyType(...texts: (string | null | undefined)[]): string {
-  const t = ` ${texts.filter(Boolean).join(" ")} `.toLowerCase();
-  for (const [label, kws] of COPY_TYPE_KEYWORDS) if (kws.some((k) => t.includes(k))) return label;
+  const raw = texts.filter(Boolean).join(" ");
+  const t = ` ${raw} `.toLowerCase();
+  for (const [label, kws] of COPY_TYPE_KEYWORDS) {
+    if (kws === null ? BAT_PATTERNS.some((re) => re.test(raw)) : kws.some((k) => t.includes(k))) return label;
+  }
   return "numbered";
 }
 

@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Forum Auctions bulk catalogue ingestion into the ACKG (Neo4j)
-Version: FORUM-INGEST-1.0
+Version: FORUM-INGEST-1.1
 
 Same relationship to doc 09 as roseberys_ingest.py: doc 09 describes the mapping, this
 file enforces it. Structurally this source is very close to Roseberys' — same bulk-CSV
@@ -72,6 +72,7 @@ from neo4j import GraphDatabase
 from crosswalk_matching import extract_techniques, extract_papers
 from catalogue_matching import parse_catalogue_refs, build_conceptual_work_id, resolve_merged_work_cypher
 from embed_titles_hook import embed_new_titles
+from copy_type import detect_copy_type
 
 def _require_env(name):
     value = os.environ.get(name)
@@ -123,21 +124,6 @@ def parse_life_dates(raw):
     return begin, end
 
 
-COPY_TYPE_KEYWORDS = [
-    ("AP", ["artist's proof", "artists proof", " ap ", "'ap'", "inscribed ap"]),
-    ("HC", ["hors commerce", " hc ", "'hc'", "inscribed hc"]),
-    ("PP", ["printer's proof", "printers proof", " pp "]),
-    ("BAT", ["bon", " bat "]),
-    ("TP", ["trial proof", " tp "]),
-]
-
-
-def detect_copy_type(edition_note, medium_or_context=""):
-    text = f" {(edition_note or '')} {(medium_or_context or '')} ".lower()
-    for label, keywords in COPY_TYPE_KEYWORDS:
-        if any(kw in text for kw in keywords):
-            return label
-    return "numbered"
 
 
 def _clean(v):

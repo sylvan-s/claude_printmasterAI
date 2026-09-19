@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Roseberys bulk catalogue ingestion into the ACKG (Neo4j)
-Version: ROSEBERYS-INGEST-1.0
+Version: ROSEBERYS-INGEST-1.2
 
 Executable counterpart to doc 09's Roseberys adapter section — same relationship to
 that doc as met_ingest.py has to its own section: the doc describes the mapping, this
@@ -71,6 +71,7 @@ from crosswalk_matching import extract_techniques, extract_papers
 from resolve_artist_identity import strip_honorifics
 from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, resolve_merged_work_cypher
 from embed_titles_hook import embed_new_titles
+from copy_type import detect_copy_type
 
 def _require_env(name):
     value = os.environ.get(name)
@@ -142,21 +143,6 @@ def is_narrative_row(row):
     return bool(re.match(r"^\d{4}$", str(life_dates).strip()))
 
 
-COPY_TYPE_KEYWORDS = [
-    ("AP", ["artist's proof", "artists proof", " ap ", "'ap'", "inscribed ap"]),
-    ("HC", ["hors commerce", " hc ", "'hc'", "inscribed hc"]),
-    ("PP", ["printer's proof", "printers proof", " pp "]),
-    ("BAT", ["bon", " bat "]),
-    ("TP", ["trial proof", " tp "]),
-]
-
-
-def detect_copy_type(edition_note, medium_or_context=""):
-    text = f" {(edition_note or '')} {(medium_or_context or '')} ".lower()
-    for label, keywords in COPY_TYPE_KEYWORDS:
-        if any(kw in text for kw in keywords):
-            return label
-    return "numbered"
 
 
 def _clean(v):
@@ -188,6 +174,31 @@ def _fix_lot_image_url(raw):
     return raw
 
 
+# Every dim_kind value the CSV actually carries must land in a slot. Through
+# ROSEBERYS-INGEST-1.0 only sheet/overall/blank/image/plate were mapped, so "each sheet"
+# (358 graph lots), "size" (148) and "block" (1) wrote all three dimension properties
+# null even though width_cm/height_cm were present — 519 lots, found 2026-09-16 and
+# repaired by repair_roseberys_dimensions.py. Same sets as forum_ingest.py, plus
+# "each sheet", which only Roseberys uses; check_roseberys_dimensions.py fails if the
+# CSV grows a value that is in none of them.
+SHEET_DIM_KINDS = {"sheet", "overall", "size", "the full sheet", "each sheet", ""}
+IMAGE_DIM_KINDS = {"image"}
+PLATE_DIM_KINDS = {"plate", "block"}
+
+
+def dimension_slots(row):
+    dims = None
+    if pd.notna(row.get("width_cm")) and pd.notna(row.get("height_cm")):
+        dims = f"{row['width_cm']}x{row['height_cm']}cm"
+    dim_kind = row.get("dim_kind")
+    dim_kind = "" if dim_kind is None or pd.isna(dim_kind) else str(dim_kind).strip().lower()
+    return {
+        "sheetDimensions": dims if dim_kind in SHEET_DIM_KINDS else None,
+        "imageDimensions": dims if dim_kind in IMAGE_DIM_KINDS else None,
+        "plateDimensions": dims if dim_kind in PLATE_DIM_KINDS else None,
+    }
+
+
 def map_row(row):
     sale_code = row["sale_code"]
     lot_number = int(row["lot_number"])
@@ -205,10 +216,6 @@ def map_row(row):
     techniques = extract_techniques(medium)
     papers = extract_papers(f"{medium} {support}")
 
-    dims = None
-    if pd.notna(row.get("width_cm")) and pd.notna(row.get("height_cm")):
-        dims = f"{row['width_cm']}x{row['height_cm']}cm"
-    dim_kind = str(row.get("dim_kind") or "").strip().lower()
 
     year_val = _plausible_year(row.get("year")) if pd.notna(row.get("year")) else None
 
@@ -247,9 +254,7 @@ def map_row(row):
         "rawMedium": medium or None,
         "techniques": techniques,
         "papers": papers,
-        "sheetDimensions": dims if dim_kind in ("sheet", "overall", "") else None,
-        "imageDimensions": dims if dim_kind == "image" else None,
-        "plateDimensions": dims if dim_kind == "plate" else None,
+        **dimension_slots(row),
         "editionSize": int(row["edition_size"]) if pd.notna(row.get("edition_size")) else None,
         "copyType": detect_copy_type(row.get("edition_note"), row.get("title")),
         "signed": (str(row.get("signed", "")).strip().lower() == "yes"),

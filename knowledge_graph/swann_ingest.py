@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Swann Auction Galleries bulk catalogue ingestion into the ACKG (Neo4j)
-Version: SWANN-INGEST-1.0
+Version: SWANN-INGEST-1.1
 
 Executable counterpart to doc 09's Swann adapter section, same relationship as every
 other adapter in this project: the doc describes the mapping, this file enforces it.
@@ -120,6 +120,7 @@ from swann_parsing import (
     extract_catalogue_ref_text, detect_multi_work,
 )
 from embed_titles_hook import embed_new_titles
+from copy_type import detect_copy_type
 
 
 def _require_env(name):
@@ -161,21 +162,6 @@ PLACEHOLDER_ARTIST_RE = re.compile(
     re.IGNORECASE,
 )
 
-COPY_TYPE_KEYWORDS = [
-    ("AP", ["artist's proof", "artists proof", " ap ", "'ap'", "inscribed ap"]),
-    ("HC", ["hors commerce", " hc ", "'hc'", "inscribed hc"]),
-    ("PP", ["printer's proof", "printers proof", " pp "]),
-    ("BAT", ["bon", " bat "]),
-    ("TP", ["trial proof", " tp "]),
-]
-
-
-def detect_copy_type(text):
-    t = f" {(text or '')} ".lower()
-    for label, keywords in COPY_TYPE_KEYWORDS:
-        if any(kw in t for kw in keywords):
-            return label
-    return "numbered"
 
 
 def resolve_artist_fields(lot_title):

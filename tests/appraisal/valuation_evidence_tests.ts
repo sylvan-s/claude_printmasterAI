@@ -20,7 +20,16 @@ function ok(label: string, cond: boolean) { if (cond) passed++; else { failed++;
   eq("no proof wording -> numbered", detectCopyType("numbered from the edition of 100"), "numbered");
   eq("artist's proof wins", detectCopyType("an artist's proof aside from the edition of 50"), "AP");
   eq("hors commerce", detectCopyType("inscribed HC"), "HC");
-  eq("bare 'bon' is BAT, mirrored from the ingests (carbon, ribbon)", detectCopyType("on carbon paper"), "BAT");
+  // Fixtures shared with knowledge_graph/check_copy_type_bat.py — keep the two lists identical.
+  for (const [text, want] of [
+    ["on carbon paper", "numbered"], ["PIERRE BONNARD Scène de famille", "numbered"],
+    ["Le Bon Samaritain", "numbered"], ["printed on Dibond", "numbered"], ["The Bat", "numbered"],
+    ["BATTLE", "numbered"], ["published by B. A. T. Suisse SA, Geneva", "numbered"],
+    ["annotated 'BaT.' (a bon á tirer)", "BAT"], ["inscribed BAT in pencil", "BAT"],
+    ["annotated 'B.A.T.'", "BAT"], ["inscribed 'B.A.T 1' in pencil", "BAT"], ["bon-a-tirer", "BAT"],
+    ["annotated 'Bon a tiré'", "BAT"], ["Inscribed \"Bon à Tirer\"", "BAT"],
+    ["artist's proof, bon à tirer", "AP"], ["Bonnard trial proof", "TP"],
+  ] as const) eq(`copy type: ${text}`, detectCopyType(text), want);
   eq("'numbered from the edition of 100' is numbered through the copy type, not edition_unnumbered", proofClass(detectCopyType("numbered from the edition of 100"), "numbered from the edition of 100"), "numbered");
 }
 
