@@ -1,6 +1,6 @@
 # Roseberys multi-work lots — plan and pilot
 
-2026-09-19 · branch `feature/roseberys-multi-work-lots` · parser `knowledge_graph/roseberys_multi_work_parse.py` (ROSEBERYS-MULTI-0.2)
+2026-09-19 · branch `feature/roseberys-multi-work-lots` · parser `knowledge_graph/roseberys_multi_work_parse.py` (ROSEBERYS-MULTI-0.4)
 
 ## Problem
 
@@ -45,7 +45,7 @@ split:
 | `lotWorkCount`, `lotPart` | N works in the lot, this work's position |
 | `lotHammerPrice`, `lotPriceRealised`, `lotEstimateLow`, `lotEstimateHigh` | the published whole-lot figures |
 | `lotRecordId` | shared by the sibling records of one lot, e.g. `roseberys-a0777-lot148-record` |
-| `lotParseMethod` | parser version + model, e.g. `ROSEBERYS-MULTI-0.2:claude-opus-5` |
+| `lotParseMethod` | parser version + model, e.g. `ROSEBERYS-MULTI-0.4:claude-opus-5` |
 | `lotAncillaryItems` | extras sold with a single work (book, certificate…) |
 
 IDs: `roseberys-a0777-lot148-w3` (Impression), `…-w3-record` (SourceRecord), `…-w3-image`
