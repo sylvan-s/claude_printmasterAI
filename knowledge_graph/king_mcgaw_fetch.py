@@ -23,7 +23,7 @@ import sys
 import time
 import urllib.request
 import concurrent.futures
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 from bs4 import BeautifulSoup
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -35,6 +35,8 @@ CACHE_DIR = os.path.join(
     "benchmark", "data", "king_mcgaw"
 )
 LIVE_URLS_FILE = os.path.join(CACHE_DIR, "live_urls.json")
+RARE_LIMITED_IDS_FILE = os.path.join(CACHE_DIR, "rare_limited_ids.json")
+RARE_LIMITED_URL = "https://www.kingandmcgaw.com/prints/rare-limited"
 
 HTTP_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -65,7 +67,45 @@ def load_live_product_urls() -> List[str]:
     return sorted(list(set(urls)))
 
 
-def parse_live_product_page(url: str, retries: int = 2) -> Optional[Dict[str, Any]]:
+def load_rare_limited_ids(refresh: bool = False, max_pages: int = 60) -> Set[str]:
+    """Product ids in King & McGaw's Rare & Limited section (904 items across 31 pages on 2026-09-19).
+
+    Section membership is the only real signal for 'limited'. The classifier this replaces was
+    `"limited" in url or "rare" in url`, and a product URL never carries its section: it fired only
+    where the ARTIST slug happened to contain 'rare' ('rare-theatre-posters', 8 records) and missed
+    35 in-section items already in the graph — Picasso x5, Hodgkin x5, Chillida and more — which
+    stayed 'open_edition_poster'. Raises if the section cannot be read: guessing would silently
+    type every item as an open-edition poster."""
+    if not refresh and os.path.exists(RARE_LIMITED_IDS_FILE):
+        with open(RARE_LIMITED_IDS_FILE) as f:
+            ids = set(json.load(f))
+        if ids:
+            return ids
+    ids: Set[str] = set()
+    for page in range(1, max_pages + 1):
+        try:
+            req = urllib.request.Request(f"{RARE_LIMITED_URL}?page={page}", headers=HTTP_HEADERS)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                soup = BeautifulSoup(resp.read(), "html.parser")
+        except Exception as exc:
+            raise RuntimeError(f"cannot read the Rare & Limited section (page {page}): {exc}") from exc
+        found = {m.group(1) for a in soup.find_all("a", href=True)
+                 for m in [re.search(r"/prints/(?!rare-limited/)[^/]+/[^/?#]+-(\d+)$", a["href"])] if m}
+        if not found - ids:
+            break
+        ids |= found
+        time.sleep(0.5)
+    if not ids:
+        raise RuntimeError("the Rare & Limited section returned no products")
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    with open(RARE_LIMITED_IDS_FILE, "w") as f:
+        json.dump(sorted(ids), f)
+    logging.info(f"Rare & Limited section: {len(ids)} product ids")
+    return ids
+
+
+def parse_live_product_page(url: str, retries: int = 2,
+                            rare_limited_ids: Optional[Set[str]] = None) -> Optional[Dict[str, Any]]:
     html_content = None
     for attempt in range(retries):
         try:
@@ -125,7 +165,9 @@ def parse_live_product_page(url: str, retries: int = 2) -> Optional[Dict[str, An
     elif any("Museums" in b for b in breadcrumbs):
         category = "Museums & Archives"
 
-    is_limited = "limited" in url.lower() or "rare" in url.lower()
+    if rare_limited_ids is None:
+        raise ValueError("rare_limited_ids is required: 'limited' is decided by Rare & Limited section membership")
+    is_limited = km_id in rare_limited_ids
     in_pod = "tate" in url.lower() or "national-gallery" in url.lower() or "v-and-a" in url.lower() or price_min >= 40.0
 
     return {
@@ -133,7 +175,10 @@ def parse_live_product_page(url: str, retries: int = 2) -> Optional[Dict[str, An
         "artist_name": artist or "Unknown Artist",
         "artwork_title": title or "Untitled",
         "category": category,
-        "medium_description": "Original Exhibition Lithograph" if is_limited else "Fine Art Print Reproduction",
+        # The listing states NO medium (a product page is title, artist, size and price), so neither
+        # string here is evidence. 'Original Exhibition Lithograph' was asserted for every limited item
+        # on the strength of a URL substring; a neutral label says only what the site does.
+        "medium_description": "Rare & limited poster (medium not stated)" if is_limited else "Fine Art Print Reproduction",
         "listing_url": url,
         "image_url": og_image,
         "retail_price_min_gbp": price_min if price_min > 0 else 35.0,
@@ -149,6 +194,7 @@ def run_parallel_live_scraper(limit: Optional[int] = None, workers: int = 16) ->
     if limit:
         urls = urls[:limit]
 
+    rare_limited_ids = load_rare_limited_ids()
     total = len(urls)
     logging.info(f"Starting parallel live web scrape of {total} King & McGaw product pages ({workers} workers)...")
 
@@ -157,7 +203,7 @@ def run_parallel_live_scraper(limit: Optional[int] = None, workers: int = 16) ->
     completed = 0
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
-        future_to_url = {executor.submit(parse_live_product_page, url): url for url in urls}
+        future_to_url = {executor.submit(parse_live_product_page, url, 2, rare_limited_ids): url for url in urls}
         for future in concurrent.futures.as_completed(future_to_url):
             completed += 1
             rec = future.result()

@@ -192,7 +192,11 @@ def prepare_item_record(raw_item: Dict[str, Any]) -> Dict[str, Any]:
         },
         "edition_run": {
             "id": edition_run_id,
-            "editionType": "limited_edition" if raw_item.get("is_limited_edition") else "open_edition_poster",
+            # 'limited_edition_poster' = sold in King & McGaw's Rare & Limited section (was
+            # 'limited_edition' until 2026-09-19). It says WHERE King & McGaw files the item,
+            # not that the item is an original: that is decided per item and recorded on the
+            # EditionRun as `originalVerified`, which is what evidence queries key on.
+            "editionType": "limited_edition_poster" if raw_item.get("is_limited_edition") else "open_edition_poster",
             "declaredSize": raw_item.get("declared_edition_size"),
             "medium": raw_item.get("medium_description", "Poster Print")
         },
