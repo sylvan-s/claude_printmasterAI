@@ -57,7 +57,7 @@ def run_reconciliation(execute: bool = False):
         poster_cws = s.run("""
             MATCH (a:Artist)-[:CREATED]->(cw_poster:ConceptualWork)
             WHERE cw_poster.id STARTS WITH 'km-cw-'
-            RETURN a.name AS artist, cw_poster.id AS posterCwId, cw_poster.title AS posterTitle
+            RETURN a.name AS artist, cw_poster.id AS posterCwId, coalesce(cw_poster.name, cw_poster.title) AS posterTitle
         """).data()
 
         logging.info(f"Analyzing {len(poster_cws)} poster ConceptualWork nodes for title matching...")
@@ -76,7 +76,7 @@ def run_reconciliation(execute: bool = False):
                 MATCH (a:Artist {name: $artist})-[:CREATED]->(cw_other:ConceptualWork)
                 WHERE NOT cw_other.id STARTS WITH 'km-cw-'
                 OPTIONAL MATCH (sr:SourceRecord)-[:DOCUMENTS]->(cw_other)
-                RETURN cw_other.id AS otherCwId, cw_other.title AS cwTitle, collect(DISTINCT sr.title) AS srTitles
+                RETURN cw_other.id AS otherCwId, coalesce(cw_other.name, cw_other.title) AS cwTitle, collect(DISTINCT sr.title) AS srTitles
             """, artist=artist).data()
 
             best_match = None

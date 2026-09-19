@@ -1,6 +1,11 @@
 """
 PrintMasterAI — King & McGaw Catalog Ingestion Pipeline (Step 1)
-Version: KING-MCGAW-INGEST-1.0
+Version: KING-MCGAW-INGEST-1.1
+
+1.1: writes the work title to `ConceptualWork.name`, the property every other ingest uses and every
+    reader (title embeddings, Stage 2a title similarity, reconcile/Splink) looks at. 1.0 wrote
+    `title`, which left all 545 King & McGaw works invisible to those readers. Repaired in the
+    graph by `repair_km_work_names.py`; guarded by `check_conceptual_work_title_property.py`.
 
 Ingests fine art poster & print catalog records from King & McGaw into the ACKG
 (Art Context Knowledge Graph) in Neo4j, following the schema specified in Doc 08.
@@ -176,7 +181,7 @@ def prepare_item_record(raw_item: Dict[str, Any]) -> Dict[str, Any]:
         },
         "conceptual_work": {
             "id": conceptual_work_id,
-            "title": artwork_title,
+            "name": artwork_title,
             "dateCreated_year": int(creation_year) if creation_year else None,
             "dateCreated_precision": "exact" if creation_year else "unknown",
             "dateCreated_displayLabel": str(creation_year) if creation_year else None,
@@ -259,7 +264,7 @@ def cypher_ingest_batch(driver: Driver, batch: List[Dict[str, Any]]):
     // 2. Resolve ConceptualWork via MergeEvent / catalogue_matching logic
     {merged_work_clause}
     
-    SET cw.title = coalesce(cw.title, row.conceptual_work.title),
+    SET cw.name = coalesce(cw.name, row.conceptual_work.name),
         cw.dateCreated_year = coalesce(cw.dateCreated_year, row.conceptual_work.dateCreated_year),
         cw.dateCreated_precision = coalesce(cw.dateCreated_precision, row.conceptual_work.dateCreated_precision),
         cw.dateCreated_displayLabel = coalesce(cw.dateCreated_displayLabel, row.conceptual_work.dateCreated_displayLabel),
@@ -322,7 +327,7 @@ def run_ingestion(items: List[Dict[str, Any]], dry_run: bool = False, batch_size
         rec = prepare_item_record(raw)
         prepared_batch.append(rec)
         logging.info(
-            f"Prepared: '{rec['conceptual_work']['title']}' by {rec['artist']['name']} "
+            f"Prepared: '{rec['conceptual_work']['name']}' by {rec['artist']['name']} "
             f"(Artist Key: {rec['artist']['key']}, CW ID: {rec['conceptual_work']['id']})"
         )
 
