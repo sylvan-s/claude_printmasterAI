@@ -1,0 +1,188 @@
+// Run the real appraisal pipeline once PER WORK of a multi-work lot.
+//
+// tests/backtest/run_backtest.ts feeds a lot's PRIMARY image and its WHOLE description. For a
+// multi-work lot that is the wrong input twice over: the primary photo is usually a group shot
+// of every print in the lot, and the description covers all of them. This harness takes
+// knowledge_graph/roseberys_multi_work_parse.py's output instead and, for each work the gate
+// passed, feeds the photo matched to THAT work plus only that work's own catalogue facts.
+//
+// Blindness follows the backtest's convention: the artist name and the title are never sent —
+// they are what the pipeline is meant to reach on its own — and neither is the lot's estimate.
+// What goes in is the physical description (technique, support, dimensions, edition) the way an
+// appraiser holding that one sheet would transcribe it. Anything the catalogue states about the
+// lot as a whole and does not attribute to an individual work (e.g. "one signed in pencil" over
+// two sheets) is passed as exactly that — an ambiguous lot-level note — never resolved to a work.
+//
+// Usage (source .env first):
+//   npx tsx tests/multi_work/run_multi_work_appraisal.ts --in parsed.json [--lot 20] [--method claude-4stage]
+
+import dotenv from "dotenv";
+dotenv.config();
+
+import { readFileSync, writeFileSync, mkdirSync } from "fs";
+import { dirname } from "path";
+import { fileURLToPath } from "url";
+import { GoogleGenAI } from "@google/genai";
+import { appraiserConfigs, getAppraiserFromConfig, type AppraisalInput } from "../../src/appraisal/appraiser";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const DEFAULT_METHOD = "claude-4stage";
+
+interface ParsedWork {
+  position: number;
+  artist: string | null;
+  title: string | null;
+  year: number | null;
+  medium: string | null;
+  support: string | null;
+  dim_kind: string | null;
+  width_cm: number | null;
+  height_cm: number | null;
+  edition_size: number | null;
+  edition_number: string | null;
+  signed: boolean | null;
+  catalogue_refs: string | null;
+  copies: number;
+  evidence: string;
+}
+
+interface ParsedLot {
+  sale: string;
+  lot: number;
+  url: string;
+  entry: string;
+  money: Record<string, number | boolean | null>;
+  decision: string;
+  reasons: string[];
+  parser: string;
+  photo_urls?: string[];
+  text: { lot_kind: string; declared_count: number | null; works: ParsedWork[] };
+  vision?: { assignments: { work_position: number; photo_index: number | null; confidence: string }[] };
+}
+
+function parseArgs(argv: string[]) {
+  let infile: string | undefined, lot: number | undefined, method = DEFAULT_METHOD;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === "--in") infile = argv[++i];
+    else if (argv[i] === "--lot") lot = Number(argv[++i]);
+    else if (argv[i] === "--method") method = argv[++i];
+    else throw new Error(`Unrecognised argument: ${argv[i]}`);
+  }
+  if (!infile) throw new Error("--in <parser output json> is required");
+  return { infile, lot, method };
+}
+
+async function downloadImageBase64(url: string) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Image fetch failed: ${url}: HTTP ${res.status}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  return { base64: buf.toString("base64"), mimeType: res.headers.get("content-type") || "image/jpeg" };
+}
+
+/** The lot's body text with the header stripped: Roseberys puts artist, nationality and the
+ *  title list in the opening lines, and sending those would tell the pipeline the two answers
+ *  it exists to produce. Anything still naming a title or the artist's surname is dropped and
+ *  reported, so a leak is visible in the run log rather than silent. */
+function blindBody(lot: ParsedLot): { text: string; dropped: string[] } {
+  const lines = lot.entry.split(/\nProvenance|\nNote:/)[0].split("\n").map((l) => l.trim()).filter(Boolean);
+  const titles = lot.text.works.map((w) => (w.title || "").toLowerCase()).filter(Boolean);
+  const surnames = lot.text.works
+    .flatMap((w) => (w.artist || "").split(/\s+/))
+    .filter((t) => t.length > 3)
+    .map((t) => t.toLowerCase());
+  const names = [...titles, ...surnames];
+  const kept: string[] = [], dropped: string[] = [];
+  for (const line of lines) {
+    const low = line.toLowerCase();
+    (names.some((n) => low.includes(n)) ? dropped : kept).push(line);
+  }
+  return { text: kept.join("\n"), dropped };
+}
+
+/** This work's own physical facts — no artist, no title, no estimate. Lot-level statements that
+ *  the catalogue does not pin to one work are reported as ambiguous rather than assigned. */
+function workNotes(work: ParsedWork, lot: ParsedLot): string {
+  const lines: string[] = [];
+  const medium = [work.medium, work.support && !work.medium?.includes(work.support) ? `on ${work.support}` : null]
+    .filter(Boolean).join(" ");
+  if (medium) lines.push(medium);
+  if (work.width_cm && work.height_cm) {
+    lines.push(`${work.dim_kind && work.dim_kind !== "null" ? work.dim_kind : "dimensions"}: ${work.width_cm} x ${work.height_cm} cm`);
+  }
+  if (work.edition_number) lines.push(`numbered ${work.edition_number}`);
+  if (work.edition_size) lines.push(`from an edition of ${work.edition_size}`);
+  if (work.year) lines.push(`dated ${work.year}`);
+  if (work.signed === true) lines.push("signed in pencil");
+  const n = lot.text.works.length;
+  lines.push(
+    `This sheet was catalogued as one of ${n} works offered together in a single auction lot; ` +
+    `the description below covers the whole lot, and only the parts naming this sheet apply to it.`,
+  );
+  const body = blindBody(lot);
+  if (body.text) lines.push(`Lot description as printed (artist and titles withheld): ${body.text}`);
+  return lines.join("\n");
+}
+
+async function main() {
+  const { infile, lot: lotFilter, method } = parseArgs(process.argv.slice(2));
+  const records: ParsedLot[] = JSON.parse(readFileSync(infile, "utf-8"));
+  const lots = records.filter((r) => (lotFilter === undefined || r.lot === lotFilter));
+  if (!lots.length) throw new Error(`No lot matched in ${infile}`);
+
+  const config = appraiserConfigs.find((c) => c.id === method);
+  if (!config) throw new Error(`Unknown method "${method}"`);
+  const geminiKey = process.env.GEMINI_API_KEY;
+  const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
+
+  for (const lot of lots) {
+    if (lot.decision !== "split") {
+      console.log(`[MultiWork] ${lot.sale} lot ${lot.lot}: decision is "${lot.decision}" — skipping (${lot.reasons.join("; ")})`);
+      continue;
+    }
+    const photoFor = new Map<number, number | null>(
+      (lot.vision?.assignments ?? []).map((a) => [a.work_position, a.photo_index]),
+    );
+    const outDir = `${__dirname}/output/${lot.sale}-${lot.lot}`;
+    mkdirSync(outDir, { recursive: true });
+
+    for (const work of lot.text.works) {
+      const idx = photoFor.get(work.position);
+      const url = idx != null ? lot.photo_urls?.[idx] : undefined;
+      if (!url) {
+        console.log(`[MultiWork] work ${work.position} has no matched photo — skipping`);
+        continue;
+      }
+      console.log(`\n[MultiWork] ${lot.sale} lot ${lot.lot} work ${work.position}/${lot.text.works.length} — photo ${idx}`);
+      const dropped = blindBody(lot).dropped;
+      if (dropped.length) console.log(`[MultiWork] withheld from notes (names artist/title): ${JSON.stringify(dropped)}`);
+      const { base64, mimeType } = await downloadImageBase64(url);
+      const input: AppraisalInput = {
+        imageBase64: base64,
+        mimeType,
+        currency: "GBP",
+        catalogueNotes: workNotes(work, lot),
+        testingExcludeSourceListing: `Roseberys, sale ${lot.sale}, lot ${lot.lot} (${lot.url})`,
+      };
+      const appraiser = getAppraiserFromConfig(config, ai);
+      const t0 = Date.now();
+      const report = await appraiser.appraise(input);
+      const secs = ((Date.now() - t0) / 1000).toFixed(1);
+      const path = `${outDir}/work${work.position}.json`;
+      writeFileSync(path, JSON.stringify({
+        lot: `${lot.sale}-${lot.lot}`, workPosition: work.position,
+        catalogueTitle: work.title, catalogueArtist: work.artist,
+        photoIndex: idx, photoUrl: url, method, parser: lot.parser,
+        lotEstimate: { low: lot.money.estimateLow, high: lot.money.estimateHigh },
+        perWorkEstimateShare: {
+          low: lot.money.estimateLow ? Number(lot.money.estimateLow) / lot.text.works.length : null,
+          high: lot.money.estimateHigh ? Number(lot.money.estimateHigh) / lot.text.works.length : null,
+        },
+        notesSent: input.catalogueNotes, elapsedSeconds: Number(secs), report,
+      }, null, 2));
+      console.log(`[MultiWork] ${secs}s — says "${report.likelyArtist}" / "${report.artworkTitle}"`);
+      console.log(`[MultiWork] catalogue says: "${work.artist}" / "${work.title}" -> ${path}`);
+    }
+  }
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });

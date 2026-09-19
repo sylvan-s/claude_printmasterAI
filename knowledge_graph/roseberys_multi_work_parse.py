@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Roseberys multi-work lot parser (pilot)
-Version: ROSEBERYS-MULTI-0.4
+Version: ROSEBERYS-MULTI-0.5
 
 Roseberys lots flagged `multi_work` by the extractor (benchmark/src/roseberys/parse.ts
 detectMultiWork) have been held out of the ACKG since 2026-08-24. The flag is a regex and is
@@ -39,7 +39,7 @@ import anthropic
 import requests
 from PIL import Image
 
-PARSER_VERSION = "ROSEBERYS-MULTI-0.4"
+PARSER_VERSION = "ROSEBERYS-MULTI-0.5"
 # 2026-09-19 pilot (40 hand-labelled lots): Opus 5 38/40 kinds, 0 harmful decisions, every
 # disputed photo match checked by eye was right (it reads pencil titles and edition numbers).
 # Haiku 4.5 27/40 with 8 harmful (over-uses identical_copies; "high" photo confidence was
@@ -209,6 +209,26 @@ def lot_text(raw):
     t = re.sub(r"</p>\s*<p>", "\n", t)
     t = html.unescape(re.sub(r"<[^>]+>", "", t)).replace("\xa0", " ")
     return "\n".join(line.strip() for line in t.split("\n")).strip()
+
+
+def lot_money(raw):
+    """The lot's own money, in the extractor's semantics (benchmark/src/roseberys/api.ts):
+    `rostrum_hammer` is the TRUE hammer and is only populated on recent sales; `hammer_price`
+    is the premium-inclusive price realised despite its name, and can be non-null on an unsold
+    lot — so `sold` comes from the `sold` flag, never from a price being present."""
+    def num(v):
+        if v in (None, "", 0, "0"):
+            return None
+        try:
+            return float(str(v).replace(",", ""))
+        except ValueError:
+            return None
+    sold = bool(raw.get("sold")) and not raw.get("passed") and not raw.get("withdrawn")
+    return {"estimateLow": num(raw.get("low_estimate")), "estimateHigh": num(raw.get("high_estimate")),
+            "reserve": num(raw.get("reserve_price")),
+            "hammerPrice": num(raw.get("rostrum_hammer")) if sold else None,
+            "priceRealised": num(raw.get("hammer_price")) if sold else None,
+            "priceCurrency": "GBP", "sold": sold}
 
 
 def lot_photo_urls(raw, lot_url, session):
@@ -406,7 +426,8 @@ def parse_lot(lot, caller, session, image_cache):
     text, err = caller.json_call([{"type": "text", "text": TEXT_PROMPT.format(entry=entry)}],
                                  TEXT_SCHEMA)
     out = {"sale": lot["sale"], "lot": lot["lot"], "url": lot["url"], "hammer": lot["hammer"],
-           "heuristic": lot["heuristic"], "entry": entry, "text": text, "text_error": err}
+           "heuristic": lot["heuristic"], "entry": entry, "money": lot_money(raw),
+           "text": text, "text_error": err}
     if text is None:
         out.update(decision="hold", reasons=[f"text pass {err}"])
         return out
