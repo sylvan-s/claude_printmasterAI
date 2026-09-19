@@ -1,6 +1,16 @@
 """
 PrintMasterAI — King & McGaw Catalog Ingestion Pipeline (Step 1)
-Version: KING-MCGAW-INGEST-1.1
+Version: KING-MCGAW-INGEST-1.2
+
+1.2: an absent value is written as null, not 0.0/False. `retailPriceMinGBP` and
+    `inInstitutionalPODArchive` used to be coerced with `float(... or 0.0)` / `bool(...)`, so "the
+    page did not say" became a stored 0.0 or False. Records must now come from a
+    KING-MCGAW-FETCH-3.1+ catalog (which stops synthesising those values); `main` rejects older ones.
+    `retailPriceMaxGBP` is no longer written at all (it was `min * 2.5`; removed from the graph by
+    `repair_km_retail_fields.py` 2026-09-19).
+    Removed `SAMPLE_SEED_ITEMS` and `--seed`: four invented records (their listing URLs are dead),
+    and running with no arguments fell through to them against the live graph. `--file` is now
+    required. Repair for records already in the graph: `repair_km_retail_fields.py`.
 
 1.1: writes the work title to `ConceptualWork.name`, the property every other ingest uses and every
     reader (title embeddings, Stage 2a title similarity, reconcile/Splink) looks at. 1.0 wrote
@@ -19,14 +29,14 @@ Schema Mapping Strategy:
 3. EditionRun: Open-edition poster run or limited-edition vintage print run,
    linked to Publisher("King & McGaw") or historical printers (e.g. Mourlot).
 4. SourceRecord: Unified evidence node with sourceType: "online_marketplace",
-   documenting retail availability, price range (min/max GBP), and POD features.
+   documenting retail availability, the listing price (the default variant's, not the cheapest),
+   and the institutional print-on-demand flag where the page names an institutional partner.
 5. DigitalImage: High-res product thumbnail, tagged with imageType: "poster_catalog",
    ready for subsequent DINOv2 / CLIP embedding generation (Step 2).
 
 Usage:
-    python king_mcgaw_ingest.py --seed             # Run with embedded sample seed items
-    python king_mcgaw_ingest.py --file items.json   # Ingest from a JSON file
-    python king_mcgaw_ingest.py --dry-run          # Parse & reconcile without writing to Neo4j
+    python king_mcgaw_ingest.py --file catalog.json             # Ingest from a king_mcgaw_fetch.py catalog
+    python king_mcgaw_ingest.py --file catalog.json --dry-run   # Parse & reconcile without writing to Neo4j
 """
 
 import argparse
@@ -65,73 +75,17 @@ def get_neo4j_password() -> str:
     return ""
 
 
-# Sample seed items representing the 3 tiers (Warhol, Hockney, Van Gogh, Mourlot vintage litho)
-SAMPLE_SEED_ITEMS = [
-    {
-        "km_product_id": "KM-WARHOL-MARILYN-1967",
-        "artist_name": "Andy Warhol",
-        "artwork_title": "Marilyn Monroe 1967 (Shot Blue Marilyn)",
-        "creation_year": 1967,
-        "category": "Modern Art",
-        "medium_description": "Fine Art Screenprint Poster Reproduction",
-        "listing_url": "https://www.kingandmcgaw.com/prints/andy-warhol/marilyn-monroe-1967-410293",
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/4/4e/Andy_Warhol_%281975%29.jpg",
-        "retail_price_min_gbp": 35.00,
-        "retail_price_max_gbp": 220.00,
-        "is_limited_edition": False,
-        "in_institutional_pod_archive": True,
-        "publisher_name": "King & McGaw"
-    },
-    {
-        "km_product_id": "KM-HOCKNEY-GARROWBY-1998",
-        "artist_name": "David Hockney",
-        "artwork_title": "Garrowby Hill",
-        "creation_year": 1998,
-        "category": "Modern Art",
-        "medium_description": "Fine Art Paper Poster",
-        "listing_url": "https://www.kingandmcgaw.com/prints/david-hockney/garrowby-hill-1998-309481",
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/a/a2/David_Hockney_2017.jpg",
-        "retail_price_min_gbp": 40.00,
-        "retail_price_max_gbp": 250.00,
-        "is_limited_edition": False,
-        "in_institutional_pod_archive": True,
-        "publisher_name": "King & McGaw"
-    },
-    {
-        "km_product_id": "KM-VANGOGH-SUNFLOWERS-1888",
-        "artist_name": "Vincent van Gogh",
-        "artwork_title": "Sunflowers",
-        "creation_year": 1888,
-        "category": "Iconic Artists Pre-1900",
-        "medium_description": "250gsm Fine Art Rag Print",
-        "listing_url": "https://www.kingandmcgaw.com/prints/vincent-van-gogh/sunflowers-1888-102938",
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/4/46/Vincent_Willem_van_Gogh_127.jpg",
-        "retail_price_min_gbp": 25.00,
-        "retail_price_max_gbp": 180.00,
-        "is_limited_edition": False,
-        "in_institutional_pod_archive": True,
-        "publisher_name": "King & McGaw"
-    },
-    {
-        "km_product_id": "KM-RARE-MOURLOT-PICASSO-1955",
-        "artist_name": "Pablo Picasso",
-        "artwork_title": "Exposition Vallauris 1955",
-        "creation_year": 1955,
-        "category": "Rare & Limited Division",
-        "medium_description": "Original Vintage Exhibition Lithograph",
-        "listing_url": "https://www.kingandmcgaw.com/rare-limited/pablo-picasso-exposition-vallauris-1955",
-        "image_url": "https://upload.wikimedia.org/wikipedia/commons/9/98/Pablo_picasso_1962.jpg",
-        "retail_price_min_gbp": 850.00,
-        "retail_price_max_gbp": 850.00,
-        "is_limited_edition": True,
-        "declared_edition_size": 500,
-        "in_institutional_pod_archive": False,
-        "publisher_name": "Atelier Mourlot"
-    }
-]
-
-
 _RESOLVED_ARTISTS_CACHE = {}
+
+def _optional_float(value: Any) -> Optional[float]:
+    """None stays None: 0.0 would say the page showed a price of zero."""
+    return None if value is None else float(value)
+
+
+def _optional_bool(value: Any) -> Optional[bool]:
+    """None stays None: False would assert a negative the page never stated."""
+    return None if value is None else bool(value)
+
 
 def prepare_item_record(raw_item: Dict[str, Any]) -> Dict[str, Any]:
     """Reconciles artist identity and constructs ACKG node property payloads."""
@@ -208,9 +162,8 @@ def prepare_item_record(raw_item: Dict[str, Any]) -> Dict[str, Any]:
             "listingUrl": raw_item.get("listing_url", ""),
             "isMassProductionPoster": not raw_item.get("is_limited_edition", False),
             "isLimitedEdition": bool(raw_item.get("is_limited_edition", False)),
-            "retailPriceMinGBP": float(raw_item.get("retail_price_min_gbp", 0.0)),
-            "retailPriceMaxGBP": float(raw_item.get("retail_price_max_gbp", 0.0)),
-            "inInstitutionalPODArchive": bool(raw_item.get("in_institutional_pod_archive", False))
+            "retailPriceMinGBP": _optional_float(raw_item.get("retail_price_min_gbp")),
+            "inInstitutionalPODArchive": _optional_bool(raw_item.get("in_institutional_pod_archive"))
         },
         "digital_image": {
             "id": image_id,
@@ -303,7 +256,6 @@ def cypher_ingest_batch(driver: Driver, batch: List[Dict[str, Any]]):
         sr.isMassProductionPoster = row.source_record.isMassProductionPoster,
         sr.isLimitedEdition = row.source_record.isLimitedEdition,
         sr.retailPriceMinGBP = row.source_record.retailPriceMinGBP,
-        sr.retailPriceMaxGBP = row.source_record.retailPriceMaxGBP,
         sr.inInstitutionalPODArchive = row.source_record.inInstitutionalPODArchive
 
     MERGE (sr)-[:DOCUMENTS]->(cw)
@@ -364,22 +316,22 @@ def run_ingestion(items: List[Dict[str, Any]], dry_run: bool = False, batch_size
 
 def main():
     parser = argparse.ArgumentParser(description="Ingest King & McGaw catalog items into ACKG Neo4j graph.")
-    parser.add_argument("--seed", action="store_true", help="Run ingestion with sample seed dataset.")
-    parser.add_argument("--file", type=str, help="Path to JSON file containing catalog items.")
+    parser.add_argument("--file", type=str, required=True, help="Path to a king_mcgaw_fetch.py catalog JSON.")
     parser.add_argument("--dry-run", action="store_true", help="Prepare items and test reconciliation without writing to DB.")
     parser.add_argument("--batch-size", type=int, default=50, help="Batch size for Neo4j Cypher execution.")
 
     args = parser.parse_args()
 
-    items = []
-    if args.seed:
-        items = SAMPLE_SEED_ITEMS
-    elif args.file:
-        with open(args.file) as f:
-            items = json.load(f)
-    else:
-        logging.warning("No input specified. Defaulting to --seed items.")
-        items = SAMPLE_SEED_ITEMS
+    with open(args.file) as f:
+        items = json.load(f)
+
+    stale = [i.get("km_product_id") for i in items if "print_on_demand" not in i]
+    if stale:
+        parser.error(
+            f"{len(stale)} of {len(items)} records predate KING-MCGAW-FETCH-3.1 (no `print_on_demand` key), "
+            f"so their retail min / institutional-POD values are synthesised, not scraped "
+            f"(first: {stale[:3]}). Re-run king_mcgaw_fetch.py and ingest its output."
+        )
 
     run_ingestion(items, dry_run=args.dry_run, batch_size=args.batch_size)
 
