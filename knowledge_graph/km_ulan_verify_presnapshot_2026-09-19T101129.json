@@ -1,0 +1,125 @@
+{
+ "version": "KM-ULAN-VERIFY-1.0",
+ "takenAt": "2026-09-19T101129",
+ "rows": [
+  {
+   "name": "Balthasar van der Ast",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500029053",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:750691",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 1
+  },
+  {
+   "name": "Claude Stanfield Moore",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500021260",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:750724",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 1
+  },
+  {
+   "name": "Diego Velázquez",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500016881",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:750727",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 2
+  },
+  {
+   "name": "Emile Cardinaux",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500021057",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:750746",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 1
+  },
+  {
+   "name": "Francois Frederic Grobon",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500042643",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:750749",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 2
+  },
+  {
+   "name": "Francois Le Vaillant",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500095492",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:750766",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 1
+  },
+  {
+   "name": "Franz Michael Regenfuss",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500003396",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:750756",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 1
+  },
+  {
+   "name": "Hassall",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500001686",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:750782",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 1
+  },
+  {
+   "name": "Hasui Kawase",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500333884",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:750783",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 1
+  },
+  {
+   "name": "Henry Charles Andrews",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500027916",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:750786",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 4
+  },
+  {
+   "name": "Jan Van Eyck",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500116209",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:752300",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 2
+  },
+  {
+   "name": "Jan van Huysum",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500001494",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:752304",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 2
+  },
+  {
+   "name": "Lillian Snelling",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500032153",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:752316",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 16
+  },
+  {
+   "name": "Paolo Caliari Veronese",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500021218",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:752328",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 1
+  },
+  {
+   "name": "Pierre Joseph Celestin Redouté",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500005678",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:752332",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 17
+  },
+  {
+   "name": "Samuel John Peploe",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500017759",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:752336",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 1
+  },
+  {
+   "name": "Sir Edward Coley Burne-Jones",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500001381",
+   "eid": "4:eaa66e5f-3fe5-4d49-84cf-90d071e71cbc:748865",
+   "identityConfidence": "multiple_candidates",
+   "worksNow": 1
+  }
+ ]
+}

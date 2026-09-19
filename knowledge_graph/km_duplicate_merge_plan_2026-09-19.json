@@ -1,0 +1,142 @@
+{
+ "version": "KM-DUP-MERGE-1.0",
+ "plannedAt": "2026-09-19",
+ "policy": "The King & McGaw-only node (dup) is folded INTO the other node (canon) in every pair, so only nodes carrying just CREATED/ATTRIBUTED_TO edges are deleted. Exact-under-normalisation or exact recorded ULAN name only; no fuzzy matches.",
+ "rejected": {
+  "Sir Joshua Reynolds <-> J.R": "matched only because a ULAN alternate name is the bare initials; 'J.R' is a 1971-born artist"
+ },
+ "rows": [
+  {
+   "canon": "Edwin Henry Landseer",
+   "dup": "Sir Edwin Henry Landseer",
+   "rule": "honorific",
+   "evidence": "same name once 'Sir' is stripped (repo rule 'honorific'); other node born 1802 = Landseer",
+   "dupUlan": null,
+   "dupConf": "unresolved",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 2,
+   "canonWorks": 1
+  },
+  {
+   "canon": "Edward Coley Burne-Jones",
+   "dup": "Sir Edward Coley Burne-Jones",
+   "rule": "honorific",
+   "evidence": "same name once 'Sir' is stripped (rule 'honorific'); KM node's ULAN 500001381 was manually verified",
+   "dupUlan": "http://vocab.getty.edu/ulan/500001381",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 7
+  },
+  {
+   "canon": "Lawrence Alma-Tadema",
+   "dup": "Sir Lawrence Alma-Tadema",
+   "rule": "honorific",
+   "evidence": "same name once 'Sir' is stripped (rule 'honorific'); KM node's ULAN 500008100 was high_confidence_auto",
+   "dupUlan": "http://vocab.getty.edu/ulan/500008100",
+   "dupConf": "high_confidence_auto",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 7
+  },
+  {
+   "canon": "Charles Hullmandel",
+   "dup": "Charles Joseph Hullmandel",
+   "rule": "ulan_alt_name",
+   "evidence": "'Charles Hullmandel' is a recorded name of ULAN 500041156 (single_candidate_strong, exact 'Hullmandel, Charles Joseph')",
+   "dupUlan": "http://vocab.getty.edu/ulan/500041156",
+   "dupConf": "single_candidate_strong",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 4,
+   "canonWorks": 1
+  },
+  {
+   "canon": "Christopher Richard Wynne Nevinson ARA",
+   "dup": "Christopher Richard Wynne Nevinson",
+   "rule": "honorific",
+   "evidence": "same name once the post-nominal ARA is stripped (repo rule 'honorific'); other node holds the correct ULAN 500031355 (Nevinson, Christopher, 1889-1946), born 1889",
+   "dupUlan": null,
+   "dupConf": "unresolved",
+   "canonUlan": "http://vocab.getty.edu/ulan/500031355",
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 206
+  },
+  {
+   "canon": "Emil Cardinaux",
+   "dup": "Emile Cardinaux",
+   "rule": "ulan_alt_name",
+   "evidence": "'Cardinaux, Emil' is the ULAN preferred spelling of manually verified ULAN 500021057; other node born 1877 = ULAN 1877",
+   "dupUlan": "http://vocab.getty.edu/ulan/500021057",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 1
+  },
+  {
+   "canon": "Francisco José de Goya",
+   "dup": "Francisco de Goya",
+   "rule": "ulan_alt_name",
+   "evidence": "'Goya, Francisco José de' is a recorded name of ULAN 500118936 (single_candidate_strong, exact 'Goya, Francisco de'); other node born 1746 = ULAN 1746; 226 works",
+   "dupUlan": "http://vocab.getty.edu/ulan/500118936",
+   "dupConf": "single_candidate_strong",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 226
+  },
+  {
+   "canon": "John Hassall",
+   "dup": "Hassall",
+   "rule": "ulan_alt_name",
+   "evidence": "'John Hassall' is a recorded name of the KM node's manually verified ULAN 500001686; other node born 1868 = ULAN 1868",
+   "dupUlan": "http://vocab.getty.edu/ulan/500001686",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 2
+  },
+  {
+   "canon": "Kawase Hasui",
+   "dup": "Hasui Kawase",
+   "rule": "same_token_bag",
+   "evidence": "same bag of words (rule 'same_token_bag') and a recorded name of manually verified ULAN 500333884; other node born 1883 = ULAN 1883",
+   "dupUlan": "http://vocab.getty.edu/ulan/500333884",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 2
+  },
+  {
+   "canon": "Paolo Veronese",
+   "dup": "Paolo Caliari Veronese",
+   "rule": "ulan_alt_name",
+   "evidence": "'Paolo Veronese' is a recorded name of manually verified ULAN 500021218",
+   "dupUlan": "http://vocab.getty.edu/ulan/500021218",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 2
+  },
+  {
+   "canon": "Pierre-Joseph Redouté",
+   "dup": "Pierre Joseph Celestin Redouté",
+   "rule": "ulan_alt_name",
+   "evidence": "'Redouté, Pierre-Joseph' is a recorded name of manually verified ULAN 500005678; other node born 1759 = ULAN 1759",
+   "dupUlan": "http://vocab.getty.edu/ulan/500005678",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 17,
+   "canonWorks": 1
+  }
+ ]
+}

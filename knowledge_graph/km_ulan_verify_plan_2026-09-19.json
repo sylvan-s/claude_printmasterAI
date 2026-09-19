@@ -1,0 +1,75 @@
+{
+ "version": "KM-ULAN-VERIFY-1.0",
+ "reviewedAt": "2026-09-19",
+ "source": "docs/audits/2026-09-19-km-artist-ulan-audit.md group A3; approved by the owner 2026-09-19",
+ "rows": [
+  {
+   "name": "Balthasar van der Ast",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500029053"
+  },
+  {
+   "name": "Claude Stanfield Moore",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500021260"
+  },
+  {
+   "name": "Diego Velázquez",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500016881"
+  },
+  {
+   "name": "Emile Cardinaux",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500021057"
+  },
+  {
+   "name": "Francois Frederic Grobon",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500042643"
+  },
+  {
+   "name": "Francois Le Vaillant",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500095492"
+  },
+  {
+   "name": "Franz Michael Regenfuss",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500003396"
+  },
+  {
+   "name": "Hassall",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500001686"
+  },
+  {
+   "name": "Hasui Kawase",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500333884"
+  },
+  {
+   "name": "Henry Charles Andrews",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500027916"
+  },
+  {
+   "name": "Jan Van Eyck",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500116209"
+  },
+  {
+   "name": "Jan van Huysum",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500001494"
+  },
+  {
+   "name": "Lillian Snelling",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500032153"
+  },
+  {
+   "name": "Paolo Caliari Veronese",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500021218"
+  },
+  {
+   "name": "Pierre Joseph Celestin Redouté",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500005678"
+  },
+  {
+   "name": "Samuel John Peploe",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500017759"
+  },
+  {
+   "name": "Sir Edward Coley Burne-Jones",
+   "ulanUrl": "http://vocab.getty.edu/ulan/500001381"
+  }
+ ]
+}
