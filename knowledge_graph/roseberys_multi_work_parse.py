@@ -1,0 +1,388 @@
+"""
+PrintMasterAI — Roseberys multi-work lot parser (pilot)
+Version: ROSEBERYS-MULTI-0.2
+
+Roseberys lots flagged `multi_work` by the extractor (benchmark/src/roseberys/parse.ts
+detectMultiWork) have been held out of the ACKG since 2026-08-24. The flag is a regex and is
+only a candidate filter: some flagged lots are one work whose NOTE mentions a set, and some are
+one print sold with a book, certificate or box. This module decides, per lot, what it really is
+and — when it is several works — splits it into per-work records.
+
+Two LLM passes, then a deterministic gate:
+  1. TEXT pass — classify the lot and extract each work's fields from the catalogue prose.
+  2. VISION pass — only for split candidates: assign one of the lot's own photos to each work.
+     The API returns only the primary image; the lot page lists every photo in the lot's own
+     S3 folder (the parent directory of `lot.image`). Photo 0 is usually a group shot.
+  3. GATE (validate()) — code, not the model, decides split / single / hold. A lot is held when
+     the works found don't match the declared count, a work has no title (unless the lot is
+     identical copies), or a work gets no confident photo of its own.
+
+Writes nothing to Neo4j. Output is a JSON file per run for scoring against hand labels.
+
+Usage (source .env first):
+    python3 roseberys_multi_work_parse.py --lots pilot_lots.json --out pilot_opus.json
+    python3 roseberys_multi_work_parse.py --lots pilot_lots.json --out pilot_haiku.json --model claude-haiku-4-5
+"""
+
+import argparse
+import base64
+import html
+import io
+import json
+import os
+import re
+import time
+
+import anthropic
+import requests
+from PIL import Image
+
+PARSER_VERSION = "ROSEBERYS-MULTI-0.2"
+# 2026-09-19 pilot (40 hand-labelled lots): Opus 5 38/40 kinds, 0 harmful decisions, every
+# disputed photo match checked by eye was right (it reads pencil titles and edition numbers).
+# Haiku 4.5 27/40 with 8 harmful (over-uses identical_copies; "high" photo confidence was
+# wrong on 3 of 5 checked lots). Sonnet 5 34/40 with 2 harmful, at ~55% of Opus's cost.
+DEFAULT_MODEL = "claude-opus-5"
+PRICING = {"claude-opus-5": (5.00, 25.00), "claude-sonnet-5": (2.00, 10.00),
+           "claude-haiku-4-5": (1.00, 5.00)}
+UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
+ASSET_BASE = "https://am-s3-bucket-assets.s3.eu-west-2.amazonaws.com/roseberys/prod"
+MAX_PHOTOS = 16
+PHOTO_LONG_EDGE = 900
+MAX_DECLARED = 12
+REQUEST_DELAY = 0.7   # courtesy throttle, same as the extractor
+
+LOT_KINDS = ["single_work", "single_work_with_ancillary", "multi_work", "identical_copies",
+             "under_described"]
+
+
+def _nullable(t):
+    return {"anyOf": [{"type": t}, {"type": "null"}]}
+
+
+WORK_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "position": {"type": "integer"},
+        "artist": _nullable("string"),
+        "title": _nullable("string"),
+        "year": _nullable("integer"),
+        "medium": _nullable("string"),
+        "support": _nullable("string"),
+        "dim_kind": _nullable("string"),
+        "width_cm": _nullable("number"),
+        "height_cm": _nullable("number"),
+        "edition_size": _nullable("integer"),
+        "edition_number": _nullable("string"),
+        "signed": _nullable("boolean"),
+        "catalogue_refs": _nullable("string"),
+        "copies": {"type": "integer"},
+        "evidence": {"type": "string"},
+    },
+    "required": ["position", "artist", "title", "year", "medium", "support", "dim_kind",
+                 "width_cm", "height_cm", "edition_size", "edition_number", "signed",
+                 "catalogue_refs", "copies", "evidence"],
+    "additionalProperties": False,
+}
+
+TEXT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "lot_kind": {"type": "string", "enum": LOT_KINDS},
+        "declared_count": _nullable("integer"),
+        "works": {"type": "array", "items": WORK_SCHEMA},
+        "ancillary_items": {"type": "array", "items": {"type": "string"}},
+        "under_described_reason": _nullable("string"),
+        "notes": {"type": "string"},
+    },
+    "required": ["lot_kind", "declared_count", "works", "ancillary_items",
+                 "under_described_reason", "notes"],
+    "additionalProperties": False,
+}
+
+VISION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "photos": {"type": "array", "items": {
+            "type": "object",
+            "properties": {
+                "index": {"type": "integer"},
+                "shows": {"type": "string",
+                          "enum": ["single_work", "group", "detail", "ancillary", "other"]},
+                "work_position": _nullable("integer"),
+            },
+            "required": ["index", "shows", "work_position"],
+            "additionalProperties": False}},
+        "assignments": {"type": "array", "items": {
+            "type": "object",
+            "properties": {
+                "work_position": {"type": "integer"},
+                "photo_index": _nullable("integer"),
+                "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
+                "reason": {"type": "string"},
+            },
+            "required": ["work_position", "photo_index", "confidence", "reason"],
+            "additionalProperties": False}},
+    },
+    "required": ["photos", "assignments"],
+    "additionalProperties": False,
+}
+
+TEXT_PROMPT = """You parse one auction-house catalogue entry (Roseberys, London, Prints & Multiples).
+The lot was flagged as possibly containing more than one work. Decide what it really contains and
+extract each work.
+
+lot_kind — pick exactly one:
+- single_work: one artwork. A note that merely MENTIONS a set, series or portfolio the work belongs
+  to does not make it several works. A single sheet on which several small images are printed or
+  mounted together is one work.
+- single_work_with_ancillary: one artwork sold with non-artwork extras (a book, exhibition
+  catalogue, certificate, box, folder, invitation, letter). List the extras in ancillary_items.
+  A poster or print counts as an artwork, not an extra.
+- multi_work: two or more DIFFERENT artworks, and the entry identifies each one individually — at
+  minimum a distinct title (or an explicit "Untitled" per work) for every work in the declared
+  count. Titles may be listed with semicolons, in (i)/(ii) blocks, in brackets, or after "together
+  with N other prints".
+- identical_copies: two or more impressions of the SAME work — same image, same colourway, same
+  edition — e.g. "(2)" after a single poster title with "each offset lithograph". Different
+  colourways ("in yellow and red"), different images in one series, or the two halves of a
+  diptych are NOT identical copies. Colourways that the entry names individually are multi_work;
+  a set whose members are not named individually is under_described.
+- under_described: several works, but the entry does not identify every one of them individually —
+  e.g. "the complete portfolio of eleven screenprints" with one portfolio title, "eight offset
+  lithographs" under a series name, "four prints including..." with fewer titles than works, or a
+  count with no titles. Say why in under_described_reason.
+
+declared_count: the number of works the entry says the lot contains — the trailing "(n)", or the
+count in the text ("five etchings", "a set of 4", "together with 4 other prints" = 5). Count
+artworks only, not extras. null if no count is given.
+
+works — one entry per distinct artwork, in catalogue order, position starting at 1:
+- For identical_copies give ONE entry with copies = the number of copies. Otherwise copies = 1.
+- For under_described, list only the works that ARE individually identified (may be empty).
+- Resolve "respectively": "numbered 62/70 and 51/70 respectively" gives work 1 edition_number
+  "62/70" and work 2 "51/70". A shared attribute ("each signed", "all from the edition of 75")
+  applies to every work. When the text gives an attribute only for some works ("the first signed",
+  "one framed"), set it only where the text says so and leave the rest null.
+- A "largest sheet"/"largest image" dimension belongs to no single work: leave width/height null.
+  "each sheet: 40 x 59cm" applies to every work. Dimensions are width x height as printed.
+- dim_kind: sheet | image | plate | overall | null.
+- artist: the work's artist when the lot is by several artists; otherwise the lot's artist.
+- year: the work's own year, or null. catalogue_refs: e.g. "Kemp 73", or null.
+- evidence: the exact phrase(s) of the entry this work's title and attributes came from.
+Do not invent anything the entry does not say. Use null for unknowns.
+
+Catalogue entry:
+<entry>
+{entry}
+</entry>"""
+
+VISION_PROMPT = """These are all the photographs an auction house published for one lot, numbered
+from 0 in the order shown on the lot page. The catalogue says the lot contains these works:
+
+{works}
+
+For EACH photo, say what it shows: a single one of the works (single_work, with its work_position),
+several works together (group), a close-up of part of a work already shown (detail, with its
+work_position if you can tell), an extra that is not one of the works — book, certificate, box,
+verso, label (ancillary), or something else (other).
+
+Then for EACH work, pick the one photo that best shows that work on its own (photo_index), or null
+if no photo shows it on its own. Match on the title, medium, colour, subject and size described.
+confidence: high = the photo clearly matches this work's description and no other; medium = likely
+but the descriptions are too thin to be sure; low = a guess (for example you are relying only on
+the photo order). Do not give two works the same photo."""
+
+
+def lot_text(raw):
+    t = re.sub(r"<br\s*/?>", "\n", raw["description"])
+    t = re.sub(r"</p>\s*<p>", "\n", t)
+    t = html.unescape(re.sub(r"<[^>]+>", "", t)).replace("\xa0", " ")
+    return "\n".join(line.strip() for line in t.split("\n")).strip()
+
+
+def lot_photo_urls(raw, lot_url, session):
+    """Every photo in the lot's own S3 folder, in page order. The folder is the parent directory
+    of the API's primary `image`; other folders on the page belong to neighbouring lots."""
+    if not raw.get("image"):
+        return []
+    parts = raw["image"].split("/")
+    folder, primary = parts[-2], parts[-1].rsplit(".", 1)[0]
+    page = session.get(lot_url, headers={"User-Agent": UA}, timeout=60).text
+    time.sleep(REQUEST_DELAY)
+    seen = []
+    for m in re.finditer(r"lot_images/(?:xlarge|large)/" + re.escape(folder) +
+                         r"/([0-9a-f-]+)\.(\w+)", page):
+        if m.group(1) not in [s[0] for s in seen]:
+            seen.append((m.group(1), m.group(2)))
+    if primary not in [s[0] for s in seen]:
+        seen.insert(0, (primary, parts[-1].rsplit(".", 1)[1]))
+    return [f"{ASSET_BASE}/lot_images/large/{folder}/{g}.{ext}" for g, ext in seen]
+
+
+def fetch_jpeg_b64(url, session):
+    r = session.get(url, headers={"User-Agent": UA}, timeout=60)
+    r.raise_for_status()
+    im = Image.open(io.BytesIO(r.content)).convert("RGB")
+    im.thumbnail((PHOTO_LONG_EDGE, PHOTO_LONG_EDGE))
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=85)
+    return base64.standard_b64encode(buf.getvalue()).decode()
+
+
+class Caller:
+    def __init__(self, model):
+        self.client = anthropic.Anthropic()
+        self.model = model
+        self.in_tok = self.out_tok = 0
+
+    def json_call(self, content, schema, max_tokens=8000):
+        for attempt in range(3):
+            try:
+                resp = self.client.messages.create(
+                    model=self.model, max_tokens=max_tokens,
+                    messages=[{"role": "user", "content": content}],
+                    extra_body={"output_config": {"format": {"type": "json_schema",
+                                                             "schema": schema}}})
+            except (anthropic.RateLimitError, anthropic.APIConnectionError,
+                    anthropic.InternalServerError):
+                time.sleep(5 * (attempt + 1))
+                continue
+            self.in_tok += resp.usage.input_tokens
+            self.out_tok += resp.usage.output_tokens
+            if resp.stop_reason == "refusal":
+                return None, "refusal"
+            text = next((b.text for b in resp.content if b.type == "text"), "")
+            try:
+                return json.loads(text), None
+            except json.JSONDecodeError:
+                if resp.stop_reason == "max_tokens":
+                    max_tokens *= 2
+                continue
+        return None, "failed"
+
+    def cost(self):
+        pin, pout = PRICING.get(self.model, (0, 0))
+        return (self.in_tok * pin + self.out_tok * pout) / 1e6
+
+
+def validate(text, vision, n_photos):
+    """The gate. Returns (decision, reasons). decision: single | split | hold."""
+    kind = text["lot_kind"]
+    works = text["works"]
+    if kind in ("single_work", "single_work_with_ancillary"):
+        return "single", []
+    if kind == "under_described":
+        return "hold", ["under_described: " + (text.get("under_described_reason") or "")]
+    reasons = []
+    declared = text["declared_count"]
+    if kind == "identical_copies":
+        if len(works) != 1:
+            reasons.append(f"identical_copies with {len(works)} work entries")
+        found = works[0]["copies"] if works else 0
+    else:
+        found = len(works)
+        missing_title = [w["position"] for w in works if not (w["title"] or "").strip()]
+        if missing_title:
+            reasons.append(f"works without a title: {missing_title}")
+    if declared is None:
+        reasons.append("no declared count")
+    elif declared != found:
+        reasons.append(f"declared {declared} but found {found}")
+    if found < 2:
+        reasons.append(f"only {found} work(s) found")
+    if found > MAX_DECLARED:
+        reasons.append(f"{found} works exceeds cap {MAX_DECLARED}")
+    if n_photos == 0:
+        reasons.append("no photos")
+    elif vision is None:
+        reasons.append("vision pass missing")
+    elif kind == "multi_work":
+        by_pos = {a["work_position"]: a for a in vision["assignments"]}
+        used = {}
+        for w in works:
+            a = by_pos.get(w["position"])
+            if not a or a["photo_index"] is None:
+                reasons.append(f"work {w['position']} has no photo of its own")
+            elif a["confidence"] == "low":
+                reasons.append(f"work {w['position']} photo match is low confidence")
+            elif not (0 <= a["photo_index"] < n_photos):
+                reasons.append(f"work {w['position']} photo index out of range")
+            elif a["photo_index"] in used:
+                reasons.append(f"works {used[a['photo_index']]} and {w['position']} share a photo")
+            else:
+                used[a["photo_index"]] = w["position"]
+    elif kind == "identical_copies":
+        if not any(p["shows"] in ("single_work", "group") for p in vision["photos"]):
+            reasons.append("no photo shows the work")
+    return ("hold", reasons) if reasons else ("split", [])
+
+
+def describe_works(works):
+    lines = []
+    for w in works:
+        bits = [w.get("title") or "(untitled)", w.get("medium"),
+                f"{w['width_cm']} x {w['height_cm']}cm" if w.get("width_cm") else None,
+                f"{w['copies']} copies" if w.get("copies", 1) > 1 else None]
+        lines.append(f"{w['position']}. " + "; ".join(b for b in bits if b))
+    return "\n".join(lines)
+
+
+def parse_lot(lot, caller, session, image_cache):
+    raw = lot["raw"]
+    entry = lot_text(raw)
+    text, err = caller.json_call([{"type": "text", "text": TEXT_PROMPT.format(entry=entry)}],
+                                 TEXT_SCHEMA)
+    out = {"sale": lot["sale"], "lot": lot["lot"], "url": lot["url"], "hammer": lot["hammer"],
+           "heuristic": lot["heuristic"], "entry": entry, "text": text, "text_error": err}
+    if text is None:
+        out.update(decision="hold", reasons=[f"text pass {err}"])
+        return out
+    key = (lot["sale"], lot["lot"])
+    if key not in image_cache:
+        image_cache[key] = lot_photo_urls(raw, lot["url"], session)
+    urls = image_cache[key]
+    out["photo_urls"] = urls
+    vision = None
+    if text["lot_kind"] in ("multi_work", "identical_copies") and urls:
+        content = []
+        for i, u in enumerate(urls[:MAX_PHOTOS]):
+            content.append({"type": "text", "text": f"Photo {i}:"})
+            content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                                        "data": fetch_jpeg_b64(u, session)}})
+        content.append({"type": "text",
+                        "text": VISION_PROMPT.format(works=describe_works(text["works"]))})
+        vision, verr = caller.json_call(content, VISION_SCHEMA)
+        out["vision_error"] = verr
+    out["vision"] = vision
+    decision, reasons = validate(text, vision, min(len(urls), MAX_PHOTOS))
+    out.update(decision=decision, reasons=reasons)
+    return out
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--lots", required=True, help="JSON list of {sale, lot, url, hammer, heuristic, raw}")
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--limit", type=int)
+    args = ap.parse_args()
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        raise RuntimeError("ANTHROPIC_API_KEY is not set. Source .env first.")
+    lots = json.load(open(args.lots))[: args.limit]
+    caller, session, image_cache, results = Caller(args.model), requests.Session(), {}, []
+    for n, lot in enumerate(lots, 1):
+        r = parse_lot(lot, caller, session, image_cache)
+        r["parser"] = f"{PARSER_VERSION}:{args.model}"
+        results.append(r)
+        kind = r["text"]["lot_kind"] if r["text"] else "-"
+        print(f"[{n}/{len(lots)}] {r['sale']} lot {r['lot']}: {kind} -> {r['decision']} "
+              f"{'; '.join(r['reasons'])[:120]}  (${caller.cost():.3f})", flush=True)
+        json.dump(results, open(args.out, "w"), indent=1)
+    print(f"done: {len(results)} lots, {caller.in_tok} in / {caller.out_tok} out tokens, "
+          f"${caller.cost():.2f}")
+
+
+if __name__ == "__main__":
+    main()
