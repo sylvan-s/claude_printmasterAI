@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Roseberys bulk catalogue ingestion into the ACKG (Neo4j)
-Version: ROSEBERYS-INGEST-1.0
+Version: ROSEBERYS-INGEST-1.1
 
 Executable counterpart to doc 09's Roseberys adapter section — same relationship to
 that doc as met_ingest.py has to its own section: the doc describes the mapping, this
@@ -51,6 +51,17 @@ either identity-keying or CatalogueRaisonne/CatalogueEntry storage, so confirmed
 that turned out to still exist in forum_ingest.py's own LOAD_QUERY (it stores the raw,
 unfiltered ref list for CatalogueRaisonne/CatalogueEntry creation even after the
 identity-key fix), flagged for separate cleanup there rather than carried over here.
+
+1.1 fix (found 2026-09-14): this ingest never wrote `estimateLowGBP`/`estimateHighGBP` on
+`SourceRecord` at all — only the native `estimateLow`/`estimateHigh`. Sold rows got the GBP
+fields anyway, but only as a side effect of `repair_bonhams_estimate_gbp.py`, which derives
+them from `estimateLow / fxRateToGBP`, and `fxRateToGBP` is only ever set (by
+`backfill_fx_gbp.py`) on rows with a hammer or realised price — i.e. sold rows. Unsold rows
+never got a `fxRateToGBP` and so never got filled in, even though `catalogue.csv` has the
+estimate for 99.9% of them. Since `priceCurrency` here is always "GBP" (Roseberys is
+GBP-native, unlike Bonhams' mixed-currency source), the correct GBP value needs no FX lookup
+at all: `estimateLowGBP`/`estimateHighGBP` are now written directly from `estimateLow`/
+`estimateHigh` at ingest time, for every row regardless of `sold`.
 
 Usage:
     python3 roseberys_ingest.py --sale A0777
@@ -261,6 +272,8 @@ def map_row(row):
         "imageUrl": _fix_lot_image_url(row.get("image_url")),
         "estimateLow": _num("low_estimate"),
         "estimateHigh": _num("high_estimate"),
+        "estimateLowGBP": _num("low_estimate"),
+        "estimateHighGBP": _num("high_estimate"),
         "reserve": _num("reserve"),
         "hammerPrice": _num("hammer"),
         "hammerBasis": row.get("hammer_basis") if pd.notna(row.get("hammer_basis")) else None,
@@ -329,6 +342,8 @@ SET src.sourceType = "auction",
     src.lotNumber = row.lotNumber,
     src.estimateLow = row.estimateLow,
     src.estimateHigh = row.estimateHigh,
+    src.estimateLowGBP = row.estimateLowGBP,
+    src.estimateHighGBP = row.estimateHighGBP,
     src.reserve = row.reserve,
     src.hammerPrice = row.hammerPrice,
     src.hammerBasis = row.hammerBasis,
