@@ -76,6 +76,11 @@ _MODEL_ONE_OF_RE = re.compile(
 
 _MODEL_RULES = (_MODEL_NUMBERED_RE, _MODEL_EDITION_OF_RE, _MODEL_ONE_OF_RE)
 
+# Public, because train_price_model.proof_class tests the SAME pattern to decide whether a lot
+# is "numbered". That shared use is the reason this rule belongs in one module: a lot's edition
+# band and its proof class must agree about what "numbered n/N" means.
+MODEL_NUMBERED_FRACTION_RE = _MODEL_NUMBERED_RE
+
 
 def _first(text, *patterns, positive_only):
     """`positive_only` is the one place the two rules differ mechanically: the model rule

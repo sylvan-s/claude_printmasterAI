@@ -40,7 +40,10 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from edition_size import size_from_text_model  # noqa: E402
+from edition_size import (  # noqa: E402
+    size_from_text_model,
+    MODEL_NUMBERED_FRACTION_RE as NUMBERED_RE,
+)
 
 import numpy as np
 import pandas as pd
