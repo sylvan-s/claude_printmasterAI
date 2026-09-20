@@ -47,6 +47,13 @@ const NARROW_VARIANT: Record<string, number | null> = {
   "DIVERGENCE-edition-of-approximately": null,
   "DIVERGENCE-edition-of-circa": null,
   "DIVERGENCE-roman-numerator-arabic-denom": null,
+  // The trailing \b in NUMBERED_FRACTION_RE rejects suffixed edition numbers that auctioneers
+  // really write — 20/25" in quotes, 14/250P, 48/50A. knowledge_graph/edition_size.py's INGEST
+  // rule dropped that \b in EDITION-SIZE-1.1 and reads them; these three mirrors still do not.
+  // Measured 2026-09-20, recorded rather than fixed: separate divergence, own row count.
+  "suffix-quoted-20-25": null,
+  "suffix-letter-50A": null,
+  "suffix-letter-250P": null,
 };
 
 for (const f of FIXTURES) {

@@ -1,5 +1,5 @@
 """
-EDITION-SIZE-1.0 fixture runner (Python side). No network, no Neo4j, no LLM.
+EDITION-SIZE-1.1 fixture runner (Python side). No network, no Neo4j, no LLM.
 
 Reads tests/fixtures/edition_size.jsonl — the SAME file the TypeScript runner reads
 (tests/benchmark_parse/edition_size_tests.ts). That shared file is the only thing holding the
@@ -33,14 +33,11 @@ DIVERGENT = {
     "DIVERGENCE-roman-numerator-arabic-denom": {"ingest": 50,    "model": None},
     "DIVERGENCE-six-figure":                  {"ingest": 250000, "model": None},
 
-    # KNOWN GAPS, not deliberate divergences. These two are ordinary catalogue phrasings that
-    # the ingest rule does not read at all, so bonhams_ingest and swann_ingest store no edition
-    # size for them: 343 impressions in the graph, 318 with no stored size, 248 of those sold
-    # (measured 2026-09-20, ADR-0020). Recorded here rather than fixed, because EDITION-SIZE-1.0
-    # is a pure move; closing them is EDITION-SIZE-1.1 with its own row count. When that lands,
-    # DELETE these two entries — they should start failing.
-    "numbered-in-pencil-3-8":                 {"ingest": None,   "model": 8},
-    "no-dot-45-250":                          {"ingest": None,   "model": 250},
+    # The model rule's trailing \b rejects suffixed edition numbers that the ingest rule reads.
+    # Measured 2026-09-20 while adopting EDITION-SIZE-1.1; not fixed there, separate divergence.
+    "suffix-quoted-20-25":                    {"ingest": 25,     "model": None},
+    "suffix-letter-50A":                      {"ingest": 50,     "model": None},
+    "suffix-letter-250P":                     {"ingest": 250,    "model": None},
 }
 
 passed = failed = 0

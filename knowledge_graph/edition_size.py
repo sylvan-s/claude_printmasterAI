@@ -1,6 +1,6 @@
 """
 PrintMasterAI — declared edition size, read out of free-form catalogue prose.
-Version: EDITION-SIZE-1.0
+Version: EDITION-SIZE-1.1
 
 One question — "how large was the run this impression belongs to?" — that had four separate
 implementations, each patched on its own. See docs/adr/0020-shared-parsing-rule-modules.md for
@@ -16,10 +16,11 @@ Three bugs have been fixed in this family, each in one implementation at a time:
   * "edition of 1,000" stopped at the comma and stored an edition of 1, in both the ingest and
     the model (229 EditionRuns, 2026-09-17). Guarded by check_edition_thousands.py.
 
-EDITION-SIZE-1.0 IS A MOVE, NOT A FIX. The two functions below are byte-faithful copies of the
-two Python implementations as they stood on 2026-09-20, kept separate and separately named
-precisely because they do not agree. Reconciling them is a later, separately measured change —
-a move and a behaviour change in one commit can be neither reviewed nor bisected.
+EDITION-SIZE-1.0 was a pure move: the two functions below were byte-faithful copies of the two
+Python implementations as they stood on 2026-09-20, kept separate because they do not agree.
+EDITION-SIZE-1.1 closed the first divergence, in the ingest rule only — see its comment. They
+are still two rules; "one of N impressions" and the approximately/circa qualifiers remain
+model-only, and the five-digit cap remains model-only.
 
 `src/shared/text_extraction.ts` detectEditionSize mirrors `size_from_text_model` and must change
 with it: live lots are classified the way training lots were, so a rule that moves here without
@@ -40,13 +41,26 @@ _APPROX = r"(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?"
 _NOT_A_DIMENSION = r'(?!\s*(?:mm\b|cm\b|["”]))'
 
 # ---- Ingest rule: bonhams_parsing.extract_edition_size, serving bonhams_ingest + swann_ingest.
-# Accepts roman impression numbers ("numbered XII/50"), which the model rule does not. Carries no
-# mm/cm/inch lookahead: it is shielded instead by requiring the literal "number(ed)" prefix
-# immediately before the fraction, so a bare dimension fraction can never reach it. Does NOT
-# accept "No. 45/250" or "numbered in pencil 3/8" — 343 real impressions, 318 of them with no
-# stored size (ADR-0020).
+# Accepts roman impression numbers ("numbered XII/50"), which the model rule does not.
+#
+# EDITION-SIZE-1.1 (2026-09-20) added the "No. 45/250" prefix and the "in pencil" filler, which
+# this rule had never read: 344 impressions across Bonhams/Skinner/Swann, 325 of which had no
+# edition size at all. The other 19 had one, and every one of them was wrong in the same way —
+# the rule had fallen through to an "edition of N" naming a DIFFERENT run mentioned in
+# parentheses. "numbered in pencil 151/500 (aside from the edition of 3000 with text)" was
+# stored as 3000; "98/180 (there was also an edition of 10 in Roman numerals)" as 10, which put
+# a sold lot in the <=30 band. Reading the fraction is what makes the documented precedence —
+# the fraction names the run THIS impression belongs to — actually reachable here.
+#
+# Carries no mm/cm/inch lookahead, deliberately. It is shielded instead by requiring a
+# "number(ed)"/"No." prefix immediately before the fraction, so a bare dimension fraction can
+# never reach it. Adding the model rule's guard was measured and REJECTED: its trailing \b
+# rejects the suffixed edition numbers auctioneers really write — 20/25" in quotes, 14/250P,
+# 48/50A, 8/9C, 10/200in pen — losing 15 rows to buy nothing. (The model rule still carries
+# that \b and so still loses them; not fixed here, separate divergence.)
 _INGEST_NUMBERED_FRACTION_RE = re.compile(
-    r"number(?:ed)?\s+['\"]?[ivxlcdm\d]+\s*/\s*" + _EDITION_NUMBER, re.IGNORECASE)
+    r"(?:number(?:ed)?\s+|no\.\s*)(?:in pencil\s*)?"
+    r"['\"\u2018\u2019\u201c\u201d]?[ivxlcdm\d]+\s*/\s*" + _EDITION_NUMBER, re.IGNORECASE)
 _INGEST_EDITION_OF_RE = re.compile(r"edition of\s+" + _EDITION_NUMBER, re.IGNORECASE)
 
 # ---- Model rule: train_price_model's text fallback, used only when the graph has no declared

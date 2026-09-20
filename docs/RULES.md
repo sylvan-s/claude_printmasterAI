@@ -11,7 +11,7 @@ family; do not add a fifth implementation of it.
 | rule ID | question | Python | TS mirror | fixtures | guards |
 |---|---|---|---|---|---|
 | `COPY-TYPE-1.1` | proof class: AP / HC / PP / BAT / TP / numbered | `knowledge_graph/copy_type.py` | `src/appraisal/knowledge_graph/price_attrs.ts` `detectCopyType` | — | `check_copy_type_bat.py` |
-| `EDITION-SIZE-1.0` | declared size of the run | `knowledge_graph/edition_size.py` | `src/shared/text_extraction.ts` `detectEditionSize` (narrow), `price_attrs.ts` `editionSizeOf` (wide) | `tests/fixtures/edition_size.jsonl` | `check_edition_thousands.py`, `check_forum_edition_fractions.py` |
+| `EDITION-SIZE-1.1` | declared size of the run | `knowledge_graph/edition_size.py` | `src/shared/text_extraction.ts` `detectEditionSize` (narrow), `price_attrs.ts` `editionSizeOf` (wide) | `tests/fixtures/edition_size.jsonl` | `check_edition_thousands.py`, `check_forum_edition_fractions.py` |
 | *(unformed)* | signed / signature class | `bonhams_parsing.detect_signed`, `train_price_model.signature_class` | `price_attrs.ts` `signatureClass` | — | — |
 | *(unformed)* | dimensions | per-house | `text_extraction.parseDimensions`, `forum/parse.ts` | — | `check_roseberys_dimensions.py` |
 | *(unformed)* | catalogue raisonné refs | `catalogue_matching.py` | `text_extraction.extractCatalogueRefs` | — | `check_catalogue_prefix_aliases.py` |
@@ -31,9 +31,10 @@ Both read `tests/fixtures/edition_size.jsonl`. Both must pass.
 npm run test:edition-size && npm run test:edition-size-py
 ```
 
-`EDITION-SIZE-1.0` keeps **two** rules, deliberately unreconciled: `size_from_text_ingest`
+`EDITION-SIZE-1.1` keeps **two** rules, deliberately unreconciled: `size_from_text_ingest`
 (bonhams + swann ingests) and `size_from_text_model` (the price model and, mirrored,
-`price_attrs.ts`). They disagree on six corpus cases and two known gaps; the table is in
+`price_attrs.ts`). They still disagree: `one of N`/`approx` are model-only, and the model's trailing `\b` loses
+suffixed edition numbers (`48/50A`, `20/25"`) that the ingest rule reads. The table is in
 ADR-0020 and asserted in `knowledge_graph/edition_size_test.py`.
 
 ## Guards

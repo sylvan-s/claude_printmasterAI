@@ -4,7 +4,8 @@
 **Status:** Proposed. The pattern is not new — it is read off `knowledge_graph/copy_type.py`
 (`COPY-TYPE-1.1`, on `fix/ingest-dims-copytype`), which already implements every element below
 for the copy-type family. This ADR names that shape so the next family does not have to
-rediscover it. **Phase 2 (measurement) done 2026-09-20**, numbers in Context.
+rediscover it. **Phase 2 (measurement) done 2026-09-20**, numbers in Context. **EDITION-SIZE-1.1 adopted
+2026-09-20** — the ingest gap closed; see Reconciliations.
 
 A *rule family* is one question asked of free-form catalogue prose — "what was the edition
 size?", "is this a proof, and of what kind?", "is it signed?". Each family gets exactly one
@@ -97,6 +98,45 @@ cannot be reviewed, and cannot be bisected.
 **8. Nothing in this pattern writes to the graph.** Unifying a parser changes what *new*
 ingests produce. Existing stored values move only under a named repair script, decided
 separately, measured separately.
+
+## Reconciliations
+
+Each divergence closes in its own commit with its own row count, per decision 7.
+
+### EDITION-SIZE-1.1 — the ingest gap (adopted 2026-09-20)
+
+The ingest rule now reads the `No. 45/250` prefix and the `in pencil` filler. **348 rows change
+across the graph; the model rule is provably untouched (0 rows).** Of the 344 in houses that
+actually consume this rule, 325 gain an edition size they never had, and 19 had one that was
+wrong.
+
+All 19 were reviewed individually and all 19 are corrections of the same shape: the rule could
+not read the fraction, so it fell through to an `edition of N` that named a *different* run
+mentioned in parentheses. `numbered in pencil 151/500 (aside from the edition of 3000 with text)`
+was stored as 3000. `98/180 (there was also and edition of 10 in Roman numerals)` was stored as
+10 — a sold lot in the <=30 band. Reading the fraction is what makes the family's documented
+precedence reachable here at all.
+
+**The model rule's dimension guard was measured and rejected for this rule.** Adding it buys
+nothing — the ingest rule is already shielded by requiring a `number(ed)`/`No.` prefix
+immediately before the fraction — and its trailing `\b` *loses* 15 rows, because it rejects the
+suffixed edition numbers auctioneers really write: `20/25"` in quotes, `14/250P`, `48/50A`,
+`8/9C`, `10/200in pen`.
+
+### Open: the trailing `\b` (next)
+
+That same `\b` is in `train_price_model`, `price_attrs.ts` **and** `text_extraction.ts`, so three
+implementations — including the live Stage 3 pricing path — still lose those rows. Found while
+adopting 1.1, recorded in both fixture runners, not fixed there: separate divergence, own count.
+
+### Open: `one of N impressions` and the approximately/circa qualifiers
+
+Model-only, 999 impressions, 902 with no stored size. Unchanged by 1.1.
+
+### Not yet decided: the graph repair
+
+1.1 changes what *new* ingests produce. The 348 stored values already in the graph are untouched.
+Moving them is a named repair script with its own measurement and its own decision.
 
 ## What is deliberately excluded
 
