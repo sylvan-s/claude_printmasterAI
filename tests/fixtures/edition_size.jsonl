@@ -1,0 +1,24 @@
+{"id":"dim-fraction-25-1-2in","text":"Offset lithograph printed in colours, on wove paper, 530 x 648mm (20 7/8 x 25 1/2in) (framed)","expect":null,"why":"imperial dimension fraction is not an edition (2026-09-17: put 1,442 priced Forum sales in the <=30 band)"}
+{"id":"dim-fraction-16-1-2in","text":"Offset lithograph printed in colours, 1995, 419 x 297mm (16 1/2 x 11 3/4in)","expect":null,"why":"as above"}
+{"id":"dim-fraction-2-1-2in","text":"Etching, circa 1640, a later impression, sheet 95 x 64mm (3 3/4 x 2 1/2in)","expect":null,"why":"as above"}
+{"id":"dim-fraction-19-5-8in","text":"Screenprint in colours, signed in pencil, 700 x 500mm (27 1/2 x 19 5/8in)","expect":null,"why":"signed but unnumbered: no size is knowable"}
+{"id":"dim-fraction-proof-before","text":"Lithograph, 1980, a proof before the edition, 613 x 625mm (24 1/8 x 24 5/8in)","expect":null,"why":"'the edition' with no number must not borrow one from the dimensions"}
+{"id":"numbered-21-30","text":"Lithograph in sepia, 1980, signed, dated and numbered 21/30 in pencil, 613 x 625mm (24 1/8 x 24 5/8in)","expect":30,"why":"canonical numbered fraction"}
+{"id":"numbered-quoted-12-50","text":"Etching, signed and numbered '12/50' in pencil, 250 x 200mm (9 7/8 x 7 7/8in)","expect":50,"why":"quote marks around the fraction"}
+{"id":"numbered-in-pencil-3-8","text":"Screenprint, numbered in pencil 3/8, on wove paper","expect":8,"why":"'in pencil' between keyword and fraction"}
+{"id":"no-dot-45-250","text":"Screenprint, No. 45/250, on wove paper, 500 x 700mm (19 5/8 x 27 1/2in)","expect":250,"why":"'No.' prefix instead of 'numbered'"}
+{"id":"numbered-from-edition-of-80","text":"Etching, 1982, signed, titled, dated and numbered from the edition of 80 in pencil, 510 x 647mm (20 x 25 3/8in)","expect":80,"why":"'edition of' phrasing with no fraction"}
+{"id":"edition-of-150","text":"Aquatint, from the edition of 150, 300 x 400mm (11 3/4 x 15 3/4in)","expect":150,"why":"'edition of' must beat the bare dimension fraction"}
+{"id":"precedence-numbered-beats-edition-of","text":"Lithograph, signed and numbered 12/50 in pencil (there was also an unsigned edition of 500), 560 x 760mm (22 x 29 7/8in)","expect":50,"why":"the run THIS impression belongs to wins over another run mentioned in the same sentence"}
+{"id":"precedence-numbered-7-250","text":"Screenprint, from the edition of 250 (there were also 25 artist's proofs), numbered 7/250 in pencil","expect":250,"why":"both routes agree here; pins the precedence order"}
+{"id":"thousands-edition-of-1000","text":"Lithograph, an artist's proof aside from the edition of 1,000, 266 x 229mm (10 1/2 x 9in)","expect":1000,"why":"thousands separator: 'edition of 1,000' had read as 1 (2026-09-17 junk review)"}
+{"id":"thousands-numbered-441-1000","text":"Offset lithograph, signed and numbered 441/1,000 in pencil","expect":1000,"why":"thousands separator in the fraction denominator"}
+{"id":"edition-of-50-printer","text":"Lithograph, from the edition of 50, printed by Mourlot, 500 x 650mm (19 5/8 x 25 5/8in)","expect":50,"why":"printer clause must not disturb the match"}
+{"id":"DIVERGENCE-one-of-impressions","text":"Etching with drypoint, one of 50 impressions, on laid paper, 200 x 150mm (7 7/8 x 5 7/8in)","expect":50,"why":"DIVERGENCE: only train_price_model has ONE_OF_RE"}
+{"id":"DIVERGENCE-one-of-copies","text":"Woodcut, one of 200 copies, on Japan paper","expect":200,"why":"DIVERGENCE: ONE_OF_RE, 'copies' variant"}
+{"id":"DIVERGENCE-edition-of-approximately","text":"Etching, from the edition of approximately 200, on wove paper","expect":200,"why":"DIVERGENCE: only train_price_model accepts the approximately/approx./about/circa qualifier"}
+{"id":"DIVERGENCE-edition-of-circa","text":"Lithograph, edition of circa 75, printed by Mourlot","expect":75,"why":"DIVERGENCE: 'circa' qualifier"}
+{"id":"DIVERGENCE-roman-numeral","text":"Etching, numbered XII/L in pencil, on laid paper","expect":null,"why":"DIVERGENCE: only bonhams_parsing accepts roman impression numbers, and it still cannot read a roman DENOMINATOR, so no implementation returns 50 here"}
+{"id":"DIVERGENCE-roman-numerator-arabic-denom","text":"Etching, numbered XII/50 in pencil, on laid paper","expect":50,"why":"DIVERGENCE: roman numerator with arabic denominator - bonhams_parsing reads it, the other three do not"}
+{"id":"DIVERGENCE-numbered-inches-no-guard","text":"Etching, numbered 25 1/2in from the top edge, on laid paper","expect":null,"why":"DIVERGENCE: bonhams_parsing has no mm/cm/inch lookahead guard, so 'numbered ... 1/2in' can still read as an edition of 2"}
+{"id":"DIVERGENCE-six-figure","text":"Offset lithograph, from the edition of 250000, a mass-market reproduction","expect":250000,"why":"DIVERGENCE: train_price_model caps the number at \\d{1,5}, the other three do not"}

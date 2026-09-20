@@ -46,6 +46,7 @@
     "backtest:attributed-lot": "tsx tests/backtest/run_attributed_lot.ts",
     "test:leak-detection": "tsx tests/benchmark_parse/leak_detection_tests.ts",
     "test:edition-size": "tsx tests/benchmark_parse/edition_size_tests.ts",
+    "test:edition-size-py": "python3 knowledge_graph/edition_size_test.py",
     "test:comp-storability": "tsx tests/comp_storability/run_tests.ts",
     "report:valuation": "tsx tests/backtest/valuation_report.ts",
     "report:hammer": "tsx tests/backtest/hammer_report.ts",

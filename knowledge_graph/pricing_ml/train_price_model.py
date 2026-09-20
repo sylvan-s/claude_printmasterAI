@@ -35,8 +35,12 @@ Usage:
 import argparse
 import json
 import math
+import os
 import re
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from edition_size import size_from_text_model  # noqa: E402
 
 import numpy as np
 import pandas as pd
@@ -144,14 +148,10 @@ def proof_class(copy_type, text):
     return "unknown"
 
 
-# Edition wording (2026-09-17). A bare "n/N" is NOT an edition: in catalogue text it is almost
-# always an inch fraction, "(19 1/2 x 15 1/4in)", and the old fallback took the first one it
-# found — 6,257 training rows (mostly Bonhams) got editions of 2/4/8/16, and "5/8 ... one of
-# approximately 50 impressions" read as 8. Only explicit wording counts now, in this order.
-# Mirrored exactly in src/appraisal/knowledge_graph/price_attrs.ts (npm run test:price-attrs).
-NUMBERED_RE = re.compile(r"\b(?:numbered|no\.)\s*(?:in pencil\s*)?['\"\u2018\u2019\u201c\u201d]?\d+\s*/\s*(\d{1,3}(?:,\d{3})+|\d{1,5})\b(?!\s*(?:mm\b|cm\b|[\"\u201d]))", re.I)
-EDITION_OF_RE = re.compile(r"\bedition of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,3}(?:,\d{3})+|\d{1,5})\b", re.I)
-ONE_OF_RE = re.compile(r"\bone of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,3}(?:,\d{3})+|\d{1,5})\s+(?:impressions|copies|examples)\b", re.I)
+# Edition wording: the three rules now live in knowledge_graph/edition_size.py (EDITION-SIZE-1.0, ADR-0020) as
+# size_from_text_model, shared with the ingests' variant. Mirrored in
+# src/appraisal/knowledge_graph/price_attrs.ts editionSizeOf (npm run test:price-attrs) — change
+# the two together, because live lots are priced the way training lots were.
 
 
 def edition_size(declared, text):
@@ -160,14 +160,8 @@ def edition_size(declared, text):
             return float(declared)
     except (TypeError, ValueError):
         pass
-    t = text or ""
-    for rx in (NUMBERED_RE, EDITION_OF_RE, ONE_OF_RE):
-        m = rx.search(t)
-        # "1,000": thousands separators (2026-09-17 junk review: "edition of 1,000" had read as 1)
-        n = int(m.group(1).replace(",", "")) if m else 0
-        if n > 0:
-            return float(n)
-    return np.nan
+    n = size_from_text_model(text)
+    return float(n) if n else np.nan
 
 
 def edition_band(n):

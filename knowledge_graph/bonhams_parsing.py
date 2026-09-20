@@ -26,6 +26,8 @@ NAMES guard and no-fuzzy-matching rule).
 
 import re
 
+from edition_size import size_from_text_ingest
+
 _TAG_RE = re.compile(r"<[^>]+>")
 
 
@@ -291,19 +293,11 @@ def detect_signed(detail_text):
 
 
 # ---- Edition size ----
-_EDITION_NUMBER = r"(\d{1,3}(?:,\d{3})+|\d+)"   # "1,000" is one number
-_NUMBERED_FRACTION_RE = re.compile(r"number(?:ed)?\s+['\"]?[ivxlcdm\d]+\s*/\s*" + _EDITION_NUMBER, re.IGNORECASE)
-_EDITION_OF_RE = re.compile(r"edition of\s+" + _EDITION_NUMBER, re.IGNORECASE)
-
-
+# Moved to knowledge_graph/edition_size.py (EDITION-SIZE-1.0, ADR-0020), which is where this
+# rule now lives for every consumer. Re-exported under the old name so swann_ingest's import
+# does not move; behaviour verified identical on all 138,740 rawMedium rows in the graph.
 def extract_edition_size(detail_text):
-    m = _NUMBERED_FRACTION_RE.search(detail_text)
-    if m:
-        return int(m.group(1).replace(",", ""))
-    m = _EDITION_OF_RE.search(detail_text)
-    if m:
-        return int(m.group(1).replace(",", ""))
-    return None
+    return size_from_text_ingest(detail_text)
 
 
 # ---- Printer / publisher ----

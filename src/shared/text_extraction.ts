@@ -191,9 +191,17 @@ export function extractCatalogueRefs(text: string): string[] {
  * too. A bare "n/N" is NOT enough: in catalogue text it is almost always an imperial fraction
  * ("25 1/2in"), which read as editions of 2/4/8/16 on ~1,500 priced Forum and Roseberys sales
  * before the 2026-09-17 repair.
+ *
+ * EDITION-SIZE-1.0 (ADR-0020): the two patterns below are the only TypeScript copy — Forum's
+ * parser imports them rather than keeping its own, which it did until 2026-09-20. This is the
+ * narrower of the two variants in knowledge_graph/edition_size.py: it does NOT read
+ * "one of N impressions" or the approximately/circa qualifiers, and applies no five-digit cap.
+ * price_attrs.ts editionSizeOf is the wider one, mirroring size_from_text_model.
  */
+export const NUMBERED_FRACTION_RE = /\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201C\u201D]?\d+\s*\/\s*(\d{1,3}(?:,\d{3})+|\d+)\b(?!\s*(?:mm\b|cm\b|["\u201D]))/i;
+export const EDITION_OF_RE = /edition\s+of\s+(\d{1,3}(?:,\d{3})+|\d+)/i;
+
 export function detectEditionSize(text: string): number | null {
-  const m = text.match(/\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201C\u201D]?\d+\s*\/\s*(\d{1,3}(?:,\d{3})+|\d+)\b(?!\s*(?:mm\b|cm\b|["\u201D]))/i)
-    ?? text.match(/edition\s+of\s+(\d{1,3}(?:,\d{3})+|\d+)/i);
+  const m = text.match(NUMBERED_FRACTION_RE) ?? text.match(EDITION_OF_RE);
   return m ? Number(m[1].replace(/,/g, "")) : null;   // "edition of 1,000" is 1000, not 1
 }
