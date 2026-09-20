@@ -160,6 +160,15 @@ These are the coverage holes, and they matter more than any single rule fix:
    `forum/parse.ts` also argues, correctly, that dimension logic is genuinely house-specific in a
    way edition size is not — so this family may never fully merge.
 
+### Test the rules with a strong model — PLANNED, PAUSED
+
+[docs/plans/2026-09-20-parser-oracle.md](plans/2026-09-20-parser-oracle.md). Grade the
+deterministic rules with a strong LLM, then hand recurring shapes down to a Haiku-class model
+where — and only where — that specific shape survives the swap. The oracle is a discovery
+instrument: the default disposition for what it finds is to fold it back into the rule.
+**Paused 2026-09-20 for token budget. Resume at Phase 0**, the calibration run against the 344
+known-correct repaired rows.
+
 ### Structural work worth doing
 
 6. **Stop re-parsing downstream.** The measured lesson from the trailing-`\b` divergence: the fix
