@@ -19,11 +19,21 @@ editions, and nothing here should be read as a count of editions.
 THE CLASSES, in the order they are tested — first match wins, because the reasons compound
 (a proof of a second state is a proof for this purpose):
 
-  implausible_size   a size no edition takes (< 5, or > 25,000), or a size equal to a number
-                     that is plainly a dimension in the same line. The edition-fraction and
-                     thousands-separator bugs both landed here.
+  implausible_size   a size no edition takes (< 5, or > 25,000), or a size equal to a whole
+                     number that is plainly a dimension in the same line.
+
+                     TREAT THIS BUCKET AS A QUEUE, NOT A VERDICT. Checked against the text on
+                     2026-09-20, most of its members are not defects: a genuine edition of 3
+                     exists, and a large size is usually real ("numbered 65705/69996"). Across
+                     the whole graph only 2 EditionRuns held an impossible value (declaredSize
+                     0, from the catalogue typos "14/00" and "1/0"), and both were cleared —
+                     edition_band() reads 0 as the <=30 band rather than as unknown, so a zero
+                     silently priced those as tiny editions.
   proof_or_aside     the smaller run's text says proof / artist's proof / printer's proof /
-                     hors commerce / "aside from the edition". An aside is not a second run.
+                     hors commerce / "aside from the edition". An aside is not a second run —
+                     but it is not a data defect either: "numbered 23/30 (aside from the
+                     edition of 60)" is a real parallel issue, correctly stored. This bucket
+                     excludes a work from the within-work estimate; it does not condemn it.
   state_variant      the text names a state ("2nd state", "état"). States belong to ONE work
                      (ADR-0017) and their runs are not comparable as edition sizes.
   one_publication    both sizes appear in a single record's own text ("edition of 950, there
@@ -79,14 +89,20 @@ RETURN cw.id AS workId, cw.name AS name, a.name AS artist, sizes,
 
 def dimension_numbers(text):
     """Numbers that are plainly measurements in the same line — the shape both edition-parsing
-    bugs produced (an inch fraction, a thousands separator read as a size)."""
+    bugs produced (an inch fraction, a thousands separator read as a size).
+
+    EXACT integers only. Truncating a float to an int made this a false-positive machine: a
+    sheet "60.5 x 45cm" flagged a genuine edition of 60, and 18 of the first run's 68
+    implausible_size verdicts were nothing but that."""
     out = set()
     for m in re.finditer(r"(\d[\d,.]*)\s*(?:x|×)\s*(\d[\d,.]*)", text or ""):
         for g in m.groups():
             try:
-                out.add(int(float(g.replace(",", ""))))
+                v = float(g.replace(",", ""))
             except ValueError:
-                pass
+                continue
+            if v.is_integer():
+                out.add(int(v))
     return out
 
 
