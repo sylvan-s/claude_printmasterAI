@@ -37,6 +37,8 @@ const SALE = argOf("--sale", "A0793")!;
 const MIN_RATIO = Number(argOf("--min-ratio", "1.0"));
 const CONCURRENCY = Number(argOf("--concurrency", "6"));
 const SALE_DATE = argOf("--sale-date", "2026-09-23")!;
+/** Restrict to these lot numbers and print each one's comps and witnesses in full. */
+const ONLY = (argOf("--lots", "") ?? "").split(",").map((t) => t.trim()).filter(Boolean);
 const HOUSE = "Roseberys London";
 
 interface Row {
@@ -79,6 +81,23 @@ async function valueLot(raw: RawLot, gt: ParsedLot, auction: any): Promise<Row |
   if (!cal) throw new Error("blend calibration unreadable");
   const r = stage3aValuation(ev, cal, loadColumnMeans());
   if (!r) return null;
+  if (ONLY.length) {
+    console.log(`\n===== lot ${raw.lot_number} — ${canonical}, "${claim.title}"`);
+    console.log(`  catalogue: ${claim.medium ?? "-"}`);
+    console.log(`  estimate ${claim.estimateLow}-${claim.estimateHigh} GBP | Stage 3a ${r.lowGBP}-${r.highGBP}, median ${r.medianGBP} | tier ${r.evidenceTier}`);
+    console.log(`  work identity: ${graph.identity.basis ?? "unresolved"} (${graph.identity.workIds.length} node(s)), matched "${graph.identity.matchedName ?? "-"}"`);
+    console.log(`  sell-through: ${ev.sellThrough ? `${ev.sellThrough.sold} sold / ${ev.sellThrough.sold + ev.sellThrough.unsold} appearances` : "-"}`);
+    console.log(`  comps: ${ev.comps.coverageNote}`);
+    for (const c of ev.comps.items) {
+      console.log(`    ${c.tier.padEnd(22)} ${String(c.saleDate ?? "-").slice(0, 10)} ${String(c.house ?? "-").padEnd(24)} hammer ${c.hammerGBP ?? "-"} ${c.currency ?? ""}` +
+        ` | "${c.workTitle ?? "-"}" ed ${c.attrs?.editionSize ?? "-"} area ${c.attrs?.areaCm2 ?? "-"} sig ${c.attrs?.signature ?? "-"}` +
+        ` | clip ${c.clipSimilarity != null ? c.clipSimilarity.toFixed(3) : "-"}`);
+      if (c.listingUrl) console.log(`      ${c.listingUrl}`);
+    }
+    for (const w of r.witnesses) console.log(`  witness ${w.source}: ${Math.round(w.priceGBP)} GBP, weight ${Math.round(w.effectiveWeight * 100)}%, sigma ${w.sigma.toFixed(3)} — ${w.basis}`);
+    if (r.divergence.length) console.log(`  divergence: ${r.divergence.map((d) => `${d.a} vs ${d.b} x${d.ratio}`).join("; ")}`);
+    if (r.waterfall) for (const b of r.waterfall.bars) console.log(`  bar ${b.key.padEnd(12)} x${String(b.multiplier).padEnd(6)} ${b.fromGBP} -> ${b.toGBP}  ${b.label}`);
+  }
   const st = ev.sellThrough ?? { sold: 0, unsold: 0 };
   return {
     lot: raw.lot_number, artist: canonical, title: claim.title ?? "", lowEst: raw.low_estimate!, highEst: raw.high_estimate!,
@@ -99,6 +118,7 @@ async function main() {
   const skipped = new Map<string, number>();
   for (const l of lots) {
     const e = eligible(l);
+    if (ONLY.length && !ONLY.includes(String(l.lot_number))) continue;
     if (e.ok) work.push({ raw: l, gt: e.gt! });
     else skipped.set(e.why!.split(":")[0], (skipped.get(e.why!.split(":")[0]) ?? 0) + 1);
   }
@@ -131,7 +151,10 @@ async function main() {
   const byTier = new Map<string, number>();
   for (const r of rows) byTier.set(r.tier, (byTier.get(r.tier) ?? 0) + 1);
   console.log(`\nevidence tiers: ${[...byTier].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(", ")}`);
-  writeFileSync(`tests/backtest/output/${SALE}_stage3a_screen.json`, JSON.stringify(rows, null, 1));
-  console.log(`wrote tests/backtest/output/${SALE}_stage3a_screen.json (${rows.length} rows)`);
+  // A --lots run is an inspection of a few lots, not a screen: it must never overwrite the
+  // whole-sale ranking that a full run produced.
+  const out = `tests/backtest/output/${SALE}_stage3a_screen${ONLY.length ? "_lots" : ""}.json`;
+  writeFileSync(out, JSON.stringify(rows, null, 1));
+  console.log(`wrote ${out} (${rows.length} rows)`);
 }
 main().catch(async (e) => { console.error(e); await closeDriver(); process.exit(1); });
