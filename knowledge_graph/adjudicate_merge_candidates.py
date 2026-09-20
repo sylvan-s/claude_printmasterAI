@@ -189,9 +189,14 @@ def fetch_image(url, cache):
     except Exception:
         cache[url] = (None, None)
         return cache[url]
-    if len(body) > MAX_IMAGE_BYTES or len(body) < 1000:
+    if len(body) < 1000:
         cache[url] = (None, None)
         return cache[url]
+    # Oversized is a REASON TO SHRINK, not to drop. Dropping cost a real verdict: Peter Milton's
+    # "Interior VII" came back UNCERTAIN on both models because one Bonhams photo was 4.1MB, a
+    # tenth over the cap — and an unfetched image is reported exactly like a model that looked
+    # and could not tell. _shrink_if_oversized re-encodes; only if it still will not fit do we
+    # give up on the image.
     # SNIFF, DO NOT TRUST THE HEADER. Forum's S3 bucket serves .webp under a generic type, and
     # defaulting those to image/jpeg made the API reject the request — 1 of the first 14 pairs
     # was lost to it, reported as UNCERTAIN with an API error in the reasoning field.
@@ -199,24 +204,28 @@ def fetch_image(url, cache):
     media = sniffed or (media if media in
                         ("image/jpeg", "image/png", "image/gif", "image/webp") else "image/jpeg")
     body, media = _shrink_if_oversized(body, media)
+    if body is None:
+        cache[url] = (None, None)
+        return cache[url]
     cache[url] = (media, base64.standard_b64encode(body).decode())
     return cache[url]
 
 
 def _shrink_if_oversized(body, media):
-    """Downscale past MAX_IMAGE_EDGE, re-encoding as JPEG. Returns the original bytes unchanged
-    when it already fits, or when Pillow cannot read them — an unreadable image should fail as
-    an unreachable one, not crash the run."""
+    """Downscale past MAX_IMAGE_EDGE or MAX_IMAGE_BYTES, re-encoding as JPEG. Returns the
+    original bytes unchanged when they already fit, or when Pillow cannot read them — an
+    unreadable image should fail as an unreachable one, not crash the run."""
     try:
         from PIL import Image
         im = Image.open(io.BytesIO(body))
-        if max(im.size) <= MAX_IMAGE_EDGE:
+        if max(im.size) <= MAX_IMAGE_EDGE and len(body) <= MAX_IMAGE_BYTES:
             return body, media
         im = im.convert("RGB")
         im.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE))
         buf = io.BytesIO()
         im.save(buf, "JPEG", quality=88)
-        return buf.getvalue(), "image/jpeg"
+        out = buf.getvalue()
+        return (out, "image/jpeg") if len(out) <= MAX_IMAGE_BYTES else (None, None)
     except Exception:
         return body, media
 
