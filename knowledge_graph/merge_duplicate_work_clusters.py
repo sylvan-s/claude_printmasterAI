@@ -128,6 +128,14 @@ MERGE_RULES = {
     # catalogue prefix can be repeated inside the number ("L." + "L.263" against "263").
     # entry_exact_keys folds both away. This is exact-field matching, not similarity.
     "catalogueSpellingVariant": "EXACT-CAT-MERGE-1.1",  # one citation, two spellings
+    # Titles identical under a CLOSED set of reversible rewrites (article, ampersand, trailing
+    # plural, punctuation, accents), with the cluster's own images agreeing and no work by that
+    # artist outside the variant family as close. Article-class clusters are admitted on the
+    # rule; plurals and anything the rule left uncertain require a vision adjudication, because
+    # a plural can name a different composition — Warhol's "Guns - Flintlock Pistols" is a sheet
+    # of pistols and "Gun - Flintlock Pistol" is one, and they score 0.9485 on images.
+    # find_spelling_variant_merges.py + merge_spelling_variants.py.
+    "spellingVariant":     "SPELLING-VARIANT-1.0",
     "humanTriage":         "human",                   # a person read the evidence and decided
 }
 
