@@ -89,6 +89,13 @@ def fold(s):
     return re.sub(r"[^a-z0-9]+", " ", s.lower()).strip()
 
 
+def cluster_title(cluster):
+    """The writer keys its log line and MergeEvent.clusterTitle on `title`, which the exact-key
+    scan emits and this one does not — it carries `titles`, a list, because a variant cluster
+    has several by definition. Give it the folded common form."""
+    return re.sub(r"^the\s+", "", fold(cluster["titles"][0]))
+
+
 def is_article_class(cluster):
     """No token changed its number — the class that needs no adjudication."""
     keys = {re.sub(r"^the\s+", "", fold(t)) for t in cluster["titles"]}
@@ -203,7 +210,8 @@ def main():
                            "why": "a member work is no longer in the graph"})
             continue
         if bucket == "proposed" and is_article_class(c) and not args.adjudicate_all:
-            admitted.append({**c, "bucket": bucket, "admittedBy": "rule (article class)"})
+            admitted.append({**c, "title": cluster_title(c), "bucket": bucket,
+                             "admittedBy": "rule (article class)"})
             continue
         if client is None:
             raise RuntimeError("ANTHROPIC_API_KEY is not set, and this run needs adjudication.")
@@ -211,7 +219,7 @@ def main():
         decision, results = verdict_for(client, args.model, rows, cache, spend)
         if decision == "review" and args.escalation_model:
             decision, results = verdict_for(client, args.escalation_model, rows, cache, spend)
-        entry = {**c, "bucket": bucket, "verdicts": results}
+        entry = {**c, "title": cluster_title(c), "bucket": bucket, "verdicts": results}
         if decision == "admitted":
             admitted.append({**entry, "admittedBy": f"adjudication ({results[0]['model']})"})
         elif decision == "refused":
