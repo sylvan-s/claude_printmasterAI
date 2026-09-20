@@ -33,8 +33,12 @@
  * three times passed a blind backtest with no warning at all.
  */
 export const HONORIFICS: ReadonlySet<string> = new Set([
-  "sir", "dame", "ra", "ara", "pra", "re", "are", "rws", "arws", "rba", "arba",
-  "rsa", "rsw", "neac", "re.", "hon", "obe", "cbe", "mbe", "kt", "jr", "sr",
+  "sir", "dame", "ra", "ara", "pra", "prba", "re", "are", "rws", "arws", "rba", "arba",
+  "rsa", "rsw", "neac", "re.", "hon", "obe", "cbe", "mbe", "dbe", "kt", "jr", "sr",
+  // Added 2026-09-20 (ROSEBERYS-HEADER-1.0): Roseberys writes these into the artist line
+  // ("David Hockney, OM CH RA, British 1937-2026"), where an unrecognised post-nominal
+  // block reads as a co-artist. Seen in A0793: OM, CH, RDI, PRA, DBE, RP.
+  "om", "ch", "rdi", "rp", "frsa", "rcm",
   "i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x",
 ]);
 
@@ -54,6 +58,24 @@ export const NATIONALITY_WORDS: ReadonlySet<string> = new Set([
   "flemish", "italian", "spanish", "american", "japanese", "chinese", "korean",
   "swiss", "belgian", "austrian", "russian", "danish", "norwegian", "swedish",
   "czech", "polish", "hungarian", "mexican", "chilean", "brazilian", "canadian",
+  // Added 2026-09-20 (ROSEBERYS-HEADER-1.0), all observed in A0793's artist lines.
+  "bulgarian", "portuguese", "greek", "turkish", "israeli", "indian", "australian",
+  "argentine", "argentinian", "cuban", "colombian", "peruvian", "icelandic",
+  "finnish", "romanian", "serbian", "croatian", "ukrainian", "iranian", "egyptian",
+  "nigerian", "ghanaian", "kenyan", "jamaican", "venezuelan", "uruguayan",
+  "cypriot", "latvian", "lithuanian", "estonian", "slovak", "slovenian",
+  "catalan", "basque", "moroccan", "algerian", "tunisian",
+]);
+
+/**
+ * Demonyms written as two words. Kept separate from NATIONALITY_WORDS because the
+ * header splitter has to match them BEFORE it decides a two-word token is a person's
+ * name — "South African" and "New Zealand" are otherwise indistinguishable in shape
+ * from "Kate Garner". Lowercase, single-spaced.
+ */
+export const NATIONALITY_PHRASES: ReadonlySet<string> = new Set([
+  "south african", "new zealand", "sri lankan", "south korean", "north american",
+  "south american", "puerto rican", "costa rican", "hong kong", "saudi arabian",
 ]);
 
 /**

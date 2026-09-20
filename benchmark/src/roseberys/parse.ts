@@ -29,7 +29,7 @@
  */
 
 import type { Dimension } from "../../../src/shared/text_extraction";
-import { parseDimensions, extractCatalogueRefs, detectEditionSize, artistNameLeakTokens, artistSurnameToken, decodeHtmlEntities } from "../../../src/shared/text_extraction";
+import { parseDimensions, extractCatalogueRefs, detectEditionSize, artistNameLeakTokens, artistSurnameToken, decodeHtmlEntities, HONORIFICS, NATIONALITY_WORDS, NATIONALITY_PHRASES } from "../../../src/shared/text_extraction";
 
 // Re-exported for anything importing these from this module directly — the
 // canonical implementations now live in src/shared/text_extraction.ts since
@@ -131,6 +131,151 @@ export function detectMultiWork(text: string): { isMultiWork: boolean; reason: s
 }
 
 
+
+/* ---------------------------------------------- artist header (ROSEBERYS-HEADER-1.0) */
+
+/**
+ * The artist block, however Roseberys chose to lay it out.
+ *
+ * The house format puts the name on line 0 and "<nationality> <life dates>" on line 1, but
+ * a third of A0793's lots put some or all of that metadata on line 0 instead, comma-separated:
+ *
+ *   Giorgio de Chirico,  Italian, 1888-1978        <- nationality and dates on the artist line
+ *   David Hockney, OM CH RA, British 1937-2026     <- post-nominals too
+ *   Edd Pearman, British 21st Century              <- a century where the dates would go
+ *
+ * `parseDescription` used to split line 0 on commas and call everything after the first
+ * element a co-artist, so "Italian" and "1888-1978" became `additionalArtists` — which blanked
+ * `nationality`/`lifeDates` AND made the lot look like a multi-artist lot to every consumer
+ * that counts them (170 of A0793's 533 lots; it is what excluded lot 320 from the
+ * attributed-lot population entirely).
+ *
+ * The rule: peel metadata off the END of each comma element — life dates, then nationality,
+ * then post-nominals, in the order the house writes them — and keep whatever prose is left as
+ * a name. Genuine co-artists ("Russell Young, British, b.1959 and Kate Garner") survive
+ * because a real name is never consumed by any of the three peels.
+ */
+
+/** Life dates as Roseberys writes them: "1888-1978", "b.1963", "b. 1965", "1937-", "d.1990". */
+const LIFE_DATES_RE = /(?:^|\s)((?:[bdc]\.?\s*)?\d{4}\s*(?:[-\u2013\u2014]\s*\d{0,4})?)\s*$/i;
+
+/** The house's stand-in for dates on a living or undated artist: "21st Century", "20th/21st Century". */
+const CENTURY_RE = /(?:^|\s)(\d{1,2}(?:st|nd|rd|th)(?:\s*\/\s*\d{1,2}(?:st|nd|rd|th))?\s+century)\s*$/i;
+
+const stripEdgePunct = (t: string) => t.replace(/^[\s,;]+|[\s,;]+$/g, "");
+
+/** "British", "French/ Hungarian", "South African" — but not "Kate Garner". */
+export function isNationalityToken(t: string): boolean {
+  // Periods survive here because the house types them: "Terry O'Neill, British. 1938-2019".
+  const s = stripEdgePunct(t).toLowerCase().replace(/\s*\/\s*/g, "/").replace(/\./g, "");
+  if (!s) return false;
+  if (NATIONALITY_PHRASES.has(s)) return true;
+  const parts = s.split(/[/-]/).map((x) => x.trim()).filter(Boolean);
+  return parts.length > 0 && parts.every((x) => NATIONALITY_WORDS.has(x));
+}
+
+/** A run of post-nominals and nothing else: "RA", "OM CH RA", "CBE RDI RA". */
+export function isHonorificToken(t: string): boolean {
+  const parts = stripEdgePunct(t).split(/\s+/).filter(Boolean);
+  return parts.length > 0 && parts.every((x) => HONORIFICS.has(x.toLowerCase().replace(/\./g, "")));
+}
+
+interface Peeled { rest: string; nationality: string | null; lifeDates: string | null }
+
+/**
+ * Peel "<name> <post-nominals> <nationality> <dates>" back to the name, right to left.
+ *
+ * `guardNationality` is set for the FIRST comma element, the one that holds the artist's name.
+ * There, a trailing demonym is only metadata when something else in the same element says so —
+ * life dates, or the closing bracket of an alias ("Weegee (Arthur Fellig) Polish"). Without
+ * that guard "John French" loses its surname, because French is also a nationality.
+ */
+function peelHeaderToken(token: string, guardNationality = false): Peeled {
+  // Roseberys writes compound nationalities with spaces around the slash ("Austrian / American");
+  // closing it up first keeps the compound as one word for the word-wise peel below.
+  let rest = stripEdgePunct(token).replace(/\s*\/\s*/g, "/").replace(/\.$/, "");
+  let nationality: string | null = null;
+  let lifeDates: string | null = null;
+
+  const dm = rest.match(LIFE_DATES_RE) ?? rest.match(CENTURY_RE);
+  if (dm) {
+    lifeDates = dm[1].replace(/\s+/g, " ").trim();
+    rest = stripEdgePunct(rest.slice(0, rest.length - dm[0].length));
+  }
+
+  // Nationality is one or two words; try the longer form first so "South African" is not
+  // read as the single word "African" preceded by a name.
+  const words = rest.split(/\s+/).filter(Boolean);
+  for (const n of [2, 1]) {
+    if (words.length < n) continue;
+    const cand = words.slice(words.length - n).join(" ");
+    if (!isNationalityToken(cand)) continue;
+    const before = stripEdgePunct(words.slice(0, words.length - n).join(" "));
+    if (guardNationality && !lifeDates && !/\)$/.test(before)) break;
+    nationality = cand.replace(/\./g, "");
+    rest = before;
+    break;
+  }
+
+  // Trailing post-nominals, which sit between the name and the nationality. Only on the
+  // metadata elements: the artist's own name KEEPS its post-nominals, because that is the
+  // string the rest of the pipeline matches on and the leak detector's surname guard is
+  // asserted against it (tests/benchmark_parse/leak_detection_tests.ts, A0793/46 Lowry).
+  if (!guardNationality) {
+    let tail = rest.split(/\s+/).filter(Boolean);
+    while (tail.length > 1 && HONORIFICS.has(tail[tail.length - 1].toLowerCase().replace(/\./g, ""))) {
+      tail = tail.slice(0, -1);
+    }
+    rest = stripEdgePunct(tail.join(" "));
+  }
+
+  return { rest, nationality, lifeDates };
+}
+
+export interface ArtistHeader { names: string[]; nationality: string | null; lifeDates: string | null }
+
+export function splitArtistHeader(artistLine: string): ArtistHeader {
+  const cleaned = stripEdgePunct(artistLine)
+    .replace(/\b(attributed to|circle of|studio of|follower of|manner of|after)\b/gi, "");
+  const names: string[] = [];
+  let nationality: string | null = null;
+  let lifeDates: string | null = null;
+
+  const tokens = cleaned.split(/\s*,\s*/).map((t) => t.trim()).filter(Boolean);
+  for (let i = 0; i < tokens.length; i++) {
+    const p = peelHeaderToken(tokens[i], i === 0);
+    if (nationality && p.nationality && p.nationality.startsWith("/")) nationality += p.nationality;
+    else nationality ??= p.nationality;
+    lifeDates ??= p.lifeDates;
+    // A co-artist can be introduced by the conjunction that followed the dates we just
+    // removed ("b.1959 and Kate Garner"); the leading "and" is not part of the name.
+    const rest = stripEdgePunct(p.rest.replace(/^(?:\s*(?:&|and)\s+)/i, ""));
+    if (!rest) continue;
+    // The first element is the artist even when it carries metadata; later elements that
+    // are nothing but post-nominals are metadata, not people.
+    if (i > 0 && isHonorificToken(rest)) continue;
+    // "Mr Doodle, (Sam Cox)" — a bracketed element is the preceding name's alias. Most lots
+    // write it inline ("Hera (Jasmin Siddiqui) German"); a comma before it does not make it
+    // a second artist.
+    if (i > 0 && names.length && /^\(.*\)$/.test(rest)) { names[names.length - 1] += ` ${rest}`; continue; }
+    names.push(rest);
+  }
+  return { names, nationality, lifeDates };
+}
+
+/** Is this line the house's dedicated nationality/life-dates line, rather than the title? */
+function nationalityLine(line: string): { nationality: string | null; lifeDates: string | null } | null {
+  const t = stripEdgePunct(line);
+  if (!t) return null;
+  const p = peelHeaderToken(t);
+  if (!p.nationality && !p.lifeDates) return null;
+  // Anything left over means this line is prose that merely ends in a year — a title such as
+  // "Beautiful inside my head forever, 2008", which used to be read as a nationality line and
+  // then pushed the real title selection one line too far down the record.
+  if (p.rest && !isHonorificToken(p.rest)) return null;
+  return { nationality: p.nationality, lifeDates: p.lifeDates };
+}
+
 /* -------------------------------------------------------------------- parse */
 
 export function parseDescription(html: string): ParsedLot {
@@ -143,25 +288,20 @@ export function parseDescription(html: string): ParsedLot {
   const provenance =
     provIdx >= 0 ? lines.slice(provIdx + 1).join(" ").trim() || null : null;
 
-  // Line 0: artist(s). Multiple names arrive comma-separated on one line.
+  // Line 0: artist(s), and - on a third of lots - the nationality and life dates too.
+  // ROSEBERYS-HEADER-1.0; see splitArtistHeader for why this is not a plain comma split.
   const artistLine = head[0] ?? "";
   const artistQualifier = detectQualifier(artistLine);
-  const names = artistLine
-    .replace(/,\s*$/, "")
-    .replace(/\b(attributed to|circle of|studio of|follower of|manner of|after)\b/gi, "")
-    .split(/\s*,\s*/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  const artist = names[0] ?? null;
-  const additionalArtists = names.slice(1);
+  const header = splitArtistHeader(artistLine);
+  const artist = header.names[0] ?? null;
+  const additionalArtists = header.names.slice(1);
 
-  // Line 1: nationality + life dates, e.g. "Spanish 1881-1973" / "British b.1965".
-  const natLine = head[1] ?? "";
-  const natMatch = natLine.match(
-    /^([A-Za-z\/\s-]+?)[,\s]+((?:b\.?\s*)?\d{4}\s*(?:[-–]\s*\d{4})?)/,
-  );
-  const nationality = natMatch ? natMatch[1].replace(/,\s*$/, "").trim() : null;
-  const lifeDates = natMatch ? natMatch[2].replace(/\s+/g, "") : null;
+  // Line 1 is the house's dedicated nationality line ("Spanish 1881-1973", "British b.1965")
+  // ONLY when line 0 did not already carry that metadata and the line holds nothing else.
+  const natMatch = header.nationality || header.lifeDates ? null : nationalityLine(head[1] ?? "");
+  const nationality = header.nationality ?? natMatch?.nationality ?? null;
+  const rawLifeDates = header.lifeDates ?? natMatch?.lifeDates ?? null;
+  const lifeDates = rawLifeDates ? rawLifeDates.replace(/\s+/g, "") : null;
 
   // Title: first line terminated by ';' (house convention), else the line after
   // the artist block.

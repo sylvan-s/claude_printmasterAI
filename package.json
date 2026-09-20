@@ -20,6 +20,7 @@
     "test:two-pass": "tsx tests/two_pass_attribution/run_tests.ts",
     "test:stage2a-evidence": "tsx tests/stage2a_evidence/run_tests.ts",
     "test:stage2a-query-plan": "tsx tests/stage2a_query_plan/run_tests.ts",
+    "test:artist-header": "tsx tests/benchmark_parse/artist_header_tests.ts",
     "test:catalogue-refs": "tsx tests/benchmark_parse/catalogue_refs_tests.ts",
     "test:kg-parse": "tsx tests/knowledge_graph/parse_tests.ts",
     "test:work-identity": "tsx tests/knowledge_graph/work_identity_tests.ts",
