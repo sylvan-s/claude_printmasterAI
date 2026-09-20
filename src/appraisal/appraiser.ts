@@ -3637,6 +3637,49 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
 
   // ---- Shared report assembly -----------------------------------------------
 
+  /**
+   * Keep the catalogued title when Stage 2a could not resolve the work.
+   *
+   * Stage 2b researches from artist and subject, so on a lot holding several works from one
+   * series it can settle on whichever sibling the web knows best and rename the work under
+   * examination to it. Seen on Roseberys A0793 lot 29 (Frink, two Canterbury Tales etchings):
+   * Stage 1c carried "Chanticleer and Pertelote", Stage 2a returned workIdentification.verdict
+   * "conflict", and Stage 2b still concluded "Chanticleer and the Fox" — the sibling — and gave
+   * both works the same catalogue entry.
+   *
+   * The rule is narrow on purpose. It fires only when Stage 2a says `conflict` AND a title was
+   * claimed: a conflict is the tree stating it cannot tell these apart, which is precisely when
+   * a researched title is least trustworthy and the claimed one is a documented fact from the
+   * catalogue. Where Stage 2a resolved the work, or nothing was claimed, Stage 2b still wins —
+   * correcting a house's title is a real part of its job. Nothing is discarded: the researched
+   * title stays on the conclusion and the disagreement is raised as an unresolved question.
+   */
+  protected guardClaimedTitle(
+    attr: AttributionResearchResult,
+    triage: TriageResult | null | undefined,
+    claimedTitle: string | null | undefined,
+  ): void {
+    const asa = attr as any;
+    const researched: string | undefined = asa?.attributionConclusion?.workTitle;
+    const conflicted = (triage as any)?.workIdentification?.verdict === "conflict";
+    if (!conflicted || !claimedTitle || !researched) return;
+    if (researched.trim().toLowerCase() === claimedTitle.trim().toLowerCase()) return;
+    console.warn(
+      `[Title guard] Stage 2a could not resolve the work (verdict: conflict) and Stage 2b renamed ` +
+      `it "${researched}"; keeping the catalogued title "${claimedTitle}".`,
+    );
+    asa.attributionConclusion.workTitle = claimedTitle;
+    asa.attributionConclusion.workTitleFromResearch = researched;
+    asa.attributionConclusion.workTitleGuard =
+      `Stage 2a returned a work-identity conflict, so the catalogued title was kept over Stage 2b's "${researched}".`;
+    asa.unresolvedQuestions = [
+      `Which work is this? Stage 2a could not resolve it and Stage 2b researched it as ` +
+      `"${researched}" while the catalogue calls it "${claimedTitle}" — on a lot holding several ` +
+      `works from one series, confirm the title against the sheet before relying on it.`,
+      ...(Array.isArray(asa.unresolvedQuestions) ? asa.unresolvedQuestions : []),
+    ];
+  }
+
   protected assembleReport(
     vea: VisualExtractionResult,
     attr: AttributionResearchResult,
@@ -3929,6 +3972,9 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });
 
+    // Stage 2b can rename a work to a better-known sibling when Stage 2a could not tell them
+    // apart — see guardClaimedTitle.
+    this.guardClaimedTitle(attr, triageResult, appraiserInput?.claimedAttribution?.title ?? null);
     const report = this.assembleReport(vea, attr, valuation, currency);
     report.stage1Result = vea;
     report.stage1cResult = appraiserInput;
@@ -4223,6 +4269,8 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     console.log(`[Timing] Total pipeline — ${((Date.now() - t0) / 1000).toFixed(1)}s`);
     emit({ stage: "stage3", status: "done", message: "Valuation complete — compiling certificate…", percent: 93 });
 
+    // Same guard, with the house's own claim as the title of record on this path.
+    this.guardClaimedTitle(attr, triageResult, claim.title ?? null);
     const report = this.assembleReport(vea, attr, valuation, currency);
     report.stage1Result = vea;
     report.stage1cResult = appraiserInput;
