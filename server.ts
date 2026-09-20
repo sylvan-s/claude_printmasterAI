@@ -142,6 +142,9 @@ app.post("/api/analyze-print", async (req, res) => {
       provenanceNotes,
       conditionNotes,
       catalogueNotes,
+      // Attributed-lot entry path (src/appraisal/attributed_lot.ts): the house's printed
+      // attribution and estimate. Only the "claude-4stage-attributed" method reads it.
+      catalogueAttribution,
       currency = "USD",
       method = "claude-4stage-fast",
       progressId,
@@ -165,7 +168,12 @@ app.post("/api/analyze-print", async (req, res) => {
     }
 
     const ai = getAiClient();
-    const appraiser = getAppraiserFromConfig(methodConfig, ai);
+    // The entry path is chosen by the INPUT, not by a method row: a lot that arrives with the
+    // house's attribution runs the attributed-lot path on whichever 4-stage method was picked.
+    const appraiser = getAppraiserFromConfig(
+      catalogueAttribution && methodConfig.stage2aModel ? { ...methodConfig, attributedLotPath: true } : methodConfig,
+      ai,
+    );
 
     const sseEmit = progressId ? progressListeners.get(progressId as string) : undefined;
     const onProgress = sseEmit
@@ -183,6 +191,7 @@ app.post("/api/analyze-print", async (req, res) => {
       provenanceNotes,
       conditionNotes,
       catalogueNotes,
+      catalogueAttribution,
       currency,
       onProgress,
     });

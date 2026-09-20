@@ -712,6 +712,14 @@ export function breakTitleTieOnDimensions(
   const fit = (w: AckgWorkMatch) => {
     let bestFit: { within: boolean; relMax: number } | null = null;
     for (const d of rowDims(w, observed.kind)) {
+      // AXIS-STRICT here, deliberately, where the tree's impression check is not. The two
+      // are asking different questions. The tree asks "is this lot the work it claims to
+      // be?", where a swapped pair is a cataloguing convention and tolerating it avoids a
+      // false divergence. This asks "WHICH of these near-identically-titled siblings is
+      // it?", and there the axes are the discriminator: measured on A0793/113, matching
+      // either orientation promotes "Spinning Man V" over "Spinning Man VII" because V's
+      // catalogued pair is the observed one transposed. Loosening it here would hand the
+      // tree the wrong work, which is worse than the divergence tolerance was built to fix.
       const r = dimsWithinTolerance(obs, d, pct, mmFloor);
       if (!bestFit || r.relMax < bestFit.relMax) bestFit = r;
     }
@@ -1069,6 +1077,11 @@ export interface CellOverride {
  * indistinguishable from a real one.
  */
 export function applyCandidateFacts(ev: any, cf: CandidateFacts): CellOverride[] {
+  // Blocks the model returned as strings are dropped by normalizeEvidenceBlocks; anything
+  // still not an object cannot be written into, so there is nothing to override.
+  for (const k of ["artistEvidence", "workEvidence", "impressionEvidence", "riskFlags"]) {
+    if (ev && ev[k] != null && typeof ev[k] !== "object") return [];
+  }
   const out: CellOverride[] = [];
   const set = (obj: any, cell: string, value: unknown) => {
     // Never assign into a non-object. A model can return a whole evidence block as a JSON
@@ -1115,7 +1128,9 @@ export function applyCandidateFacts(ev: any, cf: CandidateFacts): CellOverride[]
 export function applyObservedDims(ev: any, plan: Stage2aQueryPlan): CellOverride[] {
   const d = plan.observedDims;
   const i = ev?.impressionEvidence;
-  if (!d || !i) return [];
+  // A block the model returned as a string (or anything but an object) is not writable —
+  // see normalizeEvidenceBlocks. Nothing to override; the tree reads it as absent.
+  if (!d || !i || typeof i !== "object") return [];
   const out: CellOverride[] = [];
   const set = (cell: string, value: unknown) => {
     const prev = i[cell];

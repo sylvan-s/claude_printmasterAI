@@ -1,7 +1,10 @@
 """
 PrintMasterAI — free-text/HTML parsing helpers for the Bonhams Group 'Prints &
 Multiples' export (bonhams_ingest.py)
-Version: BONHAMS-PARSING-1.1
+Version: BONHAMS-PARSING-1.2
+
+1.2 (2026-09-17): edition numbers may carry thousands separators. "Aside from the edition of
+1,000" had been stored as an edition of 1 (see repair_edition_thousands.py).
 
 Unlike Roseberys/Forum (already parsed into columns by an external tool before this
 project ever saw them), this source is raw per-lot catalog HTML — much closer to the
@@ -133,6 +136,21 @@ def strip_leading_parenthetical(s):
 _LOWERCASE_CONNECTORS = {"de", "van", "der", "den", "la", "le", "di", "du", "von", "y", "of"}
 
 
+def _titlecase_token(w):
+    """Capitalizes a single space-separated token, including each side of an internal
+    hyphen ("TOULOUSE-LAUTREC" -> "Toulouse-Lautrec", "PIERRE-AUGUSTE" -> "Pierre-
+    Auguste") — a hyphen is not a word boundary `name.split(" ")` sees, so the original
+    per-word `w[:1] + w[1:].lower()` left everything after the hyphen lowercase (found
+    live 2026-09-15 ingesting Swann: "HENRI TOULOUSE-LAUTREC" -> "Henri Toulouse-
+    lautrec", "PIERRE-AUGUSTE RENOIR" -> "Pierre-auguste Renoir" — a pre-existing defect
+    in this function, not something the Swann adapter introduced; just never exercised
+    against a hyphenated ALL-CAPS name before). Each hyphen-segment is capitalized on
+    its own, not run through the connector-lowercasing rule below — that rule exists for
+    a standalone word like "VAN"/"DE" between space-separated name parts, and doesn't
+    apply inside a hyphenated compound."""
+    return "-".join(seg[:1] + seg[1:].lower() if seg else seg for seg in w.split("-"))
+
+
 def normalize_all_caps_name(name):
     """Bonhams' own catalogue data formats some lots' artist names in ALL CAPS (a real
     house-style inconsistency, confirmed live: every ALL-CAPS Artist node created by an
@@ -152,7 +170,7 @@ def normalize_all_caps_name(name):
         if i > 0 and w.lower() in _LOWERCASE_CONNECTORS:
             out.append(w.lower())
         else:
-            out.append(w[:1] + w[1:].lower() if w else w)
+            out.append(_titlecase_token(w))
     return " ".join(out)
 
 
@@ -273,17 +291,18 @@ def detect_signed(detail_text):
 
 
 # ---- Edition size ----
-_NUMBERED_FRACTION_RE = re.compile(r"number(?:ed)?\s+['\"]?[ivxlcdm\d]+\s*/\s*(\d+)", re.IGNORECASE)
-_EDITION_OF_RE = re.compile(r"edition of\s+(\d+)", re.IGNORECASE)
+_EDITION_NUMBER = r"(\d{1,3}(?:,\d{3})+|\d+)"   # "1,000" is one number
+_NUMBERED_FRACTION_RE = re.compile(r"number(?:ed)?\s+['\"]?[ivxlcdm\d]+\s*/\s*" + _EDITION_NUMBER, re.IGNORECASE)
+_EDITION_OF_RE = re.compile(r"edition of\s+" + _EDITION_NUMBER, re.IGNORECASE)
 
 
 def extract_edition_size(detail_text):
     m = _NUMBERED_FRACTION_RE.search(detail_text)
     if m:
-        return int(m.group(1))
+        return int(m.group(1).replace(",", ""))
     m = _EDITION_OF_RE.search(detail_text)
     if m:
-        return int(m.group(1))
+        return int(m.group(1).replace(",", ""))
     return None
 
 

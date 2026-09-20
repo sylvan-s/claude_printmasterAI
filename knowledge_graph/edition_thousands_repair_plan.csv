@@ -1,0 +1,230 @@
+erId,size,house,priced,hammerGBP,title,new,action,reason
+roseberys-a0529-lot231-er,1,Roseberys London,False,,Christopher Wool Collector's Edition,1100,fix,stored 1 is the leading group of a separated number; parser now reads 1100
+roseberys-a0550-lot602-er,1,Roseberys London,True,750.0,Christopher Wool Collector's Edition,1100,fix,stored 1 is the leading group of a separated number; parser now reads 1100
+bonhams-31947-77-er,1,Skinner,False,,"Revolver, from Artists & Photographs",1200,fix,stored 1 is the leading group of a separated number; parser now reads 1200
+bonhams-32238-157-er,1,Bonhams,True,120.0,Port Arthur Texas Public Library Print,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-32238-115-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-31930-100-er,1,Skinner,False,,"Revolver, from Artists & Photographs",1200,fix,stored 1 is the leading group of a separated number; parser now reads 1200
+bonhams-32235-103-er,1,Bonhams,True,150.0,Everybody Needs A Place to Think,1500,fix,stored 1 is the leading group of a separated number; parser now reads 1500
+bonhams-32235-50-er,2,Bonhams,True,700.0,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-31922-113-er,2,Skinner,True,633.34,"Madame de Pompadour, from Portraits, by André Sauret",2850,fix,stored 2 is the leading group of a separated number; parser now reads 2850
+bonhams-32233-169-er,1,Bonhams,False,,Port Arthur Texas Public Library Print,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-32233-160-er,1,Bonhams,True,3000.0,,1200,fix,stored 1 is the leading group of a separated number; parser now reads 1200
+bonhams-32233-122-er,6,Bonhams,True,950.0,,6000,fix,stored 6 is the leading group of a separated number; parser now reads 6000
+bonhams-31709-156-er,1,Bonhams,True,591.58,L'Ecuyère,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-31709-131-er,5,Bonhams,True,1257.12,Romeo and Juliette,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-31709-132-er,3,Bonhams,True,443.69,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-32219-124-er,1,Bonhams,True,240.0,Everybody Needs A Place to Think,1500,fix,stored 1 is the leading group of a separated number; parser now reads 1500
+bonhams-30830-193-er,1,Bonhams,True,494.52,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-31103-203-er,6,Bonhams,True,800.0,,6000,fix,stored 6 is the leading group of a separated number; parser now reads 6000
+bonhams-27495-295-er,1,Bonhams,True,400.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27495-125-er,1,Bonhams,True,1100.0,Galerie Watari Tokyo,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30830-119-er,1,Bonhams,True,1293.37,"Revolver, from Artists & Photographs",1200,fix,stored 1 is the leading group of a separated number; parser now reads 1200
+bonhams-28740-226-er,1,Bonhams,True,150.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28740-159-er,1,Bonhams,True,950.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28740-152-er,1,Bonhams,True,3000.0,,1700,fix,stored 1 is the leading group of a separated number; parser now reads 1700
+bonhams-28849-73-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28849-59-er,1,Bonhams,True,850.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29499-315-er,6,Bonhams,False,,S&H Green Stamps,6000,fix,stored 6 is the leading group of a separated number; parser now reads 6000
+bonhams-29499-246-er,1,Bonhams,True,295.83,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29499-247-er,1,Bonhams,False,,Real One,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29499-222-er,2,Bonhams,False,,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29499-206-er,2,Bonhams,False,,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29499-118-er,2,Bonhams,True,233.55,,2500,fix,stored 2 is the leading group of a separated number; parser now reads 2500
+bonhams-29499-6-er,2,Bonhams,True,1868.43,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29499-3-er,1,Bonhams,True,467.11,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29911-212-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29911-69-er,15,Bonhams,True,1000.0,Côte D'Azur,15000,fix,stored 15 is the leading group of a separated number; parser now reads 15000
+bonhams-29911-59-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30353-250-er,1,Bonhams,True,700.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30353-116-er,15,Bonhams,True,750.0,Côte D'Azur,15000,fix,stored 15 is the leading group of a separated number; parser now reads 15000
+bonhams-30353-111-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27598-38-er,10,Bonhams,True,1110.8,,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-28302-126-er,1,Bonhams,True,600.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26786-230-er,1,Bonhams,True,1100.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26786-133-er,1,Bonhams,True,1300.0,Galerie Watari Tokyo,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26786-80-er,1,Bonhams,True,1000.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29174-212-er,5,Bonhams,True,863.9,,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-29174-213-er,5,Bonhams,False,,Romeo and Juliette,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-26026-248-er,1,Bonhams,True,850.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26026-191-er,1,Bonhams,False,,Galerie Watari Tokyo,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28738-283-er,1,Bonhams,True,400.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28738-190-er,1,Bonhams,True,700.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26785-331-er,1,Bonhams,True,600.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26785-332-er,1,Bonhams,True,600.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26785-163-er,1,Bonhams,True,650.0,Galerie Watari Tokyo,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26785-96-er,1,Bonhams,True,900.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27494-277-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27494-124-er,1,Bonhams,True,450.0,Galerie Watari Tokyo,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27493-273-er,1,Bonhams,True,500.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27493-136-er,1,Bonhams,True,650.0,Galerie Watari Tokyo,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30123-72-er,1,Bonhams,True,670.08,L'Ecuyère,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30123-2-er,1,Bonhams,True,709.5,Girl on a Cliff,1750,fix,stored 1 is the leading group of a separated number; parser now reads 1750
+bonhams-27635-152-er,1,Bonhams,True,447.7,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27635-137-er,1,Bonhams,True,1302.4,Guild Hall East Hampton,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27635-127-er,22,Bonhams,True,81.4,,22500,fix,stored 22 is the leading group of a separated number; parser now reads 22500
+bonhams-27635-78-er,1,Bonhams,True,610.5,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27635-66-er,10,Bonhams,True,203.5,Travail et joie,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-27635-71-er,1,Bonhams,True,3256.0,Ambroise Vollard,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27635-56-er,4,Bonhams,True,1628.0,,4675,fix,stored 4 is the leading group of a separated number; parser now reads 4675
+bonhams-27635-72-er,1,Bonhams,True,1628.0,"Baigneuse assise (Delteil/Stella 11), c.",1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28449-150-er,1,Bonhams,True,3706.14,,1211,fix,stored 1 is the leading group of a separated number; parser now reads 1211
+bonhams-29509-129-er,1,Bonhams,True,24013.21,Pool Made with Paper and Blue Ink for Book,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27585-202-er,650,Bonhams,True,997.59,Piece for Tropic,650000,fix,stored 650 is the leading group of a separated number; parser now reads 650000
+bonhams-27585-185-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27585-164-er,22,Bonhams,False,,,22500,fix,stored 22 is the leading group of a separated number; parser now reads 22500
+bonhams-27585-60-er,4,Bonhams,True,997.59,,4675,fix,stored 4 is the leading group of a separated number; parser now reads 4675
+bonhams-27585-77-er,10,Bonhams,True,1080.72,Travail et Joie,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-27585-58-er,4,Bonhams,True,1496.38,,4675,fix,stored 4 is the leading group of a separated number; parser now reads 4675
+bonhams-27585-59-er,4,Bonhams,True,997.59,,4675,fix,stored 4 is the leading group of a separated number; parser now reads 4675
+bonhams-26741-150-er,1,Bonhams,True,4713.22,Guild Hall East Hampton,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26741-133-er,22,Bonhams,True,616.34,,22500,fix,stored 22 is the leading group of a separated number; parser now reads 22500
+bonhams-26741-76-er,2,Bonhams,True,580.09,La Petite Corrida,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-26741-59-er,2,Bonhams,True,688.86,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-26741-35-er,4,Bonhams,True,2030.31,,4675,fix,stored 4 is the leading group of a separated number; parser now reads 4675
+bonhams-28421-150-er,1,Bonhams,True,10774.97,"Mademoiselle Marcelle Lender, en buste",1100,fix,stored 1 is the leading group of a separated number; parser now reads 1100
+bonhams-28076-79-er,4,Bonhams,False,,,4000,fix,stored 4 is the leading group of a separated number; parser now reads 4000
+bonhams-29487-56-er,1,Bonhams,True,867.92,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28409-200-er,1,Bonhams,True,788.77,Guild Hall East Hampton,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28409-222-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28409-125-er,1,Bonhams,True,1577.54,"Baigneuse assise (Seated Bather) (Delteil/Stella 11), c.",1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28409-101-er,10,Bonhams,True,512.7,,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-28409-119-er,1,Bonhams,True,2169.11,"Baigneuse assise (Seated Bather) (Delteil/Stella 11), c.",1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28409-54-er,1,Bonhams,True,1577.54,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30925-186-er,1,Skinner,True,591.1,"Claude Renoir, la tête baissée",1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30925-179-er,1,Skinner,True,369.44,La Danse des Faunes,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30925-187-er,1,Skinner,True,591.1,"Baigneuse Assise (Delteil/Stella 11), c.",1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30925-158-er,2,Skinner,True,369.44,"Madame de Pompadour, from Portraits, by André Sauret",2850,fix,stored 2 is the leading group of a separated number; parser now reads 2850
+bonhams-30925-1-er,2,Skinner,True,406.38,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-30925-7-er,1,Skinner,True,1921.09,"Revolver, from Artists & Photographs",1200,fix,stored 1 is the leading group of a separated number; parser now reads 1200
+bonhams-30481-141-er,1,Bonhams,True,574.19,"Femme au cep de vigne, 1re variante (Delteil/Stella 45), c.",1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-31026-591-er,2,Bonhams,True,533.05,Les Bijoux Indiscrets,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-31359-79-er,2,Bonhams,False,,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-31069-37-er,2,Bonhams,True,30.0,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-30850-142-er,1,Bonhams,True,510.87,La Danse des Faunes,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30850-71-er,10,Bonhams,True,729.82,,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-30850-19-er,5,Bonhams,True,1386.66,Two Flags (Whitney Museum of American Art 50th Anniversary),5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-31099-105-er,1,Bonhams,True,750.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-31099-108-er,1,Bonhams,True,4200.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-31101-6-er,2,Bonhams,True,750.0,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-25294-159-er,22,Bonhams,False,,Target,22500,fix,stored 22 is the leading group of a separated number; parser now reads 22500
+bonhams-26739-59-er,22,Bonhams,True,342.32,"Target, from Technics and Creativity",22500,fix,stored 22 is the leading group of a separated number; parser now reads 22500
+bonhams-28157-263-er,6,Bonhams,True,3016.35,S&H Green Stamps,6000,fix,stored 6 is the leading group of a separated number; parser now reads 6000
+bonhams-28157-204-er,3,Bonhams,True,2222.58,As I Opened Fire (Triptych),3140,fix,stored 3 is the leading group of a separated number; parser now reads 3140
+bonhams-28157-123-er,10,Bonhams,False,,,10254,fix,stored 10 is the leading group of a separated number; parser now reads 10254
+bonhams-29529-145-er,1,Bonhams,False,,Guild Hall East Hampton,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29529-116-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29529-99-er,1,Bonhams,True,346.43,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26756-258-er,5,Bonhams,False,,,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-26756-215-er,3,Bonhams,True,4047.99,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-26756-93-er,10,Bonhams,True,809.6,Good Morning City – Bleeding Town,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-30037-156-er,1,Bonhams,True,1100.0,When I think about Sex,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30354-207-er,1,Bonhams,True,340.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30354-42-er,1,Bonhams,True,400.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-30354-43-er,1,Bonhams,True,1300.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-13229-264-er,2,Bonhams,True,802.38,Love,2275,fix,stored 2 is the leading group of a separated number; parser now reads 2275
+bonhams-13229-156-er,1,Bonhams,True,2292.53,Louis Valtat,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-21808-5065-er,10,Bonhams,True,70.13,"Poster for the Theatrical Magazine Rivalda, 1920s",10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-21803-3103-er,10,Bonhams,False,,"Poster for the Theatrical Magazine Rivalda, 1920s",10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-28736-338-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27782-137-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27782-138-er,1,Bonhams,True,450.0,Real One,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26146-141-er,22,Bonhams,False,,"Target, from Technics and Creativity",22500,fix,stored 22 is the leading group of a separated number; parser now reads 22500
+bonhams-26146-137-er,10,Bonhams,True,1127.9,"Good Morning City, Bleeding Town",10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-26086-25-er,10,Bonhams,True,956.4,,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-26782-242-er,1,Bonhams,True,650.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26782-241-er,1,Bonhams,True,600.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26782-127-er,1,Bonhams,True,400.0,Galerie Watari Tokyo,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-20938-7094-er,10,Bonhams,True,1954.4,,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-18262-4095-er,12,Bonhams,True,392.82,,12253,fix,stored 12 is the leading group of a separated number; parser now reads 12253
+bonhams-30249-57-er,1,Skinner,True,1279.35,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28623-380-er,2,Skinner,True,107.11,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-28116-46-er,2,Skinner,True,308.97,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-17681-154-er,1,Bonhams,True,3957.26,"Mademoiselle Marcelle Lender, en buste",1100,fix,stored 1 is the leading group of a separated number; parser now reads 1100
+bonhams-17097-214-er,1,Bonhams,False,,"Mademoiselle Marcelle Lender, en buste",1100,fix,stored 1 is the leading group of a separated number; parser now reads 1100
+bonhams-16935-7113-er,10,Bonhams,True,245.21,Babe Rainbow,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-15405-1092-er,10,Bonhams,True,1828.29,,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-15403-547-er,1,Bonhams,False,,A Season in Hell,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-15255-7026-er,22,Bonhams,True,125.19,,22500,fix,stored 22 is the leading group of a separated number; parser now reads 22500
+bonhams-14799-171-er,15,Bonhams,False,,Côte d'Azur,15000,fix,stored 15 is the leading group of a separated number; parser now reads 15000
+bonhams-13916-472-er,1,Bonhams,True,536.18,A Season in Hell,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-18560-77-er,1,Bonhams,True,455.15,"Untitled, from XXe Siècle",1200,fix,stored 1 is the leading group of a separated number; parser now reads 1200
+bonhams-20897-5109-er,10,Bonhams,True,143.83,,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-23150-168-er,20,Bonhams,True,3481.17,,20000,fix,stored 20 is the leading group of a separated number; parser now reads 20000
+bonhams-23150-281-er,5,Bonhams,True,1253.22,,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-24723-85-er,5,Bonhams,True,1263.94,Fun Gallery Exhibition Poster,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-24724-56-er,1,Bonhams,True,915.61,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-24724-110-er,10,Bonhams,False,,"Good Morning City, Bleeding Town",10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-25210-13-er,1,Bonhams,True,713.66,,1147,fix,stored 1 is the leading group of a separated number; parser now reads 1147
+bonhams-25210-24-er,10,Bonhams,True,555.07,"Good Morning City, Bleeding Town",10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-25380-171-er,10,Bonhams,True,1200.0,"Good Morning City, Bleeding Town",10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-25275-55-er,1,Bonhams,True,1569.98,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-25275-77-er,1,Bonhams,True,2354.97,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-25275-72-er,1,Bonhams,True,1412.98,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-25275-84-er,1,Bonhams,True,941.99,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-25275-83-er,1,Bonhams,True,1491.48,"Claude Renoir, La Tête Baissée",1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-25275-75-er,1,Bonhams,True,941.99,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-24206-87-er,10,Bonhams,False,,"Good Morning City, Bleeding Town",10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-24140-338-er,10,Bonhams,False,,"Good Morning City, Bleeding Town",10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-24275-110-er,10,Bonhams,True,595.46,"Good Morning City, Bleeding Town",10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-26710-51-er,3,Bonhams,True,1100.0,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-26550-122-er,10,Bonhams,True,1975.87,Good Morning City – Bleeding Town,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-26550-145-er,3,Bonhams,True,846.8,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-29931-18-er,2,Bonhams,False,,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-26828-137-er,1,Bonhams,True,850.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-25643-21-er,2,Bonhams,False,,"Spray Can, from 1¢ Life",2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-25643-28-er,2,Bonhams,True,992.8,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-25643-92-er,2,Bonhams,True,496.4,,2400,fix,stored 2 is the leading group of a separated number; parser now reads 2400
+bonhams-25640-27-er,5,Bonhams,True,569.01,Two Flags (Whitney Museum of American Art 50th Anniversary),5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-25619-80-er,10,Bonhams,True,523.87,"Good Morning City, Bleeding Town",10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-25382-125-er,10,Bonhams,False,,,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-26024-149-er,10,Bonhams,True,850.0,,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-26141-96-er,2,Bonhams,True,2277.21,"Spray Can, from 1¢ Life",2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-28042-3-er,3,Bonhams,True,2490.87,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-29119-48-er,8,Bonhams,True,150.0,,8500,fix,stored 8 is the leading group of a separated number; parser now reads 8500
+bonhams-29119-46-er,5,Bonhams,True,200.0,,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-29119-45-er,5,Bonhams,True,150.0,,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-29119-44-er,5,Bonhams,True,300.0,,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-29119-42-er,10,Bonhams,True,150.0,,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-29119-39-er,1,Bonhams,True,150.0,,1500,fix,stored 1 is the leading group of a separated number; parser now reads 1500
+bonhams-29119-37-er,2,Bonhams,False,,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29119-34-er,3,Bonhams,True,280.0,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-29119-33-er,1,Bonhams,True,150.0,,1500,fix,stored 1 is the leading group of a separated number; parser now reads 1500
+bonhams-29119-32-er,3,Bonhams,True,100.0,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-29119-28-er,2,Bonhams,True,150.0,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29119-27-er,2,Bonhams,True,250.0,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29119-25-er,3,Bonhams,True,150.0,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-29119-23-er,2,Bonhams,True,425.0,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29119-22-er,2,Bonhams,True,150.0,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29119-20-er,1,Bonhams,True,150.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29119-18-er,1,Bonhams,True,150.0,,1500,fix,stored 1 is the leading group of a separated number; parser now reads 1500
+bonhams-29119-17-er,1,Bonhams,True,170.0,,1500,fix,stored 1 is the leading group of a separated number; parser now reads 1500
+bonhams-29119-16-er,1,Bonhams,True,350.0,,1500,fix,stored 1 is the leading group of a separated number; parser now reads 1500
+bonhams-29119-13-er,1,Bonhams,True,375.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29119-12-er,2,Bonhams,True,150.0,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29119-11-er,2,Bonhams,True,200.0,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29119-9-er,1,Bonhams,True,150.0,,1500,fix,stored 1 is the leading group of a separated number; parser now reads 1500
+bonhams-29119-7-er,1,Bonhams,True,400.0,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28468-206-er,1,Bonhams,False,,Real One,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28468-205-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-28468-189-er,1,Bonhams,True,1345.04,Guild Hall East Hampton,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-29929-7-er,3,Bonhams,True,800.0,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-26743-36-er,6,Bonhams,True,568.53,,6000,fix,stored 6 is the leading group of a separated number; parser now reads 6000
+bonhams-26743-37-er,3,Bonhams,True,530.62,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-26743-38-er,5,Bonhams,True,682.23,,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-26743-50-er,10,Bonhams,False,,Travail et Joie,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-26743-51-er,1,Bonhams,True,242.57,,1500,fix,stored 1 is the leading group of a separated number; parser now reads 1500
+bonhams-26743-59-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26743-64-er,1,Bonhams,True,606.43,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26743-111-er,3,Bonhams,True,1895.09,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+bonhams-26743-117-er,1,Bonhams,False,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-26743-150-er,650,Bonhams,False,,Piece for Tropic,650000,fix,stored 650 is the leading group of a separated number; parser now reads 650000
+bonhams-29498-153-er,1,Bonhams,True,24854.37,Pool Made with Paper and Blue Ink for Book,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000
+bonhams-27313-70-er,10,Bonhams,True,1371.12,Good Morning City – Bleeding Town,10000,fix,stored 10 is the leading group of a separated number; parser now reads 10000
+bonhams-27313-207-er,5,Bonhams,True,723.64,,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-29148-38-er,5,Bonhams,True,80.0,,5000,fix,stored 5 is the leading group of a separated number; parser now reads 5000
+bonhams-29148-34-er,2,Bonhams,True,50.0,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+bonhams-29148-31-er,2,Bonhams,False,,,2000,fix,stored 2 is the leading group of a separated number; parser now reads 2000
+swann-883db62211-er,3,Swann Auction Galleries,,,,3000,fix,stored 3 is the leading group of a separated number; parser now reads 3000
+swann-9232b4320d-er,1,Swann Auction Galleries,,,,1200,fix,stored 1 is the leading group of a separated number; parser now reads 1200
+swann-dd54586ba2-er,1,Swann Auction Galleries,,,,1000,fix,stored 1 is the leading group of a separated number; parser now reads 1000

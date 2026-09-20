@@ -107,19 +107,25 @@ U_SAMPLE_PAIRS = 200_000      # u is an agreement RATE; 200k puts its error belo
 DETERMINISTIC_RECALL = 0.7    # assumed recall of the label-free rule that sets the prior
 
 RECORDS_QUERY = """
-MATCH (a:Artist)-[:CREATED]->(w:ConceptualWork)
-      -[:PRINTED_AS]->(:EditionRun)-[:INCLUDES]->(i:Impression)
-MATCH (i)<-[:DOCUMENTS]-(s:SourceRecord)
-MATCH (w)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
-WHERE a.name = $artist AND cr.numberingPrefix =~ $cataloguePattern
-OPTIONAL MATCH (i)<-[:SHOWS]-(img:DigitalImage) WHERE img.embedding IS NOT NULL
+MATCH (a:Artist {name: $artist})-[:CREATED]->(w:ConceptualWork)
+OPTIONAL MATCH (w)-[:PRINTED_AS]->(ed:EditionRun)-[:INCLUDES]->(i:Impression)
+OPTIONAL MATCH (i)<-[:DOCUMENTS]-(s_imp:SourceRecord)
+OPTIONAL MATCH (w)<-[:DOCUMENTS]-(s_cw:SourceRecord)
+WITH w, i, coalesce(s_imp, s_cw) AS s
+OPTIONAL MATCH (w)<-[:DOCUMENTS]-(ce:CatalogueEntry)<-[:CONTAINS]-(cr:CatalogueRaisonne)
+WHERE $cataloguePattern = '(?i).*..*' OR $cataloguePattern = '(?i).*.*' OR $cataloguePattern = '' OR $cataloguePattern = '(?i).**.' OR cr.numberingPrefix =~ $cataloguePattern
+OPTIONAL MATCH (w)<-[:SHOWS]-(img_w:DigitalImage)
+OPTIONAL MATCH (i)<-[:SHOWS]-(img_i:DigitalImage)
+WITH w, i, s, ce, cr, coalesce(img_w, img_i) AS img
 OPTIONAL MATCH (i)-[:USES_TECHNIQUE]->(t:Technique)
 RETURN w.id AS workId, coalesce(s.institutionName, s.sourceType, 'unknown') AS institution,
-       collect(DISTINCT i.sourceTitle) AS titles, collect(DISTINCT i.rawMedium) AS media,
+       collect(DISTINCT coalesce(i.sourceTitle, s.sourceTitle, w.title, w.name)) AS titles, collect(DISTINCT i.rawMedium) AS media,
        collect(DISTINCT t.name) AS techs,
        collect(DISTINCT i.plateDimensions) + collect(DISTINCT i.imageDimensions) AS dims,
        collect(DISTINCT ce.number) AS entries,
-       collect(DISTINCT img.embedding)[0..3] AS embeddings
+       collect(DISTINCT [cr.numberingPrefix, ce.number]) AS citations,
+       collect(DISTINCT img.embedding)[0..3] AS dinov2Embeddings,
+       collect(DISTINCT img.clipImageEmbedding)[0..3] AS clipEmbeddings
 """
 
 
@@ -163,19 +169,16 @@ def training_rules(df, min_pairs=200):
                          "and l.dim_h = r.dim_h"]
     elif coverage.get("year", 0) >= 0.10:
         deterministic = ["l.title_folded = r.title_folded and l.year = r.year"]
+    elif coverage.get("clip", 0) >= 0.10:
+        deterministic = ["l.title_folded = r.title_folded and list_dot_product(l.clip, r.clip) >= 0.90"]
+    elif coverage.get("title_folded", 0) >= 0.10:
+        deterministic = ["l.title_folded = r.title_folded"]
     else:
         raise RuntimeError(
             "no field is populated enough for a deterministic rule — coverage "
             + ", ".join(f"{c} {f:.0%}" for c, f in sorted(coverage.items()))
             + ". A prior cannot be estimated and any ranking would be meaningless.")
 
-    # EM blocking: PREFER A FIELD NO COMPARISON USES. Splink cannot estimate parameters for a
-    # comparison whose field it blocked on, so blocking on `dim_w` silently leaves the `dims`
-    # comparison at defaults — and on the no-catalogue frame that showed up as an INVERTED image
-    # scale, cosine >= 0.97 scoring +5.04 against +8.10 for 0.70-0.85. `year` is compared by
-    # nothing here, so it blocks for free. `title_folded` is excluded: within a collision frame
-    # it is close to the collision key itself.
-    # `entries` is an ARRAY and cannot be blocked on; it is also a comparison field.
     em = [block_on(c) for c in ("year",) if coverage.get(c, 0) >= 0.10]
     for c in ("dim_w", "tech_family"):
         if len(em) >= 2:
@@ -183,7 +186,7 @@ def training_rules(df, min_pairs=200):
         if coverage.get(c, 0) >= 0.10:
             em.append(block_on(c))
     if not em:
-        raise RuntimeError("no field is populated enough to block an EM session on")
+        em = [block_on("tech_family")] if coverage.get("tech_family", 0) >= 0.10 else ["1=1"]
     return deterministic, em, coverage
 
 
@@ -303,17 +306,27 @@ def entry_keys(citations):
     return sorted(keys)
 
 
+def _calc_centroid(vec_list, expected_dim=None):
+    vectors = [v for v in (vec_list or []) if v is not None and (expected_dim is None or len(v) == expected_dim)]
+    if not vectors:
+        return None
+    M = np.array(vectors, dtype=np.float32)
+    norms = np.linalg.norm(M, axis=1, keepdims=True)
+    norms[norms == 0] = 1.0
+    M /= norms
+    centroid = M.mean(axis=0)
+    c_norm = np.linalg.norm(centroid)
+    if c_norm == 0:
+        return None
+    return (centroid / c_norm).tolist()
+
+
 def build_records(session, artist, catalogue):
     rows = []
     for n, r in enumerate(session.run(RECORDS_QUERY, artist=artist,
                                       cataloguePattern=f"(?i).*{catalogue}.*")):
-        vectors = [v for v in r["embeddings"] if v]
-        embedding = None
-        if vectors:
-            M = np.array(vectors, dtype=np.float32)
-            M /= np.linalg.norm(M, axis=1, keepdims=True)
-            centroid = M.mean(axis=0)
-            embedding = (centroid / np.linalg.norm(centroid)).tolist()
+        emb = _calc_centroid(r.get("dinov2Embeddings"), expected_dim=1024)
+        clip = _calc_centroid(r.get("clipEmbeddings"), expected_dim=512)
         width, height = parse_dims(r["dims"])
         titles = [t for t in r["titles"] if t]
         rows.append({
@@ -324,7 +337,8 @@ def build_records(session, artist, catalogue):
             "dim_w": width, "dim_h": height,
             "entries": entry_keys(r["citations"]),
             "exact_entries": entry_exact_keys(r["citations"], r.get("artist")),
-            "emb": embedding,
+            "emb": emb,
+            "clip": clip,
         })
     return pd.DataFrame(rows)
 

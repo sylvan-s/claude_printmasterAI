@@ -37,6 +37,7 @@ import neo4j from "neo4j-driver";
 import { getDriver, getDatabase } from "./client.js";
 import { isLowInformationTitle } from "./title_normalize.js";
 import { foldAccents, cypherFold, cypherFoldTrim, normalizeTitleKey, cypherNormalizeTitle } from "./unaccent.js";
+import { lookupArtistNames } from "./artist_lookup.js";
 
 export type ComparableTier = "same_work" | "same_artist_technique" | "same_artist";
 
@@ -49,19 +50,49 @@ export interface AuctionComparable {
   workTitle: string | null;
   techniques: string[];
   editionSize: number | null;
-  priceRealisedGBP: number;
+  /** Impression.signed as ingested — present on every sold auction record. A signed
+   *  small-edition print and an unsigned book plate by the same artist are different
+   *  markets; callers stratify on this rather than discounting by guesswork. */
+  signed: boolean | null;
+  /** The impression's medium / inscription text as the house printed it (Impression.rawMedium). */
+  rawMedium: string | null;
+  /** Impression.copyType as ingested ("numbered", "AP", "HC", "TP", "BAT", "PP", ...). */
+  copyType: string | null;
+  /** Impression dimension strings ("30.0x34.0cm"); plate is set on ~4%, image ~8%, sheet ~72% of sold comps. */
+  plateDimensions: string | null;
+  imageDimensions: string | null;
+  sheetDimensions: string | null;
+  /** Premium-inclusive realised price, GBP at the sale-date rate. What the buyer paid.
+   *  Null on the few records that carry only a hammer. */
+  priceRealisedGBP: number | null;
+  /**
+   * HAMMER price, GBP at the sale-date rate — the figure auction estimates are quoted
+   * against. Present on every dated Bonhams / Roseberys / Skinner record (measured 2026-09-13:
+   * 48,078 of 48,078). Valuations that are compared to a catalogue estimate must anchor on
+   * this, not on priceRealisedGBP: the premium ratio is ~1.25 (Bonhams), ~1.30 (Roseberys),
+   * ~1.28 (Skinner), so anchoring an estimate on realised prices reads ~1.3x high by
+   * construction — the confound the hammer backtest surfaced.
+   */
+  hammerPriceGBP: number | null;
   priceCurrency: string | null;
   priceRealisedNative: number | null;
   fxRateDate: string | null;
   estimateLowGBP: number | null;
   estimateHighGBP: number | null;
   listingUrl: string | null;
+  /** "after X" / "manner of" / "attributed to" rather than the artist's own work. */
+  nonDirect?: boolean;
 }
 
 export interface ComparablesSummary {
   count: number;
   tierCounts: Record<ComparableTier, number>;
+  /** Median premium-inclusive realised price. Kept under its historical name. */
   medianGBP: number | null;
+  /** Median HAMMER price — the basis an auction estimate is quoted on. Anchor here. */
+  medianHammerGBP: number | null;
+  /** Median hammer of the same_work tier alone, when any exist — the direct market price. */
+  medianSameWorkHammerGBP: number | null;
   minGBP: number | null;
   maxGBP: number | null;
   earliestSale: string | null;
@@ -78,6 +109,8 @@ export interface ComparablesParams {
   artistName: string;
   /** ACKG ConceptualWork id, when the caller resolved one. Strongest tier-1 signal. */
   conceptualWorkId?: string | null;
+  /** Several ids for one work (unmerged duplicates, or resolveWorkIdentity's answer). Tier 1. */
+  conceptualWorkIds?: string[] | null;
   /**
    * Identified work title. Falls back to tier 1 by EXACT (case/whitespace-insensitive)
    * title match within the same artist when no conceptualWorkId is available. Ignored when
@@ -89,34 +122,69 @@ export interface ComparablesParams {
   technique?: string | null;
   /** ISO date lower bound, e.g. "2015-01-01". Older sales are poor comps for print prices. */
   sinceDate?: string | null;
+  /**
+   * ISO date upper bound, EXCLUSIVE — only sales strictly before this date. For a backtest
+   * this is the subject lot's own sale date: a valuation made before the sale could not
+   * have seen that day's results or anything later. Compared on the date part only, since
+   * Bonhams/Skinner store a datetime and Roseberys a bare date.
+   */
+  untilDate?: string | null;
   /** Backtest circularity guard — drop the listing this input came from. */
   excludeListingUrl?: string | null;
   /** Backtest circularity guard — drop a specific sale/lot pair. */
   excludeSaleLot?: { saleId: string; lotNumber: number } | null;
+  /** Exclude EVERY record of this sale. See queryWorkFacts.excludeSaleId for why sale + lot
+   *  number is not sufficient on a preview lot, and why this is opt-in. */
+  excludeSaleId?: string | null;
+  /**
+   * The lot's attribution class (2026-09-17). "direct": only the artist's own work, never "after X" /
+   * "manner of" / "attributed to" lots; "after": only those. Absent: no filter (older callers).
+   * A sale is non-direct when its ATTRIBUTED_TO qualifier is not "direct", or it has none and the
+   * listing URL says so; build_priors.not_direct_mask uses the same rule.
+   */
+  attribution?: "direct" | "after" | null;
   limit?: number;
 }
 
+// The artist's stored name(s) are resolved BEFORE the comps traversal (lookupArtistNames:
+// exact index hit, then folded name or alias on a miss) so the main query starts from the
+// \`artist_name\` index. Matching the folded name inline was not indexable, and with the
+// traversal attached the planner started from SourceRecord instead: measured 2026-09-13 at
+// 3.3-4.6 s per call against 24-80 ms from the index, for a 1-work artist and a 422-comp
+// artist alike.
+/** Listing URLs that name a non-direct attribution; build_priors.NON_DIRECT_URL_RE, as a Neo4j (Java) regex. */
+export const NON_DIRECT_URL_RE = "(?i).*(?:lot/\\d+/|/\\d+-)(?:after|manner-of|circle-of|attributed-to|follower-of|school-of)-.*";
+
 const QUERY = `
 MATCH (a:Artist)
-WHERE ${cypherFold("a.name")} = $artistName
+WHERE a.name IN $artistNames
 MATCH (a)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)-[:INCLUDES]->(imp:Impression)
 MATCH (src:SourceRecord)-[:DOCUMENTS]->(imp)
 WHERE src.sourceType = 'auction'
   AND src.sold = true
-  AND src.priceRealisedGBP IS NOT NULL
-  AND src.priceRealisedGBP > 0
+  // A sold record is a comparable if it carries EITHER price. 643 sold Roseberys records have
+  // a hammer and no realised price (measured 2026-09-13) and were silently excluded.
+  AND ((src.priceRealisedGBP IS NOT NULL AND src.priceRealisedGBP > 0) OR (src.hammerPriceGBP IS NOT NULL AND src.hammerPriceGBP > 0))
   AND src.saleDate IS NOT NULL
   AND ($sinceDate IS NULL OR src.saleDate >= $sinceDate)
+  AND ($untilDate IS NULL OR substring(src.saleDate, 0, 10) < $untilDate)
   AND ($excludeListingUrl IS NULL OR src.listingUrl IS NULL OR src.listingUrl <> $excludeListingUrl)
-  AND ($excludeSaleId IS NULL OR NOT (src.saleId = $excludeSaleId AND src.lotNumber = $excludeLotNumber))
+  AND ($excludeLotSaleId IS NULL OR NOT (src.saleId = $excludeLotSaleId AND src.lotNumber = $excludeLotNumber))
+  AND ($excludeWholeSaleId IS NULL OR src.saleId IS NULL OR src.saleId <> $excludeWholeSaleId)
+OPTIONAL MATCH (src)-[att:ATTRIBUTED_TO]->(a)
+WITH cw, src, er, imp,
+     any(q IN collect(att.qualifier) WHERE q IS NOT NULL AND q <> 'direct')
+       OR (all(q IN collect(att.qualifier) WHERE q IS NULL) AND coalesce(src.listingUrl, '') =~ $nonDirectUrlRe) AS nonDirect
+WHERE $attribution IS NULL OR ($attribution = 'direct' AND NOT nonDirect) OR ($attribution = 'after' AND nonDirect)
 OPTIONAL MATCH (imp)-[:USES_TECHNIQUE]->(t:Technique)
-WITH cw, src, er, collect(DISTINCT t.name) AS techniques
+WITH cw, src, er, imp, nonDirect, collect(DISTINCT t.name) AS techniques
 // Tier must be decided HERE, not after LIMIT. Ordering by saleDate alone and tiering in
 // TS would let a tier-1 same-work comp fall outside the LIMIT window whenever the artist
 // has enough recent sales — silently discarding the single most relevant comparable.
-WITH cw, src, er, techniques,
+WITH cw, src, er, imp, techniques, nonDirect,
      CASE
        WHEN $conceptualWorkId IS NOT NULL AND cw.id = $conceptualWorkId THEN 0
+       WHEN size($conceptualWorkIds) > 0 AND cw.id IN $conceptualWorkIds THEN 0
        WHEN $workTitle IS NOT NULL
             AND ${cypherNormalizeTitle("cw.name")} = $workTitle THEN 0
        WHEN $technique IS NOT NULL
@@ -129,13 +197,16 @@ WITH cw, src, er, techniques,
 // and drags the median toward whichever lots happen to be duplicated. Measured at ~4%
 // excess rows (120 rows for 115 distinct records on one artist) before this collapse.
 ORDER BY tierRank ASC
-WITH src, collect({
+WITH src, nonDirect, collect({
        tierRank: tierRank, workId: cw.id, workTitle: cw.name,
-       editionSize: er.editionSize, techniques: techniques
+       editionSize: coalesce(er.declaredSize, er.editionSize), techniques: techniques, signed: imp.signed,
+       rawMedium: imp.rawMedium, copyType: imp.copyType,
+       plateDimensions: imp.plateDimensions, imageDimensions: imp.imageDimensions, sheetDimensions: imp.sheetDimensions
      })[0] AS best
 ORDER BY best.tierRank ASC, src.saleDate DESC
 LIMIT $limit
 RETURN best.tierRank AS tierRank,
+       nonDirect AS nonDirect,
        best.workId AS workId,
        best.workTitle AS workTitle,
        src.institutionName AS institutionName,
@@ -143,14 +214,25 @@ RETURN best.tierRank AS tierRank,
        src.saleId AS saleId,
        src.lotNumber AS lotNumber,
        src.priceRealisedGBP AS priceRealisedGBP,
+       src.hammerPriceGBP AS hammerPriceGBP,
        src.priceCurrency AS priceCurrency,
        src.priceRealised AS priceRealisedNative,
        src.fxRateDate AS fxRateDate,
+       // Native estimate / sale-date FX, written by knowledge_graph/backfill_fx_gbp.py for
+       // every house. Until 2026-09-13 Bonhams rows held the API's gbp_*_estimate here, which
+       // is the SOLD price post-sale; repair_bonhams_estimate_gbp.py corrected the stored
+       // values and check_bonhams_estimate_gbp.py guards them, so the property is read as-is.
        src.estimateLowGBP AS estimateLowGBP,
        src.estimateHighGBP AS estimateHighGBP,
        src.listingUrl AS listingUrl,
        best.editionSize AS editionSize,
-       best.techniques AS techniques
+       best.signed AS signed,
+       best.techniques AS techniques,
+       best.rawMedium AS rawMedium,
+       best.copyType AS copyType,
+       best.plateDimensions AS plateDimensions,
+       best.imageDimensions AS imageDimensions,
+       best.sheetDimensions AS sheetDimensions
 `;
 
 function num(value: unknown): number | null {
@@ -202,20 +284,24 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
   const rawTitle = params.workTitle?.trim() || null;
   const titleForExactMatch = rawTitle && !isLowInformationTitle(rawTitle) ? rawTitle : null;
   try {
+    const { names: artistNames } = await lookupArtistNames(session, params.artistName);
     const res = await session.run(QUERY, {
-      // Accent-folded to match the folded properties in QUERY — an unfolded "Peintre et
-      // Modele" never reached tier 0 against the graph's "Peintre et Modèle". See unaccent.ts.
-      artistName: foldAccents(params.artistName),
+      artistNames,
       conceptualWorkId: params.conceptualWorkId ?? null,
+      conceptualWorkIds: params.conceptualWorkIds ?? [],
       // Normalised, not merely accent-folded: 29.9% of works are variant-titled duplicates
       // of another work by the same artist, so an accent-only fold still misses most of a
       // work's own sales at tier 1. See TITLE_PUNCTUATION.
       workTitle: titleForExactMatch ? normalizeTitleKey(titleForExactMatch) : null,
       technique: params.technique?.trim() ? foldAccents(params.technique.trim()) : null,
       sinceDate: params.sinceDate ?? null,
+      untilDate: params.untilDate ?? null,
       excludeListingUrl: params.excludeListingUrl ?? null,
-      excludeSaleId: params.excludeSaleLot?.saleId ?? null,
+      excludeLotSaleId: params.excludeSaleLot?.saleId ?? null,
       excludeLotNumber: params.excludeSaleLot ? neo4j.int(params.excludeSaleLot.lotNumber) : null,
+      excludeWholeSaleId: params.excludeSaleId?.trim() || null,
+      attribution: params.attribution ?? null,
+      nonDirectUrlRe: NON_DIRECT_URL_RE,
       limit: neo4j.int(limit),
     });
 
@@ -233,17 +319,27 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
         workTitle: r.get("workTitle") ?? null,
         techniques,
         editionSize: num(r.get("editionSize")),
-        priceRealisedGBP: num(r.get("priceRealisedGBP")) as number,
+        signed: typeof r.get("signed") === "boolean" ? (r.get("signed") as boolean) : null,
+        rawMedium: r.get("rawMedium") ?? null,
+        copyType: r.get("copyType") ?? null,
+        plateDimensions: r.get("plateDimensions") ?? null,
+        imageDimensions: r.get("imageDimensions") ?? null,
+        sheetDimensions: r.get("sheetDimensions") ?? null,
+        priceRealisedGBP: num(r.get("priceRealisedGBP")),
+        hammerPriceGBP: num(r.get("hammerPriceGBP")),
         priceCurrency: r.get("priceCurrency") ?? null,
         priceRealisedNative: num(r.get("priceRealisedNative")),
         fxRateDate: r.get("fxRateDate") ?? null,
         estimateLowGBP: num(r.get("estimateLowGBP")),
         estimateHighGBP: num(r.get("estimateHighGBP")),
         listingUrl: r.get("listingUrl") ?? null,
+        nonDirect: r.get("nonDirect") === true,
       };
     });
 
-    const prices = comparables.map((c) => c.priceRealisedGBP);
+    const prices = comparables.map((c) => c.priceRealisedGBP).filter((p): p is number => p != null && p > 0);
+    const hammers = comparables.map((c) => c.hammerPriceGBP).filter((h): h is number => h != null && h > 0);
+    const sameWorkHammers = comparables.filter((c) => c.tier === "same_work").map((c) => c.hammerPriceGBP).filter((h): h is number => h != null && h > 0);
     const dates = comparables.map((c) => c.saleDate).filter(Boolean) as string[];
     const tierCounts: Record<ComparableTier, number> = {
       same_work: 0, same_artist_technique: 0, same_artist: 0,
@@ -256,6 +352,8 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
         count: comparables.length,
         tierCounts,
         medianGBP: median(prices),
+        medianHammerGBP: median(hammers),
+        medianSameWorkHammerGBP: median(sameWorkHammers),
         minGBP: prices.length ? Math.min(...prices) : null,
         maxGBP: prices.length ? Math.max(...prices) : null,
         earliestSale: dates.length ? dates.reduce((a, b) => (a < b ? a : b)) : null,
@@ -266,8 +364,10 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
         "(2014-2026, 8,164) and Skinner (2022-2026, 1,251). Forum Auctions is excluded: its " +
         "records carry neither a saleDate nor a realised price. An absent or thin comp set " +
         "reflects that coverage gap, not evidence that the artist's work is unsaleable or " +
-        "worthless. All prices are premium-inclusive realised prices converted to GBP at the " +
-        "sale-date ECB rate.",
+        "worthless. Every record carries two prices, both GBP at the sale-date ECB rate: " +
+        "hammerPriceGBP (the fall of the hammer — the basis auction ESTIMATES are quoted on) and " +
+        "priceRealisedGBP (hammer plus buyer's premium, ~1.25-1.30x). An estimate must be set " +
+        "against hammer prices; a range set from realised prices reads ~1.3x high.",
     };
   } finally {
     await session.close();

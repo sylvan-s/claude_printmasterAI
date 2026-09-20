@@ -29,7 +29,7 @@
  */
 
 import type { Dimension } from "../../../src/shared/text_extraction";
-import { parseDimensions, extractCatalogueRefs, detectEditionSize, artistNameLeakTokens, artistSurnameToken } from "../../../src/shared/text_extraction";
+import { parseDimensions, extractCatalogueRefs, detectEditionSize, artistNameLeakTokens, artistSurnameToken, decodeHtmlEntities } from "../../../src/shared/text_extraction";
 
 // Re-exported for anything importing these from this module directly — the
 // canonical implementations now live in src/shared/text_extraction.ts since
@@ -80,14 +80,11 @@ export function htmlToLines(html: string): string[] {
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n")
     .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&(?:ldquo|rdquo|quot);/g, '"')
-    .replace(/&(?:lsquo|rsquo|#39);/g, "'")
-    .replace(/&eacute;/g, "é").replace(/&egrave;/g, "è").replace(/&agrave;/g, "à")
-    .replace(/&uuml;/g, "ü").replace(/&ouml;/g, "ö").replace(/&auml;/g, "ä")
-    .replace(/&ccedil;/g, "ç").replace(/&ntilde;/g, "ñ").replace(/&oacute;/g, "ó")
-    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
+    // Was a nine-letter allowlist; "&iacute;" and "&acirc;" were not on it, so Dalí and Bicât
+    // reached the graph with the entity intact and matched nothing. See decodeHtmlEntities.
+    .split("\n")
+    .map(decodeHtmlEntities)
+    .join("\n")
     .split("\n")
     .map((l) => l.replace(/\s+/g, " ").trim())
     .filter((l) => l.length > 0);

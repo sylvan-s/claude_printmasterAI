@@ -5,6 +5,7 @@
  * Run: npm run test:stage2a-evidence
  */
 import assert from "node:assert/strict";
+import { applyObservedDims } from "../../src/appraisal/stage2a_query_plan";
 import {
   evidenceToTwoPassInput,
   assembleTriageResult,
@@ -551,16 +552,27 @@ test("a block returned as a JSON string is parsed back, and the recovery is repo
   assert.deepEqual(ev.artistEvidence, { kId: "true" });
 });
 
-test("a string that is not JSON is left alone for the caller's structural check to degrade on", () => {
+test("a string that is not JSON is DROPPED, so the block reads as absent rather than as a string", () => {
+  // It must not survive as a string: the cell writers assign into these blocks, and assigning
+  // a property on a string throws. Measured 2026-09-13 — Haiku closed an impressionEvidence
+  // block with "]" and the lot died with "Cannot create property 'observedSheetMm' on string".
   const ev: any = { artistEvidence: "not evidence at all" };
-  assert.deepEqual(normalizeEvidenceBlocks(ev), []);
-  assert.equal(ev.artistEvidence, "not evidence at all");
+  assert.deepEqual(normalizeEvidenceBlocks(ev), ["artistEvidence (unparseable, dropped)"]);
+  assert.equal("artistEvidence" in ev, false);
 });
 
-test("a JSON string holding an array or a scalar is not accepted as a block", () => {
+test("a JSON string holding an array or a scalar is not accepted as a block, and is dropped", () => {
   const ev: any = { workEvidence: "[1,2,3]", riskFlags: "42" };
-  assert.deepEqual(normalizeEvidenceBlocks(ev), []);
-  assert.equal(ev.workEvidence, "[1,2,3]");
+  assert.deepEqual(normalizeEvidenceBlocks(ev), ["workEvidence (not an object, dropped)", "riskFlags (not an object, dropped)"]);
+  assert.equal("workEvidence" in ev, false);
+  assert.equal("riskFlags" in ev, false);
+});
+
+test("a block left as a non-object never reaches the cell writers", () => {
+  // The second line of defence: even if something slips past normalizeEvidenceBlocks.
+  const ev: any = { impressionEvidence: "still a string" };
+  assert.deepEqual(applyObservedDims(ev, { observedDims: { kind: "sheet", mm: { width: 100, height: 200 } } } as any), []);
+  assert.equal(ev.impressionEvidence, "still a string");
 });
 
 test("a null or non-object report never throws", () => {

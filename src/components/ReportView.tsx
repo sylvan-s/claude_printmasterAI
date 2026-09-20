@@ -1,6 +1,7 @@
 import React from "react";
 import { PrintAnalysisReport, ASAAttributionResult, LegacyAttributionResult } from "../types";
 import { resolveMethodLabel } from "../utils/resolveMethodLabel";
+import { ValuationWaterfall } from "./ValuationWaterfall";
 import { 
   User, 
   Award, 
@@ -445,7 +446,7 @@ export default function ReportView({
               ))}
             </div>
           </div>
-          <h3 className="text-xs font-sans font-medium text-rosebery-muted uppercase tracking-wider block">AUCTION VALUE RANGE</h3>
+          <h3 className="text-xs font-sans font-medium text-rosebery-muted uppercase tracking-wider block">{report.estimateSource?.source === "stage3a" ? "FAIR VALUE RANGE (HAMMER)" : "AUCTION VALUE RANGE"}</h3>
           {isEditing ? (
             <div className="space-y-3 my-4">
               <div className="grid grid-cols-2 gap-3">
@@ -605,6 +606,26 @@ export default function ReportView({
           </div>
         </div>
       </div>
+
+      {report.stage3a?.waterfall && report.estimateSource?.source === "stage3a" && !isEditing && (
+        <div className="lg:col-span-3 bg-white border border-rosebery-border rounded-xl p-6 shadow-gallery-soft">
+          <span className="text-xs font-mono tracking-[0.2em] text-rosebery-primary uppercase flex items-center gap-2 mb-1 font-bold">
+            <Coins className="w-4 h-4" />
+            HOW THE FAIR VALUE WAS BUILT
+          </span>
+          <p className="text-[11px] text-rosebery-muted mb-5">
+            From a reference print by this artist in this technique (numbered, hand-signed, edition 31–75, large, Bonhams, at the valuation year's market), through this print's own attributes, to the price the market comps support. The pricing model is fitted to auction houses' estimates; the comps are realised hammer prices. This lot's own printed estimate is not used.
+          </p>
+          <ValuationWaterfall
+            waterfall={report.stage3a.waterfall}
+            narrative={report.valuationNarrative}
+            low={convertValue(safeEst(report).lowEstimate, safeEst(report).currency || "USD", currency)}
+            high={convertValue(safeEst(report).highEstimate, safeEst(report).currency || "USD", currency)}
+            convert={(gbp) => convertValue(gbp, "GBP", currency)}
+            symbol={getCurrencySymbol(currency)}
+          />
+        </div>
+      )}
     </div>
   );
 

@@ -111,6 +111,49 @@ function toCm(value: number, unit: string): number {
 }
 
 /** Matches lines like "image: 22 x 32cm" or "framed size: 45 x 60 cm". */
+/**
+ * Decode HTML entities in catalogue text.
+ *
+ * Auction HTML is full of them and a partial decoder is worse than none, because what survives
+ * is a plausible-looking string that silently fails every exact match downstream. Measured on
+ * Roseberys A0793: the sale screen resolved 263 of 268 artists, and four of the five misses were
+ * this — "Salvador Dal&iacute;" and "Andr&eacute; Bic&acirc;t" reaching `resolveArtistIdentity`
+ * with the entity intact and matching nothing, though both artists are in the graph (Dalí with
+ * 990 works). The previous decoder was an allowlist of nine accented letters, and the two that
+ * mattered were not on it.
+ *
+ * So: the full Latin-1 letter set rather than the ones someone happened to hit, plus decimal and
+ * hexadecimal numeric references, plus the punctuation that auction descriptions actually use.
+ * `&amp;` is decoded LAST so that an escaped entity (`&amp;eacute;`) becomes the literal text
+ * `&eacute;` rather than being decoded twice into a letter that was never there.
+ */
+const HTML_ENTITIES: Record<string, string> = {
+  nbsp: " ", lt: "<", gt: ">", quot: '"', apos: "'",
+  ldquo: "\u201c", rdquo: "\u201d", lsquo: "\u2018", rsquo: "\u2019",
+  ndash: "\u2013", mdash: "\u2014", hellip: "\u2026", deg: "\u00b0", times: "\u00d7",
+  laquo: "\u00ab", raquo: "\u00bb", middot: "\u00b7", bull: "\u2022", dagger: "\u2020",
+  frac12: "\u00bd", frac14: "\u00bc", frac34: "\u00be", pound: "\u00a3", euro: "\u20ac", cent: "\u00a2",
+  agrave: "\u00e0", aacute: "\u00e1", acirc: "\u00e2", atilde: "\u00e3", auml: "\u00e4", aring: "\u00e5", aelig: "\u00e6",
+  ccedil: "\u00e7", egrave: "\u00e8", eacute: "\u00e9", ecirc: "\u00ea", euml: "\u00eb",
+  igrave: "\u00ec", iacute: "\u00ed", icirc: "\u00ee", iuml: "\u00ef",
+  ntilde: "\u00f1", ograve: "\u00f2", oacute: "\u00f3", ocirc: "\u00f4", otilde: "\u00f5", ouml: "\u00f6", oslash: "\u00f8",
+  ugrave: "\u00f9", uacute: "\u00fa", ucirc: "\u00fb", uuml: "\u00fc", yacute: "\u00fd", yuml: "\u00ff", szlig: "\u00df",
+  Agrave: "\u00c0", Aacute: "\u00c1", Acirc: "\u00c2", Atilde: "\u00c3", Auml: "\u00c4", Aring: "\u00c5", AElig: "\u00c6",
+  Ccedil: "\u00c7", Egrave: "\u00c8", Eacute: "\u00c9", Ecirc: "\u00ca", Euml: "\u00cb",
+  Igrave: "\u00cc", Iacute: "\u00cd", Icirc: "\u00ce", Iuml: "\u00cf",
+  Ntilde: "\u00d1", Ograve: "\u00d2", Oacute: "\u00d3", Ocirc: "\u00d4", Otilde: "\u00d5", Ouml: "\u00d6", Oslash: "\u00d8",
+  Ugrave: "\u00d9", Uacute: "\u00da", Ucirc: "\u00db", Uuml: "\u00dc", Yacute: "\u00dd",
+};
+
+export function decodeHtmlEntities(input: string): string {
+  if (!input || !input.includes("&")) return input;
+  return input
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&([a-zA-Z][a-zA-Z0-9]{1,9});/g, (m, name) => (name in HTML_ENTITIES ? HTML_ENTITIES[name] : m))
+    .replace(/&amp;/g, "&");
+}
+
 export function parseDimensions(lines: string[]): Dimension[] {
   const out: Dimension[] = [];
   const re =
@@ -132,14 +175,25 @@ export function parseDimensions(lines: string[]): Dimension[] {
 /** Catalogue raisonné refs — e.g. [Bloch 1244], (Vallier 153), (Danilowitz 173.9). */
 export function extractCatalogueRefs(text: string): string[] {
   const refs = new Set<string>();
-  for (const m of text.matchAll(/[\[(]\s*([A-Z][A-Za-z&.\s]{2,25}?\s+[\dIVX][\d.\-IVX]*)\s*[\])]/g)) {
+  // A page-cited catalogue ("Czwiklitzer p.437", "Littmann p. 93") is a real citation: some
+  // catalogues raisonnés number by page, not by entry. Forum's Picasso posters are cited that
+  // way, and without the optional marker the reference stayed in the title and no CatalogueEntry
+  // was ever made (A0793/305). catalogue_matching.py moves the marker onto the entry number.
+  for (const m of text.matchAll(/[\[(]\s*([A-Z][A-Za-z&.\s]{2,25}?\s+(?:pp?\.\s*)?[\dIVX][\d.\-IVX]*)\s*[\])]/g)) {
     refs.add(m[1].replace(/\s+/g, " ").trim());
   }
   return [...refs];
 }
 
-/** Edition size from "edition of 100" or a fraction like "45/100" -> 100. */
+/**
+ * Edition size from "numbered n/N", else "edition of N" — the order train_price_model.py and
+ * price_attrs.ts use, so "numbered 12/50 (there was also an unsigned edition of 500)" is 50 here
+ * too. A bare "n/N" is NOT enough: in catalogue text it is almost always an imperial fraction
+ * ("25 1/2in"), which read as editions of 2/4/8/16 on ~1,500 priced Forum and Roseberys sales
+ * before the 2026-09-17 repair.
+ */
 export function detectEditionSize(text: string): number | null {
-  const m = text.match(/edition\s+of\s+(\d+)/i) ?? text.match(/\b\d+\s*\/\s*(\d+)\b/);
-  return m ? Number(m[1]) : null;
+  const m = text.match(/\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201C\u201D]?\d+\s*\/\s*(\d{1,3}(?:,\d{3})+|\d+)\b(?!\s*(?:mm\b|cm\b|["\u201D]))/i)
+    ?? text.match(/edition\s+of\s+(\d{1,3}(?:,\d{3})+|\d+)/i);
+  return m ? Number(m[1].replace(/,/g, "")) : null;   // "edition of 1,000" is 1000, not 1
 }

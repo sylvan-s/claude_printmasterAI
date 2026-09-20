@@ -137,6 +137,111 @@ export function assessComp(comp: Stage2bComp): CompAssessment {
   };
 }
 
+/**
+ * Split Stage 2b's comps into the ones Stage 3 may see and the ones it may not.
+ *
+ * The specialist prompt already states the rule — "Every figure you take from here must be
+ * attributable to one of the returned URLs; a price you cannot point at a URL for is not a
+ * verified comparable" — and until now nothing enforced it at the valuation boundary. The
+ * write-back gates on a citation, so an uncited comp could never reach the graph, but it
+ * reached Stage 3's prompt unchallenged. Measured 2026-09-14 while comparing Stage 2b models:
+ * Haiku returned three comps with no URL and no stated basis, naming Cindy Sherman's most
+ * famous series at small-print prices, and on a re-run produced the same GBP 1,875 against a
+ * different title. Those numbers were generated, not retrieved, and the only thing standing
+ * between them and a valuation was luck.
+ *
+ * The gate is the CITATION alone, deliberately. Price basis is the write-back's concern
+ * (a stored price in the wrong field is unrepairable); for reading, a cited comp with an
+ * unstated basis is still real evidence and Stage 3 is told to treat the basis as unknown.
+ * Over-filtering here would discard findings that are true.
+ *
+ * The dropped count is returned rather than swallowed, because a stage that found five figures
+ * and could cite two is telling you something about the quality of that research, and Stage 3
+ * should be able to see it.
+ */
+export function partitionCitedComps(comps: unknown): { cited: Stage2bComp[]; uncited: Stage2bComp[] } {
+  if (!Array.isArray(comps)) return { cited: [], uncited: [] };
+  const cited: Stage2bComp[] = [], uncited: Stage2bComp[] = [];
+  for (const c of comps as Stage2bComp[]) (isUsableUrl(c?.listingUrl) ? cited : uncited).push(c);
+  return { cited, uncited };
+}
+
+/** One line naming what was withheld and why, for the Stage 3 prompt and the run log. */
+export function describeUncitedComps(uncited: Stage2bComp[]): string {
+  if (!uncited.length) return "";
+  const named = uncited
+    .map((c) => `"${text(c.artworkTitle) || "untitled"}"${text(c.auctionHouse) ? ` (${text(c.auctionHouse)})` : ""}${typeof c.priceAmount === "number" ? ` at ${c.priceAmount}` : ""}`)
+    .slice(0, 6)
+    .join(", ");
+  return `${uncited.length} further web finding(s) were WITHHELD from you because they carry no citation URL: ${named}. ` +
+    `A price with no page behind it is not a comparable, and a research step that produces several of them is itself a signal that its findings are thin — weigh the rest accordingly.`;
+}
+
+/**
+ * The fields needed to recognise a sale, whatever shape the caller's comp type is.
+ *
+ * The house arrives under two different names: ACKG comparables carry `institutionName`,
+ * Stage 2b's comps carry `auctionHouse`. Reading only one silently produced URL-only matching
+ * and let through every duplicate whose graph record had no listing URL.
+ */
+export interface SaleIdentity {
+  institutionName?: string | null;
+  auctionHouse?: string | null;
+  saleId?: string | null;
+  lotNumber?: number | string | null;
+  listingUrl?: string | null;
+}
+
+const houseKey = (v: unknown) => text(v).toLowerCase().replace(/[^a-z]/g, "");
+const urlKey = (v: unknown) => {
+  const s = text(v);
+  if (!s) return "";
+  try { const u = new URL(s); return `${u.hostname.replace(/^www\./i, "")}${u.pathname.replace(/\/+$/, "")}`.toLowerCase(); }
+  catch { return ""; }
+};
+/** Sale ids and lot numbers arrive as strings from a model and as numbers from the graph.
+ *  `text()` returns "" for a number, so reading them through it silently dropped every
+ *  graph-side key and left the match URL-only. */
+const idText = (v: unknown): string =>
+  typeof v === "string" ? v.trim() : typeof v === "number" && Number.isFinite(v) ? String(v) : "";
+
+function saleKeys(c: SaleIdentity): string[] {
+  const out: string[] = [];
+  const u = urlKey(c.listingUrl);
+  if (u) out.push(`u:${u}`);
+  const h = houseKey(c.institutionName ?? c.auctionHouse), s = idText(c.saleId), l = idText(c.lotNumber);
+  if (h && s && l) out.push(`k:${h}|${s}|${l}`);
+  return out;
+}
+
+/**
+ * Drop web findings that are the SAME SALE as a graph comparable already in the prompt.
+ *
+ * Stage 3 receives two comp blocks: the ACKG's structured records, which it is told to anchor
+ * on, and Stage 2b's web findings, which it is told to use "to corroborate". Measured across 24
+ * stored lots: 80 of 106 web comps (75%) were the same sale as an ACKG comp in the SAME prompt,
+ * and on many lots every single one was — 4/4, 5/5, 7/7. The graph holds 38,663 sold Bonhams
+ * lots, so for a well-covered artist any Bonhams page the web surfaces is already ingested.
+ *
+ * A duplicate is worse than redundant here. The model cannot tell the two entries are one sale,
+ * the prompt invites it to read the second as corroboration of the first, and the web copy is
+ * usually premium-inclusive where the ACKG copy is hammer — so one sale arrives as two
+ * independent data points on two different price bases. Anchoring is exactly what that breaks.
+ *
+ * Matched on the listing URL, or on house + sale + lot together. A house and a lot number
+ * without a sale identify nothing, and are left alone rather than guessed at.
+ */
+export function dropWebCompsAlreadyInGraph<T extends SaleIdentity>(
+  webComps: T[], graphComps: SaleIdentity[],
+): { kept: T[]; duplicates: T[] } {
+  if (!webComps.length || !graphComps.length) return { kept: webComps, duplicates: [] };
+  const seen = new Set(graphComps.flatMap(saleKeys));
+  if (!seen.size) return { kept: webComps, duplicates: [] };
+  const kept: T[] = [], duplicates: T[] = [];
+  for (const c of webComps) (saleKeys(c).some((k) => seen.has(k)) ? duplicates : kept).push(c);
+  return { kept, duplicates };
+}
+
 export function assessComps(comps: unknown): CompStorabilityReport {
   const list: Stage2bComp[] = Array.isArray(comps) ? comps : [];
   const report: CompStorabilityReport = {

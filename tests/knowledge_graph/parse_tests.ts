@@ -4,6 +4,8 @@
  * Run: npm run test:kg-parse
  */
 import assert from "node:assert/strict";
+import { htmlToLines } from "../../benchmark/src/roseberys/parse";
+import { decodeHtmlEntities } from "../../src/shared/text_extraction";
 import { parseAckgDimMm } from "../../src/appraisal/knowledge_graph/dimension_parse";
 import { normalizeTitleForEmbedding, isLowInformationTitle } from "../../src/appraisal/knowledge_graph/title_normalize";
 import { titleSimFromCosine, COSINE_FLOOR, COSINE_CEIL } from "../../src/appraisal/knowledge_graph/embed_text";
@@ -402,6 +404,38 @@ test("cypherNormalizeTitle escapes quote and backslash for a Cypher literal", ()
   const c = cypherNormalizeTitle("cw.name");
   assert.ok(c.includes("\\'"), "apostrophe must be backslash-escaped");
   assert.ok(c.startsWith("trim(") && c.includes("toLower(trim(cw.name))"));
+});
+
+test("HTML entities: the accented letters that actually broke the A0793 screen", () => {
+  // Four of the five artists the screen could not resolve were this, not a graph gap.
+  assert.equal(decodeHtmlEntities("Salvador Dal&iacute;"), "Salvador Dalí");
+  assert.equal(decodeHtmlEntities("Andr&eacute; Bic&acirc;t"), "André Bicât");
+});
+
+test("HTML entities: numeric references, decimal and hex", () => {
+  assert.equal(decodeHtmlEntities("Se&#241;or"), "Señor");
+  assert.equal(decodeHtmlEntities("&#x41;lpha"), "Alpha");
+});
+
+test("HTML entities: an escaped entity stays literal rather than decoding twice", () => {
+  // &amp; is decoded last precisely so this does not become "Tom é literal".
+  assert.equal(decodeHtmlEntities("Tom &amp;eacute; literal"), "Tom &eacute; literal");
+  assert.equal(decodeHtmlEntities("Smith &amp; Son"), "Smith & Son");
+});
+
+test("HTML entities: an unknown entity is left alone rather than mangled", () => {
+  assert.equal(decodeHtmlEntities("a &notarealentity; b"), "a &notarealentity; b");
+  assert.equal(decodeHtmlEntities("plain text"), "plain text");
+});
+
+test("HTML entities: punctuation and symbols auction descriptions actually use", () => {
+  assert.equal(decodeHtmlEntities("100&deg; &times; 2"), "100° × 2");
+  assert.equal(decodeHtmlEntities("&pound;500&ndash;700"), "£500–700");
+  assert.equal(decodeHtmlEntities("17&frac12;in"), "17½in");
+});
+
+test("htmlToLines decodes through the parser, not just in isolation", () => {
+  assert.deepEqual(htmlToLines("Salvador Dal&iacute;<br>Caf&eacute; 100&deg;"), ["Salvador Dalí", "Café 100°"]);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

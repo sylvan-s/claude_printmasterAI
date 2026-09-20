@@ -1,4 +1,8 @@
 import type { Stage2bComp, CompStorabilityReport } from "./appraisal/comp_storability.js";
+import type { AttributedLotReport } from "./appraisal/attributed_lot.js";
+import type { ValuationEvidence } from "./appraisal/valuation_evidence.js";
+import type { Stage3aResult } from "./appraisal/stage3a_blend.js";
+import type { ValuationNarrative } from "./appraisal/stage3b_narration.js";
 
 export interface AuctionEstimate {
   lowEstimate: number;
@@ -6,6 +10,19 @@ export interface AuctionEstimate {
   currency: string;
   formattedEstimate: string;
   valuationContext: string;
+  /** Structured reasoning behind the number. Always present in attributed-lot mode
+   *  (src/appraisal/attributed_lot.ts); optional elsewhere. */
+  valuationReasoning?: ValuationReasoning;
+}
+
+export interface ValuationReasoning {
+  anchor: string;
+  anchorValue: number;
+  adjustments: Array<{ factor: string; direction: "up" | "down" | "none" | string; magnitude: string; evidence: string }>;
+  evidenceFor: string[];
+  evidenceAgainst: string[];
+  confidence: string;
+  whatWouldChangeIt: string[];
 }
 
 export interface TechnicalDetail {
@@ -50,6 +67,21 @@ export interface PrintAnalysisReport {
   stage1dResult?: Stage1dResult;
   stage2aResult?: TriageResult;
   stage2Result?: AttributionResearchResult;
+  /** Present only on the attributed-lot entry path (src/appraisal/attributed_lot.ts). */
+  attributedLot?: AttributedLotReport;
+  /** Stage 2's structured valuation evidence (src/appraisal/valuation_evidence.ts, plan 2026-09-16 phase 3).
+   *  Persisted for audit and for Stage 3a; the LLM Stage 3 does not read it yet. */
+  valuationEvidence?: ValuationEvidence | null;
+  /** Stage 3a's deterministic price from that evidence (src/appraisal/stage3a_blend.ts). Since
+   *  2026-09-16 it IS the displayed auctionEstimate whenever it could price the lot. */
+  stage3a?: Stage3aResult | null;
+  /** Legacy: the LLM Stage 3 estimate kept for audit while both ran (2026-09-16, before the LLM
+   *  pricing call was removed). Absent on newer reports. */
+  llmAuctionEstimate?: AuctionEstimate | null;
+  /** Which stage produced auctionEstimate, and why when it is the fallback. */
+  estimateSource?: { source: "stage3a" | "llm"; note: string };
+  /** Stage 3b's commentary on the Stage 3a price; null when its figures failed the check twice. */
+  valuationNarrative?: ValuationNarrative | null;
   pipelineMeta?: {
     specialistConfigUsed: string;
     humanEscalationRequired: boolean;
@@ -494,6 +526,8 @@ export interface Stage1dResult {
    *  style comparison against a candidate artist's catalogued works. Stripped before the
    *  result is stored — 1024 floats have no business in a saved report. */
   dinov2QueryVector?: number[] | null;
+  /** The lot image's CLIP vector, for Stage 3a's CLIP-similar comps (2026-09-17). Stripped from the report like the DINOv2 one. */
+  clipQueryVector?: number[] | null;
 }
 
 export interface TriageResult {

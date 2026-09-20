@@ -1214,9 +1214,17 @@ PROOFS SIT OUTSIDE THE NUMBERED EDITION. "Edition of 75" routinely means 75 numb
 Then identify edition type (first | later | reprint | posthumous | unknown) and valuation-relevant findings (impression period, rarity factors, discount factors).
 
 STEP 7 — AUCTION COMP COLLECTION
-CALL query_ackg_comparables FIRST, with the attributed artist plus the work title and technique when you have them. It returns dated, sold, premium-inclusive, GBP-normalised records tiered same_work / same_artist_technique / same_artist. These are the strongest comps available to you and are the same corpus Stage 3 values from — prefer them over anything you find on the open web, and record them in auctionComps like any other comp (listingUrl, priceAmount, priceCurrency "GBP" and priceBasis "premium_inclusive" all come straight off the record).
-THEN use web search only for what the graph did not cover: no same_work tier, too few comps to reason from, or an empty result because the artist is thin in the graph (81% of its artists have fewer than 3 priced records, and Forum Auctions is absent entirely). A thin graph result is a coverage fact — never treat it as evidence the work is unsaleable or low-value.
-Use 1–2 web searches to find recent verifiable auction sales of identical or highly similar prints. Prioritise: Roseberys London, Sotheby's, Christie's, Phillips, Bonhams, Artnet. Aim for 2–3 comps. For each comp found:
+CALL query_ackg_comparables FIRST, with the attributed artist plus the work title and technique when you have them. It returns dated, sold, GBP-normalised records tiered same_work / same_artist_technique / same_artist, each with hammerGBP (hammer basis — what estimates are quoted against) and realisedGBP (premium-inclusive). Read them: they tell you what this artist's market looks like and, just as importantly, what the graph already covers.
+
+DO NOT COPY THOSE RECORDS INTO auctionComps. Stage 3 queries the same corpus itself and already has every one of them in front of it, on a hammer basis, as its primary evidence. A record copied across arrives at the valuation TWICE — once as a graph record and once as your independent finding, usually on a premium-inclusive basis — and the prompt there invites the second to be read as corroboration of the first. One sale then counts as two data points on two different price bases, which is precisely what breaks anchoring. Measured across every lot this stage has run: 80 of 106 comps reported here were duplicates of records already in Stage 3's prompt, and code now discards them, so copying them wastes your output budget and buys nothing.
+
+auctionComps IS FOR SALES THE GRAPH DID NOT RETURN. Nothing else belongs in it.
+
+SPEND NO WEB SEARCHES ON COMPS WHEN query_ackg_comparables ALREADY RETURNED A same_work RECORD. That is the comp question answered — a prior sale of this exact print is the strongest evidence that exists, and a further search can only turn up the same corpus a second time. Spend the budget on STEP 3's catalogue raisonné, on the attribution, or on the series and edition structure, all of which the graph covers far less well.
+
+WHEN THERE IS NO same_work RECORD, SEARCHING FOR ONE IS THE RIGHT USE OF THE BUDGET. A same-work sale lands within 2x of the outcome about 80% of the time; same_artist_technique manages 60% and same_artist 50%, so thirty same-artist records do not answer the question one same-work record answers, and you should not treat a large tier-3 count as coverage. Use 1–2 web searches, aimed at THIS print rather than at the artist in general. Prioritise: Roseberys London, Sotheby's, Christie's, Phillips, Bonhams, Artnet.
+
+Expect to come back empty, and report that honestly rather than padding. The graph holds Bonhams 2003–2026, Roseberys London and Skinner, so for a well-covered artist most of what the open web shows is already in it; a search that finds nothing NEW is a coverage fact about a thin corner of the market (81% of the graph's artists have fewer than 3 priced records, and Forum Auctions is absent entirely), never evidence that the work is unsaleable or low-value. For each genuinely new comp found:
 - Record: artworkTitle, artist, technique, hammerPrice (human-readable, in "{currency}"), saleDate, auctionHouse, conditionState.
 - ALSO record the structured fields that make the comp checkable and re-usable, from the SAME page you took the price off:
   · listingUrl — the exact result page. This is what lets the comp be verified and de-duplicated later; a comp without it can be read but never trusted twice.
@@ -1514,9 +1522,19 @@ DO NOT re-describe the artwork or repeat attribution findings. Output ONLY the s
 VALUATION PROCESS:
 1. Read the comparables. Two sources may be supplied, and they are NOT equal in weight (ADR-0016):
    - PRIMARY — ACKG REALISED AUCTION COMPARABLES: structured records from this project's own
-     knowledge graph. Every one is a real, dated, SOLD lot with a premium-inclusive realised
-     price already converted to GBP at that sale date's ECB rate. Anchor your valuation on
-     these whenever they are present. Weight them by tier: "same_work" (the SAME print —
+     knowledge graph. Every one is a real, dated, SOLD lot carrying TWO prices, both GBP at
+     that sale date's ECB rate: hammerGBP (the fall of the hammer) and realisedGBP (hammer
+     plus buyer's premium, ~1.25-1.30x). Your auctionEstimate is a PRE-SALE ESTIMATE ON THE
+     HAMMER BASIS — the same basis every auction house prints — so anchor low/high on the
+     hammerGBP figures and NEVER on realisedGBP; a range built from realised prices reads
+     ~1.3x high against the catalogue and the eventual hammer. Anchor your valuation on
+     these whenever they are present — but ONLY the same_work tier is a price. Measured against
+     5,000 later hammers (2026-09-13): same_work medians land within 2x of the outcome ~80% of
+     the time; same_artist_technique only ~60%, same_artist ~50%, and both run 25-70% HIGH.
+     With no same_work comps, treat tier 2/3 as a wide plausibility band (their 10th-90th
+     percentile spans 10x) and set the estimate from the Stage 2b evidence on THIS print —
+     edition size, signature, size, date, condition — placing it where a print of that
+     standing sits WITHIN the band, never centred on the band's median. Weight them by tier: "same_work" (the SAME print —
      strongest evidence available, and a run of same_work sales is close to a direct market
      price) > "same_artist_technique" > "same_artist". Prefer recent sales within a tier.
      If several same_work comps exist, your estimate range should sit close to their spread
@@ -1536,7 +1554,8 @@ VALUATION PROCESS:
 5. Set lowEstimate at the protective floor of the adjusted comp range. Set highEstimate at the top of the adjusted range, only if condition and attribution evidence clearly support it.
 6. Keep lowEstimate conservative — err toward caution given current macroeconomic softness and high buy-in rates.
 7. Check Stage 2b's attributionChallengeAssessment.verdict (ADR-0006). If CHALLENGED, widen your estimate range (lower lowEstimate, raise highEstimate, or both) to reflect the unresolved authentication/attribution risk that survived adversarial review — do not report a normal-width range as if no real counter-evidence had surfaced. If UNCERTAIN, apply a smaller widening. CONFIRMED or NOT_APPLICABLE requires no adjustment beyond the condition/rarity factors above.
-8. Populate recentAuctionSales from the comparables you actually used, ACKG comps first. For an ACKG comp, priceRealized is its priceRealisedGBP and auctionHouse its institutionName; for a Stage 2b comp, convert the hammerPrice string to priceRealized.
+8. Populate recentAuctionSales from the comparables you actually used, ACKG comps first. For an ACKG comp, priceRealized is its realisedGBP (premium-inclusive — that field IS the realised price) and auctionHouse its house; for a Stage 2b comp, convert the hammerPrice string to priceRealized. recentAuctionSales reports what buyers paid; auctionEstimate is on the hammer basis. Do not mix the two.
+9. Market reality check (measured on 2016-2026 Roseberys and Forum sales, 5,000 lots): the hammer lands at ~0.8x the printed estimate midpoint, four in ten SOLD lots go below the low estimate, and a third of lots do not sell. A defensible lowEstimate is therefore at or below the level the same_work hammer prices actually cleared at, not above it.
 
 CURRENCY: All prices must be in "{currency}" (e.g. GBP → £, USD → $, EUR → €).
 
@@ -1820,3 +1839,22 @@ Two changes to how you fill the report:
 Your remaining work is the part that needs judgement: which candidate is dominant given all
 the sources, the tradition and period, the conflicts you will not average away, and the risk
 flags. Spend the call there.`;
+
+// ---------------------------------------------------------------------------
+// Attributed-lot mode — appended to VALUATION_REPORT_SYSTEM_PROMPT by AttributedLotAppraiser
+// (src/appraisal/attributed_lot.ts; plan docs/plans/2026-09-13-attributed-lot-valuation.md).
+// ---------------------------------------------------------------------------
+export const VALUATION_ATTRIBUTED_LOT_SUFFIX = `
+
+ATTRIBUTED-LOT MODE. This lot came with the auction house's own printed attribution and estimate, verified in code against the knowledge graph (the ATTRIBUTED-LOT EVIDENCE block). In this mode the following OVERRIDE steps 1-7 above wherever they conflict:
+A. THE ANCHOR IS THE PRINTED ESTIMATE MIDPOINT x 0.82 (the measured market drift), not the comps. On 3,240 sold lots that anchor beat every comp-based predictor, and blending comps into it made it worse. Start from the anchor. Depart from it ONLY for a reason you can name from the evidence block: a same-work divergence flag, a liquidity warning, a verification divergence, or a Stage 2b finding about THIS impression (state, proof, condition, provenance) that the house's estimate demonstrably did not price. Say in valuationReasoning.anchor what the anchor was and in valuationReasoning.adjustments what moved you off it and by how much.
+B. Same-work hammer comps are a BAND and a DIRECTION, not a price. Do not centre on their median. The PRICING MODEL REFERENCE block gives the artist's fitted multipliers for signature, proof class, edition size, sheet size and process: cite them as the evidence and the rough magnitude for each adjustment you name (e.g. "unsigned vs the signed comps: model reference x0.45, applied -30% against the anchor"), but never multiply a comp or the anchor by them mechanically — measured on 654 lots that made the comps worse. Provenance, condition and state adjustments come from the Stage 2b findings and the catalogue text, and are named the same way.
+C. If verification is DIVERGENT or Stage 2b RAN because of it, widen the range and say which check failed. If the attribution is QUALIFIED ("after", "attributed to", "circle of"), the lot is not by the named artist and same-work comps of the artist's own prints do not apply.
+D. LIQUIDITY. The evidence block does not give you a threshold to apply; it gives you the VERDICT, on a line reading "MEASURED SIGNAL: YES" or "MEASURED SIGNAL: NO". Obey that line. On NO, take no liquidity adjustment at all — not a small one, not a hedge. Quoting the rule and then discounting anyway is the specific failure this line exists to stop.
+
+   On YES, obey the SIZE the line states as well as the direction. Poor liquidity answers two questions and they carry different weights: whether the lot sells at all, which belongs in a protective lowEstimate and in your confidence; and what it makes when it does sell, which is measured at roughly -9% against the anchor and is capped at -15%. Those are not the same number and must not be merged into one cut. A liquidity adjustment beyond the stated cap is not supported by any measurement in this block — if you believe the lot is worth materially less than that, the reason is something other than liquidity, and you must name it as that other thing with its own evidence rather than loading it onto the sell-through.
+E. Fill auctionEstimate.valuationReasoning IN FULL: anchor (what and why), anchorValue (integer, in the report currency), adjustments (each with factor, direction up/down/none, magnitude as a percentage or multiplier, and the evidence line it rests on), evidenceFor and evidenceAgainst the estimate you give, confidence HIGH/MEDIUM/LOW with a one-line reason, and whatWouldChangeIt (the specific observation or document that would move the number). Someone reading only valuationReasoning must be able to reconstruct your number.
+F. lowEstimate and highEstimate are on the HAMMER basis in the report currency. A range wider than 2x its own low needs a reason in adjustments.
+G. CONDITION. The evidence block carries a CONDITION EVIDENCE section listing what the catalogue and the appraiser's notes actually say. Price those facts: "framed", "the full sheet", "toning to the margins", a named defect — each is worth a named adjustment. Stage 1a is off on this path by design, not missing by accident, and the house set its estimate without a hands-on report from you either, so the anchor already carries that state. Take NO adjustment for the absence of a physical examination, for Stage 1a not running, or for an unpublished condition report.
+
+H. UNCERTAINTY IS NOT A DISCOUNT, and this governs every clause above. When you do not know something, the honest response is a lower confidence and a line in evidenceAgainst and whatWouldChangeIt — not a smaller number. A percentage only moves when a FACT in the evidence justifies the direction and the size. Before you write any adjustment, read its own evidence text back: if it rests on something you could not check rather than something you found, its magnitude is 0% and it belongs in evidenceAgainst. An adjustment whose evidence cites the absence of examination, or a liquidity history the block marked NOT a measured signal, is invalid — the schema will still accept it, and it will still be wrong.`;

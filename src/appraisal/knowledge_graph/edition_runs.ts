@@ -38,6 +38,7 @@ import neo4j from "neo4j-driver";
 import { getDriver, getDatabase } from "./client.js";
 import { isLowInformationTitle } from "./title_normalize.js";
 import { foldAccents, cypherFold, cypherFoldTrim, normalizeTitleKey, cypherNormalizeTitle } from "./unaccent.js";
+import { lookupArtistNames } from "./artist_lookup.js";
 
 /** Proof/copy designations as the ingests normalise them. */
 export type CopyType = "numbered" | "AP" | "PP" | "HC" | "BAT" | "TP";
@@ -102,13 +103,14 @@ export interface EditionQueryParams {
 
 export const EDITION_DEFAULT_LIMIT = 12;
 
-// $artistName and $workTitle arrive ALREADY accent-folded by foldAccents(); the stored
-// properties are folded in-query so the two sides meet. Without this "Peintre et Modele"
-// never matched the graph's "Peintre et Modèle" — see unaccent.ts.
+// $artistNames holds the graph's own spelling(s), resolved by lookupArtistNames (exact index
+// hit, then folded name or alias) so this read starts from the artist_name index. $workTitle
+// arrives ALREADY accent-folded by foldAccents(); the stored title is folded in-query so the
+// two sides meet. Without this "Peintre et Modele" never matched the graph's
+// "Peintre et Modèle" — see unaccent.ts.
 const QUERY = `
 MATCH (a:Artist)
-WHERE ${cypherFold("a.name")} = $artistName
-   OR any(alt IN coalesce(a.alternateNames, []) WHERE ${cypherFold("alt")} = $artistName)
+WHERE a.name IN $artistNames
 WITH a LIMIT 1
 MATCH (a)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)
 WITH a, cw, er,
@@ -172,8 +174,10 @@ export async function queryEditionRuns(params: EditionQueryParams): Promise<Edit
 
   const session = getDriver().session({ database: getDatabase() });
   try {
+    const { names: artistNames } = await lookupArtistNames(session, artistName);
+    if (artistNames.length === 0) return null;
     const res = await session.run(QUERY, {
-      artistName: foldAccents(artistName),
+      artistNames,
       workTitle: workTitle ? foldAccents(workTitle) : null,
       workTitleKey: workTitle ? normalizeTitleKey(workTitle) : null,
       excludeSaleId: params.excludeSaleId ?? null,

@@ -1,6 +1,6 @@
 """
 PrintMasterAI — sale-date GBP normalisation for ACKG auction prices.
-Version: FX-GBP-BACKFILL-1.0
+Version: FX-GBP-BACKFILL-1.1
 
 Stage 3 valuation is moving to ACKG auction records as its PRIMARY comparables source
 (ADR-0016), with Stage 2b web research as fallback. That needs every comp on one
@@ -18,8 +18,15 @@ Two reasons this matters:
     1331.01, which is US$1,800 at ~1.35 — a rate from 2026, not from 2007, when GBP/USD was
     2.0875. Those fields are unusable for this purpose; we compute our own.
   - Doing it as a backfill rather than at query time keeps valuation deterministic and
-    offline-testable, and matches how `estimateLowGBP`/`estimateHighGBP` already sit on the
-    node rather than being derived per request.
+    offline-testable, with every GBP figure on the node derived the same way.
+
+Since 1.1 this is also where `estimateLowGBP`/`estimateHighGBP` come from. Until 2026-09-13
+those held Bonhams' own `gbp_low_estimate`/`gbp_high_estimate`, which the API overwrites with
+the SOLD price in GBP once a lot sells (both equal to the hammer on every sold row — see
+`repair_bonhams_estimate_gbp.py`, which corrected the stored values, and
+`check_bonhams_estimate_gbp.py`). The ingests no longer write a GBP estimate at all; this
+script fills it as native / rate for every row it converts, so a fresh ingest followed by
+this backfill lands on the same values the repair produced.
 
 Rates are the ECB daily reference set via frankfurter.app (no API key, series back to
 1999, covers USD/EUR/CAD/AUD). The whole series is pulled in ONE request and cached to
@@ -29,9 +36,9 @@ on a non-publication day takes the nearest PRECEDING publication day — the rat
 actually standing when the lot sold. Frankfurter does this server-side too; we do it
 locally against the cache so cached and live paths agree.
 
-Writes `priceRealisedGBP`, `hammerPriceGBP`, `fxRateToGBP` (units of native currency per
-GBP, i.e. native / rate = GBP), `fxRateDate` (the publication day actually used),
-`fxSource`, `fxBackfillAt`. GBP-native rows get rate 1.0 and `fxSource='native'` so a comp
+Writes `priceRealisedGBP`, `hammerPriceGBP`, `estimateLowGBP`, `estimateHighGBP`,
+`fxRateToGBP` (units of native currency per GBP, i.e. native / rate = GBP), `fxRateDate`
+(the publication day actually used), `fxSource`, `fxBackfillAt`. GBP-native rows get rate 1.0 and `fxSource='native'` so a comp
 query can treat every row uniformly instead of special-casing currency.
 
 Rows with a price but NO `saleDate` cannot be dated and are skipped, reported, not guessed:
@@ -120,7 +127,8 @@ WHERE s.sourceType = 'auction'
   AND (s.hammerPrice IS NOT NULL OR s.priceRealised IS NOT NULL)
   AND ($force OR s.fxBackfillAt IS NULL)
 RETURN s.id AS id, s.priceCurrency AS cur, s.saleDate AS saleDate,
-       s.hammerPrice AS hammer, s.priceRealised AS realised
+       s.hammerPrice AS hammer, s.priceRealised AS realised,
+       s.estimateLow AS estLow, s.estimateHigh AS estHigh
 """
 
 WRITE = """
@@ -128,6 +136,8 @@ UNWIND $rows AS row
 MATCH (s:SourceRecord {id: row.id})
 SET s.hammerPriceGBP = row.hammerGBP,
     s.priceRealisedGBP = row.realisedGBP,
+    s.estimateLowGBP = row.estLowGBP,
+    s.estimateHighGBP = row.estHighGBP,
     s.fxRateToGBP = row.rate,
     s.fxRateDate = row.rateDate,
     s.fxSource = row.source,
@@ -136,12 +146,20 @@ RETURN count(s) AS n
 """
 
 
+def _gbp(native, rate):
+    # A zero/negative estimate is a placeholder, not a value: leave the GBP form unset.
+    if native is None or not native > 0:
+        return None
+    return round(native / rate, 2)
+
+
 def convert(rows, book):
     out, skipped, unconvertible = [], [], []
     for r in rows:
         cur = r["cur"] or "GBP"
         if cur == "GBP":
             out.append({"id": r["id"], "hammerGBP": r["hammer"], "realisedGBP": r["realised"],
+                        "estLowGBP": _gbp(r["estLow"], 1.0), "estHighGBP": _gbp(r["estHigh"], 1.0),
                         "rate": 1.0, "rateDate": None, "source": "native"})
             continue
         if not r["saleDate"]:
@@ -156,6 +174,7 @@ def convert(rows, book):
             "id": r["id"],
             "hammerGBP": round(r["hammer"] / rate, 2) if r["hammer"] is not None else None,
             "realisedGBP": round(r["realised"] / rate, 2) if r["realised"] is not None else None,
+            "estLowGBP": _gbp(r["estLow"], rate), "estHighGBP": _gbp(r["estHigh"], rate),
             "rate": rate, "rateDate": rate_day, "source": FX_SOURCE,
         })
     return out, skipped, unconvertible
@@ -208,6 +227,19 @@ def verify(session):
     print(f"  now carrying priceRealisedGBP : {r['withGBP']}")
     print(f"  GBP rows where GBP <> native  : {r['gbpMismatch']}  (expected 0)")
     print(f"  non-positive GBP values       : {r['nonPositive']}  (expected 0)")
+    est = session.run(
+        """
+        MATCH (s:SourceRecord)
+        WHERE s.sourceType='auction' AND s.sold=true AND s.estimateLow > 0 AND s.fxRateToGBP > 0
+        RETURN count(*) AS withEstimate,
+               sum(CASE WHEN s.estimateLowGBP IS NULL THEN 1 ELSE 0 END) AS estNull,
+               sum(CASE WHEN s.estimateHigh IS NOT NULL AND s.estimateLow <> s.estimateHigh
+                             AND s.estimateLowGBP = s.estimateHighGBP THEN 1 ELSE 0 END) AS estCollapsed
+        """
+    ).single()
+    print(f"sold rows with a native estimate: {est['withEstimate']}")
+    print(f"  estimateLowGBP missing        : {est['estNull']}  (expected 0)")
+    print(f"  GBP low == high, native spread: {est['estCollapsed']}  (expected 0 — the Bonhams sold-price bug)")
     comps = session.run(
         """
         MATCH (s:SourceRecord)

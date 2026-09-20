@@ -22,6 +22,7 @@ import { parseAckgDimMm, type DimMm } from "./dimension_parse.js";
 import { normalizeTitleForEmbedding } from "./title_normalize.js";
 import { embedText, cosine, titleSimFromCosine } from "./embed_text.js";
 import { foldAccents, cypherFold } from "./unaccent.js";
+import { lookupArtistNames } from "./artist_lookup.js";
 
 const QUERY = `
 MATCH (a:Artist)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)
@@ -93,11 +94,16 @@ export async function queryAckg(params: AckgQueryParams): Promise<AckgCandidate[
 // two-pass classifier can compare the physical object against the catalogued
 // record (impression divergence, Decision 5b) rather than guessing.
 // ---------------------------------------------------------------------------
-const WORKS_QUERY = `
+// Two query strings rather than `$artistNames IS NULL OR a.name IN $artistNames`: the planner
+// cannot put an index seek behind that OR, and the artist-scoped form is the one that has to
+// start from the artist_name index. The names come from lookupArtistNames — exact, then
+// folded name/alias, then (this query only) the folded substring the Stage 2a tool documents
+// as "artist name, substring" — so a canonical name never pays for a label scan.
+const worksQuery = (withArtist: boolean) => `
 MATCH (a:Artist)-[:CREATED]->(cw:ConceptualWork)-[:PRINTED_AS]->(er:EditionRun)
       -[:INCLUDES]->(imp:Impression)
 MATCH (src:SourceRecord)-[:DOCUMENTS]->(imp)
-WHERE ($artist IS NULL OR ${cypherFold("a.name")} CONTAINS $artist)
+WHERE ${withArtist ? "a.name IN $artistNames" : "true"}
   AND ($workTitle IS NULL OR ${cypherFold("cw.name")} CONTAINS $workTitle)
   AND ($periodStart IS NULL OR cw.dateCreated_year >= $periodStart)
   AND ($periodEnd IS NULL OR cw.dateCreated_year <= $periodEnd)
@@ -120,6 +126,8 @@ RETURN cw.name AS workTitle, a.name AS artistName, a.ulanUrl AS artistUlanUrl,
 ORDER BY impressionCount DESC
 LIMIT $limit
 `;
+const WORKS_QUERY_BY_ARTIST = worksQuery(true);
+const WORKS_QUERY_ANY_ARTIST = worksQuery(false);
 
 function parseDimList(raw: unknown): DimMm[] {
   if (!Array.isArray(raw)) return [];
@@ -139,8 +147,13 @@ export async function queryAckgWorks(params: AckgWorkQueryParams): Promise<AckgW
     // ORDER BY impressionCount would otherwise drop a low-impression target work (e.g. a
     // single-impression Rembrandt state) before scoreWorkTitleMatches ever sees it.
     const limit = params.limit ?? (params.workTitle ? 60 : 30);
-    const result = await session.run(WORKS_QUERY, {
-      artist: params.artist ? foldAccents(params.artist) : null,
+    let artistNames: string[] | null = null;
+    if (params.artist?.trim()) {
+      artistNames = (await lookupArtistNames(session, params.artist, { contains: true })).names;
+      if (artistNames.length === 0) return [];
+    }
+    const result = await session.run(artistNames ? WORKS_QUERY_BY_ARTIST : WORKS_QUERY_ANY_ARTIST, {
+      artistNames,
       workTitle: params.workTitle ? foldAccents(params.workTitle) : null,
       technique: params.technique ? foldAccents(params.technique) : null,
       periodStart: params.periodStartYear ?? null,
@@ -298,14 +311,21 @@ export async function queryArtistStyleConsistency(
   const topN = opts.topN ?? STYLE_TOP_N;
   const session = getDriver().session({ database: getDatabase() });
   try {
+    // Accepting alternateNames on a miss: the dominant candidate name comes from the evidence
+    // agent and will not always be the graph's canonical spelling ("Picasso" vs "Pablo
+    // Picasso"). A silently thin result would be discarded as unusable by the caller — the
+    // exclusion would never fire. The exact spelling is tried first so the common case is an
+    // index seek, and the read below runs from the same index.
+    const { names } = await lookupArtistNames(session, artistName);
+    if (names.length === 0) {
+      return {
+        artistName, comparedWorks: 0, identityMatchesExcluded: 0,
+        bestSimilarity: 0, meanTopSimilarity: 0, nearestWorks: [], supportingText: [],
+      };
+    }
     const res = await session.run(
-      // Case-insensitive, and accepting alternateNames: the dominant candidate name comes
-      // from the evidence agent and will not always be the graph's canonical spelling
-      // ("Picasso" vs "Pablo Picasso"). An exact match silently returns a thin result, which
-      // the caller then discards as unusable — the exclusion would never fire.
       `MATCH (a:Artist)
-       WHERE toLower(a.name) = toLower($artist)
-          OR any(alt IN coalesce(a.alternateNames, []) WHERE toLower(alt) = toLower($artist))
+       WHERE a.name IN $names
        WITH a LIMIT 1
        MATCH (a)-[:CREATED]->(cw:ConceptualWork)
             -[:PRINTED_AS]->(:EditionRun)-[:INCLUDES]->(i:Impression)<-[:SHOWS]-(img:DigitalImage)
@@ -316,7 +336,7 @@ export async function queryArtistStyleConsistency(
        WITH collect({t: workTitle, d: descr, s: sim}) AS all
        RETURN size([r IN all WHERE r.s >= $identity]) AS excluded,
               [r IN all WHERE r.s < $identity] AS kept`,
-      { artist: artistName, vec: dinoVector, identity: STYLE_IDENTITY_EXCLUSION },
+      { names, vec: dinoVector, identity: STYLE_IDENTITY_EXCLUSION },
     );
     const rec = res.records[0];
     if (!rec) return null;

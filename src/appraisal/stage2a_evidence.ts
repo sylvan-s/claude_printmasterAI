@@ -73,10 +73,20 @@ export function normalizeEvidenceBlocks(ev: any): string[] {
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         ev[key] = parsed;
         recovered.push(key);
+        continue;
       }
+      // Valid JSON, but an array or a scalar is not a block either — same disposal.
+      delete ev[key];
+      recovered.push(`${key} (not an object, dropped)`);
     } catch {
-      // Leave it. A block that is a string and not JSON is not evidence, and the caller's
-      // structural check is the right place to notice that.
+      // A block that is a string and not valid JSON is not evidence, and it must not travel
+      // as one: the cell writers assign into these blocks, and assigning a property on a
+      // string throws in strict mode (measured 2026-09-13, Haiku returned an
+      // impressionEvidence block whose closing brace was "]", and the lot died with
+      // "Cannot create property 'observedSheetMm' on string"). Dropping it makes it what it
+      // actually is — an absent block — which every reader downstream already handles.
+      delete ev[key];
+      recovered.push(`${key} (unparseable, dropped)`);
     }
   }
   return recovered;

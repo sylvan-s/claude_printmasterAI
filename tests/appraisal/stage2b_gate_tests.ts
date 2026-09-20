@@ -1,0 +1,95 @@
+/**
+ * The Stage 2b escalation gate. Cases are the real outputs from the 2026-09-14 model
+ * comparison, so a change that would have let the measured failure through fails here.
+ *
+ *   npm run test:stage2b-gate
+ */
+import { assessStage2bResearch, stage2bResearchFailed } from "../../src/appraisal/stage2b_gate";
+
+let passed = 0, failed = 0;
+function eq(label: string, got: unknown, want: unknown) {
+  const ok = JSON.stringify(got) === JSON.stringify(want);
+  if (ok) passed++; else { failed++; console.log(`  FAIL ${label}\n       got  ${JSON.stringify(got)}\n       want ${JSON.stringify(want)}`); }
+}
+const ok = (l: string, c: boolean) => eq(l, c, true);
+const cited = (t: string, p: number) => ({ artworkTitle: t, priceAmount: p, listingUrl: `https://www.bonhams.com/auction/1/lot/${p}/x/` });
+
+console.log("escalates on the measured fabrication signature");
+{
+  // Verbatim shape from the Haiku arm on A0793/420: no URL, no basis, famous series, and the
+  // same 1,875 recurring across three runs against three different titles.
+  const g = assessStage2bResearch(
+    { auctionComps: [
+      { artworkTitle: "Untitled Film Still #96", priceAmount: 1875, priceBasis: "unknown", listingUrl: null },
+      { artworkTitle: "Untitled (Centerfolds)", priceAmount: 2400, priceBasis: "unknown", listingUrl: null },
+    ] },
+    { searches: 1, graphSameWorkComps: 0 });
+  ok("escalates", g.escalate);
+  ok("names the reason", g.reasons.includes("uncited_comp"));
+  ok("and says which comps, so the decision is auditable", g.detail.includes("Untitled Film Still #96") && g.detail.includes("1875"));
+}
+
+console.log("escalates on an uncited catalogue raisonné");
+{
+  const g = assessStage2bResearch(
+    { auctionComps: [], catalogueRaisonne: { referenceFound: true, catalogueName: "Cramer", sourceUrl: null } },
+    { searches: 2, graphSameWorkComps: 1 });
+  eq("escalates for the same failure in another field", g.reasons, ["uncited_catalogue_raisonne"]);
+  const withUrl = assessStage2bResearch(
+    { auctionComps: [], catalogueRaisonne: { referenceFound: true, catalogueName: "Cramer", sourceUrl: "https://www.nga.gov/artworks/172477" } },
+    { searches: 2, graphSameWorkComps: 1 });
+  ok("a cited one passes", !withUrl.escalate);
+  const noneFound = assessStage2bResearch(
+    { auctionComps: [], catalogueRaisonne: { referenceFound: false, noCatalogueRaisonneExists: true } },
+    { searches: 2, graphSameWorkComps: 1 });
+  ok("'no catalogue exists' is a finding, not a failure", !noneFound.escalate);
+}
+
+console.log("silence is judged against whether there was a gap to close");
+{
+  // STEP 7 now tells Stage 2b to skip comp searches when the graph holds a same_work record, so
+  // zero searches must NOT escalate there — gating on effort would punish the instruction.
+  const covered = assessStage2bResearch({ auctionComps: [] }, { searches: 0, graphSameWorkComps: 3 });
+  ok("no searches, but the graph already had the sale: passes", !covered.escalate);
+  const gap = assessStage2bResearch({ auctionComps: [] }, { searches: 0, graphSameWorkComps: 0 });
+  eq("no searches and no same-work sale: escalates", gap.reasons, ["no_search_despite_gap"]);
+  const tried = assessStage2bResearch({ auctionComps: [] }, { searches: 1, graphSameWorkComps: 0 });
+  ok("tried and found nothing: passes, because empty is an honest answer", !tried.escalate);
+}
+
+console.log("passes clean research");
+{
+  // The Sonnet arm on the same lots: every comp cited.
+  const g = assessStage2bResearch(
+    { auctionComps: [cited("Untitled (Mother)", 704), cited("Self Portrait with Sun Tan", 3900)],
+      catalogueRaisonne: { referenceFound: false } },
+    { searches: 4, graphSameWorkComps: 0 });
+  eq("no reasons to escalate", [g.escalate, g.reasons], [false, []]);
+  ok("and says what it checked", /2 comp\(s\), all cited/.test(g.detail) && /4 search/.test(g.detail));
+}
+
+console.log("never throws on a degraded or empty report");
+{
+  for (const [label, r] of [["null", null], ["empty object", {}], ["comps not an array", { auctionComps: "none" }]] as const) {
+    const g = assessStage2bResearch(r, { searches: 2, graphSameWorkComps: 1 });
+    ok(`${label} does not throw and does not escalate on nothing`, g.escalate === false);
+  }
+  const many = assessStage2bResearch({ auctionComps: [{ artworkTitle: "a" }, { artworkTitle: "b" }] }, { searches: 3, graphSameWorkComps: 2 });
+  eq("two uncited comps, one reason", many.reasons, ["uncited_comp"]);
+}
+
+console.log("a cheap model that THREW is the strongest escalation signal");
+{
+  // Measured the first time the gate ran live: Haiku ended its turn on A0793/420 with a prose
+  // summary instead of the required JSON, the parser raised, and the lot died. Under gating an
+  // unusable result must escalate rather than kill the lot.
+  const g = stage2bResearchFailed(new Error("Failed to parse web-search JSON output: No valid JSON object found in response"));
+  eq("escalates with its own reason", [g.escalate, g.reasons], [true, ["research_failed"]]);
+  ok("and carries what went wrong", /No valid JSON object found/.test(g.detail));
+  ok("a non-Error is handled too", stage2bResearchFailed("socket hang up").detail.includes("socket hang up"));
+  // Long provider errors must not flood the run log.
+  ok("a very long message is trimmed", stage2bResearchFailed(new Error("x".repeat(900))).detail.length < 260);
+}
+
+console.log(`\n${passed} passed, ${failed} failed`);
+if (failed) process.exit(1);

@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Artist-node merging: the primitive, and the two passes that drive it.
-Version: ARTIST-MERGE-3.0
+Version: ARTIST-MERGE-3.1
 
 One file, three sections, two subcommands. Folded together from `artist_merge.py`,
 `canonicalise_ulan_and_merge.py` and `merge_artist_band_b.py`: only ever two callers shared
@@ -133,7 +133,16 @@ def stamp(now):
 # ============================================================ section 1: the merge primitive
 
 # Every relationship type an Artist carries. ATTRIBUTED_TO and CATALOGUES are INCOMING.
-HANDLED_TYPES = {"CREATED", "MADE_MATRIX", "FROM_REGION", "ATTRIBUTED_TO", "CATALOGUES"}
+# PRICE_NEIGHBOUR added 2026-09-15: found live by assert_transferable's own guard doing
+# exactly its job — a re-run of this script after PRICING-PRIORS-1.2 (2026-09-14) had
+# written outgoing Artist->Artist PRICE_NEIGHBOUR edges refused to delete 5 dup nodes that
+# carried them ('Adriaen Jansz. van Ostade', 'Margaret J. Patterson', 'Francisco José de
+# Goya y Lucientes', 'David Alfaro Siqueiros', 'William Seltzer Rice') rather than silently
+# dropping the edges on DETACH DELETE. It is directed and carries `weight`/`run` properties,
+# unlike every other type here, and (confirmed live) can appear on either side, so both
+# directions are transferred below.
+HANDLED_TYPES = {"CREATED", "MADE_MATRIX", "FROM_REGION", "ATTRIBUTED_TO", "CATALOGUES",
+                  "PRICE_NEIGHBOUR"}
 
 MERGE_PAIR = """
 MATCH (canon:Artist {name: $canonName})
@@ -162,13 +171,40 @@ CALL {
 }
 CALL {
     WITH canon, dup
-    OPTIONAL MATCH (n)-[:ATTRIBUTED_TO]->(dup)
-    FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END | MERGE (x)-[:ATTRIBUTED_TO]->(canon))
+    OPTIONAL MATCH (n)-[r:ATTRIBUTED_TO]->(dup)
+    FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END |
+        MERGE (x)-[nr:ATTRIBUTED_TO]->(canon)
+        ON CREATE SET nr += properties(r)
+        // The record may already point at the survivor through an older, unqualified edge
+        // (four Brassai lots did): fill the gap, never overwrite a qualifier already there.
+        ON MATCH SET nr.qualifier = coalesce(nr.qualifier, r.qualifier)
+    )
 }
 CALL {
     WITH canon, dup
-    OPTIONAL MATCH (n)-[:CATALOGUES]->(dup)
-    FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END | MERGE (x)-[:CATALOGUES]->(canon))
+    OPTIONAL MATCH (n)-[r:CATALOGUES]->(dup)
+    FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END |
+        MERGE (x)-[nr:CATALOGUES]->(canon)
+        ON CREATE SET nr += properties(r)
+    )
+}
+CALL {
+    WITH canon, dup
+    OPTIONAL MATCH (dup)-[r:PRICE_NEIGHBOUR]->(n)
+    WHERE n IS NULL OR elementId(n) <> elementId(canon)
+    FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END |
+        MERGE (canon)-[nr:PRICE_NEIGHBOUR]->(x)
+        ON CREATE SET nr.weight = r.weight, nr.run = r.run
+    )
+}
+CALL {
+    WITH canon, dup
+    OPTIONAL MATCH (n)-[r:PRICE_NEIGHBOUR]->(dup)
+    WHERE n IS NULL OR elementId(n) <> elementId(canon)
+    FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END |
+        MERGE (x)-[nr:PRICE_NEIGHBOUR]->(canon)
+        ON CREATE SET nr.weight = r.weight, nr.run = r.run
+    )
 }
 WITH canon, dup
 // Inherit any identity field the survivor lacks, so a merge never loses an identifier.
@@ -199,6 +235,20 @@ RETURN a.name AS name
 
 REL_TYPES = "MATCH (dup:Artist {name: $dupName})-[r]-() RETURN DISTINCT type(r) AS t"
 
+# Relationship properties the merge carries over. ATTRIBUTED_TO.qualifier ("direct" / "after"
+# / ...) is the only record that a lot is a copy after the artist rather than by them, and
+# until ARTIST-MERGE-3.1 the transfer was a bare MERGE that re-created the edge WITHOUT it:
+# the 2026-09-16 dry run found the 26 alias-shadowing pairs would have stripped all 103
+# qualifiers, three of them "after". CATALOGUES carried the same bug for its discovery
+# provenance. Types whose edges carry no properties today are asserted to stay that way, so a
+# property added later is refused here rather than silently dropped.
+PROPERTY_COPYING_TYPES = {"ATTRIBUTED_TO", "CATALOGUES", "PRICE_NEIGHBOUR"}
+REL_PROPERTIES = """
+MATCH (dup:Artist {name: $dupName})-[r]-()
+WHERE NOT type(r) IN $copied AND size(keys(r)) > 0
+RETURN DISTINCT type(r) AS t, keys(r) AS k
+"""
+
 
 def assert_transferable(sess, dup_name):
     """Refuse to delete a node carrying a relationship type this merge does not transfer."""
@@ -208,6 +258,12 @@ def assert_transferable(sess, dup_name):
         raise RuntimeError(
             f"'{dup_name}' carries relationship types this merge does not transfer: "
             f"{sorted(unhandled)}. Extend MERGE_PAIR before rerunning.")
+    carrying = [(r["t"], r["k"]) for r in sess.run(
+        REL_PROPERTIES, dupName=dup_name, copied=sorted(PROPERTY_COPYING_TYPES))]
+    if carrying:
+        raise RuntimeError(
+            f"'{dup_name}' carries relationship properties this merge does not copy: "
+            f"{carrying}. Copy them in MERGE_PAIR before rerunning.")
 
 
 def merge_pair(sess, canon_name, dup_name, keep_name=None):
@@ -531,7 +587,10 @@ def cmd_pairs(a):
             print(f"   {r['name'][:46]:46s} works={r['works']:<5d} "
                   f"ulan={'y' if r['props'].get('ulanUrl') else '-'}")
         if not a.execute:
+            # The guards are read-only, so the dry run runs them: a dry run that skips the
+            # checks the execute path would fail on reports a plan that cannot happen.
             for r in rows:
+                assert_transferable(s, r["dup"])
                 print(f"   would fold {r['dup']!r} -> {r['canon']!r}"
                       + (f", renaming survivor to {r['keepName']!r}" if r.get("keepName") else ""))
             return
