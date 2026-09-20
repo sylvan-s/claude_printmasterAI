@@ -173,6 +173,38 @@ async function main() {
         catalogueNotes: workNotes(work, lot),
         testingExcludeSourceListing: `Roseberys, sale ${lot.sale}, lot ${lot.lot} (${lot.url})`,
       };
+      // The attributed path verifies the house's own claim instead of deriving one, so it needs
+      // the claim itself — and for a multi-work lot that claim is PER WORK: this work's title,
+      // edition and share of the estimate, not the lot's. The blindness convention above does
+      // not apply here; withholding the artist from the path whose whole job is to check the
+      // artist would be testing nothing. An equal split is what the graph records for these
+      // records, so it is what the claim states (see roseberys_multi_work_ingest.py).
+      if (config.attributedLotPath) {
+        const n = lot.text.works.length;
+        const perWork = (v: number | null | undefined) => (v == null ? null : Number(v) / n);
+        input.catalogueAttribution = {
+          artist: work.artist ?? "",
+          artistQualifier: "certain",
+          title: work.title,
+          year: work.year != null ? String(work.year) : null,
+          medium: work.medium,
+          editionNote: work.edition_number ? `numbered ${work.edition_number}` : null,
+          editionSize: work.edition_size,
+          signed: work.signed,
+          dimensions: work.width_cm && work.height_cm
+            ? [{ kind: work.dim_kind || "sheet", widthCm: work.width_cm, heightCm: work.height_cm }]
+            : null,
+          catalogueRefs: work.catalogue_refs ? [work.catalogue_refs] : null,
+          estimateLow: perWork(lot.money.estimateLow as number | null),
+          estimateHigh: perWork(lot.money.estimateHigh as number | null),
+          estimateCurrency: "GBP",
+          house: "Roseberys London",
+          saleId: lot.sale,
+          lotNumber: lot.lot,
+          lotUrl: lot.url,
+          sourceExcerpt: `${lot.entry.split("\n").slice(0, 4).join(" ").trim()} — work ${work.position} of ${n} in the lot; the estimate shown is this work's ${Math.round(100 / n)}% share of the lot's.`,
+        };
+      }
       const appraiser = getAppraiserFromConfig(config, ai);
       const t0 = Date.now();
       const report = await appraiser.appraise(input);
