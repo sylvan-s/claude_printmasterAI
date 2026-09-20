@@ -39,6 +39,19 @@ used as-is, and a name that merely LOOKS like an existing artist refuses the run
 candidates. It never picks a near match on its own — that is how the alias-shadowing dupes got
 made. --allow-new-artist is the deliberate override for a genuinely new artist.
 
+THE DERIVED PRICE FIELDS ARE WRITTEN HERE TOO. Every comps query reads `hammerPriceGBP` and
+`saleDate`, not `hammerPrice` — and both are normally produced by separate backfills
+(`backfill_fx_gbp.py`, `backfill_roseberys_sale_dates.py`) that run over a whole source after
+ingest. A per-lot ingest sits outside that flow, so on 2026-09-20 the Sorel portfolio from
+A0777 lot 52 was written with its £440 hammer and was STILL invisible: no hammerPriceGBP, no
+saleDate, so `select_comps` could not see it and the A0793 lot 30 valuation ran with zero
+comps — the exact evidence the ingest had just been extended to capture. Same shape as the
+embedding gap above: the record is right, the field the consumer reads is missing.
+
+Roseberys prices are GBP, so the conversion is the identity and the contract is the one
+backfill_fx_gbp.py writes: rate 1.0, GBP fields equal to native, and a non-positive value left
+unset rather than stored as zero.
+
 IMAGES ARE EMBEDDED IN THE SAME RUN. Every other Roseberys image reaches the vector index
 because the sale-scoped embedder (roseberys_embed_images.py) runs over a whole sale after
 ingest. A per-work ingest writes DigitalImage nodes OUTSIDE that flow, so on 2026-09-20 it
@@ -74,8 +87,26 @@ from resolve_artist_identity import strip_honorifics
 from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, \
     resolve_merged_work_cypher
 
-INGEST_VERSION = "ROSEBERYS-MULTI-INGEST-0.1"
+INGEST_VERSION = "ROSEBERYS-MULTI-INGEST-0.2"
 HOUSE = "Roseberys London"
+SALE_DATES_CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "roseberys_sale_dates.json")
+
+
+def sale_date_for(sale_code):
+    """The sale's date from backfill_roseberys_sale_dates.py's cache. An upcoming sale is not in
+    it yet, which is why --sale-date exists; a null date only costs the record its place in the
+    comps query, and an unsold lot has no price to contribute anyway."""
+    try:
+        with open(SALE_DATES_CACHE) as fh:
+            return (json.load(fh).get("sales", {}).get(sale_code) or {}).get("saleDate")
+    except FileNotFoundError:
+        return None
+
+
+def gbp(value):
+    """backfill_fx_gbp.py's rule: a non-positive figure is a placeholder, not a value."""
+    return float(value) if value is not None and float(value) > 0 else None
 
 
 def _require_env(name):
@@ -191,8 +222,14 @@ def _share(value, n):
 
 
 def build_rows(record):
-    """One parser result -> one row per work. Returns (rows, skip_reason)."""
-    if record["decision"] != "split":
+    """One parser result -> one row per work. Returns (rows, skip_reason).
+
+    `single` lots produce ONE row at the FULL lot price, not a share: a lot the gate called one
+    work is one work. That covers a complete portfolio, which the house issues, sells and prices
+    as a single object — splitting it would invent n titles and divide the money on no evidence,
+    while holding it loses a real comp (the same Sorel portfolio sold at A0777 lot 52 for £440
+    and was invisible to the A0793 lot 30 valuation)."""
+    if record["decision"] not in ("split", "single"):
         return [], f"decision is {record['decision']}: {'; '.join(record['reasons'])}"
     text, vision = record["text"], record.get("vision")
     kind = text["lot_kind"]
@@ -205,8 +242,15 @@ def build_rows(record):
         photo_for = {a["work_position"]: a["photo_index"] for a in vision["assignments"]}
     urls = record.get("photo_urls") or []
 
+    # A single lot is one record at the whole price. `n = 1` makes every share below a no-op,
+    # so the money fields stay exactly as the house published them.
+    if record["decision"] == "single":
+        n = 1
+        expanded = [(works[0], 1)] if works else []
+        if not expanded:
+            return [], f"decision single but no work extracted ({kind})"
     # identical_copies: one work, N impressions of it, each carrying 1/N of the money.
-    if kind == "identical_copies":
+    elif kind == "identical_copies":
         n = works[0]["copies"]
         expanded = [(works[0], i + 1) for i in range(n)]
     else:
@@ -217,16 +261,21 @@ def build_rows(record):
     per_work_evidence = len(set(evidences)) == len(evidences) and kind != "identical_copies"
 
     money = record.get("money") or {}
+    sale_date = record.get("saleDate") or sale_date_for(sale)
     rows = []
     for work, part in expanded:
         artist = strip_honorifics(work["artist"] or record.get("artist") or "")
         title = (work["title"] or "").strip() or f"Untitled ({sale} lot {lot} part {part})"
         refs = genuine_refs(parse_catalogue_refs(work.get("catalogue_refs")))
-        object_id = f"{lot_id}-w{part}"
+        object_id = lot_id if record["decision"] == "single" else f"{lot_id}-w{part}"
         dims = (f"{work['width_cm']}x{work['height_cm']}cm"
                 if work.get("width_cm") and work.get("height_cm") else None)
         dim_kind = (work.get("dim_kind") or "").strip().lower()
-        photo_idx = photo_for.get(work["position"] if kind != "identical_copies" else 1)
+        # A split work gets the photo the vision pass matched to it. A single lot has no vision
+        # pass, so it takes the lot's primary image — which for a portfolio is the right picture
+        # anyway: the group shot IS the object being sold.
+        photo_idx = (0 if record["decision"] == "single"
+                     else photo_for.get(work["position"] if kind != "identical_copies" else 1))
         medium = work.get("medium") or ""
         rows.append({
             "objectId": object_id,
@@ -259,15 +308,30 @@ def build_rows(record):
             "priceRealised": _share(money.get("priceRealised"), n),
             "priceCurrency": money.get("priceCurrency", "GBP"),
             "sold": bool(money.get("sold")),
+            # What the comps queries actually read. Roseberys is GBP, so rate 1.0 and the GBP
+            # fields equal the native ones — written here rather than left to a later backfill.
+            "hammerPriceGBP": gbp(_share(money.get("hammerPrice"), n)),
+            "priceRealisedGBP": gbp(_share(money.get("priceRealised"), n)),
+            "estimateLowGBP": gbp(_share(money.get("estimateLow"), n)),
+            "estimateHighGBP": gbp(_share(money.get("estimateHigh"), n)),
+            "fxRateToGBP": 1.0,
+            "saleDate": sale_date,
             "lotEstimateLow": money.get("estimateLow"),
             "lotEstimateHigh": money.get("estimateHigh"),
             "lotReserve": money.get("reserve"),
             "lotHammerPrice": money.get("hammerPrice"),
             "lotPriceRealised": money.get("priceRealised"),
-            "priceAllocation": "equal_split",
+            "priceAllocation": ("whole_lot_with_ancillary" if kind == "single_work_with_ancillary"
+                                else "whole_lot" if record["decision"] == "single"
+                                else "equal_split"),
             "allocationShare": round(1.0 / n, 4),
             "lotWorkCount": n,
             "lotPart": part,
+            # A complete portfolio is one object made of several plates; the count is a fact
+            # about the object, not a number of works, and nothing may divide the price by it.
+            "portfolioPlateCount": (text.get("declared_count")
+                                    if kind == "complete_portfolio" else None),
+            "ancillaryItems": text.get("ancillary_items") or [],
             "lotRecordId": f"{lot_id}-record",
             "lotKind": kind,
             "lotParseMethod": record.get("parser", INGEST_VERSION),
@@ -313,6 +377,13 @@ SET src.sourceType = "auction",
     src.priceRealised = row.priceRealised,
     src.priceCurrency = row.priceCurrency,
     src.sold = row.sold,
+    src.hammerPriceGBP = row.hammerPriceGBP,
+    src.priceRealisedGBP = row.priceRealisedGBP,
+    src.estimateLowGBP = row.estimateLowGBP,
+    src.estimateHighGBP = row.estimateHighGBP,
+    src.fxRateToGBP = row.fxRateToGBP,
+    src.fxSource = "ingest (GBP source, identity conversion)",
+    src.saleDate = row.saleDate,
     src.listingUrl = row.listingUrl,
     src.priceAllocation = row.priceAllocation,
     src.allocationShare = row.allocationShare,
@@ -325,7 +396,9 @@ SET src.sourceType = "auction",
     src.lotReserve = row.lotReserve,
     src.lotHammerPrice = row.lotHammerPrice,
     src.lotPriceRealised = row.lotPriceRealised,
-    src.lotParseMethod = row.lotParseMethod
+    src.lotParseMethod = row.lotParseMethod,
+    src.portfolioPlateCount = row.portfolioPlateCount,
+    src.lotAncillaryItems = CASE WHEN size(row.ancillaryItems) > 0 THEN row.ancillaryItems ELSE null END
 MERGE (src)-[:DOCUMENTS]->(imp)
 MERGE (src)-[att:ATTRIBUTED_TO]->(artist)
 SET att.qualifier = "direct"
@@ -373,6 +446,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="infile", required=True, help="roseberys_multi_work_parse.py output")
     ap.add_argument("--execute", action="store_true", help="actually write (default: dry run)")
+    ap.add_argument("--sale-date", help="ISO sale date for a sale not yet in "
+                                        "roseberys_sale_dates.json (an upcoming catalogue)")
     ap.add_argument("--allow-new-artist", action="store_true",
                     help="create an Artist node even when an existing one has a similar name")
     ap.add_argument("--no-embed", action="store_true",
@@ -383,6 +458,8 @@ def main():
     records = json.load(open(args.infile))
     rows, skipped = [], []
     for rec in records:
+        if args.sale_date:
+            rec["saleDate"] = args.sale_date
         r, why = build_rows(rec)
         rows.extend(r)
         if why:

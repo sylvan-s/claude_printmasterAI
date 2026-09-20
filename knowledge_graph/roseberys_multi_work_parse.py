@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Roseberys multi-work lot parser (pilot)
-Version: ROSEBERYS-MULTI-0.5
+Version: ROSEBERYS-MULTI-0.7
 
 Roseberys lots flagged `multi_work` by the extractor (benchmark/src/roseberys/parse.ts
 detectMultiWork) have been held out of the ACKG since 2026-08-24. The flag is a regex and is
@@ -39,7 +39,7 @@ import anthropic
 import requests
 from PIL import Image
 
-PARSER_VERSION = "ROSEBERYS-MULTI-0.5"
+PARSER_VERSION = "ROSEBERYS-MULTI-0.7"
 # 2026-09-19 pilot (40 hand-labelled lots): Opus 5 38/40 kinds, 0 harmful decisions, every
 # disputed photo match checked by eye was right (it reads pencil titles and edition numbers).
 # Haiku 4.5 27/40 with 8 harmful (over-uses identical_copies; "high" photo confidence was
@@ -63,7 +63,7 @@ MAX_DECLARED = 12
 REQUEST_DELAY = 0.7   # courtesy throttle, same as the extractor
 
 LOT_KINDS = ["single_work", "single_work_with_ancillary", "multi_work", "identical_copies",
-             "under_described"]
+             "complete_portfolio", "under_described"]
 
 
 def _nullable(t):
@@ -158,6 +158,18 @@ lot_kind — pick exactly one:
   colourways ("in yellow and red"), different images in one series, or the two halves of a
   diptych are NOT identical copies. Colourways that the entry names individually are multi_work;
   a set whose members are not named individually is under_described.
+- complete_portfolio: a portfolio, suite, album or folio ISSUED AND SOLD AS ONE UNIT under one
+  title, complete or stated as complete, whose individual plates the entry does not name
+  ("Le Balcon engravings, portfolio, 1964; portfolio of ten engravings, signed, dated, numbered
+  and editioned 1-10"). The unit of sale is the portfolio, so it is one thing, not n things.
+  Give ONE work entry: the portfolio's own title, its edition, and copies = 1; put the number of
+  plates in declared_count. The TITLE is the portfolio's name only — drop a trailing format
+  descriptor such as "portfolio", "suite", "the complete set", "folio" and any trailing year,
+  because that is the format, not the name, and it is already recorded in declared_count. Two
+  houses cataloguing one portfolio as "Le Balcon engravings" and "Le Balcon engravings,
+  portfolio, 1964" must produce the SAME title, or the graph holds them as two works and
+  neither is a comp for the other. An INCOMPLETE set, or an assortment gathered by the auctioneer
+  ("four prints including..."), is NOT this — it is under_described.
 - under_described: several works, but the entry does not identify every one of them individually —
   e.g. "the complete portfolio of eleven screenprints" with one portfolio title, "eight offset
   lithographs" under a series name, "four prints including..." with fewer titles than works, or a
@@ -352,6 +364,17 @@ def validate(text, vision, n_photos):
     kind = text["lot_kind"]
     works = text["works"]
     if kind in ("single_work", "single_work_with_ancillary"):
+        return "single", []
+    # A complete portfolio is ONE marketable object: the house sells it whole, prices it whole,
+    # and the plates have no separate identity in the entry. Splitting would invent n titles and
+    # divide the price on no evidence; holding it loses a real comp — the same Sorel portfolio
+    # sold at A0777 lot 52 for £440 and was invisible to the A0793 lot 30 valuation. So it is
+    # ingested as one work at the FULL lot price, with the plate count recorded.
+    if kind == "complete_portfolio":
+        if len(works) != 1:
+            return "hold", [f"complete_portfolio with {len(works)} work entries; expected one"]
+        if not (works[0]["title"] or "").strip():
+            return "hold", ["complete_portfolio with no portfolio title"]
         return "single", []
     if kind == "under_described":
         return "hold", ["under_described: " + (text.get("under_described_reason") or "")]

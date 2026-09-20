@@ -145,13 +145,17 @@ async function main() {
   const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
 
   for (const lot of lots) {
-    if (lot.decision !== "split") {
+    if (lot.decision !== "split" && lot.decision !== "single") {
       console.log(`[MultiWork] ${lot.sale} lot ${lot.lot}: decision is "${lot.decision}" — skipping (${lot.reasons.join("; ")})`);
       continue;
     }
-    const photoFor = new Map<number, number | null>(
-      (lot.vision?.assignments ?? []).map((a) => [a.work_position, a.photo_index]),
-    );
+    // A single lot (a complete portfolio, or one print with extras) has no vision pass, so its
+    // one work takes the lot's primary photo — which for a portfolio is the right picture: the
+    // group shot IS the object being sold.
+    const photoFor = lot.decision === "single"
+      ? new Map<number, number | null>(lot.text.works.map((w) => [w.position, 0]))
+      : new Map<number, number | null>(
+          (lot.vision?.assignments ?? []).map((a) => [a.work_position, a.photo_index]));
     const outDir = `${__dirname}/output/${lot.sale}-${lot.lot}`;
     mkdirSync(outDir, { recursive: true });
 
@@ -162,7 +166,10 @@ async function main() {
         console.log(`[MultiWork] work ${work.position} has no matched photo — skipping`);
         continue;
       }
-      console.log(`\n[MultiWork] ${lot.sale} lot ${lot.lot} work ${work.position}/${lot.text.works.length} — photo ${idx}`);
+      const unit = lot.text.lot_kind === "complete_portfolio"
+        ? `portfolio of ${lot.text.declared_count ?? "?"} plates, priced whole`
+        : `work ${work.position}/${lot.text.works.length}`;
+      console.log(`\n[MultiWork] ${lot.sale} lot ${lot.lot} ${unit} — photo ${idx}`);
       const dropped = blindBody(lot).dropped;
       if (dropped.length) console.log(`[MultiWork] withheld from notes (names artist/title): ${JSON.stringify(dropped)}`);
       const { base64, mimeType } = await downloadImageBase64(url);
@@ -180,7 +187,9 @@ async function main() {
       // artist would be testing nothing. An equal split is what the graph records for these
       // records, so it is what the claim states (see roseberys_multi_work_ingest.py).
       if (config.attributedLotPath) {
-        const n = lot.text.works.length;
+        // A portfolio is sold whole, so its claim carries the WHOLE estimate — dividing by the
+        // plate count would price a plate the house never offered separately.
+        const n = lot.decision === "single" ? 1 : lot.text.works.length;
         const perWork = (v: number | null | undefined) => (v == null ? null : Number(v) / n);
         input.catalogueAttribution = {
           artist: work.artist ?? "",
