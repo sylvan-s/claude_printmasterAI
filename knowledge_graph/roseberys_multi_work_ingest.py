@@ -29,6 +29,16 @@ pencil" over two sheets says nothing about WHICH, and a model asked for a per-wo
 happily guess (qwen-plus did, on A0793 lot 20). The test is whether the work's evidence quote
 differs from its siblings' — identical quotes mean the model had no per-work evidence to read.
 
+IMAGES ARE EMBEDDED IN THE SAME RUN. Every other Roseberys image reaches the vector index
+because the sale-scoped embedder (roseberys_embed_images.py) runs over a whole sale after
+ingest. A per-work ingest writes DigitalImage nodes OUTSIDE that flow, so on 2026-09-20 it
+left A0793 lot 20's two images as the only unembedded impressions in a 366-impression sale —
+and the defect surfaced only when the spelling-variant scan parked a four-work cluster in
+`noImage` because of one of them. A half-indexed image raises no error: Stage 1d and every
+similarity rule simply never see it. So this script now calls the same embedder for the images
+it wrote, checks the service is reachable BEFORE writing anything, and reports any image it
+could not embed rather than exiting quietly. --no-embed skips it deliberately.
+
 Writes a pre-snapshot of everything it will touch before touching it, like the other repair
 scripts here. --dry-run (the default) writes nothing.
 
@@ -40,10 +50,12 @@ Usage (source .env first):
 import argparse
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
+import requests
 from neo4j import GraphDatabase
 
+import roseberys_embed_images as embedder
 from crosswalk_matching import extract_techniques, extract_papers
 from resolve_artist_identity import strip_honorifics
 from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, \
@@ -58,6 +70,49 @@ def _require_env(name):
     if not value:
         raise RuntimeError(f"{name} is not set. Source .env first.")
     return value
+
+
+def check_embedding_service():
+    """Reachable before the write, so a missing service is a refusal rather than a silent gap."""
+    try:
+        r = requests.get(f"{embedder.EMBED_SERVICE_URL}/health", timeout=10)
+        r.raise_for_status()
+        models = r.json().get("models", {})
+    except Exception as exc:
+        raise RuntimeError(
+            f"the embedding service at {embedder.EMBED_SERVICE_URL} is not reachable ({exc}). "
+            "Start it, or pass --no-embed to write the records and embed later with "
+            "`roseberys_embed_images.py --sale <SALE>`.")
+    print(f"[EMBED] service ok, models={models}", flush=True)
+
+
+def embed_written_images(rows):
+    """Embed exactly the images this run wrote, through the same service and the same write
+    query the sale-scoped embedder uses — an indexed vector and a Stage 1d query vector have to
+    come from identical model weights (ADR-0015)."""
+    wanted = [r for r in rows if r["imageUrl"]]
+    if not wanted:
+        print("[EMBED] no images to embed")
+        return
+    done, failed = [], []
+    for row in wanted:
+        img_id = row["objectId"] + "-image"
+        try:
+            raw, mime, _ = embedder.image_bytes({"sourceUrl": row["imageUrl"]})
+            dino, clip = embedder.embed(raw, mime)
+            done.append({"imgId": img_id, "dino": dino["vector"], "dinoModel": dino.get("model"),
+                         "dinoDim": len(dino["vector"]), "clip": clip["vector"],
+                         "clipModel": clip.get("model"), "clipDim": len(clip["vector"]),
+                         "now": datetime.now(timezone.utc).isoformat()})
+        except Exception as exc:
+            failed.append((img_id, str(exc)))
+    if done:
+        embedder.write_chunk(done)
+    print(f"[EMBED] embedded={len(done)} failed={len(failed)}")
+    for img_id, why in failed:
+        print(f"  [EMBED-FAIL] {img_id}: {why}")
+    if failed:
+        print("  re-run: python3 roseberys_embed_images.py --sale <SALE>")
 
 
 def _share(value, n):
@@ -247,6 +302,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="infile", required=True, help="roseberys_multi_work_parse.py output")
     ap.add_argument("--execute", action="store_true", help="actually write (default: dry run)")
+    ap.add_argument("--no-embed", action="store_true",
+                    help="skip embedding the images this run writes (they stay out of the "
+                         "vector index until roseberys_embed_images.py runs over the sale)")
     args = ap.parse_args()
 
     records = json.load(open(args.infile))
@@ -272,6 +330,10 @@ def main():
         return
 
     _require_env("NEO4J_PASSWORD")
+    if not args.no_embed:
+        # Fail before writing, not after: an ingest that leaves half-indexed images behind is
+        # invisible until something trips over it. See embed_written_images().
+        check_embedding_service()
     driver = GraphDatabase.driver(os.environ["NEO4J_URI"],
                                   auth=(os.environ["NEO4J_USER"], os.environ["NEO4J_PASSWORD"]))
     database = os.environ.get("NEO4J_DATABASE", "neo4j")
@@ -293,6 +355,10 @@ def main():
         for a in after:
             print("  wrote", a)
     driver.close()
+    if args.no_embed:
+        print("[EMBED] skipped (--no-embed); these images are NOT in the vector index yet")
+    else:
+        embed_written_images(rows)
 
 
 if __name__ == "__main__":
