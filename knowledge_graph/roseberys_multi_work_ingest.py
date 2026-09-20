@@ -29,6 +29,16 @@ pencil" over two sheets says nothing about WHICH, and a model asked for a per-wo
 happily guess (qwen-plus did, on A0793 lot 20). The test is whether the work's evidence quote
 differs from its siblings' — identical quotes mean the model had no per-work evidence to read.
 
+ARTIST RESOLUTION BEFORE CREATION. A bare `MERGE (a:Artist {name: ...})` creates a node for
+any spelling it has not seen, which is how A0793 lot 29 landed under "Elizabeth Frink" — two
+works, no ULAN — while the graph's 291 Frink works sit under "Elisabeth Frink", the artist's
+own spelling. Nothing failed; the records were simply invisible as same-artist to the entire
+corpus, and the valuation only got the right priors because Stage 2b resolves the artist
+independently. So this script resolves first: an exact name or a recorded alternateName is
+used as-is, and a name that merely LOOKS like an existing artist refuses the run and names the
+candidates. It never picks a near match on its own — that is how the alias-shadowing dupes got
+made. --allow-new-artist is the deliberate override for a genuinely new artist.
+
 IMAGES ARE EMBEDDED IN THE SAME RUN. Every other Roseberys image reaches the vector index
 because the sale-scoped embedder (roseberys_embed_images.py) runs over a whole sale after
 ingest. A per-work ingest writes DigitalImage nodes OUTSIDE that flow, so on 2026-09-20 it
@@ -48,8 +58,11 @@ Usage (source .env first):
 """
 
 import argparse
+import difflib
 import json
 import os
+import re
+import unicodedata
 from datetime import datetime, timezone
 
 import requests
@@ -113,6 +126,64 @@ def embed_written_images(rows):
         print(f"  [EMBED-FAIL] {img_id}: {why}")
     if failed:
         print("  re-run: python3 roseberys_embed_images.py --sale <SALE>")
+
+
+def _fold_name(s):
+    s = unicodedata.normalize("NFD", s or "")
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return re.sub(r"[^a-z ]+", " ", s.lower()).strip()
+
+
+ARTIST_LOOKUP_QUERY = """
+MATCH (a:Artist)
+RETURN a.name AS name, coalesce(a.alternateNames, []) AS alternateNames,
+       a.ulanUrl IS NOT NULL AS hasUlan
+"""
+
+
+def resolve_artists(session, names, allow_new=False):
+    """name-as-parsed -> the Artist name to write. Raises on a near miss (see docstring)."""
+    rows = session.run(ARTIST_LOOKUP_QUERY).data()
+    exact = {r["name"]: r["name"] for r in rows}
+    alias = {}
+    for r in rows:
+        for alt in r["alternateNames"]:
+            alias.setdefault(_fold_name(alt), r["name"])
+    folded = {}
+    for r in rows:
+        folded.setdefault(_fold_name(r["name"]), r["name"])
+
+    resolved, problems = {}, []
+    for name in sorted(set(names)):
+        if name in exact:
+            resolved[name] = name
+            continue
+        key = _fold_name(name)
+        if key in folded:
+            resolved[name] = folded[key]
+            print(f"[ARTIST] {name!r} -> {folded[key]!r} (same name, different case or accents)")
+            continue
+        if key in alias:
+            resolved[name] = alias[key]
+            print(f"[ARTIST] {name!r} -> {alias[key]!r} (recorded alternateName)")
+            continue
+        close = difflib.get_close_matches(key, list(folded), n=4, cutoff=0.9)
+        if close and not allow_new:
+            problems.append((name, [folded[c] for c in close]))
+            continue
+        if close:
+            print(f"[ARTIST] creating {name!r} despite near matches {[folded[c] for c in close]} "
+                  f"(--allow-new-artist)")
+        resolved[name] = name
+    if problems:
+        lines = [f"  {n!r} looks like existing artist(s): {', '.join(repr(c) for c in cands)}"
+                 for n, cands in problems]
+        raise RuntimeError(
+            "refusing to create an Artist node that resembles one already in the graph:\n"
+            + "\n".join(lines)
+            + "\nMerge the duplicate first (merge_artists.py pairs), or pass --allow-new-artist "
+              "if this really is a different person.")
+    return resolved
 
 
 def _share(value, n):
@@ -302,6 +373,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="infile", required=True, help="roseberys_multi_work_parse.py output")
     ap.add_argument("--execute", action="store_true", help="actually write (default: dry run)")
+    ap.add_argument("--allow-new-artist", action="store_true",
+                    help="create an Artist node even when an existing one has a similar name")
     ap.add_argument("--no-embed", action="store_true",
                     help="skip embedding the images this run writes (they stay out of the "
                          "vector index until roseberys_embed_images.py runs over the sale)")
@@ -318,6 +391,21 @@ def main():
     print(f"{len(records)} parsed lots -> {len(rows)} per-work records; {len(skipped)} lots skipped")
     for sale, lot, why in skipped:
         print(f"  skip {sale} lot {lot}: {why}")
+
+    # Resolve artists BEFORE the dry-run listing, so a near-miss refuses the run while it is
+    # still a dry run rather than after a write. This is a read; it needs the graph either way.
+    if rows:
+        _require_env("NEO4J_PASSWORD")
+        lookup = GraphDatabase.driver(os.environ["NEO4J_URI"],
+                                      auth=(os.environ["NEO4J_USER"], os.environ["NEO4J_PASSWORD"]))
+        try:
+            with lookup.session(database=os.environ.get("NEO4J_DATABASE", "neo4j")) as session:
+                resolved = resolve_artists(session, [r["artistName"] for r in rows],
+                                           allow_new=args.allow_new_artist)
+        finally:
+            lookup.close()
+        for r in rows:
+            r["artistName"] = resolved[r["artistName"]]
     for row in rows:
         print(f"  {row['objectId']}: {row['title']!r} | {row['rawMedium']} | "
               f"est {row['estimateLow']}-{row['estimateHigh']} of lot "
@@ -329,7 +417,6 @@ def main():
         print("\nDRY RUN — nothing written. Re-run with --execute.")
         return
 
-    _require_env("NEO4J_PASSWORD")
     if not args.no_embed:
         # Fail before writing, not after: an ingest that leaves half-indexed images behind is
         # invisible until something trips over it. See embed_written_images().
