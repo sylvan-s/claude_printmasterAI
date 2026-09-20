@@ -31,10 +31,22 @@
  * counted separately: a high `unknown` rate means the prompt is working and the sources
  * are silent, which is a different conclusion from a high `hammer` rate that cannot be
  * trusted.
+ *
+ * ESTIMATE-ONLY COMPS (2026-09-20). A comp with no realised price but a published estimate and
+ * a stated outcome is a THIRD class, `storableAsEstimate` — not storable as a price, not
+ * worthless. The aggregators show estimates and "not sold" while paywalling results, and for a
+ * thinly traded artist that is the market data: Agathe Sorel's "Après la Moisson" was offered
+ * twice in 2014 at £50-80 and failed to sell both times, against a model that priced it at £420.
+ * It keeps its own gates — a key, two estimate numbers, an ISO currency, and an outcome that is
+ * actually stated — because an estimate with no outcome cannot be told from a forthcoming lot,
+ * and the graph already holds unsold lots with estimates, so such a record has somewhere true to
+ * live. It is never counted as a price: `storable` stays false, and the basis gates do not apply.
  */
 
 /** What a comp's price number represents. Anything else is treated as "unknown". */
 export type CompPriceBasis = "hammer" | "premium_inclusive" | "unknown";
+
+export type CompOutcome = "sold" | "unsold" | "unknown";
 
 export interface Stage2bComp {
   artworkTitle?: string | null;
@@ -52,11 +64,20 @@ export interface Stage2bComp {
   priceBasis?: CompPriceBasis | string | null;
   wasSoldInBroaderLot?: boolean | null;
   broaderLotPriceAdjustment?: string | null;
+  estimateLow?: number | null;
+  estimateHigh?: number | null;
+  estimateCurrency?: string | null;
+  outcome?: CompOutcome | string | null;
 }
 
 export interface CompAssessment {
   /** Passes all three gates — the only comps a future Phase 1 would write. */
   storable: boolean;
+  /** No usable price, but a keyed, published estimate with a stated outcome. Evidence about
+   *  the market that is never counted as a realised price. */
+  storableAsEstimate: boolean;
+  hasEstimate: boolean;
+  outcome: CompOutcome;
   hasKey: boolean;
   keyKind: "listing_url" | "house_sale_lot" | "none";
   hasNumericPrice: boolean;
@@ -70,6 +91,9 @@ export interface CompAssessment {
 export interface CompStorabilityReport {
   total: number;
   storable: number;
+  storableAsEstimate: number;
+  withEstimate: number;
+  outcomeCounts: Record<CompOutcome, number>;
   withKey: number;
   withNumericPrice: number;
   withDeterminateBasis: number;
@@ -95,6 +119,16 @@ function isUsableUrl(raw: unknown): boolean {
   } catch {
     return false;
   }
+}
+
+export function normalizeOutcome(raw: unknown): CompOutcome {
+  const v = text(raw).toLowerCase();
+  if (v === "sold") return "sold";
+  // The words a house actually prints when a lot fails: all mean nobody bought it.
+  if (["unsold", "bought_in", "bought in", "boughtin", "passed", "not sold", "no sale", "withdrawn"].includes(v)) {
+    return "unsold";
+  }
+  return "unknown";
 }
 
 export function normalizePriceBasis(raw: unknown): CompPriceBasis {
@@ -125,8 +159,25 @@ export function assessComp(comp: Stage2bComp): CompAssessment {
   const hasDeterminateBasis = basis !== "unknown";
   if (!hasDeterminateBasis) reasons.push("basis_unknown");
 
+  // Estimate-only evidence: a published estimate with a stated outcome, keyed like any other
+  // comp. Both bounds are required — a lone figure is as likely to be a reserve or a result —
+  // and the outcome must be stated, since an estimate with no outcome cannot be told from a lot
+  // that has not been sold yet.
+  const estLow = typeof comp.estimateLow === "number" && Number.isFinite(comp.estimateLow) && comp.estimateLow > 0;
+  const estHigh = typeof comp.estimateHigh === "number" && Number.isFinite(comp.estimateHigh) && comp.estimateHigh > 0;
+  const estCurrency = ISO_CURRENCY.test(text(comp.estimateCurrency).toUpperCase());
+  const hasEstimate = estLow && estHigh && estCurrency && (comp.estimateHigh as number) >= (comp.estimateLow as number);
+  const outcome = normalizeOutcome(comp.outcome);
+  const storable = keyKind !== "none" && hasNumericPrice && hasCurrency && hasDeterminateBasis;
+  // Never both: a comp that carries a usable price is a price comp, and its estimate is context.
+  const storableAsEstimate = !storable && keyKind !== "none" && hasEstimate && outcome !== "unknown";
+  if (!hasEstimate && !hasNumericPrice) reasons.push("no_estimate_or_price");
+
   return {
-    storable: keyKind !== "none" && hasNumericPrice && hasCurrency && hasDeterminateBasis,
+    storableAsEstimate,
+    hasEstimate,
+    outcome,
+    storable,
     hasKey: keyKind !== "none",
     keyKind,
     hasNumericPrice,
@@ -247,6 +298,9 @@ export function assessComps(comps: unknown): CompStorabilityReport {
   const report: CompStorabilityReport = {
     total: list.length,
     storable: 0,
+    storableAsEstimate: 0,
+    withEstimate: 0,
+    outcomeCounts: { sold: 0, unsold: 0, unknown: 0 },
     withKey: 0,
     withNumericPrice: 0,
     withDeterminateBasis: 0,
@@ -256,6 +310,9 @@ export function assessComps(comps: unknown): CompStorabilityReport {
   for (const c of list) {
     const a = assessComp(c ?? {});
     if (a.storable) report.storable++;
+    if (a.storableAsEstimate) report.storableAsEstimate++;
+    if (a.hasEstimate) report.withEstimate++;
+    report.outcomeCounts[a.outcome]++;
     if (a.hasKey) report.withKey++;
     if (a.hasNumericPrice) report.withNumericPrice++;
     if (a.hasDeterminateBasis) report.withDeterminateBasis++;
@@ -275,6 +332,7 @@ export function formatCompStorability(r: CompStorabilityReport): string {
     .join(" ");
   return (
     `${r.storable}/${r.total} storable (${pct(r.storable)}) | ` +
+    `+${r.storableAsEstimate} estimate-only (sold=${r.outcomeCounts.sold} unsold=${r.outcomeCounts.unsold}) | ` +
     `key ${pct(r.withKey)} price ${pct(r.withNumericPrice)} basis ${pct(r.withDeterminateBasis)} | ` +
     `basis hammer=${r.basisCounts.hammer} premium=${r.basisCounts.premium_inclusive} unknown=${r.basisCounts.unknown}` +
     (reasons ? ` | ${reasons}` : "")

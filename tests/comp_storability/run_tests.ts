@@ -112,8 +112,67 @@ test("basis is recognised case- and separator-insensitively", () => {
 
 test("the three gates are independent — one comp can fail several", () => {
   const a = assessComp({ artworkTitle: "x", artist: "y" });
-  assert.deepEqual(a.reasons.sort(), ["basis_unknown", "no_iso_currency", "no_key", "no_numeric_price"].sort());
+  assert.deepEqual(a.reasons.sort(),
+    ["basis_unknown", "no_estimate_or_price", "no_iso_currency", "no_key", "no_numeric_price"].sort());
   assert.equal(a.storable, false);
+  assert.equal(a.storableAsEstimate, false);
+});
+
+// --- estimate-only comps ----------------------------------------------------------------
+// The aggregators paywall realised prices while showing the estimate and whether the lot sold.
+// For a thin artist that is the market data — Sorel's "Après la Moisson" was offered twice at
+// £50-80 and failed both times — so it is kept as its own class, never as a price.
+
+const estimateOnly = (over: Record<string, unknown> = {}) => ({
+  artworkTitle: "Après la Moisson", artist: "Agathe Sorel",
+  listingUrl: "https://www.invaluable.com/auction-lot/apres-la-moisson-123",
+  priceAmount: null, priceCurrency: null, priceBasis: "unknown",
+  estimateLow: 50, estimateHigh: 80, estimateCurrency: "GBP", outcome: "unsold",
+  ...over,
+});
+
+test("an estimate with a stated outcome is evidence, but never a price", () => {
+  const a = assessComp(estimateOnly());
+  assert.equal(a.storableAsEstimate, true);
+  assert.equal(a.storable, false, "an estimate is not a realised price");
+  assert.equal(a.hasEstimate, true);
+  assert.equal(a.outcome, "unsold");
+});
+
+test("an estimate with no stated outcome is not admitted — it may be a forthcoming lot", () => {
+  assert.equal(assessComp(estimateOnly({ outcome: "unknown" })).storableAsEstimate, false);
+  assert.equal(assessComp(estimateOnly({ outcome: null })).storableAsEstimate, false);
+});
+
+test("a half estimate is refused — a lone figure may be a reserve or a result", () => {
+  assert.equal(assessComp(estimateOnly({ estimateHigh: null })).storableAsEstimate, false);
+  assert.equal(assessComp(estimateOnly({ estimateCurrency: null })).storableAsEstimate, false);
+  assert.equal(assessComp(estimateOnly({ estimateLow: 80, estimateHigh: 50 })).storableAsEstimate, false);
+});
+
+test("an unkeyed estimate is refused, like any unkeyed comp", () => {
+  assert.equal(assessComp(estimateOnly({ listingUrl: null })).storableAsEstimate, false);
+});
+
+test("the houses' own words for a failed lot all read as unsold", () => {
+  for (const word of ["unsold", "bought in", "passed", "not sold", "withdrawn", "NO SALE"]) {
+    assert.equal(assessComp(estimateOnly({ outcome: word })).outcome, "unsold", word);
+  }
+});
+
+test("a priced comp stays a price comp; its estimate is context, not a second class", () => {
+  const a = assessComp(good({ estimateLow: 500, estimateHigh: 700, estimateCurrency: "GBP", outcome: "sold" }));
+  assert.equal(a.storable, true);
+  assert.equal(a.storableAsEstimate, false);
+  assert.equal(a.hasEstimate, true);
+});
+
+test("assessComps counts the estimate class and the outcomes separately", () => {
+  const r = assessComps([good(), estimateOnly(), estimateOnly({ outcome: "sold" }), { artworkTitle: "junk" }]);
+  assert.equal(r.storable, 1);
+  assert.equal(r.storableAsEstimate, 2);
+  assert.equal(r.withEstimate, 2);
+  assert.deepEqual(r.outcomeCounts, { sold: 1, unsold: 1, unknown: 2 });
 });
 
 test("assessComps counts each gate separately and splits the basis", () => {

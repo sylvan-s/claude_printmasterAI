@@ -1231,6 +1231,21 @@ Expect to come back empty, and report that honestly rather than padding. The gra
   · saleId and lotNumber — the sale/auction identifier and lot as the house prints them ("32236", "46a"). Together with auctionHouse these identify the sale when no URL is available.
   · priceAmount — the price as a NUMBER, no currency symbol, no thousands separators, no range (5245.51, not "£5,245.51" and not "3,000-3,500").
   · priceCurrency — the ISO code of that number: GBP, USD, EUR.
+  · estimateLow, estimateHigh, estimateCurrency — the PRE-SALE ESTIMATE, whenever the page shows
+    one, whether or not it also shows a result. Record it as numbers ("£50-80" is estimateLow 50,
+    estimateHigh 80, estimateCurrency "GBP").
+  · outcome — WHAT HAPPENED AT THE SALE, as the page states it:
+      "sold"       a result is shown
+      "unsold"     bought in, passed, "not sold", no bids, withdrawn after failing to sell
+      "unknown"    the page does not say, or the sale is in the future
+    A COMP WITH AN ESTIMATE AND NO PRICE IS EVIDENCE, AND OFTEN THE ONLY EVIDENCE THERE IS. The
+    aggregators show estimates and "not sold" while paywalling realised prices, and for a thinly
+    traded artist that is the market data: Agathe Sorel's "Après la Moisson" was offered twice in
+    2014 at £50-80 and failed to sell both times, which is worth knowing against a model that put
+    it at £420. Record such a comp with priceAmount null, the estimate filled and outcome
+    "unsold". Do NOT invent a realised price from an estimate, and do NOT drop the comp because
+    the price is missing — an estimate the house published is a fact, and an unsold lot is a fact
+    about demand.
   · priceBasis — WHAT THAT NUMBER IS. Read the page; do not infer from the size of the figure.
       "hammer"            the price before buyer's premium, where the page says so
       "premium_inclusive" the total the buyer paid, premium included ("price realised",
@@ -1360,6 +1375,10 @@ OUTPUT SCHEMA:
       "priceAmount": null,         // NUMBER only: 5245.51 — no symbol, separators or range
       "priceCurrency": null,       // ISO code of priceAmount: "GBP", "USD", "EUR"
       "priceBasis": "unknown",     // "hammer" | "premium_inclusive" | "unknown" — read the page, never infer
+      "estimateLow": null,         // NUMBER, the published low estimate, or null
+      "estimateHigh": null,        // NUMBER, the published high estimate, or null
+      "estimateCurrency": null,    // ISO code of the estimate: "GBP", "USD", "EUR"
+      "outcome": "unknown",        // "sold" | "unsold" | "unknown" — an unsold lot is evidence
       "wasSoldInBroaderLot": false,
       "broaderLotPriceAdjustment": "<fractional allocation note or null>"
     }
@@ -1394,7 +1413,7 @@ and STEP 7 (auction comp collection) are this run's real deliverable; give them 
 research budget. Concretely, reallocate STEP 2's default search split: spend AT MOST 1 web
 search confirming the attribution — it is settled, you are not re-deriving it — leaving at
 least 4 for STEP 3 and STEP 7.
-SCENARIO 1 HAS A COMP FLOOR: return AT LEAST 3 entries in auctionComps THAT CARRY A REALISED PRICE (a numeric priceAmount). A listing with no disclosed price shows the work exists; it cannot inform a valuation, so it does not count toward the floor — do not pad with dealer pages or sold-item listings that withhold the figure. query_ackg_comparables is the reliable way to clear this floor, since every record it returns is priced. Comps are the output
+SCENARIO 1 HAS A COMP FLOOR: return AT LEAST 3 entries in auctionComps THAT CARRY A REALISED PRICE (a numeric priceAmount) OR A PUBLISHED ESTIMATE WITH A STATED OUTCOME (estimateLow/High plus outcome "sold" or "unsold"). A listing that shows neither a price nor an estimate only shows the work exists and does not count toward the floor — do not pad with dealer pages or sold-item listings that withhold both. query_ackg_comparables is the reliable way to clear this floor, since every record it returns is priced. Comps are the output
 this scenario exists to produce; returning one comp on a settled attribution is a failed run,
 not a thrifty one, and it starves Stage 3 of the only market data it gets. If after genuinely
 spending that budget you still have fewer than 3, add an unresolvedQuestions entry naming the
