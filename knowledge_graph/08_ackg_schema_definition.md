@@ -81,8 +81,11 @@ rather than re-derived at every node:
    `institutional` (the source itself supplied the authority ID, e.g. Met),
    `cross_verified` (independently confirmed against a second authority, e.g.
    Trevelyan against both ULAN and Wikidata), `single_source` (one authority match,
-   not independently cross-checked), or `unresolved` (name-only, no authority ID —
-   a legitimate, honestly-recorded end state, not a defect to hide).
+   not independently cross-checked), `manual_verified` (a person checked the name,
+   the authority record's dates and every work title by hand; the resolver's own tier
+   is kept in `identityConfidencePrior`), or `unresolved` (name-only, no authority ID —
+   a legitimate, honestly-recorded end state, not a defect to hide). A ULAN that was
+   removed as wrong is recorded in `ulanUrlRetracted`, never left in `ulanUrl`.
 
 7. **One evidence-record shape covers every source of a claim, published or not.** An auction
    listing, a museum accession record, a dealer/marketplace listing (Artsy, a gallery site), and

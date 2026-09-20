@@ -1,6 +1,14 @@
 """
 PrintMasterAI — Forum Auctions bulk catalogue ingestion into the ACKG (Neo4j)
-Version: FORUM-INGEST-1.1
+Version: FORUM-INGEST-1.2
+
+1.1 (2026-09-17): an edition size of 2/4/8/16 that the edition note does not confirm is
+written as unknown. The extract read inch fractions in the dimensions as edition sizes;
+see forum_edition_size.py.
+
+1.2 (2026-09-20): copyType detection moved to the shared knowledge_graph/copy_type.py
+(COPY-TYPE-1.1), which fixed the bare-"bon" BAT keyword. Merged past 1.1; the two changes
+are independent.
 
 Same relationship to doc 09 as roseberys_ingest.py: doc 09 describes the mapping, this
 file enforces it. Structurally this source is very close to Roseberys' — same bulk-CSV
@@ -70,6 +78,7 @@ import pandas as pd
 from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
+from forum_edition_size import is_fraction_edition
 from catalogue_matching import parse_catalogue_refs, build_conceptual_work_id, resolve_merged_work_cypher
 from embed_titles_hook import embed_new_titles
 from copy_type import detect_copy_type
@@ -265,7 +274,8 @@ def map_row(row):
         "sheetDimensions": dims if dim_kind in _SHEET_DIM_KINDS else None,
         "imageDimensions": dims if dim_kind == "image" else None,
         "plateDimensions": dims if dim_kind in _PLATE_DIM_KINDS else None,
-        "editionSize": int(row["edition_size"]) if pd.notna(row.get("edition_size")) else None,
+        "editionSize": (int(row["edition_size"]) if pd.notna(row.get("edition_size"))
+                        and not is_fraction_edition(row["edition_size"], row.get("edition_note")) else None),
         "copyType": detect_copy_type(row.get("edition_note"), row.get("title")),
         "signed": (str(row.get("signed", "")).strip().lower() == "yes"),
         "framed": (str(row.get("framed", "")).strip().lower() == "yes"),

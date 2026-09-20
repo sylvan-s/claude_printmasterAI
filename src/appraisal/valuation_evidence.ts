@@ -8,7 +8,8 @@
  *
  * The graph reads here are the ones the blend was CALIBRATED on (tests/backtest/
  * comps_hammer_backtest.ts --blend): comps from a 10-year window before the valuation date, up
- * to 60 of them, work identity resolved first, the artist's price profile. They are deliberately
+ * to 60 of them, work identity resolved first, the artist's price profile (from the committed Stage 3a
+ * model file, knowledge_graph/pricing_ml/priors_stage3a). They are deliberately
  * NOT Stage 3's current LLM reads (from 2015, 40 comps): a price computed from inputs the
  * calibration never saw would carry intervals that were never measured. Nothing here reads
  * `evidence` back into the LLM Stage 3 — that switch is phase 4.
@@ -17,6 +18,7 @@
  *   readLotGraphEvidence   async, the graph reads (profile, work identity, work facts, comps)
  *   assembleValuationEvidence / evidenceToBlendInputs   pure
  */
+import { fxLogShift } from "./knowledge_graph/fx_series.js";
 import type { AppraiserInputResult, AttributionResearchResult, VisualExtractionResult } from "../types.js";
 import type { Stage2bComp } from "./comp_storability.js";
 import type { CatalogueAttribution } from "./attributed_lot.js";
@@ -33,28 +35,45 @@ import {
   dimsCm,
   editionSizeOf,
   primaryProcess,
+  isPoster,
+  isDirectQualifier,
+  isObject,
   type ArtistPriceProfile,
   type BlendInputs,
   type ComparablesResult,
   type PriceAttrs,
   type WorkFacts,
 } from "./knowledge_graph/index.js";
+import type { ProofPolicy } from "./knowledge_graph/price_blend.js";
 import type { SignatureClass, ProofClass } from "./knowledge_graph/artist_price_profile.js";
 import type { WorkIdentityBasis } from "./knowledge_graph/work_identity.js";
 import { mapTechniqueToAckgVocabulary } from "./stage2a_query_plan.js";
+import { queryArtistPriceProfileFromFile, loadPriorsBuild } from "./knowledge_graph/file_price_profile.js";
+import { type SuiteComp } from "./knowledge_graph/suite_comps.js";
+import { selectComparables, MAX_COMPS } from "./knowledge_graph/select_comps.js";
 
 export const VALUATION_EVIDENCE_VERSION = "VE-1.0";
 /** The calibrated comps window and cap (comps_hammer_backtest.ts WINDOW_YEARS / limit). */
 export const EVIDENCE_COMPS_WINDOW_YEARS = 10;
-export const EVIDENCE_COMPS_LIMIT = 60;
+/** At most five comps (select_comps.ts MAX_COMPS, 2026-09-17). */
+export const EVIDENCE_COMPS_LIMIT = MAX_COMPS;
 
 export type EvidenceSource = "catalogue" | "appraiser" | "stage2b" | "vea" | "graph" | "input" | "default";
 export interface Sourced<T> { value: T; source: EvidenceSource; note?: string }
 
 export interface EvidenceComp {
-  tier: "same_work" | "same_artist_technique" | "same_artist";
+  tier: "same_work" | "same_suite" | "same_artist_technique" | "same_artist";
+  /** same_suite only: the catalogue entry that joins this sale's work to the lot ("Vallier 153"). */
+  entry?: string | null;
+  /** The comp's artist (a similar artist on the same_artist tier since 2026-09-17) and its CLIP similarity to the lot. */
+  artist?: string | null;
+  clipSimilarity?: number | null;
+  /** similar-artist comps: log price-level shift to the lot's artist, applied in the blend (not to the displayed hammer). */
+  artistLevelShift?: number | null;
   hammerGBP: number | null;
   realisedGBP: number | null;
+  /** Currency the hammer was bid in; GBP prices are converted at the sale-date rate. */
+  currency?: string | null;
   saleDate: string | null;
   house: string | null;
   saleId: string | null;
@@ -76,6 +95,12 @@ export interface ValuationEvidence {
     editionSize: Sourced<number | null>;
     areaCm2: Sourced<number | null>;
     process: Sourced<string>;
+    /** The object is a poster (price_attrs.isPoster). Optional: evidence built before 2026-09-17 has none. */
+    poster?: Sourced<boolean>;
+    /** Not the artist's own work (the catalogue's "after" / "manner of" ... qualifier). Optional: older evidence has none. */
+    after?: Sourced<boolean>;
+    /** Object multiple (price_attrs.isObject), from the catalogue text. Optional: older evidence has none. */
+    object?: Sourced<boolean>;
   };
   /** The house the price is AT (graph institution name). Null value: no house chosen, pooled offset. */
   targetHouse: Sourced<string | null>;
@@ -86,6 +111,8 @@ export interface ValuationEvidence {
     query: { sinceDate: string; untilDate: string; limit: number; technique: string | null; workTitle: string | null };
     items: EvidenceComp[];
     tierCounts: Record<EvidenceComp["tier"], number>;
+    /** Warnings from the same-suite read, when it failed. */
+    suiteError?: string | null;
     coverageNote: string;
   };
   /** Stage 2b's cited web comps: display and corroboration only, never a witness. */
@@ -151,7 +178,11 @@ export function lotAttrsWithSources(input: {
   if (claimEd != null) editionSize = { value: claimEd, source: "catalogue" };
   else if (ai?.inscriptionClaims?.editionSizeClaim) editionSize = { value: ai.inscriptionClaims.editionSizeClaim, source: "appraiser" };
   else if (veaRan(vea)) {
-    const n = (vea!.editionInfo ?? []).map((e) => editionSizeOf(null, e.transcription)).find((x) => x != null);
+    // A pencil inscription read off the print: "12/75" on its own IS the edition number, so a whole-
+    // field fraction counts here. editionSizeOf rejects bare fractions because in catalogue text they
+    // are inch dimensions; an inscription transcription carries no dimensions.
+    const inscribed = (t: string | null | undefined) => { const m = (t ?? "").match(/^\s*\d+\s*\/\s*(\d{1,5})\s*$/); return m && Number(m[1]) > 0 ? Number(m[1]) : null; };
+    const n = (vea!.editionInfo ?? []).map((e) => inscribed(e.transcription) ?? editionSizeOf(null, e.transcription)).find((x) => x != null);
     if (n != null) editionSize = { value: n, source: "vea", note: "read from the edition inscription" };
   }
 
@@ -183,11 +214,25 @@ export function lotAttrsWithSources(input: {
     const p = proc(vea!.printingTechniques.map((t) => t.technique).join(", "));
     if (p !== "other") process = { value: p, source: "vea" };
   }
-  return { signature, proof, editionSize, areaCm2, process };
+  // Poster: from the catalogue text only, as the trainer read rawMedium. No catalogue text: not a poster.
+  const poster: Sourced<boolean> = claim && claimText
+    ? { value: isPoster(claimText), source: "catalogue" }
+    : { value: false, source: "default", note: "no catalogue text; the model's reference (not a poster)" };
+  // After / manner of / attributed to: the house's qualifier on the catalogue claim. No claim: the artist's own.
+  const after: Sourced<boolean> = claim
+    ? { value: !isDirectQualifier(claim.artistQualifier), source: "catalogue", note: claim.artistQualifier ?? undefined }
+    : { value: false, source: "default", note: "no catalogue attribution; the model's reference (the artist's own work)" };
+  const object: Sourced<boolean> = claim && claimText
+    ? { value: isObject(claimText), source: "catalogue" }
+    : { value: false, source: "default", note: "no catalogue text; the model's reference (a print on paper)" };
+  return { signature, proof, editionSize, areaCm2, process, poster, after, object };
 }
 
 export const attrsValues = (a: ValuationEvidence["attrs"]): PriceAttrs => ({
   signature: a.signature.value, proof: a.proof.value, editionSize: a.editionSize.value, areaCm2: a.areaCm2.value, process: a.process.value,
+  poster: a.poster?.value ?? false,
+  after: a.after?.value ?? false,
+  object: a.object?.value ?? false,
 });
 
 // ── graph reads ────────────────────────────────────────────────────────────────
@@ -197,6 +242,8 @@ export interface LotGraphEvidence {
   identity: ValuationEvidence["identity"];
   workFacts: WorkFacts | null;
   comps: ComparablesResult | null;
+  /** Same-suite comps (suite_comps.ts): other works under the lot's catalogue entries. */
+  suite: SuiteComp[];
   query: ValuationEvidence["comps"]["query"];
   warnings: string[];
 }
@@ -220,15 +267,27 @@ export async function readLotGraphEvidence(input: {
   /** Backtest / past-sale guards: the lot's own record never evidences itself. */
   excludeSaleLot?: { saleId: string; lotNumber: number } | null;
   excludeListingUrl?: string | null;
+  /** Comps must share the lot's attribution class: "direct" (default) never sees "after X" lots, "after" sees only them. */
+  attribution?: "direct" | "after";
+  /** The lot image's CLIP vector (Stage 1d); null: the CLIP tiers fall back to nearest sale date. */
+  clipVector?: number[] | null;
   via: "claim" | "stage2b";
 }): Promise<LotGraphEvidence> {
   const warnings: string[] = [];
   const technique = input.techniqueText ? mapTechniqueToAckgVocabulary(input.techniqueText) : null;
   const query = { sinceDate: minusYears(input.valuationDate, EVIDENCE_COMPS_WINDOW_YEARS), untilDate: input.valuationDate.slice(0, 10), limit: EVIDENCE_COMPS_LIMIT, technique, workTitle: input.workTitle };
-  const out: LotGraphEvidence = { profile: null, identity: { workIds: [], basis: null, matchedName: null, ambiguousAt: null, via: "none" }, workFacts: null, comps: null, query, warnings };
+  const out: LotGraphEvidence = { profile: null, identity: { workIds: [], basis: null, matchedName: null, ambiguousAt: null, via: "none" }, workFacts: null, comps: null, suite: [], query, warnings };
   const artist = input.canonicalArtist;
   if (!artist) { warnings.push("no graph identity for the artist: no profile, no comps"); return out; }
-  try { out.profile = await queryArtistPriceProfile(artist); } catch (e: any) { warnings.push(`price profile read failed: ${e?.message ?? e}`); }
+  // Stage 3a prices from the committed model file (priors_stage3a, 2026-09-16), not the graph's
+  // PricingModelRun; the graph profile is only a fallback when the file is missing.
+  try {
+    out.profile = await queryArtistPriceProfileFromFile(artist);
+    if (!out.profile && !loadPriorsBuild()) {
+      warnings.push("Stage 3a model file unreadable: using the graph's price profile");
+      out.profile = await queryArtistPriceProfile(artist);
+    }
+  } catch (e: any) { warnings.push(`price profile read failed: ${e?.message ?? e}`); }
   if (input.workTitle?.trim()) {
     try {
       const wi = await resolveWorkIdentity({ artistName: artist, title: input.workTitle, catalogueRefs: input.catalogueRefs ?? null, excludeSaleLot: input.excludeSaleLot ?? null });
@@ -240,12 +299,25 @@ export async function readLotGraphEvidence(input: {
     catch (e: any) { warnings.push(`work facts read failed: ${e?.message ?? e}`); }
   }
   try {
-    out.comps = await queryAuctionComparables({
-      artistName: artist, conceptualWorkIds: out.identity.workIds, workTitle: input.workTitle, technique,
-      sinceDate: query.sinceDate, untilDate: query.untilDate, limit: query.limit,
+    // Up to five tiered comps (select_comps.ts, 2026-09-17): same work, then same artist + technique by
+    // CLIP similarity, then similar artists + technique by CLIP similarity. Technique class from the
+    // lot's medium text, as the trainer reads it.
+    const process = input.techniqueText ? primaryProcess([technique, input.techniqueText]) : null;
+    const build = loadPriorsBuild();
+    const artistLevels: Record<string, number> = {};
+    if (out.profile) artistLevels[artist] = out.profile.level;
+    for (const n of out.profile?.neighbours ?? []) { const lvl = build?.artists?.[n.name]?.price_level_log; if (lvl != null && Number.isFinite(lvl)) artistLevels[n.name] = lvl; }
+    out.comps = await selectComparables({ artistLevels,
+      artist, workIds: out.identity.workIds, process, clipVector: input.clipVector ?? null,
+      neighbours: (out.profile?.neighbours ?? []).map((n) => n.name),
+      sinceDate: query.sinceDate, untilDate: query.untilDate, attribution: input.attribution ?? "direct",
       excludeSaleLot: input.excludeSaleLot ?? null, excludeListingUrl: input.excludeListingUrl ?? null,
     });
   } catch (e: any) { warnings.push(`comparables read failed: ${e?.message ?? e}`); }
+  // Same-suite comps, with the same window and self-exclusion; never the lot's own works'
+  // sales, which the comparables query already carries as same_work.
+  // Same-suite comps are no longer read: the five-comp selection replaces that tier (2026-09-17).
+  out.suite = [];
   return out;
 }
 
@@ -266,11 +338,17 @@ export function assembleValuationEvidence(input: {
 }): ValuationEvidence {
   const { graph, claim, vea, appraiserInput } = input;
   const items: EvidenceComp[] = (graph.comps?.comparables ?? []).map((c) => ({
-    tier: c.tier, hammerGBP: c.hammerPriceGBP ?? null, realisedGBP: c.priceRealisedGBP ?? null, saleDate: c.saleDate ?? null,
+    tier: c.tier, hammerGBP: c.hammerPriceGBP ?? null, realisedGBP: c.priceRealisedGBP ?? null, currency: c.priceCurrency ?? null, saleDate: c.saleDate ?? null,
     house: c.institutionName ?? null, saleId: c.saleId ?? null, lotNumber: c.lotNumber ?? null, workTitle: c.workTitle ?? null,
     listingUrl: c.listingUrl ?? null, attrs: priceAttrsOfComparable(c),
+    artist: (c as any).artist ?? null, clipSimilarity: (c as any).clipSimilarity ?? null, artistLevelShift: (c as any).artistLevelShift ?? null,
   }));
-  const tierCounts = { same_work: 0, same_artist_technique: 0, same_artist: 0 };
+  // Suite sales join as their own tier, counted independently of the other tiers exactly as the
+  // BLEND-1.4 calibration was fitted (a sale may also sit in tier 2/3; the fitted weights absorb it).
+  for (const c of graph.suite ?? []) {
+    items.push({ tier: "same_suite", entry: c.entry, hammerGBP: c.hammerGBP, realisedGBP: null, currency: c.currency, saleDate: c.saleDate, house: c.house, saleId: null, lotNumber: null, workTitle: c.workTitle, listingUrl: c.listingUrl, attrs: {} as PriceAttrs });
+  }
+  const tierCounts = { same_work: 0, same_suite: 0, same_artist_technique: 0, same_artist: 0 };
   for (const c of items) tierCounts[c.tier]++;
   const veaCondition = veaRan(vea) ? vea!.condition : null;
   return {
@@ -282,7 +360,7 @@ export function assembleValuationEvidence(input: {
     targetHouse: input.targetHouse,
     valuationDate: input.valuationDate,
     identity: graph.identity,
-    comps: { query: graph.query, items, tierCounts, coverageNote: graph.comps?.coverageNote ?? "comparables not read" },
+    comps: { query: graph.query, items, tierCounts, coverageNote: graph.comps?.coverageNote ?? "comparables not read", suiteError: null },
     webComps: input.webComps ?? [],
     condition: {
       grade: veaCondition?.overallGrade ?? null,
@@ -306,22 +384,24 @@ const median = (xs: number[]): number | null => {
  * The blend's inputs, exactly as the backtest harness records them for a calibration lot.
  * The printed estimate is NOT passed (user decision 2026-09-16: model + comps only).
  */
-export function evidenceToBlendInputs(ev: ValuationEvidence): BlendInputs {
+export function evidenceToBlendInputs(ev: ValuationEvidence, opts: { proofPolicy?: ProofPolicy | null } = {}): BlendInputs {
+  // Similar-artist comps enter at the lot artist's price level (artistLevelShift, select_comps.ts).
   const tierComps = (tier: EvidenceComp["tier"]) =>
-    ev.comps.items.filter((c) => c.tier === tier && c.hammerGBP != null && c.hammerGBP > 0).map((c) => ({ hammerGBP: c.hammerGBP!, saleDate: c.saleDate, house: c.house }));
+    ev.comps.items.filter((c) => c.tier === tier && c.hammerGBP != null && c.hammerGBP > 0).map((c) => ({ hammerGBP: c.hammerGBP! * Math.exp(c.artistLevelShift ?? 0), saleDate: c.saleDate, house: c.house, currency: c.currency ?? null, fxLogShift: fxLogShift(c.currency, c.saleDate, ev.valuationDate.value) }));
   const tierBlock = (tier: "same_artist_technique" | "same_artist") => {
     const all = ev.comps.items.filter((c) => c.tier === tier);
     const hammers = tierComps(tier);
     const med = median(hammers.map((c) => c.hammerGBP));
     return all.length > 0 && med != null ? { n: all.length, medianHammerGBP: med, comps: hammers } : null;
   };
-  const pred = ev.profile ? priorsModelPrediction(attrsValues(ev.attrs), ev.profile, { saleDate: ev.valuationDate.value, house: ev.targetHouse.value }) : null;
+  const pred = ev.profile ? priorsModelPrediction(attrsValues(ev.attrs), ev.profile, { saleDate: ev.valuationDate.value, house: ev.targetHouse.value, proofPolicy: opts.proofPolicy }) : null;
   return {
     saleDate: ev.valuationDate.value.slice(0, 10),
     house: null,
     estimate: null,
     targetHouse: ev.targetHouse.value,
     sameWork: tierComps("same_work"),
+    sameSuite: tierComps("same_suite"),
     sameArtistTechnique: tierBlock("same_artist_technique"),
     sameArtist: tierBlock("same_artist"),
     priors: pred && ev.profile ? { mu: pred.mu, basis: ev.profile.basis, earlierSales: ev.profile.earlierSales, contributions: pred.contributions } : null,

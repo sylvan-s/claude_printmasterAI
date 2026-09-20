@@ -37,6 +37,7 @@ knowledge_graph/picasso_merge_backup_*.json
 knowledge_graph/picasso_merge_presnapshot_*.json
 knowledge_graph/catalogue_comma_repair_*.json
 knowledge_graph/estimate_gbp_repair_presnapshot_*.json
+knowledge_graph/roseberys_estimate_gbp_backfill_presnapshot_*.json
 knowledge_graph/picasso_image_merge_backup_*.json
 knowledge_graph/picasso_image_merge_presnapshot_*.json
 knowledge_graph/picasso_bc_merge_backup_*.json
@@ -136,3 +137,5 @@ knowledge_graph/swann_excluded_rows.csv
 knowledge_graph/roseberys_junk_repoint_presnapshot_*.json
 knowledge_graph/dupwork_*backup_*.json
 knowledge_graph/artist_splink_candidates_weights.html
+# King & McGaw retail-field repair snapshots (row-level graph dumps; never commit)
+knowledge_graph/km_retail_fields_repair_presnapshot_*.json

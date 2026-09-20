@@ -447,3 +447,746 @@ Logged; no sweep run.
 **Also logged:** the ingests' BAT copy-type keyword is the bare substring "bon", so it matches
 "carbon" and "ribbon". It is mirrored as-is in `detectCopyType`, so lots are classed like their
 training neighbours.
+
+## Phase 4 (2026-09-16): Stage 3a built and recording in shadow mode; the paid comparison is pending
+
+**Built.**
+- `src/appraisal/stage3a_blend.ts`. `stage3aValuation(evidence, calibration)` gives:
+  - the 80% range and median (hammer basis, GBP) and the evidence tier;
+  - the witness table with effective weights and calibrated spreads;
+  - the like-for-like house factor and the priors-model contributions;
+  - P(sells) as a hurdle;
+  - witness divergence, and the printed estimate *compared* (midpoint ÷ median), never blended;
+  - condition as a note, never applied;
+  - caveats naming defaulted attributes, an unmeasured or unchosen house, model-only lots,
+    segment-default artists and unresolved works.
+
+  It reads the committed calibration once through `loadBlendCalibration()`.
+- Both appraise paths set `report.stage3aShadow` beside `auctionEstimate`, which is still the one
+  shown, and log a `[Stage 3a shadow]` line. Stage 3a never throws.
+- `tests/backtest/stage3a_shadow_report.ts` scores Stage 3a, the LLM estimate and the printed
+  estimate ×0.82 on realised hammers read from the graph. `--recompute` rebuilds Stage 3a for
+  runs saved before this existed, from their own Stage 1c/2 outputs, with zero LLM.
+- Tests: `npm run test:stage3a` (11); price-blend 82; valuation-evidence 26; `tsc` clean.
+
+**Bug found and fixed:** with no sale house chosen, the report claimed the pooled house level and
+a widened range, but the blend applied neither. It only re-based to a *named* house. Now
+no-house lots re-base to the pooled level and carry the between-house spread. Every calibration
+lot has a house, so BLEND-1.2 refits identically (checked).
+
+**Zero-cost smoke test on the 33 saved attributed-lot runs** (recomputed): Stage 3a produced a
+range on all 33. Only 5 have hammers (the other 27 are A0793, not yet sold), which is too few to
+judge. On those 5 the LLM scores MAE(log) 0.36 against Stage 3a's 0.81 and the printed estimate
+×0.82's 0.33, which is expected because the attributed-path LLM anchors on the printed estimate.
+
+**Open decision: the comparison run.** A0777 (198 hammers) and A0785 (209) are past Roseberys
+sales. Saved attributed-path runs cost $0.24 per lot on average (Haiku).
+
+## Phase 4 result (2026-09-16): Stage 3 unit trial on 100 sold lots — $4.07, no Stage 1/2 model runs
+
+`tests/backtest/stage3_trial.ts --per-house 50 --seed 5 --since 2022-01-01`. The lots are 50
+Roseberys and 50 Forum, sold, catalogued, single-artist and unqualified. Each lot's Stage 3
+inputs are rebuilt in code (claim, graph reads, work identity, comps, profile, verification with
+a Stage 2a stub agreeing with the catalogue artist, synthesised attribution as when 2b is
+skipped). Four arms on Haiku 4.5:
+
+| arm | MAE(log) | geo | within 2x | hammer in range | median high/low |
+|---|---|---|---|---|---|
+| A old LLM Stage 3, printed estimate shown | 0.252 | 0.99 | 93% | 64% | 1.55x |
+| B old LLM Stage 3, estimate withheld | 0.696 | 0.91 | 65% | **30%** | 1.75x |
+| C Stage 3a deterministic | 0.714 | 0.82 | 63% | **75%** | 6.42x |
+| D price-model-informed LLM | 0.716 | 0.82 | 62% | 76% | 6.41x |
+| ref: printed midpoint ×0.82 | 0.210 | 1.00 | 95% | 53% | 1.50x |
+
+By the strongest evidence (C vs B, MAE / range coverage):
+
+| strongest evidence | lots | C | B |
+|---|---|---|---|
+| same-work 3+ | 12 | 0.467 / 75% | 0.494 / 25% |
+| same-work 1–2 | 14 | 0.367 / 79% | 0.292 / 43% |
+| same-artist technique | 44 | 0.628 / 73% | 0.579 / 32% |
+| same artist | 16 | 0.848 / 81% | 1.018 / 19% |
+| model only | 14 | 1.389 / 71% | 1.273 / 29% |
+
+**What it says.**
+1. **With a printed estimate, the old LLM adds noise to it.** A 0.252 vs the bare estimate ×0.82
+   at 0.210.
+2. **Without an estimate, the LLM and Stage 3a are about equally accurate, but only Stage 3a's
+   range is honest.** B's ranges hold 30% of hammers at 1.75x wide; C's hold 75% at 6.4x. B
+   reports confidence the evidence does not support. C is the calibrated one, and it is wide
+   because the evidence is.
+3. **The price-model-informed agent (D) adds nothing to the number.** Its range equals C's
+   exactly on 79/100 lots, and it departed on a quoted catalogue fact once (a portfolio of
+   nineteen etchings). With this prompt it defers to the model, so its value is narration: phase
+   5's Stage 3b, not a second pricer.
+4. **The model-only tail is identity failure, not model failure.** Lots resolved to Artist nodes
+   with no price data:
+   - duplicates: "Joan Miro" (0 hammers) vs "Joan Miró" (1,301); "Walter Richard Sickert" vs
+     "Walter Sickert"; "Augustus John" (0 hammers);
+   - a junk node: "Property of an Urban Art Collector", the provenance line parsed as an artist
+     (hammer £26,000, C median £201).
+
+   With no profile they fall to the segment default, which the calibration shades to ×0.30.
+   Without those 4 lots: C 0.612 (geo 0.93, cover 78%), B 0.626 (cover 31%), D 0.614, A 0.242,
+   ref 0.200.
+
+**Not decided here:** switching the displayed estimate. The estimate-withheld comparison is a tie
+on accuracy with far better range honesty for Stage 3a. With a printed estimate, both LLM arms
+and Stage 3a lose to the estimate itself.
+
+## Decision (2026-09-16): Stage 3a IS the displayed estimate
+
+**Why (the user's words, paraphrased):** the goal is a *fair price*, not a forecast of the hammer.
+The house estimate sways the market, and the appraisal should rest on inherent value and past
+market comps. The trial's accuracy gap to the printed estimate is therefore not the criterion.
+
+**Built.**
+- `MultiStageAppraiser.applyStage3a` runs on both appraise paths. `report.auctionEstimate` is
+  Stage 3a's 80% range via `stage3aAuctionEstimate`:
+  - converted from GBP at the ECB reference rate on or before the valuation date, from the
+    committed `knowledge_graph/fx_gbp_ecb.json`, the same series the graph's GBP prices use;
+  - auction-rounded (tens below 100, else two significant figures, low down and high up);
+  - `valuationContext` and `valuationReasoning` are written in code. The anchor is the blend
+    median; adjustments are the like-for-like house level plus the model factors grouped one line
+    per factor (`groupedContributions`); evidence for is the witness table; evidence against is
+    caveats and divergence; confidence comes from the evidence tier.
+- The LLM Stage 3 estimate is kept as `report.llmAuctionEstimate`. `report.estimateSource` says
+  which stage produced the displayed number, and why when the LLM is the fallback (no evidence,
+  no witness, or no ECB rate for the currency).
+- `report.stage3aShadow` is renamed `report.stage3a`.
+- Checked at zero LLM on saved report A0777/5 (Munch, "Satyr's Head", hammer £2,800): displayed
+  £960–5,600, LLM £800–1,400, printed £1,200–1,800. The same lot in USD shows $1,300–7,600 with
+  the rate named. Tests: `test:stage3a` 24.
+
+**Still true:** the LLM Stage 3 call still runs, costs as before and supplies the other report
+fields (recent sales, next steps). Phase 5's narration replaces its valuation role.
+
+## Follow-up logged (2026-09-16, not now): publishable confidence bounds
+
+The 80% range is honest but too wide to publish as an estimate: median high/low is 6.4x overall,
+3.2–3.3x with same-work comps and 30x on model-only lots. The user flagged that a high/low ratio
+like that is "not practicable to publish". To pick up later:
+- how to present uncertainty separately from the estimate (for example a central estimate with a
+  published band plus a stated confidence level, rather than the raw p10–p90);
+- which evidence can genuinely narrow the range (within-work tau 0.49 is the floor for same-work
+  comps; the model-only tier needs identity fixes and more artist data);
+- whether a narrower published band (e.g. p25–p75) with its measured coverage is acceptable.
+
+The artist-identity task (priceless duplicate nodes) feeds this directly: its misses are the
+widest, lowest ranges.
+
+## Phase 5 result (2026-09-16): contribution waterfall, Stage 3b narration, report UI
+
+**Waterfall** (`src/appraisal/stage3a_waterfall.ts`, attached as `report.stage3a.waterfall`).
+- SHAP-exact for the log-linear model: each attribute bar is beta·(x − E[x]), with E over the
+  model's 31,920 training rows.
+- The means come from `knowledge_graph/pricing_ml/column_means.py`, written to
+  `priors/column_means.json`. It rebuilds the priors design exactly (training rows match the build)
+  and writes nothing to the graph.
+- Bars, in order:
+  - average sold print (£1,091)
+  - artist
+  - signature, proof, edition, size, technique
+  - sale house (like-for-like level vs the training house mix)
+  - market level (year)
+  - model calibration
+  - = pricing model price
+  - market comps pull
+  - = fair-value median
+  - condition, as a zero-length "noted, not priced" row.
+- Band and per-doubling terms are one bar per attribute.
+- Checked on 40 real lots: the bars reproduce the median to 2.8e-15 in log space, with no gap
+  notes. Tests: `test:stage3a-waterfall` (14).
+
+**Stage 3b narration** (`src/appraisal/stage3b_narration.ts`, `report.valuationNarrative`).
+- Haiku 4.5 by default (`stage3bModel`), about $0.007 per lot. It writes the headline, key
+  drivers, narrative and plain caveats, and has no numeric output fields.
+- `checkFigures` rejects any figure not in `allowedFigures`: the range and median, witness prices
+  and weights, chart multipliers and running prices, multipliers restated as % changes, the 80%
+  range, the training-sale count, individual comp hammers and years, attribute values printed in
+  chart labels, and the printed estimate as a reference. One retry names the rejected figures;
+  otherwise there is no narration.
+- Live checks:
+  - first cut: 1/5 accepted, all rejections legitimate derived figures;
+  - widened list: 12/12 first-attempt;
+  - prompt fixed for meaning, since the model had described attribute bars as "vs his other
+    techniques / larger works" when they are vs the typical mix across all training sales:
+    12/12, 1 retry.
+
+  Tests: `test:stage3b` (16). `tests/backtest/stage3b_narration_check.ts` re-runs the live check.
+- **Known limit:** the guard checks figures, not meaning. Occasional imprecise wording remains
+  (for example "16% smaller" for a bar that is 16% lower in price).
+
+**UI.**
+- `src/components/ValuationWaterfall.tsx` draws a log price axis with round-number ticks. Steps
+  are green (raises) or claret (lowers), and levels are marked in gold and claret, in the app's
+  palette. The narration sits beside it (stacked below the xl breakpoint).
+- `ReportView` shows a full-width "How the fair value was built" card when `estimateSource` is
+  stage3a and the view is not in edit mode. The range heading reads "Fair value range (hammer)".
+- Verified in the browser at desktop and 375px phone width on a temporary preview page (removed)
+  with a real lot (Henry Moore, "Seated Figure IV", sold £500; fair value £500–1,800, median
+  £943). No console errors.
+- **Not changed, worth knowing:** `ReportView.convertValue` converts currencies client-side with
+  fixed rates (GBP→USD ×1.25). The chart uses the same function so it matches the headline, but
+  those rates are not the ECB rates Stage 3a uses server-side.
+
+**Still open from this plan:**
+- the LLM Stage 3 call still runs for the other report fields (cost unchanged);
+- publishable confidence bounds (logged);
+- the artist-identity task (running separately).
+
+## LLM Stage 3 pricing call removed (2026-09-16)
+
+Stage 3a prices, Stage 3b narrates, and the old LLM Stage 3 call no longer runs when Stage 3a can
+price the lot.
+- `MultiStageAppraiser.runStage3` runs on both paths:
+  1. build the evidence;
+  2. `stage3FromEvidence` produces the Stage 3a estimate, the narration and the report fields;
+  3. only when Stage 3a cannot price (no evidence, no witness, no ECB rate for the currency) does
+     it call `runStage3Valuation`, the old LLM Stage 3, as the fallback.
+- `report.estimateSource` says which happened and why. `modelUsed` shows
+  `S3: stage3a + narration <model>` or `S3: <model> (fallback)`.
+- On the attributed-lot path the attributed-lot prompt block is only built for the fallback.
+- The report fields the LLM used to write are now built in code (`stage3_report_fields.ts`,
+  `test:stage3-report-fields` 14):
+  - **recentAuctionSales:** the evidence comps, same work first then newest, capped at 8. The
+    price shows what buyers paid with the hammer beside it; condition is never invented.
+  - **editionSizeAndPrintNumber:** sourced proof and edition size plus Stage 2b's edition notes.
+  - **isLikelyReproductionOrPoster:** set only by a direct finding (Stage 2a divergence
+    "reproduction", Stage 1a image class DIGITAL_REPRODUCTION). Posthumous or reprint editions
+    and HIGH reprint risk go in the explanation. My first rule also flagged those and disagreed
+    with the LLM on 3 of 33 saved runs (posthumous Gauguin woodcuts, a high-risk Munch); the
+    narrowed rule agrees on 32/33.
+  - **nextSteps:** Stage 2b's unresolved-question actions and examination flags, plus unstated
+    attributes, missing condition report, no house chosen and unresolved work identity.
+- Checked on saved report A0777/5 at zero pricing cost: estimate £960–5,600 from Stage 3a, 8
+  recent sales, next steps and edition filled. The only model call was the narration ($0.0062).
+  The fallback throws if touched on a priceable lot and is called when there is no evidence.
+- Cost per appraisal falls by the old Stage 3 call: `report_valuation` was $0.02–0.04 on Haiku in
+  the trial and saved runs, replaced by ~$0.006 of narration.
+- Kept: `runStage3Valuation` itself (the fallback, `ThreeStageAppraiser` and
+  `tests/backtest/stage3_trial.ts` use it), `llmAuctionEstimate` in the type for reports saved
+  while both ran.
+
+## Proof policy and artist-technique baseline (2026-09-16)
+
+**Proof policy** (`price_blend.ts` `PROOF_POLICY_CLASSES`, `DEFAULT_PROOF_PREMIUM`; applied on the
+valuation path via `evidenceToBlendInputs(ev, { proofPolicy })`; the calibration harness is
+unchanged). The user's direction: proofs attract a modest premium, 5–10%.
+- **What the fitted models say** (median shrunk artist, against the training mix):
+  - the proof term alone is a premium: AP ×1.07, HC ×1.14, trial ×1.11;
+  - the "edition unknown" term proofs usually carry turned the combined effect into a discount
+    (×0.85–0.96). That was the Braque example's ×0.54.
+- **Rule** for artist's proofs, HC and trial proofs:
+  - the proof step is the artist's own proof effect against the mix, clamped to ×1.05–1.10;
+  - when no edition is stated, the edition terms sit at the training mix (no effect);
+  - a stated edition still prices the proof.
+- **Measured** on 375 backtest proofs (`tests/backtest/proof_policy_check.ts`, zero LLM),
+  blended MAE(log) without → with the policy:
+
+  | proofs | lots | MAE | geo |
+  |---|---|---|---|
+  | AP, no edition | 12 | 0.392 → 0.349 | ×0.89 → ×1.00 |
+  | HC/trial, no edition | 7 | 0.438 → 0.229 | ×0.67 → ×0.88 |
+  | AP, edition stated | 322 | 0.526 → 0.531 | |
+  | HC/trial, edition stated | 34 | 0.489 → 0.528 | the 10% cap is below their typical fitted ×1.14 |
+  | all | 375 | 0.517 → 0.520 | |
+
+  An earlier version neutralised the edition for every proof: 0.517 → 0.528, and it cost the 322
+  APs with a stated edition. It was narrowed on that evidence. The waterfall adds up exactly on
+  all 375.
+
+**Waterfall baseline** (user direction). The chart starts at a typical print by THIS ARTIST in
+THIS TECHNIQUE:
+- the artist's model with the lot's technique term;
+- every other attribute at the training mix;
+- the training house mix and the average market year.
+
+The artist and technique bars are gone. Signature, proof, edition, size, house, year and
+calibration each move from that start, then the comps pull, then the median. With no pricing
+model the chart still starts at the average sold print. The narration prompt and the report card
+text say so. Tests: price-blend 88, stage3a-waterfall 21, stage3b 17.
+
+**The Braque example** (Roseberys A0785/2, HC aquatint, hammer £1,300):
+- before: £200–1,200, median £482 (edition unknown ×0.54);
+- after: £340–1,900, median £804. Braque, aquatint typical print £1,098 → hand ×1.24 → HC proof
+  ×1.05 → edition ×1.00 → size ×0.79 → Roseberys ×0.94 → 2026 ×0.97 → calibration ×0.84 → model
+  £866 → comps ×0.93 → £804.
+- The narration was first dropped for quoting "5–10%"; the policy band is now an allowed figure.
+
+## Size terms: bands only vs bands + per-doubling area (2026-09-16) — bands only rejected
+
+**Question** (user): is size linear or bucketed? It is both. Five area bands (<150, 150–400,
+400–900 reference, 900–1,800, >1,800 cm²) plus a per-doubling `area_log` term. The two are
+collinear, and for thin artists they pull against each other (Braque: band ×1.63, per-doubling
+×0.49, net ×0.79), so the user asked for a bands-only refit.
+
+**Built:** `build_priors.py --size-terms bands` (version suffix `-bands`) and
+`tests/backtest/priors_variant_check.ts`. The check re-prices every sold backtest lot through the
+blend with each build's profiles read from the build JSON, with no graph write and identical lot
+attributes; calibration is fitted before 2024-07-01 and scored after. The default build reproduces
+the committed priors byte for byte.
+
+**Priors temporal check** (sales from 2024-07-01, MAE(log)): bands only is worse in every
+earlier-sales band. Overall 0.652 → 0.663; 15–40 sales 0.684 → 0.707; 40–100 sales 0.633 → 0.648.
+
+**Stage 3 blend check** (1,495 lots after the split): blend MAE(log) 0.631 → 0.639, 80% coverage
+80% → 78%. By sheet size:
+
+| size | lots | blend MAE(log) |
+|---|---|---|
+| under 400 cm² | 94 | 0.788 → 0.817 |
+| 400–1,800 cm² | 375 | 0.640 → 0.639 (tie) |
+| 1,800–4,000 cm² | 475 | 0.566 → 0.564 (tie) |
+| over 4,000 cm² | 491 | 0.649 → 0.669 |
+
+The loss is at the extremes. The open-ended top band holds 54% of training sales, so bands alone
+cannot tell a 40×50 cm sheet from a 100×70 cm one.
+
+**Decision: keep both terms** (production unchanged, PRICING-PRIORS-1.2). The collinearity is a
+readability problem, not an accuracy one, and the chart already shows size as a single combined
+bar. If a single size form is still wanted, the candidates are continuous area alone, or finer
+bands with the top band split. Neither has been tested.
+
+## Size shape: measured, and shape-matched bands tested (2026-09-16) — not adopted yet
+
+**User hypothesis:** a straight line in log area cannot show a U-shape, with premiums for
+miniatures and for very large sheets and nothing in the middle.
+
+**Measured** (`knowledge_graph/pricing_ml/size_shape.py`). A pooled log-hammer model with artist,
+year, house, signature, proof, edition and process but no size term; residuals grouped by sheet
+area:
+
+| sheet | all sales | artists with ≥ 50 sized sales |
+|---|---|---|
+| under 900 cm² (≤ 30 cm side) | ×0.85–0.94 | ×0.83–0.87 |
+| 900–1,800 cm² | rising to ×1.00 | rising to ×0.98 |
+| 1,800–7,500 cm² (42–87 cm) | flat ×0.98–1.01 | flat ×0.99–1.05 |
+| over 7,500 cm² (87 cm+) | **×1.44** | **×1.54** |
+
+Not a U-shape: there is no miniature premium; small sheets carry a flat discount. The middle is
+flat, and very large sheets jump. A hockey stick, which the straight line smears across every
+size, and which the current bands blur because their top band (> 1,800 cm²) mixes the plateau
+with the jump.
+
+**Tested** (`build_priors.py --size-terms shape-bands | shape-bands+log`; bands <400, 400–900,
+900–1,800, **1,800–7,500 reference**, >7,500; the TS pricer recognises them by that reference
+level via `areaBandFor`, so current profiles price exactly as before):
+
+| size form | priors MAE, sales from 2024-07 | blend MAE, 1,495 lots | 80% cover | over 7,500 cm² (145) | under 400 cm² (94) |
+|---|---|---|---|---|---|
+| current: 5 bands + log area | 0.652 | 0.631 | 80% | 0.843, geo ×0.78 | 0.788 |
+| current bands only | 0.663 | 0.639 | 78% | — | 0.817 |
+| **shape bands only** | **0.651** | **0.635** | 78% | **0.835, geo ×0.84** | 0.796 |
+| shape bands + log area | 0.649 | 0.634 | 79% | 0.833, geo ×0.85 | 0.828 |
+
+Shape bands alone match the current accuracy within noise, with no straight-line term, readable
+bands matching the measured curve, and less under-pricing of very large sheets.
+
+**Not adopted:** switching is a production change that feeds live prices. It needs:
+- `build_priors.py --size-terms shape-bands` plus `write_price_priors.py` (graph write);
+- `column_means.py` rebuilt;
+- blend calibration refit on shape-band priors (re-run the harness, or refit offline as
+  `priors_variant_check.ts` does);
+- waterfall size labels for the new bands.
+
+Awaiting the user's decision.
+
+## Size: shape bands + an extra-large-only area term (2026-09-16) — best of the size forms, not yet adopted
+
+**User design, for simplicity:** use the shape bands, and for extra-large pieces only, add a
+continuous log term. `build_priors.py --size-terms shape-bands+xl` adds
+`area_log_xl = max(0, log area − log 7,500)`: zero at or below ~87 cm a side and when size is
+unknown. Its support counts only extra-large rows, so a thin artist's slope comes from the prior.
+In words: "extra-large sheets get a step up, and grow in value the bigger they are." The TS pricer
+and waterfall read `area_log_xl` when a profile has it (`xlAreaLog`); current profiles are
+unaffected.
+
+Fitted, median shrunk artist: the >7,500 cm² step is ×1.27, plus ×1.36 per doubling beyond it
+(×1.12 on the 105 artists with ≥ 3 own extra-large sales).
+
+| size form | priors MAE, sales from 2024-07 | blend MAE, 1,495 lots | 80% cover | over 7,500 cm² (145) | proofs (133) | Roseberys (442) |
+|---|---|---|---|---|---|---|
+| current: 5 bands + log area | 0.652 | 0.631 | 80% | 0.843 | 0.583 | 0.610 |
+| shape bands only | 0.651 | 0.635 | 78% | 0.835 | 0.584 | 0.613 |
+| **shape bands + extra-large log** | **0.649** | **0.630** | 79% | **0.818** | **0.576** | **0.603** |
+
+The pricing-model witness alone is 0.765 → 0.758. Under 400 cm² is 0.788 → 0.791 and size unknown
+is 0.688 → 0.699, both small losses.
+
+**Not adopted, and no graph writes** (the user was clear the graph is not to be written back to).
+The user had also asked for shape bands and waterfall labels; adoption is pending a decision on
+the route: Stage 3a reads artist profiles from the committed build JSON instead of the graph,
+calibration refit offline from the same file, and size labels in plain words.
+
+## Adopted (2026-09-16): shape bands + extra-large term, from the committed model file (no graph write)
+
+**Model file.** `knowledge_graph/pricing_ml/priors_stage3a/` contains `artist_elasticities.json`,
+`neighbours.csv`, `artist_multipliers.csv` and `column_means.json`. It is built with
+`build_priors.py --size-terms shape-bands+xl --out-dir .../priors_stage3a` and
+`column_means.py --size-terms shape-bands+xl`, and its version is
+`PRICING-PRIORS-1.2-shape-bands+xl`. It holds 745 artists, and its priors temporal MAE is 0.649.
+The graph's PricingModelRun and `priors/` (the graph writer's source) are untouched; nothing was
+written to the graph.
+
+**Stage 3a reads it.**
+- `knowledge_graph/file_price_profile.ts` `queryArtistPriceProfileFromFile` uses the artist's own
+  entry, else the nationality × period segment default. The graph is only read, for stored
+  names, nationality and birth year. If the file is unreadable, the graph profile is used with a
+  warning.
+- `readLotGraphEvidence` uses it, and the waterfall reads `priors_stage3a/column_means.json`.
+- `artist_price_profile.areaBandFor` and `price_blend.xlAreaLog` apply the shape bands and the
+  extra-large term.
+
+**Calibration BLEND-1.3.** `tests/backtest/refit_blend_calibration.ts` refits offline. Each lot's
+pricing-model witness is rebuilt as live Stage 3a builds it (`lotAttrsWithSources`, the file
+profile, the proof policy); the comps witnesses are the harness's recorded ones.
+- Temporal gate (fit before 2024-07-01, score 1,495 after): **MAE(log) 0.622, 80% cover 79%, geo
+  ×0.97**.
+  - By house: Bonhams 0.590, Forum 0.646, Roseberys 0.587.
+  - By size: under 400 cm² 0.770 (cover 66%), 400–1,800 0.632, 1,800–7,500 0.560, over 7,500
+    0.820 (cover 69%), size unknown 0.700.
+  - Proofs: 0.565.
+- Production fit on all 5,094 lots: weights same-work 2, tier 2 0.5, tier 3 0.25, model 1;
+  temperature 1.3 (by tier: 1.5 / 2.5 / 1.3 / 1.3 / 0.9); fit MAE 0.628, cover 80%.
+- Artists by basis in the fit: 291 shrunk, 247 prior, 747 segment (not in the file).
+
+**Chart labels.** The size step is named by band and sheet side:
+- "small, up to 20 cm a side";
+- "small, 20–30 cm";
+- "medium, 30–42 cm";
+- "large, 42–87 cm (the typical size)";
+- "extra large, over 87 cm a side; larger still: ×k per doubling of area".
+
+The narration prompt names the bands the same way. Tests: `test:file-price-profile` (7),
+`test:stage3a-waterfall` (29); all other suites pass.
+
+**Braque example** (A0785/2, hammer £1,300): £330–2,000, median £810. Braque aquatint typical
+print £1,039 → hand ×1.24 → HC ×1.05 → edition ×1.00 → size (small, up to 20 cm) ×0.84 → Roseberys
+×0.94 → 2026 ×0.97 → calibration ×0.84 → model £867 → comps ×0.93 → £810.
+
+**Note.** `valuation_evidence_parity.ts` compares evidence against harness inputs recorded with
+the graph's 1.2 profiles, so its priors column now differs by design; comps parity still applies.
+
+## Same-suite comp tier (2026-09-16): tested, helps where it applies, not adopted yet
+
+**Why.** Braque's "Oiseau Bleu" (A0785/2) is one plate of *Le Tir à l'arc*, catalogued as a whole
+under Vallier 153. Its own work node has no earlier sale, but eight sibling nodes carry the same
+number (nine sales, 2005–2023, £220–4,855). The comps query had no way to see them as related.
+
+**Definition (exact fields only).** A suite sibling is another ConceptualWork by the same artist
+documented by the SAME `CatalogueEntry` (catalogue prefix + number), found from the lot's
+resolved works or from a citation it prints (`foldPrefix`, as work identity matches). This also
+catches unmerged duplicate nodes of the same print. Only four of Braque's Vallier 153 nodes link
+to the entry: records catalogued "V. 153, p. 45" did not. Generic prefixes such as "No. 458"
+appear and may join unrelated works.
+
+**Built** (the blend is backward-compatible; production pricing is unchanged):
+- `tests/backtest/extract_suite_comps.ts`, read-only: 5,094 backtest lots, **240 (4.7%) with
+  suite comps**, median one sibling sale.
+- `price_blend.ts`: an optional `sameSuite` input; a `same_suite` witness (kernel density over
+  the re-based, time-adjusted hammers, keyed by count band); evidence tier `same_suite` between
+  same-work and tier 2. A calibration without the source drops the witness.
+- `refit_blend_calibration.ts --suite <jsonl> --dry`.
+
+**Temporal gate** (fit before 2024-07-01, 1,495 lots after; file priors as in BLEND-1.3):
+
+| lots | without suite | with suite |
+|---|---|---|
+| all | 0.622, cover 79% | 0.622, cover 78% |
+| with suite comps (75) | 0.555, cover 84%, geo ×0.96 | **0.507**, cover 75%, geo ×1.06 |
+| with suite comps and no same-work comps (33) | 0.593, cover 91%, geo ×0.81 | **0.453**, cover 79%, geo ×0.95 |
+
+Fitted suite spread is 0.50 (n=1), 0.57 (n=2) and 0.63 (3+), close to same-work comps. The pool
+weight is 1.5 against same-work's 3. Other groups move ±0.007 as the weights refit, and size
+unknown gets worse (0.700 → 0.721).
+
+**Reading.** Where siblings exist, the gain is large, and for lots without their own sales it
+removes a ×0.81 under-pricing. It affects about 5% of lots and rests on 75 scored lots (33 in the
+key group), so it is promising but small-sample.
+
+**To adopt:** `readLotGraphEvidence` fetches suite comps; the waterfall comps label and narration
+mention the suite; the calibration is refit with `--suite`. Worth deciding first whether to
+exclude generic catalogue prefixes ("No.").
+
+### Same-suite tier adopted (BLEND-1.4)
+
+User direction: adopt it, with generic prefixes excluded.
+
+- `knowledge_graph/suite_comps.ts` (read-only): the artist's CatalogueEntry nodes, dropping generic
+  numbering prefixes (`No.`, `Nr.`, `Cat.`, `P.`, page/plate/figure…). Siblings are scoped to the
+  artist, because entries are shared across artists. Matching is exact prefix + number; there is
+  no title similarity. `extract_suite_comps.ts` now calls the same function, so the backtest and live
+  read cannot drift: **234 lots** have suite comps (240 with generic prefixes; the old file is kept as
+  `suite_comps_v0_all_prefixes.jsonl`).
+- `readLotGraphEvidence` fetches suite comps in the same 10-year window. They enter the evidence as
+  tier `same_suite` carrying their entry label. They are not deduplicated against tier 2/3, matching
+  the calibration; the recent-sales list deduplicates for display only.
+- The waterfall comps bar reads "Market comps: same catalogue entry (Vallier 153), …". The narration
+  prompt and the recent-sales notes name the entry.
+- **BLEND-1.4** refit with `--suite`. Temporal gate: all 0.622 with 78% cover. Lots with suite comps:
+  0.504. With suite comps but no same-work comps: 0.455, geo ×0.95. Suite sigma is 0.53/0.59/0.68 by
+  count band. Pool weights: same_work 2, same_suite 1, same-artist technique 0.5, same artist 0.25,
+  model 1.
+- Braque *Oiseau bleu* example: three Vallier 153 sibling sales (Bonhams 2023 £707, Skinner 2022
+  £4,855, Roseberys 2020 £1,100). The range moves to £430–1,800, median £850, tier `same_suite`.
+
+### Year index: sterling-only variant tested, not adopted
+
+Research note: `docs/research/print-market-year-index-2026-09-16.md`. Rebuilding the repeat-sales year
+index with 90% bootstrap bands confirms the 2022 peak (×1.46 of 2025) and the fall since. It also shows
+that the pre-2019 rise in the production index is mostly sterling's fall against the dollar. Dollar
+sales are about half the repeat-sales records. `house_offsets.py --year-currency GBP` builds a
+sterling-only index (`blend/house_offsets_gbp_years.json`, house offsets unchanged). In the temporal
+gate it ties production with a slight edge (MAE 0.620 vs 0.622, cover 79% vs 78%). Adopting it
+needs a BLEND refit with `--offsets`. Reconverting dollar comps at the valuation-date rate is the
+open follow-up.
+
+Dollar-comp re-pricing at the valuation-date exchange rate was built (`fx_series.ts`,
+`HouseOffsets.fxReconvert`, comp currency carried through evidence) and gated at 2024 and 2018
+splits, with both year indices. All four variants are within 0.003 MAE in every group. Not adopted;
+the switch is off in BLEND-1.4. Details in the research note.
+
+### 2026-09-17: waterfall starts at a named reference print
+
+The chart's starting bar was the artist + technique with every other driver at the training mix
+(76% hand-signed, 14% artist's proofs, a spread of editions and sizes, 78% Bonhams, average year),
+so a matching lot still showed non-zero bars and "unsigned" read as a cut from a part-signed mix.
+User direction: start at "<artist>, <technique>: numbered, hand-signed, edition 31–75, large,
+Bonhams, 2025" (`REFERENCE_PRINT` in `stage3a_waterfall.ts`; the edition-size term is read at 50).
+Each bar is now beta * (lot - reference) and is zero where the lot matches. Display only: the
+model price and Stage 3a median are unchanged, and the bars still sum to them exactly.
+Condition and CLIP subject are not in the reference because neither is priced.
+
+### 2026-09-17: model file rebuilt, calibration BLEND-1.5
+
+After the Forum edition-size repair (branch `fix/edition-fraction-parsing`, 2,229 fraction
+sizes cleared in the graph) the Stage 3a model file was rebuilt from a fresh export
+(`build_priors.py --size-terms shape-bands+xl --out-dir .../priors_stage3a`, `column_means.py`
+likewise), and the calibration refit with
+`refit_blend_calibration.ts --version BLEND-1.5 --suite tests/backtest/comps_hammer/suite_comps.jsonl`.
+
+- Training rows 31,920 -> 34,622. Forum sales now enter (7.9% of the house mix; the 2026-09-16
+  build had none), with the earlier Roseberys dims and BAT repairs.
+- Temporal gate (1,495 lots after 2024-07-01): MAE(log) 0.622 -> 0.619, 80% cover 78% -> 79%;
+  lots with suite comps 0.507 -> 0.494; with suite comps and no same-work comps 0.453 -> 0.439.
+- Hockney *Self-Portrait* (G.E.L. 1649, Bonhams 2026-04-23, hammer £6,000): median £1,648 ->
+  £1,630, estimate £640–4,200. The edition step is still x0.48 (Hockney <=30 x0.83 against 31–75
+  x1.64, plus the edition-size term), while his signed non-offset sales differ by ~10% (median
+  £4,480 against £5,000). The Forum bug did not cause it: the old file had no Forum rows. Open:
+  test dropping the edition-size term or merging <=30 with 31–75, on the same gate.
+
+### 2026-09-17: edition sizes read only from explicit wording; model file rebuilt, BLEND-1.6
+
+`train_price_model.edition_size` fell back to the first bare "n/N" in the description when no
+edition was declared. In catalogue text that is almost always an inch fraction
+("(19 1/2 x 15 1/4in)" → 2; "5/8 … one of approximately 50" → 8), so 6,069 training rows (mostly
+Bonhams) sat in the wrong edition band, 5,673 of them in <=30. `proof_class` used the same bare
+fraction to call a print numbered (291 rows). Now, in order: declared, "numbered/No. n/N",
+"edition of [approximately/about/circa/c.] N", "one of [approximately] N impressions/copies/
+examples"; a bare fraction never counts. Mirrored in `price_attrs.ts`; `test:price-attrs` agrees
+on all 55,044 exported rows.
+
+- Training <=30 band 8,834 → 2,996 rows; 5,673 → unknown, 142 → their real band.
+- Pricing model alone (sales from 2024-07-01, k=60): MAE(log) 0.657 → 0.659, a tie. The test
+  rows carried the same misreading, so the fake <=30 label was partly an accidental "poster with
+  inch dimensions" signal.
+- Blend gate (BLEND-1.6, 1,495 lots): 0.619 → 0.621, cover 79% → 78%; Bonhams 0.611 → 0.593,
+  Roseberys 0.596 → 0.591, Forum 0.632 → 0.642. Adopted as a correctness fix on a tie.
+- Hockney *Self-Portrait* (G.E.L. 1649, hammer £6,000): median £1,630 → £2,172, estimate
+  £810–5,700; edition step x0.48 → x0.54 (<=30 now 34 genuine rows). Still open: the <=30 band
+  and the edition-size slope pull against each other, and edition × technique / size
+  interactions are untested market-wide.
+
+### 2026-09-17: offset prints and posters priced in their own right (BLEND-1.7)
+
+The per-artist priors review found reproductions unmodelled: "offset lithograph" matched
+"lithograph", so 25% of the reference technique was offset prints (x0.51 of the same artist's
+hand-drawn lithographs), inflating screenprint premiums (Banksy x3.98) and muddying edition terms.
+
+- `train_price_model.py`: photomechanical prints (offset, photolithograph) are the technique
+  `offset` unless a hand process is named first; `is_poster` flags the object (lithographic /
+  offset / exhibition poster, "from the poster edition"; not "there was also a poster edition",
+  "List Art Poster" editions or inscriptions). Mirrored in `price_attrs.ts`; parity holds on all
+  55,044 exported rows. `build_priors.py --reproduction offset+poster` is the default.
+- Live: `priorsModelPrediction` and `adjustmentBetween` read the `poster` column; lot evidence
+  carries `attrs.poster` from the catalogue text; the waterfall shows a Poster bar only for posters
+  and names the technique "offset print".
+- Offline A/B (priors only, 8,576 test rows): 0.659 -> 0.656, artist bootstrap -0.0033
+  [-0.0067, +0.0000]. Offset median x0.74 (76 artists), poster x0.68 (46); Banksy screenprint
+  x3.98 -> x3.01, Hirst x2.79 -> x1.45. It did not change the edition-band oddities.
+- Blend gate (BLEND-1.7, 1,495 lots): MAE(log) 0.621 -> **0.614**, 80% cover 78% -> 80%;
+  Bonhams 0.593 -> 0.590, Forum 0.642 -> 0.634, Roseberys 0.591 -> 0.584.
+- Also fixed: the VEA edition read. The 0bbb643 edition rule rejected a bare "12/75" inscription
+  transcription; a whole-field fraction read off the print counts again.
+
+### 2026-09-17: edition as bands only (BLEND-1.8)
+
+The collinearity check found the edition bands explain 87% of the log-edition term (VIF 7.6
+market-wide, median 34 within artists), so the two pulled against each other and the chart's
+edition bar netted opposite signs (Hockney: <=30 x0.46 against a slope favouring small editions).
+`build_priors.py --edition-terms bands` is now the default. Live code already skips an absent
+continuous term; `adjustmentBetween` no longer reports it as an unknown column.
+
+- Priors only, sales from 2024-07-01: MAE(log) 0.656 -> 0.658 (the 2026-09-17 four-way test put
+  bands-only vs both at +0.002, interval crossing zero).
+- Blend gate (BLEND-1.8): 0.614 -> 0.617, 80% cover 80% -> 80%; Bonhams 0.590 -> 0.606,
+  Roseberys 0.584 -> 0.594, Forum 0.634 -> 0.631; suite-comp lots 0.496 -> 0.509.
+- Adopted for a readable edition bar at a small accuracy cost (user direction). To revert:
+  `--edition-terms both`, rebuild, refit.
+- Hockney *Self-Portrait* (hammer £6,000): edition step x0.54 -> x0.75 (<=30 x1.16 vs 31-75
+  x1.55); median £2,849, estimate £1,000–7,600, now covering the hammer.
+
+### 2026-09-17: edition numbers with thousands separators (BLEND-1.9)
+
+The junk-sales review found "aside from the edition of 1,000" stored as an edition of 1: every
+edition parser's number pattern stopped at the comma, so mass editions and posters sat in the
+<=30 band. Fixed in `bonhams_parsing.py` (1.2; Bonhams, Skinner, Swann ingests),
+`train_price_model.py` / `price_attrs.ts` (parity on 55,044 rows), `text_extraction.ts` and the
+Forum parser.
+
+- Graph repair `repair_edition_thousands.py` (EDITION-THOUSANDS-REPAIR-1.0), applied: 229
+  EditionRuns (Bonhams 212, Skinner 12, Swann 3, Roseberys 2), fixed only where the stored size
+  was the leading group of the separated number; 0 held. Old values in
+  `declaredSizeBeforeThousands`. Guard `check_edition_thousands.py` passes.
+- Re-export changed editionSize on 179 sales and nothing else. Model file and column means rebuilt.
+- Priors only: 0.658 -> 0.657. Blend gate (BLEND-1.9): MAE(log) 0.617 -> **0.615**, 80% cover
+  80% -> 81%; Bonhams 0.606 -> 0.597, Roseberys 0.594 -> 0.592, Forum 0.631 -> 0.630.
+- The <=30-below-31-75 pattern for Warhol, Picasso and Lichtenstein remains: work composition.
+
+Same review: ~300 genuine non-print sales (printing plates, drawings, whole suites, posthumous or
+not-by-the-artist editions) and 3,575 photographs are in the export. Excluding them did not
+improve held-out print accuracy (0.6538 -> 0.6550 / 0.6556) and they rarely share a work with
+ordinary prints, so they stay; excluding photographs is a scope decision, not an accuracy one.
+
+### 2026-09-17: "after the artist" priced and kept out of comps (BLEND-1.10)
+
+Cheap "Warhol" and "Banksy" sales turned out to be lots catalogued "after", "manner of" or
+"attributed to" the artist. The ingests record the house's qualifier on
+`(SourceRecord)-[:ATTRIBUTED_TO {qualifier}]->(Artist)`, but neither the price-model export nor the
+comps queries read it, so 1,727 "after" sales since 2010 counted as the artist's own work.
+
+- `export_sales.py` adds `qualifier` (same 55,044 rows, all other values identical).
+  `build_priors.not_direct_mask`: the qualifier is not "direct", or there is none and the listing
+  URL says after-/manner-of-/... (82 of 5,467 unqualified). `--attribution after-factor` is now
+  the default: a per-artist `after` column (4.0% of training rows).
+- Test (priors only): on 8,180 direct held-out sales 0.6467 -> 0.6424 (artist bootstrap -0.0044,
+  interval excludes 0); on 396 non-direct held-out sales 0.876 -> 0.824. Direct-only was as good
+  on direct sales but less reliable (P 0.84) and cannot price an "after" lot. The after multiplier
+  has a median of x0.54 (Warhol x0.22, Lichtenstein x0.41, Haring x0.49; Picasso x0.91, Chagall
+  x1.02). Warhol's level goes £1,439 -> £3,209 and hand-signed x2.50 -> x1.67.
+- Live: lot evidence `attrs.after` from the catalogue claim's `artistQualifier`
+  (`isDirectQualifier`); `priorsModelPrediction` / `adjustmentBetween` read the column; the
+  waterfall shows an Attribution bar only for such lots; the narration prompt forbids describing
+  them as the artist's own.
+- Comps: `queryAuctionComparables` and `querySuiteComps` take `attribution` and filter inside the
+  query, before tiering and LIMIT. Stage 3a passes "direct" unless the claim is qualified. Live
+  check: Warhol 765 comps = 676 direct (median £8,500) + 89 after (£420); no leaks either way.
+- Blend gate (BLEND-1.10): 0.615 / 81% cover, unchanged. The backtest lots are all direct and the
+  calibration harness uses comps recorded before the filter, so this gate cannot show the comps
+  change; re-recording the harness comps is the way to measure it.
+
+### 2026-09-17: incised signatures and object multiples (BLEND-1.11); extra-large slope cap rejected
+
+From the second per-artist priors review.
+
+- **Incised signature is hand-signed.** "Incised signature" / "signature incised" had read as
+  unsigned (45 descriptions: Bridget Riley on Plexiglas, Rauschenberg, Soto, Pistoletto, Banksy).
+  Held-out priors MAE 0.6511 -> 0.6508 (artist bootstrap P 0.99); Bridget Riley hand-signed x0.90 ->
+  x1.72.
+- **Object multiple column** (`train_price_model.is_object`): a print or multiple ON aluminium,
+  Plexiglas, steel, canvas, wood..., or a cast/ceramic object. Not a paper print laid, mounted or
+  backed on such a support, and not a painting (487 sales, Hirst 217). Held-out 0.6511 -> 0.6497
+  (P 0.88); on object multiples 0.660 -> 0.604 (P 0.95). Per artist: Hirst x1.11, Banksy x0.80,
+  Opie x0.73, Lichtenstein x0.51, Vasarely x2.05, Connor Brothers x2.74 (whose hand-signed goes
+  x0.89 -> x1.27). Live: `isObject` in price_attrs (pattern copied verbatim from the Python),
+  prediction, comp adjustment, lot evidence, an "Object multiple" waterfall bar, narration prompt.
+  Parity holds on 55,044 rows.
+- **Extra-large slope cap: rejected.** Capping the per-doubling term made extra-large held-out sales
+  worse: x1.5 +0.0023 [+0.0003, +0.0050], x1.25 +0.0108. Steep slopes (Peter Blake x3.17 per
+  doubling) are partly real within the sizes sold. `--xl-cap` stays available, default off. The
+  open guard is to stop the slope at an artist's largest sold sheet.
+- Blend gate (BLEND-1.11): MAE(log) 0.615 -> 0.614, 80% cover 81% -> 80%; Bonhams 0.606 -> 0.603,
+  Forum 0.628 -> 0.627, Roseberys 0.593 -> 0.591.
+
+### 2026-09-17: fair price fitted to house estimates, not hammers (BLEND-2.0)
+
+User direction: the pricing model's dependent variable is the house MID estimate. Auctioneers price a
+print's fundamentals, hammers add noise, and far more lots are estimated than sold. Comps stay
+realised hammers and pull the price toward what prints sell for; they are not rebased.
+
+- **Evidence:** on the same sold lots, the estimate is less noisy. For works sold 3+ times, the
+  within-work SD of log price (year-adjusted) is hammer 0.343 vs mid estimate 0.273; same house
+  0.333 vs 0.256.
+- **Export:** `export_sales.py --lots` writes every dated auction lot with an estimate, sold or not,
+  with a `sold` flag and the estimate in GBP at the SALE-DATE ECB rate (backfill_fx_gbp's rate book,
+  no graph write). 77,433 lots since 2010 against ~45k sold with hammers, including Swann (14,074,
+  never in the hammer model). It reproduces the stored rate on 100% of 45,136 sold rows. Unsold
+  estimates for the same work sit x1.28 above sold ones, with the same within-work SD, hence the flag.
+- **Model:** `build_priors.py --target estimate-mid --unsold-flag on` (now the defaults) on
+  all_lots.csv: 60,899 training rows (was 34,622), 533 own-fit artists (was 334). The per-artist
+  unsold term has a median of x1.16; live lots price with it at 0 (a sold lot's estimate).
+  Priors-only, on 8,565 held-out sold lots against their mid estimate: 0.5589 vs the rescaled hammer
+  model's 0.5692 (P 0.95) and a sold-only estimate model's 0.5713. The gain is the extra data.
+- **Calibration:** `fitBlendCalibration({ priorsOutcome: "estimate" })` fits the pricing-model
+  witness's bias and spread against the lot's mid estimate. Comps witnesses, weights and temperature
+  are still fitted on hammers. `column_means.py --target` reads the lots file.
+- **Gate (1,495 lots):** vs mid estimate MAE(log) 0.575 -> **0.548**, 80% cover 83% -> 85%, price
+  level x0.84 -> x0.91 of the estimate; vs hammer 0.614 -> **0.605**, cover 80% -> 81%. Better at
+  every house.
+- **Wording:** calibration bar "Model calibration to house estimates", no-model start "Average
+  house estimate (N auction lots)"; report caption, valuationContext and the narration prompt
+  describe the fair-price basis.
+- **Hockney Self-Portrait:** £2,323 (800–6,400); edition x0.75, calibration x0.84, comps x0.78.
+  The narration said the smaller edition "adds value", against a x0.75 bar: the figure guard cannot
+  catch a wrong direction (next fix).
+- **Open:** the graph still holds Bonhams' current-rate GBP estimates on unsold rows (the export
+  corrects them for the model).
+
+### 2026-09-17: today's market level, five tiered comps, narration direction check (BLEND-2.2)
+
+**Today's market level (user direction).**
+- `build_priors.py --fit-all --kappa 60` builds the LIVE model on every lot through the last
+  completed sale (76,477 rows; year effects measured through 2026: 2022 x1.28, 2025 x1.11, 2026 x1.03).
+  The backtest-cut build is kept in `priors_stage3a_gate`, and the calibration refit reads it, so
+  residuals stay out-of-sample.
+- `yearEffectAt` carries the latest measured year forward for a later valuation year.
+- The waterfall's reference print is priced at the valuation year's market ("..., Bonhams, 2026
+  market"); the market-level bar is removed.
+- `export_sales.py --lots` drops unsold lots dated in the last 30 days or later (outcome pending: 149,
+  incl. Skinner's September 2026 sale).
+
+**Small-edition penalty, investigated.** Not general: <=30 vs 31-75 has a median of x1.03 over 130
+artists. It is series recognition (Hockney partly publisher, Lichtenstein the 1976 Entablature
+series, Warhol lesser series vs iconic ones), which same-work and CLIP comps address.
+
+**Five tiered comps (`select_comps.ts`, user direction).** At most 5 sold sales in the 10-year window,
+same attribution class, technique as a filter, no attribute adjustment:
+1. same work, nearest date;
+2. same artist, CLIP-closest (floor 0.88 in Neo4j's (1+cos)/2 scale; Hockney repeat sales p10 0.94,
+   other works median 0.84);
+3. similar artists (model neighbours), CLIP-closest.
+
+Stage 1d's CLIP vector is passed to Stage 3. Without one, tiers 2-3 fall back to date. Same-suite comps
+are no longer read.
+
+- Backtest comps were re-recorded with `tests/backtest/record_select5_comps.ts` (4,400 of 5,094 with a
+  vector). Gate: vs estimate MAE 0.547 -> **0.537**, vs hammer 0.609 -> **0.601**, coverage 83% / 79%.
+- 939 lots (18%) get no comps. The similar-artist tier is fitted at weight 0 (bias -0.61): next,
+  rebase it by artist level.
+- Hockney Self-Portrait: £3,400 (1,300-8,900).
+
+**Narration direction check (paused, user decision).** `checkDirections` rejects a narration that
+describes a chart step the wrong way round. It only judges sentences naming a single step or a
+"which/that" continuation, plus prompt rules 5-6. Live 30-lot runs still showed a few false
+contradictions; 45 unit tests.
+
+### 2026-09-17: similar-artist comps rebased by artist level (BLEND-2.3)
+
+Similar-artist comps enter the blend multiplied by exp(level(lot artist) - level(comp artist)),
+the pricing model's artist price levels. The displayed hammer is unchanged; similar artists with no
+level are dropped. 3,375 backtest shifts, median x0.71 (p10 x0.31, p90 x2.02). Witness bias
+-0.61 -> -0.31. BLEND-2.3 fits weight 0.25 (was 0). The overall gate is flat (vs estimate 0.537); the 51
+lots with only similar-artist comps improve at weight 1 (0.632 -> 0.587). Lots with NO comps (242 of
+1,495 gate lots, hammer MAE 0.93) are the worst bucket. User direction: they should use Stage 2b's
+web comparables (not started).

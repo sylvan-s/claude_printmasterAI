@@ -1,95 +1,78 @@
 {
-  "version": "BLEND-1.2",
-  "fittedAt": "2026-09-16T09:36:33.908Z",
-  "fittedOn": "/private/tmp/claude-501/-Users-sylvansitkey-Library-CloudStorage-GoogleDrive-sylvansitkey07-gmail-com-My-Drive-02-Personal-Projects-Printmaster-AI/24ad3ef6-5cf5-44fc-92f1-11a12ab14806/scratchpad/fit_all.jsonl (5094 sold lots)",
+  "version": "BLEND-2.3",
+  "fittedAt": "2026-09-17T11:17:00.649Z",
+  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands+after-factor+object+target-estimate-mid+unsold-flag@2026-09-17T10:27:51+00:00, offline refit; pricing-model witness calibrated to house mid estimates, comps to hammers",
   "witnesses": {
     "estimate": {
       "df": 5,
-      "byKey": {
-        "forum": {
-          "bias": -0.1823215567939549,
-          "sigma": 0.2584963317808472,
-          "n": 1504
-        },
-        "all": {
-          "bias": -0.19415601444095731,
-          "sigma": 0.3132868622710015,
-          "n": 5094
-        },
-        "roseberys": {
-          "bias": -0.2231435513142097,
-          "sigma": 0.3308326291784473,
-          "n": 1713
-        },
-        "bonhams": {
-          "bias": -0.16253553550638244,
-          "sigma": 0.4089927402383295,
-          "n": 1877
-        }
-      }
+      "byKey": {}
     },
     "same_work": {
       "df": 5,
       "byKey": {
         "1": {
-          "bias": -0.07410797215372167,
-          "sigma": 0.49767637451577285,
-          "n": 673
+          "bias": -0.060624621816435464,
+          "sigma": 0.47886332280454846,
+          "n": 659
         },
         "2": {
-          "bias": -0.07488723376609485,
-          "sigma": 0.48455810706573454,
-          "n": 241
+          "bias": -0.09040836890933246,
+          "sigma": 0.5087410728507177,
+          "n": 223
         },
         "1|recent": {
-          "bias": -0.07531369821650724,
-          "sigma": 0.48425886034506566,
-          "n": 455
+          "bias": -0.06453852113757108,
+          "sigma": 0.4598356967032729,
+          "n": 449
         },
         "all": {
           "bias": -0.06453852113757108,
-          "sigma": 0.482917249053802,
-          "n": 1327
+          "sigma": 0.4692738312621751,
+          "n": 1237
         },
         "3+|recent": {
-          "bias": -0.010006620408855582,
-          "sigma": 0.4501928813403151,
-          "n": 378
+          "bias": -0.034715395380770175,
+          "sigma": 0.4135596515669545,
+          "n": 325
         },
         "3+": {
-          "bias": -0.007368501845658848,
-          "sigma": 0.460535415405075,
-          "n": 413
+          "bias": -0.030784634094411345,
+          "sigma": 0.4295425787200209,
+          "n": 355
         },
         "1|old": {
-          "bias": -0.06204925986195686,
-          "sigma": 0.5428795529622776,
-          "n": 218
+          "bias": -0.03708920008120753,
+          "sigma": 0.49321355597567434,
+          "n": 210
         },
         "2|recent": {
-          "bias": -0.06413917302434369,
-          "sigma": 0.4329214565484685,
-          "n": 186
+          "bias": -0.07488723376609485,
+          "sigma": 0.4524384743302216,
+          "n": 173
         },
         "2|old": {
-          "bias": -0.2281198707064469,
-          "sigma": 0.6443107482268347,
-          "n": 55
+          "bias": -0.16347585116356456,
+          "sigma": 0.614034529350791,
+          "n": 50
         },
         "3+|old": {
-          "bias": 0.0332700762855751,
-          "sigma": 0.6496947487056309,
-          "n": 35
+          "bias": 0.09929070030547749,
+          "sigma": 0.6972745537254933,
+          "n": 30
         }
       }
+    },
+    "same_suite": {
+      "df": 5,
+      "byKey": {}
     },
     "same_artist_technique": {
       "df": 5,
       "byKey": {
         "all": {
-          "bias": -0.055826226044219496,
-          "sigma": 0.7401550472285077,
-          "n": 3607
+          "bias": -0.08091203446496564,
+          "sigma": 0.7192525784445922,
+          "n": 3415
         }
       }
     },
@@ -97,34 +80,34 @@
       "df": 5,
       "byKey": {
         "all": {
-          "bias": -0.13774517479223114,
-          "sigma": 0.9983721924386865,
-          "n": 2701
+          "bias": -0.3132231819946063,
+          "sigma": 0.9821630083946278,
+          "n": 1088
         }
       }
     },
     "priors_model": {
       "df": 5,
       "byKey": {
-        "segment": {
-          "bias": -1.2032121998221426,
-          "sigma": 1.157738096432519,
-          "n": 908
+        "prior": {
+          "bias": -0.24070764501229025,
+          "sigma": 0.48148879360053704,
+          "n": 433
         },
         "all": {
-          "bias": -0.27268603630426913,
-          "sigma": 0.7864288677192981,
+          "bias": -0.22743491225051038,
+          "sigma": 0.6719649131522313,
           "n": 5094
         },
         "shrunk": {
-          "bias": -0.17199778167848478,
-          "sigma": 0.6823395934527166,
-          "n": 3673
+          "bias": -0.14009391009391958,
+          "sigma": 0.6130235325745241,
+          "n": 3994
         },
-        "prior": {
-          "bias": -0.20148095026556945,
-          "sigma": 0.6625654230374415,
-          "n": 513
+        "segment": {
+          "bias": -1.1411662943090661,
+          "sigma": 0.9588420751183605,
+          "n": 667
         }
       }
     }
@@ -132,42 +115,38 @@
   "regimes": {
     "with_estimate": {
       "weights": {
-        "estimate": 3,
-        "same_work": 1.5,
-        "same_artist_technique": 0,
-        "same_artist": 0,
+        "estimate": 1,
+        "same_work": 1,
+        "same_suite": 1,
+        "same_artist_technique": 1,
+        "same_artist": 1,
         "priors_model": 1
       },
-      "temperature": 3,
-      "fitLots": 5094,
-      "fitMaeLog": 0.3198720482383601,
-      "fitCoverage80": 0.7852375343541421,
-      "temperatureByTier": {
-        "same_work_3+": 3,
-        "same_work_1-2": 3,
-        "same_artist_technique": 3,
-        "same_artist": 3,
-        "priors_model": 4
-      }
+      "temperature": 1,
+      "fitLots": 0,
+      "fitMaeLog": null,
+      "fitCoverage80": null,
+      "temperatureByTier": {}
     },
     "no_estimate": {
       "weights": {
         "estimate": 0,
-        "same_work": 3,
+        "same_work": 2,
+        "same_suite": 1,
         "same_artist_technique": 0.5,
-        "same_artist": 0.5,
-        "priors_model": 1.5
+        "same_artist": 0.25,
+        "priors_model": 1
       },
-      "temperature": 2,
+      "temperature": 1.5,
       "fitLots": 5094,
-      "fitMaeLog": 0.6233052909650725,
-      "fitCoverage80": 0.7946603847663918,
+      "fitMaeLog": 0.6175486293303417,
+      "fitCoverage80": 0.8060463290145269,
       "temperatureByTier": {
-        "same_work_3+": 2.5,
-        "same_work_1-2": 3,
-        "same_artist_technique": 1.75,
-        "same_artist": 2,
-        "priors_model": 1.5
+        "same_work_3+": 1.75,
+        "same_work_1-2": 2.5,
+        "same_artist_technique": 1.5,
+        "same_artist": 1.3,
+        "priors_model": 1.3
       }
     }
   },

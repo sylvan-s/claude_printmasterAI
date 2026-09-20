@@ -22,6 +22,9 @@
  */
 import { artistNameLeakTokens, artistSurnameToken } from "../../../src/shared/text_extraction";
 
+/** "numbered 21/30", "numbered '12/50'", "No. 3/8". Never a bare fraction, never one followed by mm, cm or an inch mark. */
+export const NUMBERED_FRACTION_RE = /\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201C\u201D]?\d+\s*\/\s*(\d{1,3}(?:,\d{3})+|\d+)\b(?!\s*(?:mm\b|cm\b|["\u201D]))/i;
+
 export type ArtistQualifier =
   | "certain" | "attributed" | "circle" | "studio" | "follower" | "after" | "unknown";
 
@@ -140,7 +143,11 @@ export function detectMultiWork(text: string): { isMultiWork: boolean; reason: s
 
 export function extractCatalogueRefs(text: string): string[] {
   const refs = new Set<string>();
-  for (const m of text.matchAll(/[\[(]\s*([A-Z][A-Za-z&.\s]{2,25}?\s+[\dIVX][\d.\-IVX]*)\s*[\])]/g)) {
+  // A page-cited catalogue ("Czwiklitzer p.437", "Littmann p. 93") is a real citation: some
+  // catalogues raisonnés number by page, not by entry. Forum's Picasso posters are cited that
+  // way, and without the optional marker the reference stayed in the title and no CatalogueEntry
+  // was ever made (A0793/305). catalogue_matching.py moves the marker onto the entry number.
+  for (const m of text.matchAll(/[\[(]\s*([A-Z][A-Za-z&.\s]{2,25}?\s+(?:pp?\.\s*)?[\dIVX][\d.\-IVX]*)\s*[\])]/g)) {
     refs.add(m[1].replace(/\s+/g, " ").trim());
   }
   return [...refs];
@@ -208,8 +215,11 @@ export function parseDescription(html: string): ParsedLot {
       ? body.match(/\b((?:signed|inscribed|numbered|stamped|dated|titled)[^.]*?)(?:, on |, printed| \d{2,4} x)/i)?.[1]?.trim() ?? null
       : null);
 
-  const editionSizeMatch = body.match(/edition of (\d+)/i) ?? body.match(/\b\d+\s*\/\s*(\d+)\b/);
-  const editionSize = editionSizeMatch ? Number(editionSizeMatch[1]) : null;
+  // "n/N" counts only after "numbered" / "no.": a bare fraction is almost always imperial
+  // dimensions ("510 x 647mm (20 x 25 3/8in)" read as an edition of 8). 2026-09-17 repair.
+  // Numbered first, as in train_price_model.py: "numbered 12/50 (also an unsigned edition of 500)" is 50.
+  const editionSizeMatch = body.match(NUMBERED_FRACTION_RE) ?? body.match(/edition of (\d{1,3}(?:,\d{3})+|\d+)/i);
+  const editionSize = editionSizeMatch ? Number(editionSizeMatch[1].replace(/,/g, "")) : null;   // "1,000" is 1000
   const editionLine = body.match(/((?:an? )?(?:artist'?s|printer'?s)? ?proof[^,]*|from the (?:total )?edition of \d+[^,]*|numbered from[^,]*)/i)?.[1]?.trim() ?? null;
 
   const { isMultiWork, reason } = detectMultiWork(full);

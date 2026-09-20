@@ -175,14 +175,25 @@ export function parseDimensions(lines: string[]): Dimension[] {
 /** Catalogue raisonné refs — e.g. [Bloch 1244], (Vallier 153), (Danilowitz 173.9). */
 export function extractCatalogueRefs(text: string): string[] {
   const refs = new Set<string>();
-  for (const m of text.matchAll(/[\[(]\s*([A-Z][A-Za-z&.\s]{2,25}?\s+[\dIVX][\d.\-IVX]*)\s*[\])]/g)) {
+  // A page-cited catalogue ("Czwiklitzer p.437", "Littmann p. 93") is a real citation: some
+  // catalogues raisonnés number by page, not by entry. Forum's Picasso posters are cited that
+  // way, and without the optional marker the reference stayed in the title and no CatalogueEntry
+  // was ever made (A0793/305). catalogue_matching.py moves the marker onto the entry number.
+  for (const m of text.matchAll(/[\[(]\s*([A-Z][A-Za-z&.\s]{2,25}?\s+(?:pp?\.\s*)?[\dIVX][\d.\-IVX]*)\s*[\])]/g)) {
     refs.add(m[1].replace(/\s+/g, " ").trim());
   }
   return [...refs];
 }
 
-/** Edition size from "edition of 100" or a fraction like "45/100" -> 100. */
+/**
+ * Edition size from "numbered n/N", else "edition of N" — the order train_price_model.py and
+ * price_attrs.ts use, so "numbered 12/50 (there was also an unsigned edition of 500)" is 50 here
+ * too. A bare "n/N" is NOT enough: in catalogue text it is almost always an imperial fraction
+ * ("25 1/2in"), which read as editions of 2/4/8/16 on ~1,500 priced Forum and Roseberys sales
+ * before the 2026-09-17 repair.
+ */
 export function detectEditionSize(text: string): number | null {
-  const m = text.match(/edition\s+of\s+(\d+)/i) ?? text.match(/\b\d+\s*\/\s*(\d+)\b/);
-  return m ? Number(m[1]) : null;
+  const m = text.match(/\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201C\u201D]?\d+\s*\/\s*(\d{1,3}(?:,\d{3})+|\d+)\b(?!\s*(?:mm\b|cm\b|["\u201D]))/i)
+    ?? text.match(/edition\s+of\s+(\d{1,3}(?:,\d{3})+|\d+)/i);
+  return m ? Number(m[1].replace(/,/g, "")) : null;   // "edition of 1,000" is 1000, not 1
 }

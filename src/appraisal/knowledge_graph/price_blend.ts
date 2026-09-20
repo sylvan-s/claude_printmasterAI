@@ -37,10 +37,10 @@
  * Pure: no I/O, no randomness. Same inputs, same numbers.
  */
 import type { ArtistPriceProfile, PriceAttrs } from "./artist_price_profile.js";
-import { editionBand, areaBand } from "./artist_price_profile.js";
+import { editionBand, areaBand, areaBandFor, yearEffectAt } from "./artist_price_profile.js";
 
-export type WitnessSource = "estimate" | "same_work" | "same_artist_technique" | "same_artist" | "priors_model";
-export const WITNESS_SOURCES: WitnessSource[] = ["estimate", "same_work", "same_artist_technique", "same_artist", "priors_model"];
+export type WitnessSource = "estimate" | "same_work" | "same_suite" | "same_artist_technique" | "same_artist" | "priors_model";
+export const WITNESS_SOURCES: WitnessSource[] = ["estimate", "same_work", "same_suite", "same_artist_technique", "same_artist", "priors_model"];
 export type BlendRegime = "with_estimate" | "no_estimate";
 
 /** What the callers collect for one lot — every number in GBP, nothing yet in log space. */
@@ -58,6 +58,12 @@ export interface BlendInputs {
   targetHouse?: string | null;
   /** Tier-1 comps with a hammer, strictly before the lot's sale. `house` enables re-basing. */
   sameWork: CompSale[];
+  /**
+   * Same-suite comps (2026-09-16 test): sales of OTHER works by the artist documented by the same
+   * catalogue entry (exact prefix + number), e.g. the other plates of a book catalogued as one
+   * entry, or an unmerged duplicate node of the same print. Absent: no same_suite witness.
+   */
+  sameSuite?: CompSale[];
   /** `comps` (added 2026-09-16) lets the median be re-taken after re-basing; without it the stored median is used as-is. */
   sameArtistTechnique: { n: number; medianHammerGBP: number; comps?: CompSale[] } | null;
   sameArtist: { n: number; medianHammerGBP: number; comps?: CompSale[] } | null;
@@ -78,7 +84,19 @@ export interface BlendInputs {
   recentSameHouseAppearance: { sold: boolean; daysAgo: number } | null;
 }
 
-export interface CompSale { hammerGBP: number; saleDate: string | null; house?: string | null }
+export interface CompSale {
+  hammerGBP: number;
+  saleDate: string | null;
+  house?: string | null;
+  /** Currency the hammer was bid in (SourceRecord.priceCurrency). */
+  currency?: string | null;
+  /**
+   * log(rate at the comp's sale date) - log(rate at the valuation date), rates in units of
+   * `currency` per GBP; 0 for sterling. Adding it re-prices the native hammer at the valuation
+   * date's rate. Callers compute it (fx_series.ts); applied only when offsets.fxReconvert is set.
+   */
+  fxLogShift?: number | null;
+}
 
 export interface PriceContribution { term: string; logEffect: number }
 
@@ -195,6 +213,13 @@ export interface HouseOffsets {
    * only, never for Stage 3.
    */
   timeAdjust?: "none" | "prior_year" | "sale_year";
+  /**
+   * Re-price foreign-currency comps at the valuation date's exchange rate before the time
+   * adjustment (2026-09-16). A graph hammer is converted at its sale-date rate, so a 2015 dollar
+   * comp carries sterling's later fall against the dollar; the year index corrects the market
+   * level, not the conversion. Uses each comp's `fxLogShift`.
+   */
+  fxReconvert?: boolean;
 }
 
 /** Index level for a year, clamped to the measured range (the nearest measured year otherwise). */
@@ -292,52 +317,108 @@ function houseLevel(house: string | null | undefined): string | null {
  * house the model never saw (Forum) contributes 0 and is listed in `unknownColumns`; the
  * calibration bias per house absorbs it.
  */
+/** The extra-large threshold (build_priors.py XL_AREA_CM2, ~87 cm a side) and the xl area term's value. */
+export const XL_AREA_CM2 = 7500;
+export const xlAreaLog = (cm2: number | null | undefined): number => (cm2 != null && Number.isFinite(cm2) && cm2 > 0 ? Math.max(0, Math.log(cm2) - Math.log(XL_AREA_CM2)) : 0);
+
+/** Proof classes outside the numbered edition: an edition size does not describe the sheet. */
+export const PROOF_POLICY_CLASSES = ["artist_proof", "hors_commerce", "trial_proof"] as const;
+/**
+ * The proof policy (2026-09-16, user direction: proofs attract a modest premium, 5-10%). Measured
+ * on the fitted models before adopting it: the proof term alone is a premium against the typical
+ * mix (median shrunk artist AP x1.07, HC x1.14, trial x1.11), but proofs rarely state an edition,
+ * and the "edition unknown" term they then carry turned the combined effect into a discount
+ * (x0.85-0.96). So for a proof: the proof step is the artist's own proof effect against the mix,
+ * clamped to [min, max]; and when no edition is stated, the edition terms sit at the training mix.
+ */
+export const DEFAULT_PROOF_PREMIUM = { min: 1.05, max: 1.1 };
+export interface ProofPolicy { columnMeans: Record<string, number>; premium: { min: number; max: number } }
+export const isPolicyProof = (proof: string | null | undefined): boolean => !!proof && (PROOF_POLICY_CLASSES as readonly string[]).includes(proof);
+
 export function priorsModelPrediction(
   attrs: PriceAttrs,
   profile: ArtistPriceProfile,
-  ctx: { saleDate: string | null | undefined; house?: string | null },
+  ctx: { saleDate: string | null | undefined; house?: string | null; proofPolicy?: ProofPolicy | null },
 ): { mu: number; contributions: PriceContribution[]; unknownColumns: string[] } {
   const unknown = new Set<string>();
   const levels: Record<string, string> = {
     signature: attrs.signature ?? "unsigned",
     proof: attrs.proof ?? "unknown",
     edition_band: editionBand(attrs.editionSize),
-    area_band: areaBand(attrs.areaCm2),
+    area_band: areaBandFor(attrs.areaCm2, profile.referenceLevels),
     process: attrs.process ? attrs.process.toLowerCase() : "other",
   };
+  const policy = ctx.proofPolicy && isPolicyProof(attrs.proof) ? ctx.proofPolicy : null;
+  // Edition goes to the mix only when no edition is stated: a stated edition still prices a proof
+  // (an AP from an edition of 25 is not an AP from 250). Measured on 375 backtest proofs: neutral
+  // edition cut blended MAE(log) 0.438 -> 0.229 on HC/trial proofs without an edition, and raised
+  // it 0.526 -> 0.542 on the 322 APs whose edition was stated.
+  const neutralEdition = !!policy && !(attrs.editionSize != null && Number.isFinite(attrs.editionSize) && attrs.editionSize > 0);
+  const beta = (col: string) => { const b = profile.elasticities[col]; return b != null && Number.isFinite(b) ? b : 0; };
+  const atMix = (prefix: string) => Object.keys(profile.elasticities).filter((c) => c.startsWith(prefix)).reduce((t, c) => t + beta(c) * (policy!.columnMeans[c] ?? 0), 0);
   const contributions: PriceContribution[] = [];
   let level = profile.level;
   let mu = profile.level;
   for (const [dim, lvl] of Object.entries(levels)) {
+    if (neutralEdition && dim === "edition_band") {
+      // No edition effect for a proof: the band sits at the training mix.
+      const mix = atMix("edition_band_");
+      level += mix; mu += mix;
+      continue;
+    }
+    if (policy && dim === "proof") {
+      const mix = atMix("proof_");
+      const measured = beta(`proof_${lvl}`) - mix;
+      const prem = Math.min(Math.log(policy.premium.max), Math.max(Math.log(policy.premium.min), measured));
+      level += mix; mu += mix + prem;
+      contributions.push({ term: `proof=${lvl}`, logEffect: prem });
+      continue;
+    }
     if (profile.referenceLevels[dim] === lvl) continue;
     const col = `${dim}_${lvl}`;
-    const beta = profile.elasticities[col];
-    if (beta == null || !Number.isFinite(beta)) { unknown.add(col); continue; }
-    contributions.push({ term: `${dim}=${lvl}`, logEffect: beta });
-    mu += beta;
+    const b = profile.elasticities[col];
+    if (b == null || !Number.isFinite(b)) { unknown.add(col); continue; }
+    contributions.push({ term: `${dim}=${lvl}`, logEffect: b });
+    mu += b;
   }
   for (const [col, field, label] of CONTINUOUS) {
-    const beta = profile.elasticities[col];
-    if (beta == null || !Number.isFinite(beta) || beta === 0) continue;
+    const b = profile.elasticities[col];
+    if (b == null || !Number.isFinite(b) || b === 0) continue;
+    if (neutralEdition && col === "edition_log") {
+      const mix = b * (policy.columnMeans[col] ?? profile.continuousMedians[col] ?? 0);
+      level += mix; mu += mix;
+      continue;
+    }
     const median = profile.continuousMedians[col] ?? 0;
-    level += beta * median;
-    mu += beta * median;
+    level += b * median;
+    mu += b * median;
     const v = attrs[field] as number | null | undefined;
     if (v != null && Number.isFinite(v) && v > 0) {
-      const eff = beta * (Math.log(v) - median);
+      const eff = b * (Math.log(v) - median);
       if (eff !== 0) contributions.push({ term: `${label}=${Math.round(v)}`, logEffect: eff });
       mu += eff;
     }
   }
+  // Extra-large sheets (a model built with --size-terms shape-bands+xl): log area above 7,500 cm²,
+  // zero below the threshold and when the size is unknown, so it adds nothing to other lots.
+  const bxl = profile.elasticities.area_log_xl;
+  if (bxl != null && Number.isFinite(bxl) && bxl !== 0) {
+    const xl = xlAreaLog(attrs.areaCm2);
+    if (xl > 0) { contributions.push({ term: `extra-large size=${Math.round(attrs.areaCm2!)}`, logEffect: bxl * xl }); mu += bxl * xl; }
+  }
+  for (const col of ["poster", "after", "object"] as const) {
+    const b = profile.elasticities[col];
+    if (attrs[col] && b != null && Number.isFinite(b) && b !== 0) { contributions.push({ term: col, logEffect: b }); mu += b; }
+  }
   const hl = houseLevel(ctx.house);
   if (ctx.house && hl == null) unknown.add(`house_${ctx.house}`);
   if (hl && profile.referenceLevels.house !== hl) {
-    const beta = profile.elasticities[`house_${hl}`];
-    if (beta != null && Number.isFinite(beta)) { contributions.push({ term: `house=${hl}`, logEffect: beta }); mu += beta; }
+    const b = profile.elasticities[`house_${hl}`];
+    if (b != null && Number.isFinite(b)) { contributions.push({ term: `house=${hl}`, logEffect: b }); mu += b; }
     else unknown.add(`house_${hl}`);
   }
   const year = ctx.saleDate ? ctx.saleDate.slice(0, 4) : null;
-  const yearEff = year != null ? profile.yearEffects[year] ?? 0 : 0;
+  const yearEff = yearEffectAt(profile.yearEffects, year);
   if (yearEff !== 0) contributions.push({ term: `sale year ${year}`, logEffect: yearEff });
   mu += yearEff;
   contributions.unshift({ term: "artist level", logEffect: level });
@@ -370,14 +451,20 @@ const yearsBetween = (from: string, to: string): number => (Date.parse(to.slice(
  * one comp, 0 when either side is not known.
  */
 function compShift(offsets: HouseOffsets | null | undefined, target: string | null | undefined, compHouse: string | null | undefined): number {
-  if (!offsets || !target || !compHouse) return 0;
+  // No target house means "no house chosen": comps go to the POOLED level (houseOffsetOf(null)),
+  // not left at their own houses, so the price matches the pooled factor the report shows.
+  if (!offsets || !compHouse) return 0;
   return houseOffsetOf(offsets, target).log - houseOffsetOf(offsets, compHouse).log;
+}
+
+function fxNote(comps: CompSale[], offsets: HouseOffsets | null | undefined): string {
+  return offsets?.fxReconvert && comps.some((c) => c.fxLogShift) ? ", foreign-currency hammers re-priced at the valuation-date exchange rate" : "";
 }
 
 function rebasedLogs(comps: CompSale[], inp: BlendInputs, offsets: HouseOffsets | null | undefined): number[] {
   return comps
     .filter((c) => c.hammerGBP > 0)
-    .map((c) => ln(c.hammerGBP) + compShift(offsets, inp.targetHouse, c.house) + timeShift(offsets, c.saleDate, inp.saleDate))
+    .map((c) => ln(c.hammerGBP) + compShift(offsets, inp.targetHouse, c.house) + timeShift(offsets, c.saleDate, inp.saleDate) + (offsets?.fxReconvert ? c.fxLogShift ?? 0 : 0))
     .sort((a, b) => a - b);
 }
 
@@ -389,12 +476,12 @@ function rebasedLogs(comps: CompSale[], inp: BlendInputs, offsets: HouseOffsets 
  * re-reference.
  */
 function priorsWithHouse(priors: NonNullable<BlendInputs["priors"]>, inp: BlendInputs, offsets: HouseOffsets | null | undefined): { mu: number; contributions: PriceContribution[] } {
-  if (!offsets || !inp.targetHouse) return { mu: priors.mu, contributions: priors.contributions };
+  if (!offsets) return { mu: priors.mu, contributions: priors.contributions };
   const own = priors.contributions.filter((c) => c.term.startsWith("house="));
   const kept = priors.contributions.filter((c) => !c.term.startsWith("house="));
   const off = houseOffsetOf(offsets, inp.targetHouse);
   const mu = priors.mu - own.reduce((t, c) => t + c.logEffect, 0) + off.log;
-  const term = `house=${off.name}${off.measured ? "" : " (unmeasured: pooled offset)"}`;
+  const term = inp.targetHouse ? `house=${off.name}${off.measured ? "" : " (unmeasured: pooled offset)"}` : "house=none chosen (pooled offset)";
   return { mu, contributions: [...kept, { term, logEffect: off.log }] };
 }
 
@@ -411,14 +498,19 @@ export function rawWitnesses(inp: BlendInputs, offsets?: HouseOffsets | null): R
     // Age of the NEWEST comp at the valuation date: several recent sales are the tightest
     // evidence there is; the same count of decade-old sales is not.
     const age = latest && inp.saleDate ? (yearsBetween(latest, inp.saleDate) <= RECENT_COMP_YEARS ? "recent" : "old") : null;
-    const rebased = (offsets && inp.targetHouse && sw.some((c) => c.house) ? `, re-based to ${inp.targetHouse}` : "") + (offsets?.timeAdjust && offsets.timeAdjust !== "none" && offsets.yearEffects ? ", market-adjusted to the valuation date" : "");
+    const rebased = (offsets && sw.some((c) => c.house) ? `, re-based to ${inp.targetHouse ?? "the pooled house level"}` : "") + (offsets?.timeAdjust && offsets.timeAdjust !== "none" && offsets.yearEffects ? ", market-adjusted to the valuation date" : "") + fxNote(sw, offsets);
     out.push({ source: "same_work", rawMu: medianOfSorted(logs), keys: age ? [`${band}|${age}`, band] : [band], basis: `${sw.length} prior sale${sw.length === 1 ? "" : "s"} of this work, latest ${latest ?? "undated"}${rebased}`, rawSamples: logs });
+  }
+  const suite = (inp.sameSuite ?? []).filter((c) => c.hammerGBP > 0);
+  if (suite.length) {
+    const logs = rebasedLogs(suite, inp, offsets);
+    out.push({ source: "same_suite", rawMu: medianOfSorted(logs), keys: [sameWorkBand(suite.length)], basis: `${suite.length} sale${suite.length === 1 ? "" : "s"} of works under the same catalogue entry${fxNote(suite, offsets)}`, rawSamples: logs });
   }
   const tier = (t: BlendInputs["sameArtistTechnique"], source: WitnessSource, label: string) => {
     if (!t || t.n <= 0 || !(t.medianHammerGBP > 0)) return;
     const logs = t.comps?.length ? rebasedLogs(t.comps, inp, offsets) : [];
     const mu = logs.length ? medianOfSorted(logs) : ln(t.medianHammerGBP);
-    out.push({ source, rawMu: mu, keys: [], basis: `median of ${t.n} ${label} sales${logs.length && offsets && inp.targetHouse ? `, re-based to ${inp.targetHouse}` : ""}` });
+    out.push({ source, rawMu: mu, keys: [], basis: `median of ${t.n} ${label} sales${logs.length && offsets ? `, re-based to ${inp.targetHouse ?? "the pooled house level"}` : ""}${fxNote(t.comps ?? [], offsets)}` });
   };
   tier(inp.sameArtistTechnique, "same_artist_technique", "same-artist, same-technique");
   tier(inp.sameArtist, "same_artist", "same-artist");
@@ -444,7 +536,7 @@ export function calibratedWitnesses(inp: BlendInputs, cal: BlendCalibration, reg
   const weights = cal.regimes[r].weights;
   // A target house with no measured offset: the offset is a guess, so every witness carries
   // the between-house spread on top of its own sigma.
-  const extra = cal.houseOffsets && inp.targetHouse && !houseOffsetOf(cal.houseOffsets, inp.targetHouse).measured ? cal.houseOffsets.pooledFallback.betweenHouseSd : 0;
+  const extra = cal.houseOffsets && !houseOffsetOf(cal.houseOffsets, inp.targetHouse).measured ? cal.houseOffsets.pooledFallback.betweenHouseSd : 0;
   const witnesses: PriceWitness[] = [];
   for (const w of raw) {
     if (r === "no_estimate" && w.source === "estimate") continue;
@@ -543,12 +635,13 @@ export function blendPrices(inp: BlendInputs, cal: BlendCalibration, regime?: Bl
 }
 
 /** The strongest price evidence a lot has, ignoring the estimate — what sets how wide its range should be. */
-export type EvidenceTier = "same_work_3+" | "same_work_1-2" | "same_artist_technique" | "same_artist" | "priors_model" | "none";
-export const EVIDENCE_TIERS: EvidenceTier[] = ["same_work_3+", "same_work_1-2", "same_artist_technique", "same_artist", "priors_model", "none"];
+export type EvidenceTier = "same_work_3+" | "same_work_1-2" | "same_suite" | "same_artist_technique" | "same_artist" | "priors_model" | "none";
+export const EVIDENCE_TIERS: EvidenceTier[] = ["same_work_3+", "same_work_1-2", "same_suite", "same_artist_technique", "same_artist", "priors_model", "none"];
 export function evidenceTier(inp: BlendInputs): EvidenceTier {
   const sw = inp.sameWork.filter((c) => c.hammerGBP > 0).length;
   if (sw >= 3) return "same_work_3+";
   if (sw >= 1) return "same_work_1-2";
+  if ((inp.sameSuite ?? []).some((c) => c.hammerGBP > 0)) return "same_suite";
   if (inp.sameArtistTechnique && inp.sameArtistTechnique.n > 0) return "same_artist_technique";
   if (inp.sameArtist && inp.sameArtist.n > 0) return "same_artist";
   if (inp.priors) return "priors_model";
@@ -577,12 +670,17 @@ export const MIN_KEY_LOTS = 20;
 const WEIGHT_GRID = [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 3];
 const TEMPERATURE_GRID = [0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.15, 1.3, 1.5, 1.75, 2, 2.5, 3, 4];
 
-export interface FitRow { inputs: BlendInputs; hammerGBP: number }
+/**
+ * `estimateMidGBP`: the lot's house mid estimate. With `priorsOutcome: "estimate"` the pricing-model
+ * witness is calibrated against it (the fair-price scale, 2026-09-17) while every comps witness is still
+ * calibrated against the hammer, so realised sales keep pulling the price toward what prints sell for.
+ */
+export interface FitRow { inputs: BlendInputs; hammerGBP: number; estimateMidGBP?: number | null }
 
 /** Plan-table figures, for tests and for a first look before a fit exists. Not for Stage 3. */
 export function defaultCalibration(): BlendCalibration {
   const w = (bias: number, sigma: number, df: number | null): WitnessCalibration => ({ df, byKey: { all: { bias, sigma, n: 0 } } });
-  const weights: Record<WitnessSource, number> = { estimate: 1, same_work: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 };
+  const weights: Record<WitnessSource, number> = { estimate: 1, same_work: 1, same_suite: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 };
   return {
     version: "BLEND-DEFAULT",
     fittedAt: "",
@@ -590,6 +688,7 @@ export function defaultCalibration(): BlendCalibration {
     witnesses: {
       estimate: w(ln(0.82), 0.33, 5),
       same_work: w(0, 0.56, 5),
+      same_suite: w(0, 0.7, 5),
       same_artist_technique: w(0, 0.9, 5),
       same_artist: w(0, 1.1, 5),
       priors_model: w(0, 0.8, 5),
@@ -619,17 +718,18 @@ function scoreRows(rows: FitRow[], cal: BlendCalibration, regime: BlendRegime): 
  * the posterior median, then a temperature for 80% interval coverage — separately for the
  * with-estimate and no-estimate regimes. Deterministic. Fit on one house, score on another.
  */
-export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fittedOn: string; fittedAt?: string; df?: number | null; divergenceThreshold?: number; houseOffsets?: HouseOffsets | null; houseMix?: boolean }): BlendCalibration {
+export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fittedOn: string; fittedAt?: string; df?: number | null; divergenceThreshold?: number; houseOffsets?: HouseOffsets | null; houseMix?: boolean; priorsOutcome?: "hammer" | "estimate" }): BlendCalibration {
   const df = opts.df === undefined ? 5 : opts.df;
   const witnesses = {} as Record<WitnessSource, WitnessCalibration>;
   for (const src of WITNESS_SOURCES) witnesses[src] = { df, byKey: {} };
-  const resid: Record<WitnessSource, Record<string, number[]>> = { estimate: {}, same_work: {}, same_artist_technique: {}, same_artist: {}, priors_model: {} };
+  const resid: Record<WitnessSource, Record<string, number[]>> = { estimate: {}, same_work: {}, same_suite: {}, same_artist_technique: {}, same_artist: {}, priors_model: {} };
+  const outcome = (r: FitRow, src: WitnessSource): number =>
+    src === "priors_model" && opts.priorsOutcome === "estimate" && r.estimateMidGBP != null && r.estimateMidGBP > 0 ? ln(r.estimateMidGBP) : ln(r.hammerGBP);
   for (const r of rows) {
-    const y = ln(r.hammerGBP);
     // Residuals are taken AFTER re-basing, so the bias left for a witness is what the house
     // offset does not explain — and a Roseberys fit carries over to a Forum lot.
     for (const w of rawWitnesses(r.inputs, opts.houseOffsets)) {
-      const e = y - w.rawMu;
+      const e = outcome(r, w.source) - w.rawMu;
       if (!Number.isFinite(e)) continue;
       for (const k of [...w.keys, "all"]) (resid[w.source][k] ??= []).push(e);
     }
@@ -648,11 +748,10 @@ export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fit
     const left: Record<string, Record<string, number[]>> = {};
     for (const r of rows) {
       if (!r.inputs.targetHouse) continue;
-      const y = ln(r.hammerGBP);
       for (const w of rawWitnesses(r.inputs, opts.houseOffsets)) {
         if (!HOUSE_MIX_SOURCES.includes(w.source)) continue;
         const c = lookup(witnesses[w.source], w.keys);
-        const e = y - w.rawMu - (c?.bias ?? 0);
+        const e = outcome(r, w.source) - w.rawMu - (c?.bias ?? 0);
         if (Number.isFinite(e)) ((left[w.source] ??= {})[r.inputs.targetHouse] ??= []).push(e);
       }
     }
@@ -666,8 +765,8 @@ export function fitBlendCalibration(rows: FitRow[], opts: { version: string; fit
   const cal: BlendCalibration = {
     version: opts.version, fittedAt: opts.fittedAt ?? new Date().toISOString(), fittedOn: opts.fittedOn, witnesses,
     regimes: {
-      with_estimate: { weights: { estimate: 1, same_work: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 }, temperature: 1, fitLots: 0, fitMaeLog: NaN, fitCoverage80: NaN },
-      no_estimate: { weights: { estimate: 0, same_work: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 }, temperature: 1, fitLots: 0, fitMaeLog: NaN, fitCoverage80: NaN },
+      with_estimate: { weights: { estimate: 1, same_work: 1, same_suite: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 }, temperature: 1, fitLots: 0, fitMaeLog: NaN, fitCoverage80: NaN },
+      no_estimate: { weights: { estimate: 0, same_work: 1, same_suite: 1, same_artist_technique: 1, same_artist: 1, priors_model: 1 }, temperature: 1, fitLots: 0, fitMaeLog: NaN, fitCoverage80: NaN },
     },
     divergenceThreshold: opts.divergenceThreshold ?? 0.5,
     houseOffsets: opts.houseOffsets ?? null,

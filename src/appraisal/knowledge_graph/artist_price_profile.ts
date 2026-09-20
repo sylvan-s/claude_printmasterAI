@@ -50,8 +50,14 @@ export interface PriceAttrs {
   editionSize?: number | null;
   /** Sheet (else image/plate) area in cm². Drives both the band and the per-doubling term. */
   areaCm2?: number | null;
-  /** Primary process word as train_price_model.py's PROCESSES: lithograph, etching, screenprint, ... */
+  /** Primary process word as train_price_model.py's PROCESSES: lithograph, etching, screenprint, ... or "offset". */
   process?: string | null;
+  /** The object is a poster (train_price_model.is_poster). A 0/1 model column, not a level family. */
+  poster?: boolean | null;
+  /** Not the artist's own work ("after", "manner of", ...): the model's per-artist "after" column. */
+  after?: boolean | null;
+  /** An object multiple: printed or made on aluminium, Plexiglas, steel, canvas, wood..., or a cast object. */
+  object?: boolean | null;
 }
 
 export interface ArtistPriceProfile {
@@ -90,7 +96,7 @@ export interface PriceAdjustment {
   unknownColumns: string[];
 }
 
-const CONTINUOUS = new Set(["edition_log", "area_log"]);
+const CONTINUOUS = new Set(["edition_log", "area_log", "area_log_xl"]);
 const LN2 = Math.log(2);
 
 // ── pure helpers (mirrors of train_price_model.py / build_priors.py) ────────────
@@ -102,6 +108,22 @@ export function editionBand(n: number | null | undefined): EditionBand {
   if (n <= 150) return "76-150";
   if (n <= 300) return "151-300";
   return ">300";
+}
+
+/**
+ * The size bands a profile was fitted with. The shape bands (build_priors --size-terms shape-bands,
+ * 2026-09-16) are cut where the measured price curve bends — flat below ~30 cm a side, rising to
+ * ~42 cm, flat to ~87 cm, then a jump — and use 1800-7500 as the reference level, which is how a
+ * profile built with them is recognised. Every other profile uses areaBand.
+ */
+export function areaBandFor(cm2: number | null | undefined, referenceLevels: Record<string, string> | null | undefined): string {
+  if (referenceLevels?.area_band !== "1800-7500") return areaBand(cm2);
+  if (cm2 == null || !Number.isFinite(cm2) || cm2 <= 0) return "unknown";
+  if (cm2 < 400) return "<400";
+  if (cm2 < 900) return "400-900";
+  if (cm2 < 1800) return "900-1800";
+  if (cm2 < 7500) return "1800-7500";
+  return ">7500";
 }
 
 export function areaBand(cm2: number | null | undefined): AreaBand {
@@ -162,6 +184,21 @@ function levelOf(attrs: PriceAttrs): Record<string, string> {
   };
 }
 
+/**
+ * The market-level (year) effect for a valuation year (2026-09-17). A year the build did not measure
+ * takes the latest measured year at or before it (today's market carries forward; a future valuation
+ * date never falls back to an arbitrary zero), and a year before the series takes the earliest.
+ */
+export function yearEffectAt(yearEffects: Record<string, number> | null | undefined, year: string | number | null | undefined): number {
+  if (!yearEffects || year == null) return 0;
+  const y = String(year).slice(0, 4);
+  if (yearEffects[y] != null && Number.isFinite(yearEffects[y])) return yearEffects[y];
+  const years = Object.keys(yearEffects).filter((k) => Number.isFinite(yearEffects[k])).sort();
+  if (!years.length) return 0;
+  const before = years.filter((k) => k <= y);
+  return yearEffects[before.length ? before[before.length - 1] : years[0]];
+}
+
 function logOr(value: number | null | undefined, median: number | undefined): number {
   if (value != null && Number.isFinite(value) && value > 0) return Math.log(value);
   return median ?? 0;
@@ -194,7 +231,16 @@ export function adjustmentBetween(lot: PriceAttrs, comp: PriceAttrs, profile: Ar
     ["edition_log", lot.editionSize, comp.editionSize],
     ["area_log", lot.areaCm2, comp.areaCm2],
   ];
+  for (const [col, yes, no] of [["poster", "poster", "not a poster"], ["after", "after the artist", "the artist's own"], ["object", "object multiple", "print on paper"]] as const) {
+    const b = profile.elasticities[col];
+    if (b == null || !Number.isFinite(b) || !!lot[col] === !!comp[col]) continue;
+    const delta = b * ((lot[col] ? 1 : 0) - (comp[col] ? 1 : 0));
+    factors.push({ attribute: col, lot: lot[col] ? yes : no, comp: comp[col] ? yes : no, factor: Math.exp(delta) });
+    logAdj += delta;
+  }
   for (const [col, lv, cv] of cont) {
+    // A build without the term (edition_log under --edition-terms bands) is not an unknown column.
+    if (!(col in profile.elasticities)) continue;
     const beta = profile.elasticities[col];
     if (beta == null || !Number.isFinite(beta)) { if (lv != null || cv != null) unknown.add(col); continue; }
     const median = profile.continuousMedians[col];

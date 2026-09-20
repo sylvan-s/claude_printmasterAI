@@ -27,6 +27,16 @@ so the gate never scores a lot whose own hammer helped set the offset.
                   tests/backtest/comps_hammer/roseberys_n2500_blend_recency.jsonl \
         --out knowledge_graph/pricing_ml/blend/house_offsets.json
 
+--year-currency GBP (2026-09-16) fits the sale-year index on sterling-priced sales only. The
+house offsets still use every sale. Converted dollar hammers carry the exchange rate's drift,
+(sterling averaged $1.58 in 2010-15 and $1.30 in 2017-25), which put a false long-run rise into the all-currency index (docs/research/
+print-market-year-index-2026-09-16.md). Every build reports a 90% work-cluster bootstrap band
+per year, relative to --band-anchor.
+
+    knowledge_graph/venv-embeddings/bin/python knowledge_graph/pricing_ml/house_offsets.py \
+        --exclude tests/backtest/comps_hammer/{forum,roseberys,bonhams}_n2500_blend_recency.jsonl \
+        --year-currency GBP --out knowledge_graph/pricing_ml/blend/house_offsets_gbp_years.json
+
 Read-only against the graph. Writes one JSON.
 """
 import argparse
@@ -43,7 +53,7 @@ from scipy.sparse.linalg import lsqr
 HERE = os.path.dirname(os.path.abspath(__file__))
 REFERENCE_HOUSE = "Bonhams"
 REFERENCE_YEAR = 2020
-VERSION = "HOUSE-OFFSETS-1.0"
+VERSION = "HOUSE-OFFSETS-1.1"
 
 # The harness's lot-key prefix -> the graph's institutionName.
 KEY_HOUSE = {"forum": "Forum Auctions", "roseberys": "Roseberys London", "bonhams": "Bonhams", "skinner": "Skinner"}
@@ -66,10 +76,10 @@ MATCH (cw:ConceptualWork)-[:PRINTED_AS]->(:EditionRun)-[:INCLUDES]->(imp:Impress
 WHERE s.sourceType = 'auction' AND s.sold = true AND s.hammerPriceGBP > 0 AND s.saleDate IS NOT NULL
 WITH cw, s, collect(imp.signed)[0] AS signed
 WITH cw, collect({house: s.institutionName, saleId: s.saleId, lot: s.lotNumber, date: substring(s.saleDate, 0, 10),
-                  hammer: s.hammerPriceGBP, signed: signed}) AS sales
+                  hammer: s.hammerPriceGBP, currency: s.priceCurrency, signed: signed}) AS sales
 WHERE size(sales) >= 2
 UNWIND sales AS x
-RETURN cw.id AS work, x.house AS house, x.saleId AS saleId, x.lot AS lot, x.date AS date, x.hammer AS hammer, x.signed AS signed
+RETURN cw.id AS work, x.house AS house, x.saleId AS saleId, x.lot AS lot, x.date AS date, x.hammer AS hammer, x.signed AS signed, x.currency AS currency
 """
 
 
@@ -131,6 +141,9 @@ def main():
     ap.add_argument("--out", default=os.path.join(HERE, "blend", "house_offsets.json"))
     ap.add_argument("--bootstrap", type=int, default=200)
     ap.add_argument("--seed", type=int, default=11)
+    ap.add_argument("--year-currency", default=None,
+                    help="fit the year index on sales priced in this currency only (e.g. GBP); house offsets still use every sale")
+    ap.add_argument("--band-anchor", type=int, default=2025, help="year the reported year bands are relative to")
     args = ap.parse_args()
 
     load_env()
@@ -145,10 +158,17 @@ def main():
         if (r["house"], str(r["saleId"]), int(r["lot"]) if r["lot"] is not None else None) in skip:
             dropped += 1
             continue
-        rows.append({"work": r["work"], "house": r["house"], "year": int(r["date"][:4]), "hammer": float(r["hammer"]), "signed": r["signed"]})
+        rows.append({"work": r["work"], "house": r["house"], "year": int(r["date"][:4]), "hammer": float(r["hammer"]), "signed": r["signed"], "currency": r.get("currency")})
     # A work needs >= 2 sales AFTER the exclusion to say anything.
     per_work = Counter(r["work"] for r in rows)
     rows = [r for r in rows if per_work[r["work"]] >= 2]
+    # The year index can come from one currency's sales: converted hammers carry the exchange
+    # rate's drift (sterling fell ~18% against the dollar after 2016), which a GBP-only index does not.
+    year_rows = rows
+    if args.year_currency:
+        year_rows = [r for r in rows if r["currency"] == args.year_currency]
+        pw = Counter(r["work"] for r in year_rows)
+        year_rows = [r for r in year_rows if pw[r["work"]] >= 2]
     houses = sorted({r["house"] for r in rows})
     years = sorted({r["year"] for r in rows})
 
@@ -162,6 +182,10 @@ def main():
     print(f"works sold at >=2 houses (identify the house effect): {len(multi)}; per house: {dict(identifying)}")
 
     house, year, b_signed, b_signed_unknown, tau, _ = fit(rows, houses, years)
+    year_years = sorted({r["year"] for r in year_rows})
+    year_houses = sorted({r["house"] for r in year_rows})
+    if args.year_currency:
+        _, year, *_ = fit(year_rows, year_houses, year_years)
 
     rng = np.random.default_rng(args.seed)
     works = sorted({r["work"] for r in rows})
@@ -169,14 +193,33 @@ def main():
     for r in rows:
         rows_by_work[r["work"]].append(r)
     draws = defaultdict(list)
+    year_draws = defaultdict(list)
     for b in range(args.bootstrap):
         sample = []
         for k, w in enumerate(rng.choice(len(works), size=len(works), replace=True)):
             # Relabel so a work drawn twice gets two fixed effects, as two independent clusters should.
             sample.extend({**r, "work": f"{works[w]}#{k}"} for r in rows_by_work[works[w]])
-        h_b, *_ = fit(sample, houses, years)
+        h_b, y_b, *_ = fit(sample, houses, years)
         for h, v in h_b.items():
             draws[h].append(v)
+        if not args.year_currency:
+            for yy, v in y_b.items():
+                if args.band_anchor in y_b:
+                    year_draws[yy].append(v - y_b[args.band_anchor])
+    if args.year_currency:
+        # Same work-cluster bootstrap over the year-index rows.
+        yw = defaultdict(list)
+        for r in year_rows:
+            yw[r["work"]].append(r)
+        ywl = sorted(yw)
+        for b in range(args.bootstrap):
+            sample = []
+            for k, w in enumerate(rng.choice(len(ywl), size=len(ywl), replace=True)):
+                sample.extend({**r, "work": f"{ywl[w]}#{k}"} for r in yw[ywl[w]])
+            _, y_b, *_ = fit(sample, year_houses, year_years)
+            for yy, v in y_b.items():
+                if args.band_anchor in y_b:
+                    year_draws[yy].append(v - y_b[args.band_anchor])
 
     out_houses = {}
     print(f"\nhouse offsets vs {REFERENCE_HOUSE} (log hammer; same work, year and signed held fixed), work-cluster bootstrap x{args.bootstrap}:")
@@ -196,6 +239,17 @@ def main():
     print(f"  pooled fallback (unmeasured house): {pooled:+.3f} x{np.exp(pooled):.2f}, between-house SD {spread:.3f}")
     print(f"within-work residual SD (tau): {tau:.3f}; signed=true {b_signed:+.3f} (x{np.exp(b_signed):.2f}), signed unknown {b_signed_unknown:+.3f}")
 
+    year_sales = Counter(r["year"] for r in year_rows)
+    year_works = {yy: len({r["work"] for r in year_rows if r["year"] == yy}) for yy in year_years}
+    year_bands = {}
+    print(f"\nyear index ({args.year_currency or 'all currencies'}; {len(year_rows)} sales) vs {args.band_anchor}, 90% work-cluster bootstrap band:")
+    for yy in year_years:
+        d = np.array(year_draws[yy])
+        pt = year[yy] - year.get(args.band_anchor, 0.0)
+        lo, hi_ = (float(np.percentile(d, 5)), float(np.percentile(d, 95))) if len(d) else (pt, pt)
+        year_bands[str(yy)] = {"logVsAnchor": pt, "ci90": [lo, hi_], "sales": year_sales[yy], "works": year_works[yy]}
+        print(f"  {yy}  x{np.exp(pt):.2f}  [x{np.exp(lo):.2f} - x{np.exp(hi_):.2f}]  sales {year_sales[yy]:5d}  works {year_works[yy]:5d}")
+
     result = {
         "version": VERSION,
         "builtAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -207,6 +261,8 @@ def main():
         "pooledFallback": {"log": pooled, "betweenHouseSd": spread},
         "tau": tau,
         "yearEffects": {str(k): v for k, v in sorted(year.items())},
+        "yearIndexCurrency": args.year_currency or "all",
+        "yearBands": {"anchor": args.band_anchor, "bootstrap": args.bootstrap, "years": year_bands},
         "signed": {"true": b_signed, "unknown": b_signed_unknown},
     }
     os.makedirs(os.path.dirname(args.out), exist_ok=True)

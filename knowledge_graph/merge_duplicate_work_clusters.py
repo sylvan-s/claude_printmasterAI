@@ -342,16 +342,56 @@ def pick_survivor(details):
     return max(details, key=score)["workId"]
 
 
+_BRACKETED_CITATION_SHAPE = re.compile(
+    r"[\(\[]\s*(?!(?i:plate|pl|planche|state|etat|état|no|number|series|opus|part|vol|volume|"
+    r"sheet|edition|ed|version|variant|proof)\b)[A-Z][A-Za-z&.,'\- ]{0,40}?\s\d{1,4}[A-Za-z]{0,3}\s*[\)\]]")
+
+
 def pick_principal_name(details):
-    """Which NAME the survivor carries — ADR-0017 Decision 2. Returns (name, tier)."""
-    institutional = [d for d in details
-                     if "institutional" in (d["sourceTypes"] or [])
-                     and d["name"] and not is_placeholder(d["name"])
-                     and not is_ingest_fallback(d["name"])]
+    """Which NAME the survivor carries — ADR-0017 Decision 2 as amended (Amendment 3). Returns
+    (name, tier).
+
+    Tier 1 is the catalogue raisonné's own title. The graph holds catalogue NUMBERS only, so until
+    catalogue titles are ingested the proxy is the title asserted by a record that cites a
+    catalogue entry — preferring non-institutional records, because an auction house quotes the
+    catalogue's title while a museum keeps its own even when it cites one (the Musée d'Art Moderne
+    calls Duthuit 515 'Figure sur fond de velours nègre'; every sale calls it 'Figure devant tapa
+    africain'). Within that tier names are weighted by impressions, so the wording future lots
+    will arrive under wins a one-record tie."""
+    def usable(d):
+        return d["name"] and not is_placeholder(d["name"]) and not is_ingest_fallback(d["name"])
+
+    def types(d):
+        return set(d["sourceTypes"] or [])
+
+    # A title still carrying its citation ('Bedroom (Ramkalawon 155)') is an undecomposed lot
+    # string, not the catalogue's title — Decision 1 would lift the citation out, and until it
+    # does such a name cannot stand in for tier 1.
+    # _CITATION_RE is a list of known catalogue names and misses the long tail ('Ramkalawon 155',
+    # 'CGM 270', 'C. 506'); for NAMING, a generic shape is safe because a false positive only
+    # demotes a name, it never decides identity.
+    def cr_usable(d):
+        return usable(d) and not _CITATION_RE.search(d["name"]) and not _BRACKETED_CITATION_SHAPE.search(d["name"])
+
+    cited_market = [d for d in details
+                    if d["catalogueEntries"] > 0 and types(d) - {"institutional"} and cr_usable(d)]
+    cited_any = [d for d in details if d["catalogueEntries"] > 0 and cr_usable(d)]
+    if cited_market or cited_any:
+        weight = Counter()
+        for d in cited_market or cited_any:
+            weight[d["name"]] += max(1, d["impressions"])
+        top = max(weight.values())
+        candidates = sorted(n for n in weight if weight[n] == top)
+        candidates.sort(key=lambda n: (-_diacritics(n), 1 if _CITATION_RE.search(n) else 0,
+                                       1 if _LOT_DESCRIPTIVE_RE.match(n) else 0, n))
+        return candidates[0], "catalogue"
+
+    institutional = [d for d in details if "institutional" in types(d) and usable(d)]
     pool, tier = (institutional, "institutional") if institutional else (details, "frequency")
 
-    names = [d["name"] for d in pool
-             if d["name"] and not is_placeholder(d["name"]) and not is_ingest_fallback(d["name"])]
+    names = [d["name"] for d in pool if usable(d)]
+    clean = [n for n in names if not _BRACKETED_CITATION_SHAPE.search(n)]
+    names = clean or names
     if not names:
         names = [d["name"] for d in pool if d["name"] and not is_placeholder(d["name"])]
     if not names:

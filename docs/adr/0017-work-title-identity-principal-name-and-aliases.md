@@ -343,3 +343,41 @@ never an identity trigger), but `scoreWorkTitleMatches` feeds Stage 2a, where **
 `TAU_TITLE_ANCHOR = 0.85`. The exposure is a wrong *work* identified in an appraisal, not a
 corrupted graph. Separate fix.
 
+
+---
+
+## Amendment 3 — Decision 2's tier 1 gets a proxy: the title of a record that cites the catalogue (2026-09-17)
+
+Decision 2 put the catalogue raisonné's own title first "once ingested" and, because the graph
+holds catalogue numbers only, tier 2 (institutional) has been deciding every merge. Reviewing the
+first graph-wide image-candidate apply (1,034 clusters) showed what that costs: **413 of 1,034
+survivors would have been renamed**, most of them from the title every sale uses to a museum's
+own wording. The case that surfaced it is Matisse Duthuit 515 — *Figure devant tapa africain* in
+the catalogue and in every Bonhams lot, *Figure sur fond de velours nègre* at the Musée d'Art
+Moderne de Paris. Decision taken by the user: keep the catalogue raisonné naming.
+
+**Rule.** Until catalogue titles are ingested, tier 1 is the title asserted by a record that cites
+a `CatalogueEntry`:
+
+1. records citing a catalogue with at least one non-institutional source, else any citing record;
+2. names weighted by impressions, so the wording future lots arrive under wins a one-record tie;
+3. a name still carrying an embedded citation is not eligible (`Bedroom (Ramkalawon 155)`,
+   `Lullaby Sketches [CGM 270]`) — it is an undecomposed lot string, not the catalogue's title.
+   `_CITATION_RE` is a list of known catalogues and misses that long tail, so naming also uses a
+   generic bracketed `Name 123` shape with designation words (plate, state, no., series, opus…)
+   excluded. A false positive there only demotes a name; it never decides identity.
+
+Tier 2 (institutional) and tier 3 (frequency) are unchanged and apply when no citing record has a
+usable name; both now prefer a citation-free name when one exists.
+
+**Why a museum citing a catalogue does not qualify first.** Museums keep their own titles even
+when they cite — the BM calls Wadsworth's Greenwood W/D 34 *Dazzled ship in drydock* while
+Bonhams uses *Dazzled Ship in Drydock*, and the MAM cites nothing for Duthuit 515 at all. Auction
+houses quote the catalogue.
+
+**Measured on the 1,034-cluster plan (dry run):** renames 413 → 185; principal name by tier
+catalogue 708 / institutional 316 / frequency 10. Every displaced name stays in
+`alternateTitles`, so matching is unaffected either way.
+
+**Not retroactive.** The 2026-09-16 Wadsworth folds were named under the old rule (four survivors
+took BM titles). Re-naming existing works is a separate, explicit pass.

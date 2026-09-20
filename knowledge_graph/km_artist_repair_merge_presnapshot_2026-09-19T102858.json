@@ -1,0 +1,4231 @@
+{
+ "version": "KM-ARTIST-REPAIR-1.0",
+ "kind": "merge",
+ "takenAt": "2026-09-19T102858",
+ "rows": [
+  {
+   "canon": "Edwin Henry Landseer",
+   "dup": "Sir Edwin Henry Landseer",
+   "rule": "honorific",
+   "evidence": "same name once 'Sir' is stripped (repo rule 'honorific'); other node born 1802 = Landseer",
+   "dupUlan": null,
+   "dupConf": "unresolved",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 2,
+   "canonWorks": 1
+  },
+  {
+   "canon": "Edward Coley Burne-Jones",
+   "dup": "Sir Edward Coley Burne-Jones",
+   "rule": "honorific",
+   "evidence": "same name once 'Sir' is stripped (rule 'honorific'); KM node's ULAN 500001381 was manually verified",
+   "dupUlan": "http://vocab.getty.edu/ulan/500001381",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 7
+  },
+  {
+   "canon": "Lawrence Alma-Tadema",
+   "dup": "Sir Lawrence Alma-Tadema",
+   "rule": "honorific",
+   "evidence": "same name once 'Sir' is stripped (rule 'honorific'); KM node's ULAN 500008100 was high_confidence_auto",
+   "dupUlan": "http://vocab.getty.edu/ulan/500008100",
+   "dupConf": "high_confidence_auto",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 7
+  },
+  {
+   "canon": "Charles Hullmandel",
+   "dup": "Charles Joseph Hullmandel",
+   "rule": "ulan_alt_name",
+   "evidence": "'Charles Hullmandel' is a recorded name of ULAN 500041156 (single_candidate_strong, exact 'Hullmandel, Charles Joseph')",
+   "dupUlan": "http://vocab.getty.edu/ulan/500041156",
+   "dupConf": "single_candidate_strong",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 4,
+   "canonWorks": 1
+  },
+  {
+   "canon": "Christopher Richard Wynne Nevinson ARA",
+   "dup": "Christopher Richard Wynne Nevinson",
+   "rule": "honorific",
+   "evidence": "same name once the post-nominal ARA is stripped (repo rule 'honorific'); other node holds the correct ULAN 500031355 (Nevinson, Christopher, 1889-1946), born 1889",
+   "dupUlan": null,
+   "dupConf": "unresolved",
+   "canonUlan": "http://vocab.getty.edu/ulan/500031355",
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 206
+  },
+  {
+   "canon": "Emil Cardinaux",
+   "dup": "Emile Cardinaux",
+   "rule": "ulan_alt_name",
+   "evidence": "'Cardinaux, Emil' is the ULAN preferred spelling of manually verified ULAN 500021057; other node born 1877 = ULAN 1877",
+   "dupUlan": "http://vocab.getty.edu/ulan/500021057",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 1
+  },
+  {
+   "canon": "Francisco José de Goya",
+   "dup": "Francisco de Goya",
+   "rule": "ulan_alt_name",
+   "evidence": "'Goya, Francisco José de' is a recorded name of ULAN 500118936 (single_candidate_strong, exact 'Goya, Francisco de'); other node born 1746 = ULAN 1746; 226 works",
+   "dupUlan": "http://vocab.getty.edu/ulan/500118936",
+   "dupConf": "single_candidate_strong",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 226
+  },
+  {
+   "canon": "John Hassall",
+   "dup": "Hassall",
+   "rule": "ulan_alt_name",
+   "evidence": "'John Hassall' is a recorded name of the KM node's manually verified ULAN 500001686; other node born 1868 = ULAN 1868",
+   "dupUlan": "http://vocab.getty.edu/ulan/500001686",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 2
+  },
+  {
+   "canon": "Kawase Hasui",
+   "dup": "Hasui Kawase",
+   "rule": "same_token_bag",
+   "evidence": "same bag of words (rule 'same_token_bag') and a recorded name of manually verified ULAN 500333884; other node born 1883 = ULAN 1883",
+   "dupUlan": "http://vocab.getty.edu/ulan/500333884",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 2
+  },
+  {
+   "canon": "Paolo Veronese",
+   "dup": "Paolo Caliari Veronese",
+   "rule": "ulan_alt_name",
+   "evidence": "'Paolo Veronese' is a recorded name of manually verified ULAN 500021218",
+   "dupUlan": "http://vocab.getty.edu/ulan/500021218",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 1,
+   "canonWorks": 2
+  },
+  {
+   "canon": "Pierre-Joseph Redouté",
+   "dup": "Pierre Joseph Celestin Redouté",
+   "rule": "ulan_alt_name",
+   "evidence": "'Redouté, Pierre-Joseph' is a recorded name of manually verified ULAN 500005678; other node born 1759 = ULAN 1759",
+   "dupUlan": "http://vocab.getty.edu/ulan/500005678",
+   "dupConf": "manual_verified",
+   "canonUlan": null,
+   "canonConf": "unresolved",
+   "dupWorks": 17,
+   "canonWorks": 1
+  }
+ ],
+ "before": {
+  "Charles Hullmandel": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "alternateNames": [
+     "Hullmandel, Charles"
+    ],
+    "name": "Charles Hullmandel"
+   },
+   "works": [
+    "tate-T05029"
+   ],
+   "attr": [
+    [
+     "tate-T05029-record",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Charles Joseph Hullmandel": {
+   "props": {
+    "identityConfidence": "single_candidate_strong",
+    "hasPosterCatalog": true,
+    "ulanUrl": "http://vocab.getty.edu/ulan/500041156",
+    "name": "Charles Joseph Hullmandel",
+    "posterWorkCount": 4
+   },
+   "works": [
+    "km-cw-charles_joseph_hullmandel-austrian_rose",
+    "km-cw-charles_joseph_hullmandel-dahlia",
+    "km-cw-charles_joseph_hullmandel-damask_rose",
+    "km-cw-charles_joseph_hullmandel-tulip"
+   ],
+   "attr": [
+    [
+     "km-sr-km-425560",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425565",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425566",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425571",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Christopher Richard Wynne Nevinson": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "hasPosterCatalog": true,
+    "ulanUrlRetracted": "http://vocab.getty.edu/ulan/500225911",
+    "identityConfidencePrior": "multiple_candidates",
+    "name": "Christopher Richard Wynne Nevinson",
+    "ulanUrlRetractedReason": "ULAN is a different person",
+    "posterWorkCount": 1,
+    "ulanUrlRetractedAt": "2026-09-19T100259"
+   },
+   "works": [
+    "km-cw-christopher_richard_wynne_nevinson-blackfriars_bridge_london"
+   ],
+   "attr": [
+    [
+     "km-sr-km-427746",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Christopher Richard Wynne Nevinson ARA": {
+   "props": {
+    "dateDied_precision": "exact",
+    "dateDied_year": 1946,
+    "priceEarlierSales": 127,
+    "ulanUrl": "http://vocab.getty.edu/ulan/500031355",
+    "priceLevelLog": 4.817555309801656,
+    "ulanNameResolved": "Nevinson, Christopher",
+    "priceElasticitiesBasis": "shrunk",
+    "dateBorn_year": 1889,
+    "dateBorn_precision": "exact",
+    "priceElasticities": [
+     0.5735568290888244,
+     0.19237266514694573,
+     0.3657910726133744,
+     0.22026420992795753,
+     0.13600271167647138,
+     -0.3359679196765992,
+     0.1776759959610945,
+     0.10419017323422422,
+     -0.0027996911629629764,
+     -0.14632314861626317,
+     -0.08341001132799317,
+     -0.6764625296429311,
+     -0.5226086274416024,
+     -0.3641355159172264,
+     0.5280045691756088,
+     0.5155759753764926,
+     -0.02498852734797943,
+     -0.13279641369456344,
+     -0.02084709645575223,
+     -0.30194370535949205,
+     0.11687933219343875,
+     0.05949451082464378,
+     0.36412685344076245,
+     -0.09132414948072898,
+     -0.3198578906325736,
+     1.002146076502161,
+     0.5538738255757418,
+     -0.044231312809074504,
+     1.0125275452037408,
+     -0.9784150557078878,
+     0.4468136326832306,
+     -0.12773208771350397,
+     0.55163746897073,
+     -0.5200426086577591,
+     0.34817835221214916,
+     0.3834585683385072
+    ],
+    "identityConfidence": "unresolved",
+    "alternateNames": [
+     "Christopher Richard Wynne Nevinson ARA",
+     "Christopher Richard Wynne Nevinson",
+     "Christopher Richard Wynne Nevinson AR",
+     "Christopher R. W. Nevinson ARA",
+     "After Christopher Richard Wynne Nevinson",
+     "C R W Nevinson"
+    ],
+    "priceElasticitiesRun": "PRICING-PRIORS-1.2@2026-09-14T09:30:19+00:00",
+    "nationality": "British",
+    "name": "Christopher Richard Wynne Nevinson ARA",
+    "dinoBackgroundP95": 0.6868926286697387,
+    "identityResolvedAt": "2026-09-01T01:14:06.262368+00:00",
+    "dinoBackgroundP99": 0.8189450693130493,
+    "identityResolvedBy": "haiku-agentic-verification-1.0",
+    "dinoBackgroundPairs": 1025,
+    "dinoBackgroundAt": "2026-09-11T08:23:35.981386+00:00"
+   },
+   "works": [
+    "bonhams-10248-383",
+    "bonhams-10619-266",
+    "bonhams-10619-268",
+    "bonhams-10619-269",
+    "bonhams-10619-273",
+    "bonhams-11049-206",
+    "bonhams-11050-217",
+    "bonhams-11965-152",
+    "bonhams-11968-314",
+    "bonhams-11968-315",
+    "bonhams-11968-316",
+    "bonhams-11968-317",
+    "bonhams-14850-229",
+    "bonhams-14850-230",
+    "bonhams-15395-153",
+    "bonhams-15671-72",
+    "bonhams-15671-73",
+    "bonhams-15671-75",
+    "bonhams-15673-63",
+    "bonhams-15673-65",
+    "bonhams-16772-127",
+    "bonhams-16844-79",
+    "bonhams-16844-80",
+    "bonhams-17833-52",
+    "bonhams-17833-56",
+    "bonhams-18174-17",
+    "bonhams-18174-36",
+    "bonhams-18880-66",
+    "bonhams-19852-17",
+    "bonhams-19852-39",
+    "bonhams-20018-75",
+    "bonhams-20129-4",
+    "bonhams-20274-37",
+    "bonhams-20736-15",
+    "bonhams-20736-16",
+    "bonhams-20736-19",
+    "bonhams-20736-5",
+    "bonhams-20737-31",
+    "bonhams-20737-32",
+    "bonhams-20738-55",
+    "bonhams-20739-56",
+    "bonhams-21583-16",
+    "bonhams-21583-17",
+    "bonhams-21583-18",
+    "bonhams-22571-50",
+    "bonhams-22571-51",
+    "bonhams-22572-28",
+    "bonhams-23545-17",
+    "bonhams-23545-18",
+    "bonhams-23546-7",
+    "bonhams-23546-9",
+    "bonhams-24037-18",
+    "bonhams-24140-23",
+    "bonhams-24643-22",
+    "bonhams-25382-107",
+    "bonhams-cw-C_R_W_Nevinson-Imperial_War_Museum_cat-107-quartier_latin",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-113-summer",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-38-that_cursed_wood",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-41-nerves_of_an_army",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-43-mt_motor_transport",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-44b-now_back_the_bayonets",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-47-southwark_limehouse",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-50-the_estuary",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-55-temples_of_new_york",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-55-the_temples_of_new_york",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-59-the_workers",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-72-three_a_m_a_corner_by_madison_square_at_night",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-84-new_york_night_43rd_street",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-91-quartier_latin",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-94-pont_royale",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Black-96-from_a_paris_window",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-103-place_blanche",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-11-returning_to_the_trenches",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-13-survivors_at_arras",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-21-that_cursed_wood",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-23-ebb_tide_rye",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-26-temples_of_new_york",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-27-under_brooklyn_bridge",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-4-twilight",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-41-valley_in_the_south_downs",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-42-sussex_downs",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-49-waterloo_bridge_from_a_savoy_window",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-58-the_mirror",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-78-any_london_street",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-85-la_cit_paris",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-88-le_louvre",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-91-quartier_latin",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-92-la_butte_montmartre",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Guichard-98-the_lovers_hampstead_heath",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-22-motor_transport",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-24-in_the_air",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-25-acetylene_welder",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-26-assembling_parts",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-27-making_the_engine",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-30-reliefs_at_dawn",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-34-loading_the_ship",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-59-the_workers",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-62-le_port",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-76-from_an_office_window",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-77-southwark_limehouse",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson-Leicester_Galleries-79-wind",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-10-twilight",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-100-any_london_street",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-102-sussex_downs",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-105-alpine_valley_chamonix",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-108-waterloo_bridge_from_a_savoy_window",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-109-westminster_from_a_savoy_window",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-110-from_waterloo_bridge_sun_bursting_through_fog",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-111-summer",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-112-sunday_evening",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-114-la_cit_paris",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-116-sacr_coeur",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-117-paris_morning",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-118-paris_facade",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-122-little_pulteney_street",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-123-manette_street",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-124-blackfriars",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-128-marlowe",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-131-leicester_square",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-136-westminster_from_the_savage_club_adelphi",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-141-french_village",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-147-les_bibliophiles",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-16-making_the_engine",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-20-banking",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-20-banking_at_4_000_feet",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-21-swooping_down_on_a_taube",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-22-survivors_at_arras",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-41-nerves_of_an_army",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-44b-now_the_bayonets_have_won_through",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-46-from_an_office_window",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-47-southwark_limehouse",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-50-the_estuary_the_silvery_estuary_rye",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-51-ebb_tide_on_the_camber",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-52-wet_evening_on_oxford_street",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-54-looking_down_into_wall_street",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-55-temples_of_new_york",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-55-the_temples_of_new_york",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-57-the_roof_garden",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-59-the_workers",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-61-an_inexperienced_witch",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-62-lovers",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-62-the_lovers",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-64-suburbia_when_father_mowed_the_lawn",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-66-sur_la_terrasse_parnasse",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-68-london_bridges",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-69-the_pool_of_london_swim_end_barges",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-70-venice_night",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-72-three_am_a_corner_by_madison_square_2_am_new_york_metropolis",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-73-boulogne",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-75-looking_down_on_down_town_from_the_railway_club",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-76-new_york_stock_exchange",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-77-new_york_an_abstraction",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-78-from_the_ferry_new_york",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-79-lower_broadway",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-80-third_avenue_elevated_railway_under_the_elevated",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-81-looking_through_brooklyn_bridge",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-82-under_brooklyn_bridge",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-83-statue_of_liberty",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-84-new_york_night",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-86-le_chat",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-87-a_french_port_bordeaux",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-90-le_louvre",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-91-quartier_latin",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-95-place_blanche",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-96-from_a_paris_window",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-97-la_butte_montmartre",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Black-98-geoffrey_badger_moody",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-100-boulogne",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-25-romney_marsh",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-26-the_temples_of_new_york",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-28-looking_through_brooklyn_bridge",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-40-london_from_parliament_hill",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-49-waterloo_bridge_from_a_savoy_window",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-50-the_houses_of_parliament_from_the_embankment",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-59-sacr_coeur",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-68-notre_dame_les_quais_de_paris",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-69-les_bibliophiles",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-79-twilight_in_leicester_square",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-85-la_cit_paris",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-91-quartier_latin",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard-94-venice_night",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Guichard_43_or-47-chalk_pits_amberley",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-L-9-nerves_of_an_army",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Leicester_Galleries-23-banking_at_4000_feet",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Leicester_Galleries-31-bomber",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Leicester_Galleries-37-the_road_from_arras_to_bapaume",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Leicester_Galleries-53-the_roof_gardens",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Leicester_Galleries-54-the_great_white_way",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Leicester_Galleries-61-sur_la_terrasse_parnasse",
+    "bonhams-cw-Christopher_Richard_Wynne_Nevinson_A.R.A-Leicester_Galleries-8-that_cursed_wood",
+    "forum-143372",
+    "forum-63669",
+    "forum-63729",
+    "roseberys-a0305-lot48",
+    "roseberys-a0324-lot12",
+    "roseberys-a0445-lot6",
+    "roseberys-a0673-lot7",
+    "roseberys-a0673-lot9",
+    "roseberys-a0766-lot64",
+    "roseberys-cw-Christopher_Richard_Wynne_Nevinson_AR-Black-61-an_inexperienced_witch_black_61",
+    "roseberys-cw-Christopher_Richard_Wynne_Nevinson_ARA-Black-50-the_estuary_black_50",
+    "roseberys-cw-Christopher_Richard_Wynne_Nevinson_ARA-Leicester_Galleries-51-the_stock_exchange_1921_leicester_galleries_51",
+    "tate-P03046",
+    "tate-P03047",
+    "tate-P03048",
+    "tate-P03049"
+   ],
+   "attr": [
+    [
+     "bonhams-10248-383-record",
+     {}
+    ],
+    [
+     "bonhams-10248-384-record",
+     {}
+    ],
+    [
+     "bonhams-10619-266-record",
+     {}
+    ],
+    [
+     "bonhams-10619-267-record",
+     {}
+    ],
+    [
+     "bonhams-10619-268-record",
+     {}
+    ],
+    [
+     "bonhams-10619-269-record",
+     {}
+    ],
+    [
+     "bonhams-10619-271-record",
+     {}
+    ],
+    [
+     "bonhams-10619-273-record",
+     {}
+    ],
+    [
+     "bonhams-11049-205-record",
+     {}
+    ],
+    [
+     "bonhams-11049-206-record",
+     {}
+    ],
+    [
+     "bonhams-11050-214-record",
+     {}
+    ],
+    [
+     "bonhams-11050-215-record",
+     {}
+    ],
+    [
+     "bonhams-11050-216-record",
+     {}
+    ],
+    [
+     "bonhams-11050-217-record",
+     {}
+    ],
+    [
+     "bonhams-11438-310-record",
+     {}
+    ],
+    [
+     "bonhams-11965-152-record",
+     {}
+    ],
+    [
+     "bonhams-11965-153-record",
+     {}
+    ],
+    [
+     "bonhams-11968-314-record",
+     {}
+    ],
+    [
+     "bonhams-11968-315-record",
+     {}
+    ],
+    [
+     "bonhams-11968-316-record",
+     {}
+    ],
+    [
+     "bonhams-11968-317-record",
+     {}
+    ],
+    [
+     "bonhams-14850-229-record",
+     {}
+    ],
+    [
+     "bonhams-14850-230-record",
+     {}
+    ],
+    [
+     "bonhams-14850-231-record",
+     {}
+    ],
+    [
+     "bonhams-15395-153-record",
+     {}
+    ],
+    [
+     "bonhams-15671-72-record",
+     {}
+    ],
+    [
+     "bonhams-15671-73-record",
+     {}
+    ],
+    [
+     "bonhams-15671-74-record",
+     {}
+    ],
+    [
+     "bonhams-15671-75-record",
+     {}
+    ],
+    [
+     "bonhams-15671-76-record",
+     {}
+    ],
+    [
+     "bonhams-15673-63-record",
+     {}
+    ],
+    [
+     "bonhams-15673-64-record",
+     {}
+    ],
+    [
+     "bonhams-15673-65-record",
+     {}
+    ],
+    [
+     "bonhams-16772-126-record",
+     {}
+    ],
+    [
+     "bonhams-16772-127-record",
+     {}
+    ],
+    [
+     "bonhams-16844-79-record",
+     {}
+    ],
+    [
+     "bonhams-16844-80-record",
+     {}
+    ],
+    [
+     "bonhams-17833-52-record",
+     {}
+    ],
+    [
+     "bonhams-17833-53-record",
+     {}
+    ],
+    [
+     "bonhams-17833-54-record",
+     {}
+    ],
+    [
+     "bonhams-17833-55-record",
+     {}
+    ],
+    [
+     "bonhams-17833-56-record",
+     {}
+    ],
+    [
+     "bonhams-18174-17-record",
+     {}
+    ],
+    [
+     "bonhams-18174-36-record",
+     {}
+    ],
+    [
+     "bonhams-18880-66-record",
+     {}
+    ],
+    [
+     "bonhams-19086-67-record",
+     {}
+    ],
+    [
+     "bonhams-19781-41-record",
+     {}
+    ],
+    [
+     "bonhams-19852-17-record",
+     {}
+    ],
+    [
+     "bonhams-19852-39-record",
+     {}
+    ],
+    [
+     "bonhams-20018-74-record",
+     {}
+    ],
+    [
+     "bonhams-20018-75-record",
+     {}
+    ],
+    [
+     "bonhams-20129-10-record",
+     {}
+    ],
+    [
+     "bonhams-20129-2-record",
+     {}
+    ],
+    [
+     "bonhams-20129-3-record",
+     {}
+    ],
+    [
+     "bonhams-20129-4-record",
+     {}
+    ],
+    [
+     "bonhams-20274-37-record",
+     {}
+    ],
+    [
+     "bonhams-20274-38-record",
+     {}
+    ],
+    [
+     "bonhams-20274-39-record",
+     {}
+    ],
+    [
+     "bonhams-20736-1-record",
+     {}
+    ],
+    [
+     "bonhams-20736-10-record",
+     {}
+    ],
+    [
+     "bonhams-20736-11-record",
+     {}
+    ],
+    [
+     "bonhams-20736-15-record",
+     {}
+    ],
+    [
+     "bonhams-20736-16-record",
+     {}
+    ],
+    [
+     "bonhams-20736-18-record",
+     {}
+    ],
+    [
+     "bonhams-20736-19-record",
+     {}
+    ],
+    [
+     "bonhams-20736-2-record",
+     {}
+    ],
+    [
+     "bonhams-20736-3-record",
+     {}
+    ],
+    [
+     "bonhams-20736-4-record",
+     {}
+    ],
+    [
+     "bonhams-20736-5-record",
+     {}
+    ],
+    [
+     "bonhams-20736-6-record",
+     {}
+    ],
+    [
+     "bonhams-20736-7-record",
+     {}
+    ],
+    [
+     "bonhams-20736-8-record",
+     {}
+    ],
+    [
+     "bonhams-20736-9-record",
+     {}
+    ],
+    [
+     "bonhams-20737-30-record",
+     {}
+    ],
+    [
+     "bonhams-20737-31-record",
+     {}
+    ],
+    [
+     "bonhams-20737-32-record",
+     {}
+    ],
+    [
+     "bonhams-20737-33-record",
+     {}
+    ],
+    [
+     "bonhams-20737-34-record",
+     {}
+    ],
+    [
+     "bonhams-20737-35-record",
+     {}
+    ],
+    [
+     "bonhams-20737-36-record",
+     {}
+    ],
+    [
+     "bonhams-20738-55-record",
+     {}
+    ],
+    [
+     "bonhams-20739-56-record",
+     {}
+    ],
+    [
+     "bonhams-20740-10-record",
+     {}
+    ],
+    [
+     "bonhams-20740-11-record",
+     {}
+    ],
+    [
+     "bonhams-20740-9-record",
+     {}
+    ],
+    [
+     "bonhams-21583-10-record",
+     {}
+    ],
+    [
+     "bonhams-21583-11-record",
+     {}
+    ],
+    [
+     "bonhams-21583-12-record",
+     {}
+    ],
+    [
+     "bonhams-21583-13-record",
+     {}
+    ],
+    [
+     "bonhams-21583-16-record",
+     {}
+    ],
+    [
+     "bonhams-21583-17-record",
+     {}
+    ],
+    [
+     "bonhams-21583-18-record",
+     {}
+    ],
+    [
+     "bonhams-21583-21-record",
+     {}
+    ],
+    [
+     "bonhams-21583-22-record",
+     {}
+    ],
+    [
+     "bonhams-21583-24-record",
+     {}
+    ],
+    [
+     "bonhams-21583-26-record",
+     {}
+    ],
+    [
+     "bonhams-21583-27-record",
+     {}
+    ],
+    [
+     "bonhams-21583-28-record",
+     {}
+    ],
+    [
+     "bonhams-21583-6-record",
+     {}
+    ],
+    [
+     "bonhams-21583-7-record",
+     {}
+    ],
+    [
+     "bonhams-21583-8-record",
+     {}
+    ],
+    [
+     "bonhams-21583-9-record",
+     {}
+    ],
+    [
+     "bonhams-21600-17-record",
+     {}
+    ],
+    [
+     "bonhams-21601-10-record",
+     {}
+    ],
+    [
+     "bonhams-21601-11-record",
+     {}
+    ],
+    [
+     "bonhams-21601-12-record",
+     {}
+    ],
+    [
+     "bonhams-21602-19-record",
+     {}
+    ],
+    [
+     "bonhams-21602-25-record",
+     {}
+    ],
+    [
+     "bonhams-21602-26-record",
+     {}
+    ],
+    [
+     "bonhams-21602-27-record",
+     {}
+    ],
+    [
+     "bonhams-21602-28-record",
+     {}
+    ],
+    [
+     "bonhams-21602-29-record",
+     {}
+    ],
+    [
+     "bonhams-21602-30-record",
+     {}
+    ],
+    [
+     "bonhams-21602-32-record",
+     {}
+    ],
+    [
+     "bonhams-22180-1-record",
+     {}
+    ],
+    [
+     "bonhams-22180-10-record",
+     {}
+    ],
+    [
+     "bonhams-22180-11-record",
+     {}
+    ],
+    [
+     "bonhams-22180-12-record",
+     {}
+    ],
+    [
+     "bonhams-22180-13-record",
+     {}
+    ],
+    [
+     "bonhams-22180-14-record",
+     {}
+    ],
+    [
+     "bonhams-22180-15-record",
+     {}
+    ],
+    [
+     "bonhams-22180-16-record",
+     {}
+    ],
+    [
+     "bonhams-22180-17-record",
+     {}
+    ],
+    [
+     "bonhams-22180-18-record",
+     {}
+    ],
+    [
+     "bonhams-22180-2-record",
+     {}
+    ],
+    [
+     "bonhams-22180-3-record",
+     {}
+    ],
+    [
+     "bonhams-22180-4-record",
+     {}
+    ],
+    [
+     "bonhams-22180-5-record",
+     {}
+    ],
+    [
+     "bonhams-22180-6-record",
+     {}
+    ],
+    [
+     "bonhams-22180-7-record",
+     {}
+    ],
+    [
+     "bonhams-22180-8-record",
+     {}
+    ],
+    [
+     "bonhams-22180-9-record",
+     {}
+    ],
+    [
+     "bonhams-22571-49-record",
+     {}
+    ],
+    [
+     "bonhams-22571-50-record",
+     {}
+    ],
+    [
+     "bonhams-22571-51-record",
+     {}
+    ],
+    [
+     "bonhams-22571-52-record",
+     {}
+    ],
+    [
+     "bonhams-22572-28-record",
+     {}
+    ],
+    [
+     "bonhams-22803-79-record",
+     {}
+    ],
+    [
+     "bonhams-22804-12-record",
+     {}
+    ],
+    [
+     "bonhams-22804-13-record",
+     {}
+    ],
+    [
+     "bonhams-22804-14-record",
+     {}
+    ],
+    [
+     "bonhams-22804-15-record",
+     {}
+    ],
+    [
+     "bonhams-22804-16-record",
+     {}
+    ],
+    [
+     "bonhams-22804-17-record",
+     {}
+    ],
+    [
+     "bonhams-22804-18-record",
+     {}
+    ],
+    [
+     "bonhams-22804-19-record",
+     {}
+    ],
+    [
+     "bonhams-22804-20-record",
+     {}
+    ],
+    [
+     "bonhams-22804-38-record",
+     {}
+    ],
+    [
+     "bonhams-22934-11-record",
+     {}
+    ],
+    [
+     "bonhams-22934-12-record",
+     {}
+    ],
+    [
+     "bonhams-22934-13-record",
+     {}
+    ],
+    [
+     "bonhams-22934-14-record",
+     {}
+    ],
+    [
+     "bonhams-22934-15-record",
+     {}
+    ],
+    [
+     "bonhams-22934-16-record",
+     {}
+    ],
+    [
+     "bonhams-22934-18-record",
+     {}
+    ],
+    [
+     "bonhams-22934-19-record",
+     {}
+    ],
+    [
+     "bonhams-23544-21-record",
+     {}
+    ],
+    [
+     "bonhams-23544-22-record",
+     {}
+    ],
+    [
+     "bonhams-23544-23-record",
+     {}
+    ],
+    [
+     "bonhams-23544-24-record",
+     {}
+    ],
+    [
+     "bonhams-23544-25-record",
+     {}
+    ],
+    [
+     "bonhams-23545-17-record",
+     {}
+    ],
+    [
+     "bonhams-23545-18-record",
+     {}
+    ],
+    [
+     "bonhams-23546-10-record",
+     {}
+    ],
+    [
+     "bonhams-23546-7-record",
+     {}
+    ],
+    [
+     "bonhams-23546-8-record",
+     {}
+    ],
+    [
+     "bonhams-23546-9-record",
+     {}
+    ],
+    [
+     "bonhams-23583-6-record",
+     {}
+    ],
+    [
+     "bonhams-23583-7-record",
+     {}
+    ],
+    [
+     "bonhams-23583-8-record",
+     {}
+    ],
+    [
+     "bonhams-23583-9-record",
+     {}
+    ],
+    [
+     "bonhams-24037-18-record",
+     {}
+    ],
+    [
+     "bonhams-24140-23-record",
+     {}
+    ],
+    [
+     "bonhams-24205-5-record",
+     {}
+    ],
+    [
+     "bonhams-24205-6-record",
+     {}
+    ],
+    [
+     "bonhams-24205-8-record",
+     {}
+    ],
+    [
+     "bonhams-24261-25-record",
+     {}
+    ],
+    [
+     "bonhams-24261-26-record",
+     {}
+    ],
+    [
+     "bonhams-24643-21-record",
+     {}
+    ],
+    [
+     "bonhams-24643-22-record",
+     {}
+    ],
+    [
+     "bonhams-24645-32-record",
+     {}
+    ],
+    [
+     "bonhams-24645-33-record",
+     {}
+    ],
+    [
+     "bonhams-24646-3-record",
+     {}
+    ],
+    [
+     "bonhams-25382-107-record",
+     {}
+    ],
+    [
+     "bonhams-26782-10-record",
+     {}
+    ],
+    [
+     "bonhams-26782-11-record",
+     {}
+    ],
+    [
+     "bonhams-26782-12-record",
+     {}
+    ],
+    [
+     "bonhams-26782-13-record",
+     {}
+    ],
+    [
+     "bonhams-26782-14-record",
+     {}
+    ],
+    [
+     "bonhams-26782-9-record",
+     {}
+    ],
+    [
+     "bonhams-27424-7-record",
+     {}
+    ],
+    [
+     "bonhams-27424-8-record",
+     {}
+    ],
+    [
+     "bonhams-27493-11-record",
+     {}
+    ],
+    [
+     "bonhams-27493-12-record",
+     {}
+    ],
+    [
+     "bonhams-27493-13-record",
+     {}
+    ],
+    [
+     "bonhams-28736-8-record",
+     {}
+    ],
+    [
+     "bonhams-28737-14-record",
+     {}
+    ],
+    [
+     "bonhams-29541-1-record",
+     {}
+    ],
+    [
+     "bonhams-29541-10-record",
+     {}
+    ],
+    [
+     "bonhams-29541-11-record",
+     {}
+    ],
+    [
+     "bonhams-29541-12-record",
+     {}
+    ],
+    [
+     "bonhams-29541-13-record",
+     {}
+    ],
+    [
+     "bonhams-29541-14-record",
+     {}
+    ],
+    [
+     "bonhams-29541-15-record",
+     {}
+    ],
+    [
+     "bonhams-29541-16-record",
+     {}
+    ],
+    [
+     "bonhams-29541-17-record",
+     {}
+    ],
+    [
+     "bonhams-29541-18-record",
+     {}
+    ],
+    [
+     "bonhams-29541-19-record",
+     {}
+    ],
+    [
+     "bonhams-29541-2-record",
+     {}
+    ],
+    [
+     "bonhams-29541-20-record",
+     {}
+    ],
+    [
+     "bonhams-29541-21-record",
+     {}
+    ],
+    [
+     "bonhams-29541-22-record",
+     {}
+    ],
+    [
+     "bonhams-29541-23-record",
+     {}
+    ],
+    [
+     "bonhams-29541-24-record",
+     {}
+    ],
+    [
+     "bonhams-29541-25-record",
+     {}
+    ],
+    [
+     "bonhams-29541-26-record",
+     {}
+    ],
+    [
+     "bonhams-29541-27-record",
+     {}
+    ],
+    [
+     "bonhams-29541-28-record",
+     {}
+    ],
+    [
+     "bonhams-29541-29-record",
+     {}
+    ],
+    [
+     "bonhams-29541-3-record",
+     {}
+    ],
+    [
+     "bonhams-29541-30-record",
+     {}
+    ],
+    [
+     "bonhams-29541-31-record",
+     {}
+    ],
+    [
+     "bonhams-29541-32-record",
+     {}
+    ],
+    [
+     "bonhams-29541-33-record",
+     {}
+    ],
+    [
+     "bonhams-29541-34-record",
+     {}
+    ],
+    [
+     "bonhams-29541-35-record",
+     {}
+    ],
+    [
+     "bonhams-29541-36-record",
+     {}
+    ],
+    [
+     "bonhams-29541-37-record",
+     {}
+    ],
+    [
+     "bonhams-29541-38-record",
+     {}
+    ],
+    [
+     "bonhams-29541-39-record",
+     {}
+    ],
+    [
+     "bonhams-29541-4-record",
+     {}
+    ],
+    [
+     "bonhams-29541-40-record",
+     {}
+    ],
+    [
+     "bonhams-29541-41-record",
+     {}
+    ],
+    [
+     "bonhams-29541-42-record",
+     {}
+    ],
+    [
+     "bonhams-29541-43-record",
+     {}
+    ],
+    [
+     "bonhams-29541-44-record",
+     {}
+    ],
+    [
+     "bonhams-29541-45-record",
+     {}
+    ],
+    [
+     "bonhams-29541-46-record",
+     {}
+    ],
+    [
+     "bonhams-29541-47-record",
+     {}
+    ],
+    [
+     "bonhams-29541-5-record",
+     {}
+    ],
+    [
+     "bonhams-29541-6-record",
+     {}
+    ],
+    [
+     "bonhams-29541-7-record",
+     {}
+    ],
+    [
+     "bonhams-29541-8-record",
+     {}
+    ],
+    [
+     "bonhams-29541-9-record",
+     {}
+    ],
+    [
+     "bonhams-31099-14-record",
+     {}
+    ],
+    [
+     "bonhams-31104-27-record",
+     {}
+    ],
+    [
+     "forum-142060-record",
+     {}
+    ],
+    [
+     "forum-143372-record",
+     {}
+    ],
+    [
+     "forum-63669-record",
+     {}
+    ],
+    [
+     "forum-63729-record",
+     {}
+    ],
+    [
+     "roseberys-a0305-lot47-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "roseberys-a0305-lot48-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "roseberys-a0324-lot12-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "roseberys-a0445-lot6-record",
+     {}
+    ],
+    [
+     "roseberys-a0662-lot7-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "roseberys-a0662-lot8-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "roseberys-a0662-lot9-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "roseberys-a0673-lot10-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "roseberys-a0673-lot7-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "roseberys-a0673-lot8-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "roseberys-a0673-lot82-record",
+     {}
+    ],
+    [
+     "roseberys-a0673-lot9-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "roseberys-a0766-lot64-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "tate-P03045-record",
+     {}
+    ],
+    [
+     "tate-P03046-record",
+     {}
+    ],
+    [
+     "tate-P03047-record",
+     {}
+    ],
+    [
+     "tate-P03048-record",
+     {}
+    ],
+    [
+     "tate-P03049-record",
+     {}
+    ],
+    [
+     "tate-P03050-record",
+     {}
+    ],
+    [
+     "tate-P11049-record",
+     {}
+    ]
+   ]
+  },
+  "Edward Coley Burne-Jones": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "alternateNames": [
+     "Edward Coley Burne-Jones",
+     "After Sir Edward Coley Burne-Jones",
+     "After Edward Coley Burne-Jones"
+    ],
+    "name": "Edward Coley Burne-Jones"
+   },
+   "works": [
+    "bonhams-10248-139",
+    "bonhams-10248-140",
+    "bonhams-10248-141",
+    "bonhams-10248-142",
+    "bonhams-10248-143",
+    "bonhams-14453-20",
+    "bonhams-15041-6"
+   ],
+   "attr": [
+    [
+     "bonhams-10248-139-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-10248-140-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-10248-141-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-10248-142-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-10248-143-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-11968-17-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "bonhams-14453-20-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "bonhams-15041-6-record",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Edwin Henry Landseer": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "dateDied_precision": "exact",
+    "alternateNames": [
+     "Sir Edwin Henry Landseer, RA"
+    ],
+    "dateDied_year": 1873,
+    "name": "Edwin Henry Landseer",
+    "dateBorn_year": 1802,
+    "dateBorn_precision": "exact"
+   },
+   "works": [
+    "bonhams-17293-11"
+   ],
+   "attr": [
+    [
+     "bonhams-17293-11-record",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Emil Cardinaux": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "dateDied_precision": "exact",
+    "alternateNames": [
+     "Emil Cardinaux"
+    ],
+    "dateDied_year": 1936,
+    "name": "Emil Cardinaux",
+    "dateBorn_year": 1877,
+    "dateBorn_precision": "exact"
+   },
+   "works": [
+    "bonhams-29174-209"
+   ],
+   "attr": [
+    [
+     "bonhams-29174-209-record",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Emile Cardinaux": {
+   "props": {
+    "identityConfidence": "manual_verified",
+    "hasPosterCatalog": true,
+    "ulanUrl": "http://vocab.getty.edu/ulan/500021057",
+    "identityVerifiedAt": "2026-09-19T101129",
+    "identityConfidencePrior": "multiple_candidates",
+    "name": "Emile Cardinaux",
+    "posterWorkCount": 1,
+    "identityVerifiedBasis": "name, ULAN dates and every work title reviewed by hand 2026-09-19 (KM-ULAN-AUDIT, group A3)"
+   },
+   "works": [
+    "km-cw-emile_cardinaux-palace_hotel_st_moritz_1922"
+   ],
+   "attr": [
+    [
+     "km-sr-km-424430",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Francisco José de Goya": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "dateDied_precision": "exact",
+    "alternateNames": [
+     "FRANCISCO JOSÉ DE GOYA",
+     "Francisco José de Goya y Lucientes",
+     "Francisco Jose de Goya y Lucientes",
+     "Francisco de Goya",
+     "Francisco de Goya y Lucientes",
+     "After Francisco Jose de Goya",
+     "Francisco Jose de Goya",
+     "Francisco Goya",
+     "Francisco José de Goya"
+    ],
+    "nationality": "Spanish",
+    "dateDied_year": 1828,
+    "name": "Francisco José de Goya",
+    "dateBorn_year": 1746,
+    "dateBorn_precision": "exact"
+   },
+   "works": [
+    "bonhams-13189-7159",
+    "bonhams-13229-4",
+    "bonhams-13828-4116",
+    "bonhams-14012-7120",
+    "bonhams-14050-7081",
+    "bonhams-14793-6107",
+    "bonhams-15876-7152",
+    "bonhams-16829-39",
+    "bonhams-19249-7103",
+    "bonhams-20110-7086",
+    "bonhams-29329-18",
+    "bonhams-30991-72",
+    "bonhams-cw-Francisco_Jose_de_Goya_y_Lucientes-D-97-ensayos",
+    "bonhams-cw-Francisco_Jose_de_Goya_y_Lucientes-H.-161-three_plates_from_los_desastres_de_la_guerra_pls_41_64_68",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-10-baltasar_carlos_after_vel_zquez",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-107-devota_profesion_pl_70_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-111-no_grites_tonta_pl_74_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-120-tristes_presentimientos_de_lo_que_ha_de_acontecer_pl_1_from_los_desastres_de_la_guerra",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-176-sanos_y_enfermos_pl_57_from_los_desastres_de_la_guerra",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-202-pesa_mas_quie_un_burro_muerto_pl_1_from_proverbios",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-215-disparate_de_carnabal_pl_14_from_proverbios",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-221-disparate_punctual_reina_del_circo_from_los_proverbios",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-235-desjarrete_de_la_canalla_pl_12_from_la_tauromaquia",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-253-banderillas_de_fuego_pl_31_from_la_tauromaquia",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-31-tan_b_rbara_la_seguridad_como_el_delito",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-31-tan_b_rbara_la_seguridad_como_el_delito_little_prisoner",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D.-95-tragata_perro_pl_58_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D._137,_163,-195-from_los_desastres_de_la_guerra",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-D._52,_53,_55,_59,_70,_91,-99-from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Delteil-8-felipe_iv",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Delteil-99-quien_lo_creyera_plate_62_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-141-ser_lo_mismo_pl_21_from_los_desastres_de_la_guerra",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-174-clamores_en_vano_pl_54_from_los_desastres_de_la_guerra",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-208-la_tauromaquia_five_plates",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-212-un_caballero_espa_ol_mata_un_toro_despues_de_haber_perdido_el_caballo_from_la_tauromaquia",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-219-el_mismo_vuelca_un_toro_el_la_plaza_de_madrid_pl_16_from_la_tauromaquia",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-228-echan_perros_al_toro_pl_25_from_tauromaquia",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-238-horse_thrown_by_a_bull_pl_b_from_tauromaquia",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-259-si_marina_bayl_tome_lo_que_hall_pl_12_from_los_proverbios",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-57-pobrecitas_from_los_caprichos_plate_22",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-74-asta_su_abuelo_plate_39_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-92-la_filiacion_from_los_caprichos_pl_57",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H.-95-ensayos_linda_maestra_pls_60_68_from_los_caprichios",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-H._204-205,_207-212,_215-216,_218-223,_225-227,_230-236,_237,_240,-242-243-from_la_tauromaquia",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-167-asi_sucedio_plate_47_from_los_desastres_de_la_guerra",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-174-appeals_are_in_vain_clamores_in_vano",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-198-se_defiende_bien_from_los_desastres_de_la_guerra",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-199-muri_la_verdad_pl_79_from_los_desastres_de_la_guerra",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-207-capean_otro_encerrado_plate_4_from_la_tauromaquia",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-258-disparate_pobre_plate_11_from_los_proverbios",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-26-the_little_prisoner",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-260-modo_de_volar_a_way_of_flying_from_los_proverbios",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-266-two_plates_from_los_proverbios",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-266-una_reina_del_circo",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-266.III-disparate_conocido_from_los_proverbios",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-33-vieja_columpi_ndose_old_woman_on_a_swing",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-36-self_portrait_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-37-plate_2_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-41-nadie_se_conoce_plate_6_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-42-two_of_a_kind",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-43-que_se_la_llevaron_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-45-el_amor_y_la_muerte_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-47-a_caza_de_dientes_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-49-que_sacrificio",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-50-bellos_consejos_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-57-pobrecitas_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-71-mala_noche_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-72-might_not_the_pupil_know_more",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-75-de_quel_mal_morira_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-78-el_sue_o_de_la_razon_produce_monstruos_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-78-el_sueno_de_la_razon_produce_monstruos_plate_43_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris-90-hasta_la_muerte_from_los_caprichos",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris_254,-265-plate_7_and_18_from_los_proverbios",
+    "bonhams-cw-Francisco_José_de_Goya_y_Lucientes-Harris_56-II.1-qual_la_desca_onan_from_los_caprichos",
+    "bonhams-cw-Francisco_de_Goya-H.-205-otro_modo_de_caza_pie_pl_2_from_tauromaquia",
+    "bonhams-cw-Francisco_de_Goya-H.-72-three_plates_from_caprichos_and_proverbios",
+    "bonhams-cw-Francisco_de_Goya-Harris-194-esto_es_lo_peor",
+    "bonhams-cw-Francisco_de_Goya-Harris-234-banderillas_de_fuego_plate_31_from_la_tauromaquia",
+    "bonhams-cw-Francisco_de_Goya-Harris-242-mort_de_pepe_illo",
+    "bonhams-cw-Francisco_de_Goya-Harris-269-lluvia_de_toros",
+    "bonhams-cw-Francisco_de_Goya-Harris-49-que_sacrificio",
+    "bonhams-cw-Francisco_de_Goya-Harris-56-qual_la_descanonan",
+    "bonhams-cw-Francisco_de_Goya-Harris-63-chiton",
+    "bonhams-cw-Francisco_de_Goya-Harris-65-porque_esconderlos",
+    "bonhams-cw-Francisco_de_Goya-Harris_266-iii-disparate_conocido_che_guerrero_from_los_proverbios",
+    "bonhams-cw-Francisco_de_Goya_y_Lucientes-Harris-113-despacha_que_dispiertan",
+    "bonhams-cw-Francisco_de_Goya_y_Lucientes-Harris-250,251,253,255,260,264,265-los_proverbios",
+    "bonhams-cw-Francisco_de_Goya_y_Lucientes-Harris-42-ni_asi_la_distingue",
+    "bonhams-cw-Francisco_de_Goya_y_Lucientes-Harris-90-hasta_la_muerte",
+    "forum-129421",
+    "forum-130325",
+    "forum-130326",
+    "forum-131008",
+    "forum-131158",
+    "forum-133513",
+    "forum-163846",
+    "forum-163847",
+    "forum-163848",
+    "forum-163849",
+    "forum-163881",
+    "forum-36736",
+    "roseberys-a0743-lot35",
+    "roseberys-a0766-lot205",
+    "swann-0dc4530aaf",
+    "swann-4bb457fb03",
+    "swann-5714bfca00",
+    "swann-59c48cab10",
+    "swann-5b5433fbbe",
+    "swann-5b84df381a",
+    "swann-5bd4e799ca",
+    "swann-5f84fcdb74",
+    "swann-69a4295b94",
+    "swann-8574c3abb3",
+    "swann-86b4f12a25",
+    "swann-8724622b8e",
+    "swann-8a141e880f",
+    "swann-9d14e64923",
+    "swann-a3d438db3d",
+    "swann-a744dd7a08",
+    "swann-aa9480f9f5",
+    "swann-b0044008e3",
+    "swann-cw-Francisco_José_de_Goya-Delteil-100-la_filiacion",
+    "swann-cw-Francisco_José_de_Goya-Delteil-103-all_v_eso",
+    "swann-cw-Francisco_José_de_Goya-Delteil-104-aguarda_que_te_unten",
+    "swann-cw-Francisco_José_de_Goya-Delteil-106-sopla",
+    "swann-cw-Francisco_José_de_Goya-Delteil-108-si_amanece_nos_vamos",
+    "swann-cw-Francisco_José_de_Goya-Delteil-110-abejar_es_holgar",
+    "swann-cw-Francisco_José_de_Goya-Delteil-110-mejor_es_holgar",
+    "swann-cw-Francisco_José_de_Goya-Delteil-112-no_hay_quien_nos_desate",
+    "swann-cw-Francisco_José_de_Goya-Delteil-113-esta_um_pues_como_digo",
+    "swann-cw-Francisco_José_de_Goya-Delteil-122-three_aquatints_with_etching_from_los_desastres_de_la_guerra",
+    "swann-cw-Francisco_José_de_Goya-Delteil-126-que_valor",
+    "swann-cw-Francisco_José_de_Goya-Delteil-13-after_vel_zquez_barbarroxa",
+    "swann-cw-Francisco_José_de_Goya-Delteil-134-ya_no_hai_remedio",
+    "swann-cw-Francisco_José_de_Goya-Delteil-141-pesa_mas_que_un_burro_muerto_si_marina_bayl_tome_lo_que_hall",
+    "swann-cw-Francisco_José_de_Goya-Delteil-158-grande_haza_a_con_muertos",
+    "swann-cw-Francisco_José_de_Goya-Delteil-18-un_enano_sebasti_n_de_morra",
+    "swann-cw-Francisco_José_de_Goya-Delteil-2-caritas_san_francisco_de_paula",
+    "swann-cw-Francisco_José_de_Goya-Delteil-203-disparate_de_miedo",
+    "swann-cw-Francisco_José_de_Goya-Delteil-204-desperate_ridiculo",
+    "swann-cw-Francisco_José_de_Goya-Delteil-206-disparate_volante",
+    "swann-cw-Francisco_José_de_Goya-Delteil-207-hizonos_dios_y_maravillamos_nos",
+    "swann-cw-Francisco_José_de_Goya-Delteil-211-la_mujer_y_el_potro_que_los_dome_otro",
+    "swann-cw-Francisco_José_de_Goya-Delteil-212-disparate_pobre",
+    "swann-cw-Francisco_José_de_Goya-Delteil-214-modo_de_volar",
+    "swann-cw-Francisco_José_de_Goya-Delteil-215-alegrias_antruejo_que_ma_ana_seras_ceniza",
+    "swann-cw-Francisco_José_de_Goya-Delteil-217-sanan_cuchilladas_mas_no_malas_palabras",
+    "swann-cw-Francisco_José_de_Goya-Delteil-218-el_que_no_te_ama",
+    "swann-cw-Francisco_José_de_Goya-Delteil-219-dios_los_cria_y_ellos_se_juntan",
+    "swann-cw-Francisco_José_de_Goya-Delteil-220-dos_a_uno_meten_la_paja_en_el_culo",
+    "swann-cw-Francisco_José_de_Goya-Delteil-220-two_aquatints_with_etching_from_los_proverbios",
+    "swann-cw-Francisco_José_de_Goya-Delteil-221-bailando_en_una_cuerda_floja",
+    "swann-cw-Francisco_José_de_Goya-Delteil-222-quien_se_pondr_el_cascabel_al_gato",
+    "swann-cw-Francisco_José_de_Goya-Delteil-223-al_toro_y_al_aire_darles_calle_lluvia_de_toros",
+    "swann-cw-Francisco_José_de_Goya-Delteil-229-los_moros_hacen_otro_capeo_en_plaza_con_su_albornoz",
+    "swann-cw-Francisco_José_de_Goya-Delteil-230-three_aquatints_with_etching_from_la_tauromaquia",
+    "swann-cw-Francisco_José_de_Goya-Delteil-231-cogida_un_moro_estando_en_la_plaza",
+    "swann-cw-Francisco_José_de_Goya-Delteil-237-el_diestr_simo_estudiante_de_falces_embozado_burla_al_toro_con_sus_quiebros",
+    "swann-cw-Francisco_José_de_Goya-Delteil-239-el_mismo_vuelca_un_toro_en_la_plaza_de_madrid",
+    "swann-cw-Francisco_José_de_Goya-Delteil-24-aveugle_enlev_sur_les_cornes_d_un_taur_au_dios_se_lo_pague_a_usted",
+    "swann-cw-Francisco_José_de_Goya-Delteil-243-ligereza_y_atrevimiento_de_juanito_api_ani_en_la_de_madrid",
+    "swann-cw-Francisco_José_de_Goya-Delteil-25-viejo_columpi_ndose",
+    "swann-cw-Francisco_José_de_Goya-Delteil-252-pepe_illo_haciendo_el_recorte_al_toro",
+    "swann-cw-Francisco_José_de_Goya-Delteil-256-la_desgraciada_muerte_de_pepe_illo_en_la_plaza_de_madrid",
+    "swann-cw-Francisco_José_de_Goya-Delteil-257-un_cavalier_espagnol_brisant_des_rejoncillos_avec_l_aide_des_chulos",
+    "swann-cw-Francisco_José_de_Goya-Delteil-287-picador_caught_by_a_bull",
+    "swann-cw-Francisco_José_de_Goya-Delteil-288-dibersion_de_espa_a",
+    "swann-cw-Francisco_José_de_Goya-Delteil-29-maja",
+    "swann-cw-Francisco_José_de_Goya-Delteil-33-si_es_delinquente_qe_muera_presto",
+    "swann-cw-Francisco_José_de_Goya-Delteil-38-francisco_goya_y_lucientes_pintor",
+    "swann-cw-Francisco_José_de_Goya-Delteil-39-el_si_pronuncian_y_la_mano_alargan_al_primero_que_llega",
+    "swann-cw-Francisco_José_de_Goya-Delteil-41-el_de_la_rollona",
+    "swann-cw-Francisco_José_de_Goya-Delteil-42-tal_para_qual",
+    "swann-cw-Francisco_José_de_Goya-Delteil-44-ni_asi_la_distingue",
+    "swann-cw-Francisco_José_de_Goya-Delteil-45-que_se_la_llevaron",
+    "swann-cw-Francisco_José_de_Goya-Delteil-46-tantalo",
+    "swann-cw-Francisco_José_de_Goya-Delteil-47-el_amor_y_la_muerte",
+    "swann-cw-Francisco_José_de_Goya-Delteil-48-muchachos_al_av_o",
+    "swann-cw-Francisco_José_de_Goya-Delteil-48-three_aquatints_with_etching_from_los_caprichos",
+    "swann-cw-Francisco_José_de_Goya-Delteil-50-est_n_calientes",
+    "swann-cw-Francisco_José_de_Goya-Delteil-51-que_sacrificio",
+    "swann-cw-Francisco_José_de_Goya-Delteil-52-bellos_consejos",
+    "swann-cw-Francisco_José_de_Goya-Delteil-53-dios_la_perdone_y_era_su_madre",
+    "swann-cw-Francisco_José_de_Goya-Delteil-53-dios_la_perdone_yera_su_madre",
+    "swann-cw-Francisco_José_de_Goya-Delteil-54-bien_tirada_est",
+    "swann-cw-Francisco_José_de_Goya-Delteil-55-y_se_le_quema_la_casa",
+    "swann-cw-Francisco_José_de_Goya-Delteil-55-ysele_quema_la_casa",
+    "swann-cw-Francisco_José_de_Goya-Delteil-56-todos_caer_n",
+    "swann-cw-Francisco_José_de_Goya-Delteil-57-ya_van_desplumados",
+    "swann-cw-Francisco_José_de_Goya-Delteil-59-pobrecitas",
+    "swann-cw-Francisco_José_de_Goya-Delteil-6-felipe_iii",
+    "swann-cw-Francisco_José_de_Goya-Delteil-60-aquellos_polbos",
+    "swann-cw-Francisco_José_de_Goya-Delteil-61-nohubo_remedio",
+    "swann-cw-Francisco_José_de_Goya-Delteil-63-ya_tienen_asiento",
+    "swann-cw-Francisco_José_de_Goya-Delteil-65-chiton",
+    "swann-cw-Francisco_José_de_Goya-Delteil-66-esto_si_que_es_leer",
+    "swann-cw-Francisco_José_de_Goya-Delteil-69-por_que_fue_sensible",
+    "swann-cw-Francisco_José_de_Goya-Delteil-70-al_conde_palatino",
+    "swann-cw-Francisco_José_de_Goya-Delteil-71-las_rinde_el_sue_o",
+    "swann-cw-Francisco_José_de_Goya-Delteil-73-mala_noche",
+    "swann-cw-Francisco_José_de_Goya-Delteil-74-si_sabr_mas_el_discipulo",
+    "swann-cw-Francisco_José_de_Goya-Delteil-77-de_que_mal_morira",
+    "swann-cw-Francisco_José_de_Goya-Delteil-8-felipe_iv",
+    "swann-cw-Francisco_José_de_Goya-Delteil-80-el_sue_o_de_la_razon_produce_montruos",
+    "swann-cw-Francisco_José_de_Goya-Delteil-83-correcci_n",
+    "swann-cw-Francisco_José_de_Goya-Delteil-83-correccion",
+    "swann-cw-Francisco_José_de_Goya-Delteil-88-se_repulen",
+    "swann-cw-Francisco_José_de_Goya-Delteil-91-el_vergonzoso",
+    "swann-cw-Francisco_José_de_Goya-Delteil-92-hasta_la_muerte",
+    "swann-cw-Francisco_José_de_Goya-Delteil-93-subir_y_bajar",
+    "swann-cw-Francisco_José_de_Goya-Delteil-95-tragala_perro",
+    "swann-cw-Francisco_José_de_Goya-Delteil-96-y_aun_no_se_van",
+    "swann-cw-Francisco_José_de_Goya-Delteil-97-ensayos",
+    "swann-cw-Francisco_José_de_Goya-Delteil_101_and-100-buen_viage",
+    "swann-cw-Francisco_José_de_Goya-Delteil_128_and-160-no_quieren",
+    "swann-cw-Francisco_José_de_Goya-Delteil_193_and-198-two_aquatints_with_etching_from_los_desastres_de_la_guerra",
+    "swann-cw-Francisco_José_de_Goya-Delteil_221_and-222-bailando_en_una_cuerda_floja_quien_se_pondr_el_cascabel_al_gato",
+    "swann-cw-Francisco_José_de_Goya-Delteil_230_and-252-two_aquatints_with_etching_from_la_tauromaquia",
+    "swann-cw-Francisco_José_de_Goya-Delteil_62_and-39-si_quebr_el_cantaro",
+    "swann-cw-Francisco_José_de_Goya-Delteil_78_and-96-ni_mas_ni_menos",
+    "swann-cw-Francisco_José_de_Goya-Delteil_92_and-105-two_aquatints_with_etching_from_los_caprichos",
+    "swann-cw-Francisco_José_de_Goya-Harris-256-unas_de_gato_y_habito_de_beato",
+    "swann-e4a435c9ed",
+    "swann-ea64d6c8d3",
+    "swann-ead413f81a",
+    "swann-ee14ccca2f"
+   ],
+   "attr": [
+    [
+     "bonhams-11049-23-record",
+     {}
+    ],
+    [
+     "bonhams-11050-39-record",
+     {}
+    ],
+    [
+     "bonhams-11050-40-record",
+     {}
+    ],
+    [
+     "bonhams-11438-53-record",
+     {}
+    ],
+    [
+     "bonhams-11438-54-record",
+     {}
+    ],
+    [
+     "bonhams-11438-55-record",
+     {}
+    ],
+    [
+     "bonhams-11965-52-record",
+     {}
+    ],
+    [
+     "bonhams-13189-7159-record",
+     {}
+    ],
+    [
+     "bonhams-13229-4-record",
+     {}
+    ],
+    [
+     "bonhams-13229-5-record",
+     {}
+    ],
+    [
+     "bonhams-13229-6-record",
+     {}
+    ],
+    [
+     "bonhams-13828-4116-record",
+     {}
+    ],
+    [
+     "bonhams-13916-6-record",
+     {}
+    ],
+    [
+     "bonhams-13953-48-record",
+     {}
+    ],
+    [
+     "bonhams-13953-49-record",
+     {}
+    ],
+    [
+     "bonhams-14012-7120-record",
+     {}
+    ],
+    [
+     "bonhams-14016-5195-record",
+     {}
+    ],
+    [
+     "bonhams-14032-4-record",
+     {}
+    ],
+    [
+     "bonhams-14050-7081-record",
+     {}
+    ],
+    [
+     "bonhams-14453-32-record",
+     {}
+    ],
+    [
+     "bonhams-14453-33-record",
+     {}
+    ],
+    [
+     "bonhams-14791-7090-record",
+     {}
+    ],
+    [
+     "bonhams-14793-6107-record",
+     {}
+    ],
+    [
+     "bonhams-14800-4193-record",
+     {}
+    ],
+    [
+     "bonhams-15100-28-record",
+     {}
+    ],
+    [
+     "bonhams-15255-7032-record",
+     {}
+    ],
+    [
+     "bonhams-15407-7151-record",
+     {}
+    ],
+    [
+     "bonhams-15673-10-record",
+     {}
+    ],
+    [
+     "bonhams-15876-7152-record",
+     {}
+    ],
+    [
+     "bonhams-16102-6161-record",
+     {}
+    ],
+    [
+     "bonhams-16102-6162-record",
+     {}
+    ],
+    [
+     "bonhams-16105-4154-record",
+     {}
+    ],
+    [
+     "bonhams-16529-261-record",
+     {}
+    ],
+    [
+     "bonhams-16772-70-record",
+     {}
+    ],
+    [
+     "bonhams-16772-71-record",
+     {}
+    ],
+    [
+     "bonhams-16829-39-record",
+     {}
+    ],
+    [
+     "bonhams-16844-45-record",
+     {}
+    ],
+    [
+     "bonhams-17071-7069-record",
+     {}
+    ],
+    [
+     "bonhams-17323-2192-record",
+     {}
+    ],
+    [
+     "bonhams-17323-2193-record",
+     {}
+    ],
+    [
+     "bonhams-17515-4082-record",
+     {}
+    ],
+    [
+     "bonhams-17515-4083-record",
+     {}
+    ],
+    [
+     "bonhams-17681-2-record",
+     {}
+    ],
+    [
+     "bonhams-17681-3-record",
+     {}
+    ],
+    [
+     "bonhams-18269-5232-record",
+     {}
+    ],
+    [
+     "bonhams-18383-2169-record",
+     {}
+    ],
+    [
+     "bonhams-18606-17-record",
+     {}
+    ],
+    [
+     "bonhams-19244-5111-record",
+     {}
+    ],
+    [
+     "bonhams-19244-5112-record",
+     {}
+    ],
+    [
+     "bonhams-19244-5113-record",
+     {}
+    ],
+    [
+     "bonhams-19244-5114-record",
+     {}
+    ],
+    [
+     "bonhams-19244-5115-record",
+     {}
+    ],
+    [
+     "bonhams-19249-7102-record",
+     {}
+    ],
+    [
+     "bonhams-19249-7103-record",
+     {}
+    ],
+    [
+     "bonhams-19740-8126-record",
+     {}
+    ],
+    [
+     "bonhams-19781-5-record",
+     {}
+    ],
+    [
+     "bonhams-20110-7086-record",
+     {}
+    ],
+    [
+     "bonhams-20735-35-record",
+     {}
+    ],
+    [
+     "bonhams-21025-3196-record",
+     {}
+    ],
+    [
+     "bonhams-22571-9-record",
+     {}
+    ],
+    [
+     "bonhams-22573-8-record",
+     {}
+    ],
+    [
+     "bonhams-22574-18-record",
+     {}
+    ],
+    [
+     "bonhams-23706-47-record",
+     {}
+    ],
+    [
+     "bonhams-24037-8-record",
+     {}
+    ],
+    [
+     "bonhams-24268-44-record",
+     {}
+    ],
+    [
+     "bonhams-25295-4-record",
+     {}
+    ],
+    [
+     "bonhams-25380-12-record",
+     {}
+    ],
+    [
+     "bonhams-25380-13-record",
+     {}
+    ],
+    [
+     "bonhams-25380-14-record",
+     {}
+    ],
+    [
+     "bonhams-25381-104-record",
+     {}
+    ],
+    [
+     "bonhams-25382-91-record",
+     {}
+    ],
+    [
+     "bonhams-25438-22-record",
+     {}
+    ],
+    [
+     "bonhams-25438-23-record",
+     {}
+    ],
+    [
+     "bonhams-25438-24-record",
+     {}
+    ],
+    [
+     "bonhams-25438-25-record",
+     {}
+    ],
+    [
+     "bonhams-25438-26-record",
+     {}
+    ],
+    [
+     "bonhams-25438-27-record",
+     {}
+    ],
+    [
+     "bonhams-25438-28-record",
+     {}
+    ],
+    [
+     "bonhams-25438-29-record",
+     {}
+    ],
+    [
+     "bonhams-25438-30-record",
+     {}
+    ],
+    [
+     "bonhams-25438-31-record",
+     {}
+    ],
+    [
+     "bonhams-25439-21-record",
+     {}
+    ],
+    [
+     "bonhams-26024-17-record",
+     {}
+    ],
+    [
+     "bonhams-26024-19-record",
+     {}
+    ],
+    [
+     "bonhams-26024-21-record",
+     {}
+    ],
+    [
+     "bonhams-26024-22-record",
+     {}
+    ],
+    [
+     "bonhams-26024-23-record",
+     {}
+    ],
+    [
+     "bonhams-26142-1-record",
+     {}
+    ],
+    [
+     "bonhams-26785-2-record",
+     {}
+    ],
+    [
+     "bonhams-27495-10-record",
+     {}
+    ],
+    [
+     "bonhams-27604-100-record",
+     {}
+    ],
+    [
+     "bonhams-28736-6-record",
+     {}
+    ],
+    [
+     "bonhams-28737-12-record",
+     {}
+    ],
+    [
+     "bonhams-29174-78-record",
+     {}
+    ],
+    [
+     "bonhams-29329-18-record",
+     {}
+    ],
+    [
+     "bonhams-29329-19-record",
+     {}
+    ],
+    [
+     "bonhams-30991-72-record",
+     {}
+    ],
+    [
+     "bonhams-31922-66-record",
+     {}
+    ],
+    [
+     "bonhams-31930-51-record",
+     {}
+    ],
+    [
+     "bonhams-31947-34-record",
+     {}
+    ],
+    [
+     "forum-129421-record",
+     {}
+    ],
+    [
+     "forum-130325-record",
+     {}
+    ],
+    [
+     "forum-130326-record",
+     {}
+    ],
+    [
+     "forum-131008-record",
+     {}
+    ],
+    [
+     "forum-131158-record",
+     {}
+    ],
+    [
+     "forum-133513-record",
+     {}
+    ],
+    [
+     "forum-163846-record",
+     {}
+    ],
+    [
+     "forum-163847-record",
+     {}
+    ],
+    [
+     "forum-163848-record",
+     {}
+    ],
+    [
+     "forum-163849-record",
+     {}
+    ],
+    [
+     "forum-163881-record",
+     {}
+    ],
+    [
+     "forum-36736-record",
+     {}
+    ],
+    [
+     "roseberys-a0743-lot35-record",
+     {}
+    ],
+    [
+     "roseberys-a0743-lot36-record",
+     {}
+    ],
+    [
+     "roseberys-a0766-lot205-record",
+     {}
+    ],
+    [
+     "swann-0054a1c895-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-00c4ac0917-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-0284ab8ac0-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-04d4756aa9-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-05a4ed0863-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-08b4d318f1-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-09f4cd2b56-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-0d442cfbff-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-0dc4530aaf-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-1054c4a92b-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-1184b93a05-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-12d4ece92e-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-1574563839-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-169497eaff-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-1d441859cb-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-1e84f8b8bd-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-1f34f958ad-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2054c35a10-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-20d415ab85-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-21649cfb71-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2334c34ac1-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-23946a3b8d-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-23d4a67972-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-24a4591882-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2504d258cb-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2754933871-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-27e4597a36-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2904b20a92-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2994be9b2b-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-29c449a916-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2a24a41801-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2a74eceb62-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2c24600928-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2e742d0a49-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-2f3479ab51-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-33943349db-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-3674473b5b-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-36c4195b11-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-38041849fb-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-39b43539d2-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-3c3400185d-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-3da40e9852-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-3da46939b3-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-3e14a3fab6-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-3f841189f1-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-41a43558f5-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-423474895e-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-42647edbe9-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-42f47fd9d3-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-45345aaa61-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-46f4fec966-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-48c488688b-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-4924e69a1e-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-4b24a97b6e-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-4b94aebaa7-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-4bb457fb03-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-4d844f6af6-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-51b4477884-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-5214eb6b05-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-52345b5a97-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-5324728aec-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-5714bfca00-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-59540ccb1b-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-59c48cab10-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-5b5433fbbe-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-5b84df381a-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-5bd4e799ca-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-5c54ad0a4a-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-5d94f1c954-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-5ea45fe9b0-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-5f84fcdb74-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-60e40caa2a-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-62a4a06ac9-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-64948bc853-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-6494e72a1a-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-64e4af79b6-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-660425681e-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-6634ab08ce-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-6824dbeb4d-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-68348fe9f9-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-6874ea8aef-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-6944331929-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-69a4295b94-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-6a8441db39-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-6d34a02b1b-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7014ff5b77-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7384c55ba8-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7444ba78f4-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7474baebb2-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7634c529d3-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7844616a46-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-78d49b093f-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-78d4d2ea14-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7b242eb876-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7c44bf9b13-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7cb483b887-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7d542e88e4-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-7e645f3b5e-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-80244f9919-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-80645d898a-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-8144a6e94f-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-8544635ab0-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-8544a6c934-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-85741ad9d9-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-8574c3abb3-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-85940bca1f-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-86b4f12a25-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-8724622b8e-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-87e48fc87c-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-89347a382d-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-8a141e880f-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-8df45ea8c8-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-8e44fb5981-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-9154edaa50-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-94145aba47-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-94e4cf1bac-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-97544ef9f3-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-97546b19b5-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-97c4a5888e-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-997426ab9c-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-9a34160aee-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-9d14e64923-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-9e944edae7-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a0144de974-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a324c01a42-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a3d438db3d-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a3e4dd49fe-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a3f48e992e-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a484eb5ac8-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a4f41b1a09-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a50486a845-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a644c418cf-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a744dd7a08-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a784ac0a89-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a8442448a6-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a8548dfaa7-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a934bd6962-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-a9e4743872-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-aa14b3f906-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-aa9480f9f5-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-aec480f8e4-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-afd41298de-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b0044008e3-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b094767a11-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b0b4188ab9-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b2f4b61af9-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b3948d7898-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b4a4fa4867-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b60499fb5f-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b744e76b8c-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b784871a61-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b904a7e8ff-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b9341619fd-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-b9c47bbb34-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-bab481d988-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-bc04a09860-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-bd74958b94-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-bec489faad-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c084769bd3-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c1449a3995-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c1b47f79bc-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c5a4c48a24-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c5e4257b67-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c644dc5912-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c79477989f-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c824c1cb8c-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c91490cb91-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c9e4b1c96c-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-c9f476ba39-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-cbd4d6a845-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-ccc4e42ad6-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-cf04d09908-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-d28476fbdc-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-d384ac485d-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-d5749f4ad2-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-d5e4158a1f-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-d5e4927858-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-d604243a40-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-d7e4577818-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-d854f5f9cb-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-d8d41368fc-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-dab4ae9b60-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-daf49b8b97-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-dc640b0907-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-dd64e3a95c-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-dd746298d2-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-de34cfdb4c-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-de64f778d2-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e184e619f2-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e2541f783b-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e35440294b-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e364622947-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e3b4e2d8af-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e45490fa27-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e4a435c9ed-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e794aef800-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e8641b3bfe-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e96437abed-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-e9f4d11b20-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-ea64d6c8d3-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-ead413f81a-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-ec14e09b0b-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-eca4d87957-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-ee14ccca2f-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-ee846e8bac-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-f0d4b879a2-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-f2d434d827-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-f5845b6a23-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-f954ccd836-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-fa242b3bb2-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-fac41b1afb-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-fce4fa58e0-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-fda4fd48ee-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "swann-fef4864b88-record",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Francisco de Goya": {
+   "props": {
+    "identityConfidence": "single_candidate_strong",
+    "hasPosterCatalog": true,
+    "ulanUrl": "http://vocab.getty.edu/ulan/500118936",
+    "name": "Francisco de Goya",
+    "posterWorkCount": 1
+   },
+   "works": [
+    "km-cw-francisco_de_goya-the_sleep_of_reason_produces_monsters_from_los_caprichos"
+   ],
+   "attr": [
+    [
+     "km-sr-km-303033",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Hassall": {
+   "props": {
+    "identityConfidence": "manual_verified",
+    "hasPosterCatalog": true,
+    "ulanUrl": "http://vocab.getty.edu/ulan/500001686",
+    "identityVerifiedAt": "2026-09-19T101129",
+    "identityConfidencePrior": "multiple_candidates",
+    "name": "Hassall",
+    "posterWorkCount": 1,
+    "identityVerifiedBasis": "name, ULAN dates and every work title reviewed by hand 2026-09-19 (KM-ULAN-AUDIT, group A3)"
+   },
+   "works": [
+    "km-cw-hassall-skegness_is_so_bracing"
+   ],
+   "attr": [
+    [
+     "km-sr-km-187083",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Hasui Kawase": {
+   "props": {
+    "identityConfidence": "manual_verified",
+    "hasPosterCatalog": true,
+    "ulanUrl": "http://vocab.getty.edu/ulan/500333884",
+    "identityVerifiedAt": "2026-09-19T101129",
+    "identityConfidencePrior": "multiple_candidates",
+    "name": "Hasui Kawase",
+    "posterWorkCount": 1,
+    "identityVerifiedBasis": "name, ULAN dates and every work title reviewed by hand 2026-09-19 (KM-ULAN-AUDIT, group A3)"
+   },
+   "works": [
+    "km-cw-hasui_kawase-moon_at_umagome"
+   ],
+   "attr": [
+    [
+     "km-sr-km-473651",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "John Hassall": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "dateDied_precision": "exact",
+    "alternateNames": [
+     "John Hassall"
+    ],
+    "nationality": "British",
+    "dateDied_year": 1948,
+    "name": "John Hassall",
+    "dateBorn_year": 1868,
+    "dateBorn_precision": "exact"
+   },
+   "works": [
+    "bonhams-18262-4103",
+    "forum-53033"
+   ],
+   "attr": [
+    [
+     "bonhams-18262-4103-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "forum-53033-record",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Kawase Hasui": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "dateDied_precision": "exact",
+    "alternateNames": [
+     "Kawase Hasui"
+    ],
+    "nationality": "Japanese",
+    "dateDied_year": 1957,
+    "name": "Kawase Hasui",
+    "dateBorn_year": 1883,
+    "dateBorn_precision": "exact"
+   },
+   "works": [
+    "bonhams-17728-6168",
+    "bonhams-21040-5136"
+   ],
+   "attr": [
+    [
+     "bonhams-17728-6168-record",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "bonhams-21040-5136-record",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Lawrence Alma-Tadema": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "alternateNames": [
+     "After Sir Lawrence Alma-Tadema",
+     "Lawrence Alma-Tadema",
+     "After Sir Lawrence Alma Tadema",
+     "Lawrence Alma Tadema"
+    ],
+    "name": "Lawrence Alma-Tadema"
+   },
+   "works": [
+    "bonhams-10248-129",
+    "bonhams-10248-130",
+    "bonhams-10248-131",
+    "bonhams-10248-132",
+    "bonhams-10248-133",
+    "bonhams-10248-134",
+    "bonhams-13953-90"
+   ],
+   "attr": [
+    [
+     "bonhams-10248-129-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-10248-130-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-10248-131-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-10248-132-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-10248-133-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-10248-134-record",
+     {}
+    ],
+    [
+     "bonhams-13953-90-record",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Paolo Caliari Veronese": {
+   "props": {
+    "identityConfidence": "manual_verified",
+    "hasPosterCatalog": true,
+    "ulanUrl": "http://vocab.getty.edu/ulan/500021218",
+    "identityVerifiedAt": "2026-09-19T101129",
+    "identityConfidencePrior": "multiple_candidates",
+    "name": "Paolo Caliari Veronese",
+    "posterWorkCount": 1,
+    "identityVerifiedBasis": "name, ULAN dates and every work title reviewed by hand 2026-09-19 (KM-ULAN-AUDIT, group A3)"
+   },
+   "works": [
+    "km-cw-paolo_caliari_veronese-the_family_of_darius_before_alexander"
+   ],
+   "attr": [
+    [
+     "km-sr-km-424605",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Paolo Veronese": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "alternateNames": [
+     "After Paolo Veronese"
+    ],
+    "name": "Paolo Veronese"
+   },
+   "works": [
+    "bonhams-15880-2301",
+    "bonhams-16080-4216"
+   ],
+   "attr": [
+    [
+     "bonhams-15871-1213-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-15880-2301-record",
+     {
+      "qualifier": "after"
+     }
+    ],
+    [
+     "bonhams-16080-4216-record",
+     {
+      "qualifier": "after"
+     }
+    ]
+   ]
+  },
+  "Pierre Joseph Celestin Redouté": {
+   "props": {
+    "identityConfidence": "manual_verified",
+    "hasPosterCatalog": true,
+    "ulanUrl": "http://vocab.getty.edu/ulan/500005678",
+    "identityVerifiedAt": "2026-09-19T101129",
+    "identityConfidencePrior": "multiple_candidates",
+    "name": "Pierre Joseph Celestin Redouté",
+    "posterWorkCount": 18,
+    "identityVerifiedBasis": "name, ULAN dates and every work title reviewed by hand 2026-09-19 (KM-ULAN-AUDIT, group A3)"
+   },
+   "works": [
+    "km-cw-pierre_joseph_celestin_redouté-1_ixia_fleurs_de_phlox_2_niveole_d_t",
+    "km-cw-pierre_joseph_celestin_redouté-alstroemeria_pelegrina",
+    "km-cw-pierre_joseph_celestin_redouté-althea_frutex_hibiscus_syriacus",
+    "km-cw-pierre_joseph_celestin_redouté-amaryllis_brasilienne_amaryllis_bresiliensis",
+    "km-cw-pierre_joseph_celestin_redouté-amaryllis_lys_st_jacques",
+    "km-cw-pierre_joseph_celestin_redouté-an_mone_toil_e_anemone_stellata",
+    "km-cw-pierre_joseph_celestin_redouté-bengale_th_hym_n_e",
+    "km-cw-pierre_joseph_celestin_redouté-camellia_var_fleurs_blanches_camellia_japonica",
+    "km-cw-pierre_joseph_celestin_redouté-campanule_clochette",
+    "km-cw-pierre_joseph_celestin_redouté-cerisier_royal",
+    "km-cw-pierre_joseph_celestin_redouté-corcopsis_l_gant_corcopsis_eleganus",
+    "km-cw-pierre_joseph_celestin_redouté-cornichons_blancs",
+    "km-cw-pierre_joseph_celestin_redouté-crocus_sativus_safran_cultive",
+    "km-cw-pierre_joseph_celestin_redouté-cyclamen",
+    "km-cw-pierre_joseph_celestin_redouté-dalea_double",
+    "km-cw-pierre_joseph_celestin_redouté-rosier_pompon_rosa_pomponia",
+    "km-cw-pierre_joseph_celestin_redouté-tulipe_de_gesner_tulipa_gesneriana"
+   ],
+   "attr": [
+    [
+     "km-sr-km-425479",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425480",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425481",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425483",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425486",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425487",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425488",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425489",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425490",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425491",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425512",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425544",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425545",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-425665",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-426086",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-426675",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-426681",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-426690",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Pierre-Joseph Redouté": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "dateDied_precision": "exact",
+    "alternateNames": [
+     "Pierre-Joseph Redouté"
+    ],
+    "dateDied_year": 1840,
+    "name": "Pierre-Joseph Redouté",
+    "dateBorn_year": 1759,
+    "dateBorn_precision": "exact"
+   },
+   "works": [
+    "bonhams-30421-434"
+   ],
+   "attr": [
+    [
+     "bonhams-30421-434-record",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Sir Edward Coley Burne-Jones": {
+   "props": {
+    "identityConfidence": "manual_verified",
+    "hasPosterCatalog": true,
+    "ulanUrl": "http://vocab.getty.edu/ulan/500001381",
+    "identityVerifiedAt": "2026-09-19T101129",
+    "identityConfidencePrior": "multiple_candidates",
+    "name": "Sir Edward Coley Burne-Jones",
+    "posterWorkCount": 1,
+    "identityVerifiedBasis": "name, ULAN dates and every work title reviewed by hand 2026-09-19 (KM-ULAN-AUDIT, group A3)"
+   },
+   "works": [
+    "km-cw-sir_edward_coley_burne-jones-pomona_1884"
+   ],
+   "attr": [
+    [
+     "km-sr-km-212340",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Sir Edwin Henry Landseer": {
+   "props": {
+    "identityConfidence": "unresolved",
+    "hasPosterCatalog": true,
+    "ulanUrlRetracted": "http://vocab.getty.edu/ulan/500447639",
+    "identityConfidencePrior": "multiple_candidates",
+    "name": "Sir Edwin Henry Landseer",
+    "ulanUrlRetractedReason": "ULAN is a different person",
+    "posterWorkCount": 2,
+    "ulanUrlRetractedAt": "2026-09-19T100259"
+   },
+   "works": [
+    "km-cw-sir_edwin_henry_landseer-monarch_of_the_glen_1851",
+    "km-cw-sir_edwin_henry_landseer-the_change"
+   ],
+   "attr": [
+    [
+     "km-sr-km-217335",
+     {
+      "qualifier": "direct"
+     }
+    ],
+    [
+     "km-sr-km-300071",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  },
+  "Sir Lawrence Alma-Tadema": {
+   "props": {
+    "identityConfidence": "high_confidence_auto",
+    "hasPosterCatalog": true,
+    "ulanUrl": "http://vocab.getty.edu/ulan/500008100",
+    "name": "Sir Lawrence Alma-Tadema",
+    "posterWorkCount": 1
+   },
+   "works": [
+    "km-cw-sir_lawrence_alma-tadema-the_roses_of_heliogabalus_1888"
+   ],
+   "attr": [
+    [
+     "km-sr-km-215779",
+     {
+      "qualifier": "direct"
+     }
+    ]
+   ]
+  }
+ },
+ "created": []
+}

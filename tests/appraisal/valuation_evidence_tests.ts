@@ -52,7 +52,7 @@ const appraiser: any = {
 {
   const fromVea = lotAttrsWithSources({ vea });
   eq("VEA only: every attribute sourced from the image", Object.fromEntries(Object.entries(fromVea).map(([k, v]) => [k, [v.value, v.source]])), {
-    signature: ["hand", "vea"], proof: ["numbered", "vea"], editionSize: [75, "vea"], areaCm2: [1200, "vea"], process: ["screenprint", "vea"],
+    signature: ["hand", "vea"], proof: ["numbered", "vea"], editionSize: [75, "vea"], areaCm2: [1200, "vea"], process: ["screenprint", "vea"], poster: [false, "default"], after: [false, "default"], object: [false, "default"],
   });
   const withNotes = lotAttrsWithSources({ vea, appraiserInput: appraiser });
   eq("appraiser notes outrank the image", [withNotes.signature.source, withNotes.proof.value, withNotes.editionSize.value, withNotes.areaCm2.value], ["appraiser", "artist_proof", 90, 500]);
@@ -60,10 +60,11 @@ const appraiser: any = {
   const claim: any = { artist: "X", title: "T", medium: "Etching with aquatint", editionNote: "signed and numbered from the edition of 50", signed: true, editionSize: 50, dimensions: [{ kind: "sheet", widthCm: 50, heightCm: 60 }, { kind: "plate", widthCm: 30, heightCm: 40 }] };
   const withClaim = lotAttrsWithSources({ vea, appraiserInput: appraiser, claim });
   eq("the catalogue outranks everything; plate before sheet", Object.fromEntries(Object.entries(withClaim).map(([k, v]) => [k, [v.value, v.source]])), {
-    signature: ["hand", "catalogue"], proof: ["numbered", "catalogue"], editionSize: [50, "catalogue"], areaCm2: [1200, "catalogue"], process: ["aquatint", "catalogue"],
+    signature: ["hand", "catalogue"], proof: ["numbered", "catalogue"], editionSize: [50, "catalogue"], areaCm2: [1200, "catalogue"], process: ["aquatint", "catalogue"], poster: [false, "catalogue"], after: [false, "catalogue"], object: [false, "catalogue"],
   });
   const nothing = lotAttrsWithSources({ vea: { overallExtractionConfidence: 0 } as any });
-  eq("VEA not run and no other source: all defaulted", Object.values(nothing).map((v) => v.source), ["default", "default", "default", "default", "default"]);
+  eq("catalogue 'after' qualifier marks the lot as not the artist's own", [lotAttrsWithSources({ claim: { artist: "Andy Warhol", artistQualifier: "after", medium: "offset lithograph" } as any }).after?.value, lotAttrsWithSources({ claim: { artist: "Andy Warhol", artistQualifier: "certain", medium: "screenprint" } as any }).after?.value], [true, false]);
+  eq("VEA not run and no other source: all defaulted", Object.values(nothing).map((v) => v.source), ["default", "default", "default", "default", "default", "default", "default", "default"]);
   eq("defaults are the training reference levels", [nothing.signature.value, nothing.proof.value, nothing.editionSize.value, nothing.areaCm2.value, nothing.process.value], ["unsigned", "numbered", null, null, "other"]);
   const s2b = lotAttrsWithSources({ attr: { attributionConclusion: { technique: "lithograph" } } as any });
   eq("Stage 2b supplies the process when nothing better does", [s2b.process.value, s2b.process.source], ["lithograph", "stage2b"]);
@@ -90,6 +91,7 @@ const graph: LotGraphEvidence = {
     comparables: [comp("same_work", 1000, "Bonhams", "2023-01-01"), comp("same_work", 800, "Forum Auctions", "2022-01-01"), comp("same_artist_technique", 500, "Bonhams", "2021-01-01"), comp("same_artist_technique", null, "Roseberys London", "2021-01-01"), comp("same_artist", 300, "Bonhams", "2020-01-01")],
     summary: {} as any, coverageNote: "test coverage",
   },
+  suite: [],
   query: { sinceDate: "2014-06-01", untilDate: "2024-06-01", limit: 60, technique: "Etching", workTitle: "T" },
   warnings: [],
 };
@@ -99,7 +101,13 @@ const graph: LotGraphEvidence = {
     builtAt: "2026-09-16T00:00:00Z", reportedArtist: "X", canonicalArtist: "X", claim, vea, graph,
     targetHouse: { value: "Forum Auctions", source: "catalogue" }, valuationDate: { value: "2024-06-01", source: "catalogue" },
   });
-  eq("tier counts include a comp with no hammer", ev.comps.tierCounts, { same_work: 2, same_artist_technique: 2, same_artist: 1 });
+  eq("tier counts include a comp with no hammer", ev.comps.tierCounts, { same_work: 2, same_suite: 0, same_artist_technique: 2, same_artist: 1 });
+  const withSuite = assembleValuationEvidence({
+    builtAt: "t", reportedArtist: "X", canonicalArtist: "X", claim, vea, graph: { ...graph, suite: [{ hammerGBP: 700, currency: "GBP", saleDate: "2022-05-01", house: "Bonhams", work: "sib", workTitle: "Sibling plate", entry: "Vallier 153", listingUrl: null }] },
+    targetHouse: { value: "Forum Auctions", source: "catalogue" }, valuationDate: { value: "2024-06-01", source: "catalogue" },
+  });
+  eq("suite comps join as their own tier with the joining entry", [withSuite.comps.tierCounts.same_suite, withSuite.comps.items.find((c) => c.tier === "same_suite")!.entry], [1, "Vallier 153"]);
+  eq("and reach the blend as sameSuite", evidenceToBlendInputs(withSuite).sameSuite, [{ hammerGBP: 700, saleDate: "2022-05-01", house: "Bonhams", currency: "GBP", fxLogShift: 0 }]);
   eq("printed estimate kept for display", ev.printedEstimate, { low: 900, high: 1200, currency: "GBP" });
   eq("condition from the image, appraiser claims alongside", [ev.condition.grade, ev.condition.defects[0], ev.condition.source], ["GOOD", "foxing (minor)", "vea"]);
   const b = evidenceToBlendInputs(ev);
@@ -112,6 +120,19 @@ const graph: LotGraphEvidence = {
   eq("sell-through from the work facts", b.sellThrough, { sold: 3, unsold: 1 });
   const noProfile = evidenceToBlendInputs({ ...ev, profile: null });
   eq("no profile -> no priors witness", noProfile.priors, null);
+}
+
+// similar-artist comps enter the blend at the lot artist's price level (2026-09-17)
+{
+  const ev0: any = { valuationDate: { value: "2024-06-01", source: "catalogue" }, targetHouse: { value: "Bonhams", source: "catalogue" }, profile: null, attrs: lotAttrsWithSources({}), sellThrough: null,
+    comps: { items: [
+      { tier: "same_artist", hammerGBP: 1000, currency: "GBP", saleDate: "2023-01-01", house: "Bonhams", artist: "B", artistLevelShift: Math.log(2) },
+      { tier: "same_artist_technique", hammerGBP: 500, currency: "GBP", saleDate: "2023-01-01", house: "Bonhams", artist: "A" },
+    ] } };
+  const bi = evidenceToBlendInputs(ev0);
+  eq("a similar artist's £1,000 hammer enters at x2 (lot artist's level is double)", bi.sameArtist?.comps.map((c: any) => Math.round(c.hammerGBP)), [2000]);
+  eq("the artist's own comps are not shifted", bi.sameArtistTechnique?.comps.map((c: any) => c.hammerGBP), [500]);
+  eq("the displayed evidence hammer is unchanged", ev0.comps.items[0].hammerGBP, 1000);
 }
 
 console.log(`\nvaluation_evidence tests: ${passed} passed, ${failed} failed`);

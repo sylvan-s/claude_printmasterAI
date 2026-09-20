@@ -186,6 +186,8 @@ export interface WorkResolution {
   via?: "claim" | "image_match";
   basis: WorkIdentityBasis | null;
   workIds: string[];
+  /** Ids before spelling variants were added (WorkIdentity.strictWorkIds): what a write may touch. */
+  strictWorkIds?: string[];
   matchedNames: string[];
   ambiguousAt: WorkIdentityBasis | null;
   ambiguousNames: string[];

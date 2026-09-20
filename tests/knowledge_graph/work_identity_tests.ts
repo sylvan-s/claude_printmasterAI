@@ -12,6 +12,9 @@ import {
   citationsInTitle,
   citationsInRefs,
   foldPrefix,
+  titleIdentityKeyNoArticle,
+  resolveWorkIdentity,
+  type WorkRow,
 } from "../../src/appraisal/knowledge_graph/work_identity";
 
 let passed = 0, failed = 0;
@@ -75,5 +78,57 @@ eq("year is not a citation", citationsInTitle("Change (2011)"), []);
 eq("prefix fold", foldPrefix("F./S."), "fs");
 eq("prefix fold spaces", foldPrefix("Cramer Books"), "cramerbooks");
 
-console.log(`\n${passed} passed, ${failed} failed`);
-process.exit(failed ? 1 : 0);
+eq("page citation (poster catalogue)", citationsInTitle("Le Clown et l'Harlequin (Czwiklitzer p.437)").map((c) => [c.prefix, c.number]), [["czwiklitzer", "p.437"]]);
+eq("page citation is stripped from the key", titleIdentityKey("Le Clown et l'Harlequin (Czwiklitzer p.437)"), titleIdentityKey("Le clown et l'harlequin"));
+eq("pl. is still not a citation", citationsInTitle("Moïse (pl. 25)"), []);
+
+// ── leading article (A0793/305) ──────────────────────────────────────────────
+eq("article dropped", titleIdentityKeyNoArticle("Le Clown et l'Harlequin"), titleIdentityKeyNoArticle("Clown et l'Harlequin"));
+eq("English article", titleIdentityKeyNoArticle("The Tree"), "tree");
+eq("no article -> key unchanged", titleIdentityKeyNoArticle("Clown et l'Harlequin"), titleIdentityKey("Clown et l'Harlequin"));
+eq("article alone leaves nothing identifying", titleIdentityKeyNoArticle("The Print 3"), "");
+
+// ── resolution on real A0793 shapes (works passed in, no graph) ──────────────
+const work = (id: string, name: string, docs: [string, number, string][] = [], cits: [string, string][] = []): WorkRow => ({
+  id, name, aliases: [], docs: docs.map(([saleId, lotNumber, title]) => ({ saleId, lotNumber, title })),
+  citations: cits.map(([prefix, number]) => ({ prefix, number, raw: `${prefix} ${number}` })),
+});
+async function resolverCases() {
+  // A0793/2: the lot's own spelling matches exactly; Swann's "Équilibriste" sales must join.
+  const villon = [
+    work("roseberys-a0793-lot2", "Le Petit Équilibrist", [["A0793", 2, "Le Petit Équilibrist"], ["A0765", 12, "Le Petit Équilibrist"]]),
+    work("bonhams-gp287", "Le petit Equilibrist", [["15090", 40, "Le petit Equilibrist"]], [["ginestetpouillon", "287"]]),
+    work("swann-1", "Le Petit Équilibriste", [["2637", 101, "Le Petit Équilibriste"]]),
+    work("swann-2", "Le Petit Équilibriste", [["2600", 88, "Le Petit Équilibriste"]]),
+    work("other", "Le Petit Cheval", [["1", 1, "Le Petit Cheval"]]),
+  ];
+  const r2 = await resolveWorkIdentity({ artistName: "Jacques Villon", title: "Le Petit Équilibrist", works: villon, excludeSaleLot: { saleId: "A0793", lotNumber: 2 } });
+  eq("lot 2: basis stays exact_title", r2.basis, "exact_title");
+  eq("lot 2: Swann spelling variants are read", [...r2.workIds].sort(), ["bonhams-gp287", "roseberys-a0793-lot2", "swann-1", "swann-2"]);
+  eq("lot 2: writes stay on the exact matches", [...r2.strictWorkIds].sort(), ["bonhams-gp287", "roseberys-a0793-lot2"]);
+
+  // A variant carrying a DIFFERENT number in the same catalogue is a different plate.
+  const withConflict = [...villon.slice(0, 2), work("swann-gp288", "Le Petit Équilibriste", [["9", 9, "Le Petit Équilibriste"]], [["ginestetpouillon", "288"]])];
+  const rc = await resolveWorkIdentity({ artistName: "Jacques Villon", title: "Le Petit Équilibrist", works: withConflict, excludeSaleLot: { saleId: "A0793", lotNumber: 2 } });
+  eq("contradicting citation keeps a variant out", rc.workIds.includes("swann-gp288"), false);
+
+  // Designators still separate plates: "Spinning Man V" never widens to "Spinning Man VII".
+  const frink = [work("v", "Spinning Man V", [["1", 1, "Spinning Man V"]]), work("vii", "Spinning Man VII", [["2", 2, "Spinning Man VII"]])];
+  const rf = await resolveWorkIdentity({ artistName: "Elisabeth Frink", title: "Spinning Man V", works: frink });
+  eq("roman designator is not widened", rf.workIds, ["v"]);
+
+  // A0793/305: Roseberys drops the article; Forum adds it and a page citation.
+  const picasso = [
+    work("forum-clown", "Le Clown et l'Harlequin (Czwiklitzer p.437)", [["1188", 20, "Le Clown et l'Harlequin (Czwiklitzer p.437)"]]),
+    work("swann-clown", "Le clown et l'harlequin", [["2651", 300, "Le clown et l'harlequin"]]),
+    work("dakar", "Musée Dynamique - Dakar", [["19", 1, "Musée Dynamique - Dakar"]]),
+  ];
+  const r305 = await resolveWorkIdentity({ artistName: "Pablo Picasso", title: "Clown et l'Harlequin", works: picasso });
+  eq("lot 305: resolves on the article level", r305.basis, "article_title");
+  eq("lot 305: both houses' records", [...r305.workIds].sort(), ["forum-clown", "swann-clown"]);
+}
+
+resolverCases().then(() => {
+  console.log(`\n${passed} passed, ${failed} failed`);
+  process.exit(failed ? 1 : 0);
+});

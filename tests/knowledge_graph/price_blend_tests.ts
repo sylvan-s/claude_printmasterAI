@@ -16,6 +16,7 @@ import {
   hurdleFrom,
   crpsOnGrid,
   sameWorkBand,
+  evidenceTier,
   houseOffsetOf,
   timeShift,
   houseMixOf,
@@ -91,7 +92,10 @@ const offsets: HouseOffsets = {
   close("priors: the model's own house term is swapped for the target's offset", pr.rawMu, LN(1000) + LN(0.8));
   eq("priors contributions carry exactly one house term, the target's", pr.contributions!.map((c) => c.term), ["artist level", "house=Forum Auctions"]);
   const noTarget = rawWitnesses({ ...lot, targetHouse: null }, offsets);
-  close("no target house -> no re-basing", noTarget.find((x) => x.source === "same_work")!.rawSamples![1], LN(1000));
+  close("no target house -> comps re-based to the pooled level (Bonhams 1000 x 0.85)", noTarget.find((x) => x.source === "same_work")!.rawSamples![1], LN(1000) + LN(0.85));
+  eq("no target house -> the priors house term names the pooled offset", noTarget.find((x) => x.source === "priors_model")!.contributions!.at(-1)!.term, "house=none chosen (pooled offset)");
+  const noOffsets = rawWitnesses({ ...lot, targetHouse: null }, null);
+  close("no offsets table at all -> no re-basing", noOffsets.find((x) => x.source === "same_work")!.rawSamples![1], LN(1000));
   const unmeasured = rawWitnesses({ ...lot, targetHouse: "Swann Auction Galleries" }, offsets).find((x) => x.source === "priors_model")!;
   ok("an unmeasured target house is named as such in the contribution", unmeasured.contributions!.some((c) => c.term.includes("unmeasured")));
   const cal = { ...defaultCalibration(), houseOffsets: offsets };
@@ -111,6 +115,18 @@ const offsets: HouseOffsets = {
   const w = rawWitnesses(inputs({ estimate: null, sameWork: [{ hammerGBP: 1000, saleDate: "2015-01-01" }] }), { ...idx, timeAdjust: "prior_year" });
   close("same-work samples carry the time shift", w[0].rawSamples![0], LN(1000) + 0.5);
   ok("basis says the comps were market-adjusted", w[0].basis.includes("market-adjusted"));
+}
+
+// ── foreign-currency re-pricing ────────────────────────────────────────────────
+{
+  const idx = { version: "T", referenceHouse: "Bonhams", houses: { Bonhams: { log: 0, se: 0 } }, pooledFallback: { log: 0, betweenHouseSd: 0 } } as HouseOffsets;
+  const lot = inputs({ estimate: null, sameWork: [{ hammerGBP: 1000, saleDate: "2015-01-01", currency: "USD", fxLogShift: -0.2 }, { hammerGBP: 1000, saleDate: "2015-01-01", currency: "GBP", fxLogShift: 0 }] });
+  const off = rawWitnesses(lot, idx)[0];
+  eq("fxReconvert off: the shift is ignored", off.rawSamples!.map((x) => +x.toFixed(6)), [LN(1000), LN(1000)].map((x) => +x.toFixed(6)));
+  const on = rawWitnesses(lot, { ...idx, fxReconvert: true })[0];
+  close("fxReconvert on: the dollar comp moves by its shift", on.rawSamples![0], LN(1000) - 0.2);
+  close("fxReconvert on: the sterling comp does not move", on.rawSamples![1], LN(1000));
+  ok("basis says foreign hammers were re-priced", on.basis.includes("re-priced at the valuation-date exchange rate") && !off.basis.includes("re-priced"));
 }
 
 // ── house mix on the artist-level witnesses ────────────────────────────────────
@@ -165,8 +181,45 @@ const profile: ArtistPriceProfile = {
   close("signed etching, edition 400, Roseberys, 2022", lot.mu, 6.0 + 0.1 * LN(100) + LN(2) + LN(0.5) + 0.1 * (LN(400) - LN(100)) + LN(1.5) + LN(0.8) + 0.3);
   eq("every non-reference attribute is a contribution", lot.contributions.map((c) => c.term), ["artist level", "signature=hand", "edition_band=>300", "process=etching", "edition size=400", "house=Roseberys London", "sale year 2022"]);
   const forum = priorsModelPrediction({ signature: null, proof: null, editionSize: null, areaCm2: null, process: "screenprint" }, profile, { saleDate: "2030-01-01", house: "Forum Auctions" });
-  close("unknown attrs take reference/median; unseen year is 0", forum.mu, 6.0 + 0.1 * LN(100));
+  // 2026-09-17: a year past the measured series carries the latest measured year forward (2024: 0.1), not 0
+  close("unknown attrs take reference/median; a later unseen year takes the latest measured year", forum.mu, 6.0 + 0.1 * LN(100) + 0.1);
   eq("unseen house, process and the levels this profile lacks are listed, not applied", forum.unknownColumns, ["area_band_unknown", "edition_band_unknown", "house_Forum Auctions", "process_screenprint", "proof_unknown"]);
+}
+
+// ── proof policy ───────────────────────────────────────────────────────────────
+{
+  const means = { signature_hand: 0.75, "edition_band_>300": 0.1, edition_log: LN(80), proof_artist_proof: 0.14, proof_hors_commerce: 0.01, proof_trial_proof: 0.01 } as Record<string, number>;
+  const prof = { ...profile, elasticities: { ...profile.elasticities, proof_hors_commerce: 0.9, proof_artist_proof: 0.02, edition_band_unknown: -0.7 } };
+  const policy = { columnMeans: means, premium: { min: 1.05, max: 1.1 } };
+  const base = { signature: "hand" as const, editionSize: null, areaCm2: 600, process: "lithograph" };
+  const hcOff = priorsModelPrediction({ ...base, proof: "hors_commerce" }, prof, { saleDate: "2024-06-01", house: "Bonhams" });
+  const hcOn = priorsModelPrediction({ ...base, proof: "hors_commerce" }, prof, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy });
+  const mixP = 0.02 * 0.14 + 0.9 * 0.01;
+  const mixE = 0.0; // edition_band_* columns with a mean: only >300, whose beta (log 0.5) applies
+  const expected = 6.0 + LN(2) + LN(0.5) * 0.1 + 0.1 * LN(80) + mixP + LN(1.1) + 0.1;
+  close("HC proof: edition at the mix, proof clamped to +10%", hcOn.mu, expected + mixE);
+  ok("HC proof: no edition term under the policy", !hcOn.contributions.some((c) => c.term.startsWith("edition")) && hcOff.contributions.some((c) => c.term === "edition_band=unknown"));
+  const small = { ...prof, elasticities: { ...prof.elasticities, proof_hors_commerce: 0.05 } };
+  ok("a proof with a modest fitted effect no longer pays the edition-unknown penalty", priorsModelPrediction({ ...base, proof: "hors_commerce" }, small, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy }).mu > priorsModelPrediction({ ...base, proof: "hors_commerce" }, small, { saleDate: "2024-06-01", house: "Bonhams" }).mu);
+  const ap = priorsModelPrediction({ ...base, proof: "artist_proof" }, prof, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy });
+  close("AP with a small fitted effect is lifted to the +5% floor", ap.contributions.find((c) => c.term === "proof=artist_proof")!.logEffect, LN(1.05));
+  const hcEd = priorsModelPrediction({ ...base, proof: "hors_commerce", editionSize: 400 }, prof, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy });
+  ok("a proof with a stated edition keeps its edition terms", hcEd.contributions.some((c) => c.term === "edition_band=>300") && hcEd.contributions.some((c) => c.term === "proof=hors_commerce" && Math.abs(c.logEffect - LN(1.1)) < 1e-9));
+  const numbered = priorsModelPrediction({ ...base, proof: "numbered", editionSize: 400 }, prof, { saleDate: "2024-06-01", house: "Bonhams", proofPolicy: policy });
+  const numberedOff = priorsModelPrediction({ ...base, proof: "numbered", editionSize: 400 }, prof, { saleDate: "2024-06-01", house: "Bonhams" });
+  close("a numbered print is untouched by the policy", numbered.mu, numberedOff.mu);
+}
+
+// ── same-suite witness ─────────────────────────────────────────────────────────
+{
+  const lot = inputs({ estimate: null, sameSuite: [{ hammerGBP: 800, saleDate: "2020-01-01" }, { hammerGBP: 1200, saleDate: "2022-01-01" }, { hammerGBP: 0, saleDate: null }] });
+  const w = rawWitnesses(lot).find((x) => x.source === "same_suite")!;
+  close("same_suite raw mu is the log median of priced sales", w.rawMu, (LN(800) + LN(1200)) / 2);
+  eq("same_suite keyed by count band, samples kept for the kernel density", [w.keys, w.rawSamples!.length], [["2"], 2]);
+  eq("evidence tier: same_suite sits below same work and above tier 2", [evidenceTier(lot), evidenceTier({ ...lot, sameWork: [{ hammerGBP: 900, saleDate: "2023-01-01" }] }), evidenceTier({ ...lot, sameSuite: [], sameArtistTechnique: { n: 3, medianHammerGBP: 500 } })], ["same_suite", "same_work_1-2", "same_artist_technique"]);
+  const oldCal = defaultCalibration();
+  delete (oldCal.witnesses as any).same_suite;
+  eq("a calibration without same_suite drops the witness (older calibrations price as before)", calibratedWitnesses(lot, { ...oldCal, witnesses: { ...oldCal.witnesses, same_suite: { df: 5, byKey: {} } } }, "no_estimate").witnesses.map((x) => x.source), []);
 }
 
 // ── grid posterior ─────────────────────────────────────────────────────────────

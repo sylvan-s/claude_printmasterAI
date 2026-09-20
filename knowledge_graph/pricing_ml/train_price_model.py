@@ -66,12 +66,48 @@ def technique_family(texts):
     return "unknown"
 
 
+# Photomechanical printing (2026-09-17 priors review): "offset lithograph" contained "lithograph", so
+# offset prints and photolithographs sat in the reference technique — 25% of "lithograph" rows, at
+# x0.51 of the same artist's hand-drawn lithographs. They are now their own technique, "offset",
+# unless a hand process (etching, screenprint...) is named first. Adopted 2026-09-17 (priors-only
+# MAE 0.659 -> 0.656 with the poster flag). Mirrored in price_attrs.ts primaryProcess / isPoster.
+OFFSET_PROCESS = True
+PHOTOMECH_RE = re.compile(r"\boffset\b|photo-?lithograph|photo-?mechanical")
+# A poster is the object, not a word in an inscription or a publisher's name ("List Poster and
+# Print Program" editions are signed, numbered screenprints).
+POSTER_RE = re.compile(r"(?:lithographic|offset|screenprint(?:ed)?|silkscreen|exhibition|film|travel|advertising|olympic)\s+posters?\b"
+                       r"|\bposters?\s+(?:in colou?rs?|printed|for\b|designed)|^\s*posters?\b|\bposters?\s*/\s*lithograph"
+                       r"|lithograph(?:ic)?\s+posters?\b|\bfrom the (?:unsigned |unnumbered )?poster edition")
+
+
+INCISED_RE = re.compile(r"incised (?:signature|initials|with (?:the )?(?:artist's )?(?:signature|initials))|(?:signature|initials) incised")
+
+# Object multiple (2026-09-17): printed or made ON a non-paper object or panel (aluminium, Plexiglas,
+# steel, wood, canvas, porcelain...), or a cast / ceramic / vinyl object. Not a paper print laid,
+# mounted or backed on such a support, and not a painting (a print or multiple process must be named).
+OBJECT_SUBSTRATE = (r"(?:cut |brushed |polished |anodi[sz]ed |powder[- ]coated |galvani[sz]ed )?"
+                    r"(?:aluminium|aluminum|plexiglass?|perspex|acrylic (?:sheet|glass|block)|stainless steel|steel|metal|"
+                    r"wood(?:en)? (?:panel|board|block)|plywood|mdf|glass|mirror|ceramic|porcelain|enamel|vinyl|canvas|felt|leather|silk|resin)")
+OBJECT_RE = re.compile(
+    r"(?:print|screenprint|serigraph|lithograph|gicl[eé]e|inkjet|pigment|multiple|relief|embroidery)\b[^.;]{0,60}?"
+    r"(?<!laid )(?<!mounted )(?<!backed )(?<!lined )\bon (?:two |three |four )?" + OBJECT_SUBSTRATE + r"\b"
+    r"|^\s*(?:porcelain|ceramic|enamel|bronze|cast resin|resin|painted wood|wooden block|vinyl|skateboard)\b")
+
+
+def is_object(text):
+    return int(bool(OBJECT_RE.search(text.lower()))) if isinstance(text, str) else 0
+
+
+def is_poster(text):
+    return int(bool(POSTER_RE.search(text.lower()))) if isinstance(text, str) else 0
+
+
 def primary_process(texts):
     blob = " ".join(t for t in texts if isinstance(t, str)).lower()
-    for p in PROCESSES:
-        if p in blob:
-            return p
-    return "other"
+    first = next((p for p in PROCESSES if p in blob), "other")
+    if OFFSET_PROCESS and first in ("lithograph", "collotype", "other") and PHOTOMECH_RE.search(blob):
+        return "offset"
+    return first
 
 
 def signature_class(signed, text):
@@ -81,6 +117,10 @@ def signature_class(signed, text):
     if re.search(r"signed in the plate|signed in the stone|plate[- ]signed|signed in the block", t):
         return "plate"
     if re.search(r"\bsigned\b", t) and not re.search(r"\bunsigned\b", t):
+        return "hand"
+    # A signature scratched into Plexiglas, metal or resin is the artist's hand (2026-09-17: Bridget
+    # Riley, Rauschenberg, Soto, Pistoletto, Banksy multiples had all read as unsigned).
+    if INCISED_RE.search(t):
         return "hand"
     if re.search(r"\binitial(l)?ed\b", t):
         return "initialled"
@@ -97,11 +137,21 @@ def proof_class(copy_type, text):
         return "hors_commerce"
     if re.search(r"trial proof|épreuve d'essai|epreuve d'essai|bon à tirer|bon a tirer|\bB\.?A\.?T\.?\b", text or ""):
         return "trial_proof"
-    if re.search(r"\d+\s*/\s*\d+", t) or str(copy_type).lower() == "numbered":
+    if NUMBERED_RE.search(t) or str(copy_type).lower() == "numbered":
         return "numbered"
     if re.search(r"from the edition of|edition of \d", t):
         return "edition_unnumbered"
     return "unknown"
+
+
+# Edition wording (2026-09-17). A bare "n/N" is NOT an edition: in catalogue text it is almost
+# always an inch fraction, "(19 1/2 x 15 1/4in)", and the old fallback took the first one it
+# found — 6,257 training rows (mostly Bonhams) got editions of 2/4/8/16, and "5/8 ... one of
+# approximately 50 impressions" read as 8. Only explicit wording counts now, in this order.
+# Mirrored exactly in src/appraisal/knowledge_graph/price_attrs.ts (npm run test:price-attrs).
+NUMBERED_RE = re.compile(r"\b(?:numbered|no\.)\s*(?:in pencil\s*)?['\"\u2018\u2019\u201c\u201d]?\d+\s*/\s*(\d{1,3}(?:,\d{3})+|\d{1,5})\b(?!\s*(?:mm\b|cm\b|[\"\u201d]))", re.I)
+EDITION_OF_RE = re.compile(r"\bedition of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,3}(?:,\d{3})+|\d{1,5})\b", re.I)
+ONE_OF_RE = re.compile(r"\bone of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,3}(?:,\d{3})+|\d{1,5})\s+(?:impressions|copies|examples)\b", re.I)
 
 
 def edition_size(declared, text):
@@ -111,12 +161,12 @@ def edition_size(declared, text):
     except (TypeError, ValueError):
         pass
     t = text or ""
-    m = re.search(r"\d+\s*/\s*(\d{1,4})", t)
-    if m:
-        return float(m.group(1))
-    m = re.search(r"edition of (?:approximately |about )?(\d{1,5})", t, re.I)
-    if m:
-        return float(m.group(1))
+    for rx in (NUMBERED_RE, EDITION_OF_RE, ONE_OF_RE):
+        m = rx.search(t)
+        # "1,000": thousands separators (2026-09-17 junk review: "edition of 1,000" had read as 1)
+        n = int(m.group(1).replace(",", "")) if m else 0
+        if n > 0:
+            return float(n)
     return np.nan
 
 
@@ -257,6 +307,8 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     out["publisher"] = df["rawMedium"].apply(publisher)
     out["paper"] = [paper_class(p, m) for p, m in zip(papers, df["rawMedium"])]
     out["book_or_set"] = df["rawMedium"].apply(is_book_or_set)
+    out["poster"] = df["rawMedium"].apply(is_poster)
+    out["object"] = df["rawMedium"].apply(is_object)
     wy = pd.to_numeric(df["workYear"], errors="coerce")
     out["work_year"] = wy
     out["work_decade"] = wy.apply(lambda y: f"{int(y) // 10 * 10}s" if pd.notna(y) else "unknown")

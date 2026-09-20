@@ -114,6 +114,28 @@ def _split_on_commas_when_unambiguous(part):
     return [part]
 
 
+_PAGE_MARKER_RE = re.compile(r"^(.*?)[\s,]*\b(pp?\.?|page)\.?$", re.IGNORECASE)
+
+
+def _move_page_marker(name, number):
+    """'Littmann p.' + '93' -> ('Littmann', 'p.93'). Some catalogues raisonnés are cited by PAGE
+    ("Czwiklitzer p.437" for Picasso's posters, "Littmann p. 93" for Haring), and the
+    "<everything before the last token> = the catalogue" split puts the marker in the catalogue's
+    name: the graph holds ~130 such CatalogueRaisonne nodes ("Littmann p.", "L. p.", "Cirrus p.",
+    "Sorlier p."), one per page-cited catalogue, instead of one node per catalogue.
+
+    The marker moves onto the entry number, so the page reference is kept — it is what identifies
+    the print — while the catalogue keeps its own name. A fragment that is ONLY a marker ("p. 258",
+    the trailing half of Bonhams' "V. 182, p. 258") leaves an empty name and is returned unchanged,
+    so NON_CATALOGUE_NAMES still discards it exactly as before."""
+    if not number[:1].isdigit():
+        return name, number
+    m = _PAGE_MARKER_RE.match(name)
+    if not m or not m.group(1).strip():
+        return name, number
+    return m.group(1).strip(), f"{m.group(2).rstrip('.').lower()}.{number}"
+
+
 def parse_catalogue_refs(raw):
     """'Delteil 2' -> [{"catalogueName": "Delteil", "entryNumber": "2"}]. Multiple refs
     are ';'-separated ('Lugt 3439; De Vesme 732'), or ','-separated when every fragment
@@ -130,8 +152,8 @@ def parse_catalogue_refs(raw):
                 continue
             m = _CATALOGUE_REF_RE.match(fragment)
             if m and re.search(r"[A-Za-z]", m.group(1)):
-                refs.append({"catalogueName": m.group(1).strip(),
-                             "entryNumber": m.group(2).strip()})
+                name, number = _move_page_marker(m.group(1).strip(), m.group(2).strip())
+                refs.append({"catalogueName": name, "entryNumber": number})
     return refs
 
 

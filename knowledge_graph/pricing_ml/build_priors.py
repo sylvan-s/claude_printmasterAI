@@ -85,7 +85,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, HuberRegressor
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from train_price_model import build_features  # noqa: E402
@@ -100,7 +100,24 @@ CONT = ["edition_log", "area_log"]
 # classified as subject X" vs. "everything else" (other confident subjects AND unclassified
 # both code to 0). See the 1.2 changelog note above for why only these three.
 SUBJECT_FLAGS = {"subject_is_abstract": "abstract", "subject_is_comic_satirical": "comic_satirical", "subject_is_surreal": "surreal"}
-BINARY = list(SUBJECT_FLAGS.keys())
+# poster: the object is a poster (train_price_model.is_poster), adopted 2026-09-17 with the offset technique.
+# after: the house attributes the sale as "after" / "manner of" / "attributed to" the artist, not their own
+# work (not_direct_mask), adopted 2026-09-17 as a per-artist column.
+# object: an object multiple (train_price_model.is_object), adopted 2026-09-17.
+BINARY = list(SUBJECT_FLAGS.keys()) + ["poster", "after", "object"]
+
+# Mirrored in query_comparables.ts (NON_DIRECT_URL_RE) and valuation_evidence.ts (isDirectQualifier).
+NON_DIRECT_URL_RE = r"lot/\d+/(?:after|manner-of|circle-of|attributed-to|follower-of|school-of)-|/\d+-(?:after|manner-of|circle-of|attributed-to|follower-of|school-of)-"
+
+
+def not_direct_mask(df: pd.DataFrame) -> pd.Series:
+    """Not the artist's own work: the house's qualifier on ATTRIBUTED_TO is not "direct", or there is
+    no qualifier and the listing URL says after-/manner-of-/... (82 of 5,467 unqualified sales)."""
+    q = df["qualifier"] if "qualifier" in df else pd.Series(None, index=df.index)
+    url = df["listingUrl"].fillna("").str.lower().str.contains(NON_DIRECT_URL_RE)
+    return ((q.notna() & (q != "direct")) | (q.isna() & url)).astype(bool)
+EDITION_HINGES = ["edition_hinge_30", "edition_hinge_75", "edition_hinge_150", "edition_hinge_300"]
+XL_AREA_CM2 = 7500       # the extra-large threshold (size_shape.py): the xl area term starts here
 MIN_LEVEL_ROWS = 3        # an artist's own coefficient for a level is trusted only with this many rows on it
 MIN_OWN = 15              # below this many earlier sales an artist gets the prior outright
 MIN_DESC = 5              # below this many earlier sales there is no per-artist entry at all (segment default)
@@ -130,8 +147,12 @@ def level_support(feat_rows: pd.DataFrame, columns):
     where the flag is 1, i.e. confidently that subject)."""
     out = {}
     for col in columns:
-        if col in CONT:
+        if col == "area_log_xl":
+            out[col] = int((feat_rows[col] > 0).sum())   # only extra-large sheets carry this term
+        elif col in CONT:
             out[col] = int(feat_rows[col].notna().sum())
+        elif col in EDITION_HINGES:
+            out[col] = int((feat_rows[col] > 0).sum())
         elif col in BINARY:
             out[col] = int(feat_rows[col].sum())
         else:
@@ -235,27 +256,129 @@ def segment_defaults(entries: dict, cols) -> dict:
 
 
 def main():
+    global KAPPAS
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("csv")
     ap.add_argument("--cut", default="2024-07-01")
     ap.add_argument("--min-year", default="2010")
     ap.add_argument("--out-dir", default=os.path.join(HERE, "priors"))
+    ap.add_argument("--size-terms", choices=["both", "bands", "shape-bands", "shape-bands+log", "shape-bands+xl"], default="both",
+                    help="both = area bands + per-doubling area_log (1.2); bands = area bands only (2026-09-16 check: the two are collinear and pulled against each other for thin artists)")
+    ap.add_argument("--edition-terms", choices=["both", "bands", "slope", "hinge"], default="bands",
+                    help="both = edition bands + log edition (1.2); bands = bands only; slope = log edition + an unknown flag; "
+                         "hinge = piecewise-linear log edition (knots 30/75/150/300) + an unknown flag. 2026-09-17 collinearity test: "
+                         "the bands explain 87%% of log edition")
+    ap.add_argument("--reproduction", choices=["none", "offset", "offset+poster"], default="offset+poster",
+                    help="offset = photomechanical prints (offset, photolithograph) as their own technique; +poster adds a poster flag "
+                         "(2026-09-17 priors review: 25%% of 'lithograph' rows were offset prints)")
+    ap.add_argument("--alpha", type=float, default=ALPHA, help="ridge penalty of the per-artist fits (2026-09-17 outlier review)")
+    ap.add_argument("--loss", choices=["ridge", "huber"], default="ridge", help="per-artist fit loss; huber down-weights sales far from the fit")
+    ap.add_argument("--huber-epsilon", type=float, default=1.35)
+    ap.add_argument("--trim-mad", type=float, default=0.0, help="refit each artist without sales more than K robust SDs from their first fit (0 = off)")
+    ap.add_argument("--shrink-by", choices=["artist", "level"], default="artist",
+                    help="artist = kappa against the artist's total earlier sales (1.2); level = against the sales carrying that level")
+    ap.add_argument("--attribution", choices=["all", "direct-only", "after-factor"], default="after-factor",
+                    help="all = every sale counts as the artist's own (1.2); direct-only = drop 'after' / 'manner of' / 'attributed to' "
+                         "sales; after-factor = keep them with a per-artist 'after' column (2026-09-17)")
+    ap.add_argument("--object-flag", choices=["on", "off"], default="on",
+                    help="on = a per-artist column for object multiples (prints on aluminium, Plexiglas, canvas...; 2026-09-17)")
+    ap.add_argument("--xl-cap", type=float, default=0.0,
+                    help="cap the extra-large per-doubling multiplier (e.g. 1.5); 0 = uncapped. 2026-09-17: Peter Blake x3.17, Motherwell x2.90 per doubling")
+    ap.add_argument("--target", choices=["hammer", "estimate-mid", "estimate-low"], default="estimate-mid",
+                    help="the dependent variable (2026-09-17 fair-price test): log hammer, or the house's log mid / low estimate in GBP")
+    ap.add_argument("--unsold-flag", choices=["on", "off"], default="on",
+                    help="with a lots export (export_sales.py --lots): a per-artist 'unsold' column, so unsold lots' higher "
+                         "estimates (x1.28 for the same work, 2026-09-17) do not lift the fair price; ignored without a sold column")
+    ap.add_argument("--fit-all", action="store_true",
+                    help="production build (2026-09-17): fit on EVERY sale through today, so the stored year effects reach the "
+                         "latest year and the model reflects today's market; there is no held-out period, so pass --kappa from "
+                         "the cut build that chose it")
+    ap.add_argument("--kappa", type=int, default=None, help="use this kappa instead of choosing it on the held-out period")
+    ap.add_argument("--dump-test", default=None, help="write test-period rows with the chosen-kappa prediction to this CSV")
     ap.add_argument("--with-citation", action="store_true", help="add catalogue_cited (PRICING-PRIORS-1.3; failed its gate 2026-09-16) for the ablation")
     args = ap.parse_args()
     if args.with_citation:
         BINARY.append("catalogue_cited")
+    if args.shrink_by == "level":
+        KAPPAS = [0, 3, 10, 30, 60, 120]   # level supports are far smaller than artist totals
+    import train_price_model as _tpm
+    _tpm.OFFSET_PROCESS = args.reproduction != "none"
+    if args.reproduction != "offset+poster":
+        BINARY.remove("poster")
+    if args.attribution != "after-factor":
+        BINARY.remove("after")
+    if args.object_flag != "on":
+        BINARY.remove("object")
+    if args.edition_terms == "bands":
+        CONT.remove("edition_log")
+    if args.edition_terms in ("slope", "hinge"):
+        REFS.pop("edition_band")
+        BINARY.append("edition_unknown")
+    if args.edition_terms == "hinge":
+        BINARY.extend(EDITION_HINGES)
+    if args.size_terms in ("bands", "shape-bands", "shape-bands+xl"):
+        CONT.remove("area_log")
+    if args.size_terms == "shape-bands+xl":
+        # Extra large only: log area above 7,500 cm² (~87 cm a side), zero below and when unknown.
+        # "Bigger still sells for more, x per doubling beyond 87 cm"; the >7500 band keeps the step.
+        CONT.append("area_log_xl")
+    if args.size_terms.startswith("shape-bands"):
+        # Bands cut where size_shape.py found the price curve bends (2026-09-16): small sheets flat
+        # at ~x0.85, a rise to ~42 cm a side, a flat plateau to ~87 cm, then a +45-55% jump.
+        REFS["area_band"] = "1800-7500"
 
     df = pd.read_csv(args.csv, low_memory=False)
     source_rows = int(len(df))          # rows in the export, before any filter: the freshness check compares this to the graph
     df = df[df["saleDate"] >= args.min_year]
     df = df[~df["rawMedium"].fillna("").str.lower().str.contains(r"\bthe book\b|the complete set|set of \d|portfolio of|\(vol\)")]
     df = df[df["artist"].notna()].reset_index(drop=True)
+    not_direct = not_direct_mask(df)
+    if args.attribution == "direct-only":
+        print(f"attribution: dropping {int(not_direct.sum())} sales not attributed directly to the artist")
+        df = df[~not_direct.values].reset_index(drop=True)
+        not_direct = not_direct[~not_direct].reset_index(drop=True)
     feat = build_features(df)
+    feat["after"] = not_direct.astype(float).values
+    has_sold = "sold" in df.columns
+    sold = df["sold"].astype(str).str.lower().eq("true") if has_sold else pd.Series(True, index=df.index)
+    feat["unsold"] = (~sold).astype(float).values
+    if has_sold and args.unsold_flag == "on" and args.target != "hammer":
+        BINARY.append("unsold")
+    if args.size_terms.startswith("shape-bands"):
+        area = np.exp(feat["area_log"])
+        feat["area_band"] = np.select(
+            [area.isna(), area < 400, area < 900, area < 1800, area < 7500],
+            ["unknown", "<400", "400-900", "900-1800", "1800-7500"], default=">7500")
+    feat["area_log_xl"] = (feat["area_log"] - math.log(XL_AREA_CM2)).clip(lower=0).fillna(0.0)
     for col, cat in SUBJECT_FLAGS.items():
         feat[col] = (feat["subject"] == cat).astype(float)
     feat["catalogue_cited"] = feat["has_citation"].astype(float)
-    y = np.log(df["hammerGBP"].astype(float))
+    feat["edition_unknown"] = feat["edition_log"].isna().astype(float)
+    ed_filled = feat["edition_log"].fillna(feat.loc[(df["saleDate"] < args.cut).values, "edition_log"].median())
+    for col in EDITION_HINGES:
+        # zero for an unknown edition (its level is carried by edition_unknown), else log edition past the knot
+        feat[col] = ((ed_filled - math.log(int(col.rsplit("_", 1)[1]))).clip(lower=0) * (1 - feat["edition_unknown"]))
+    fx_t = df["fxRateToGBP"].astype(float).where(df["fxRateToGBP"].astype(float) > 0)
+    low_t = df["estimateLowGBP"].astype(float).where(df["estimateLowGBP"].astype(float) > 0).fillna(df["estimateLow"].astype(float) / fx_t)
+    high_t = df["estimateHighGBP"].astype(float).where(df["estimateHighGBP"].astype(float) > 0).fillna(df["estimateHigh"].astype(float) / fx_t)
+    if args.target == "hammer":
+        y = np.log(df["hammerGBP"].astype(float).where(df["hammerGBP"].astype(float) > 0))
+    elif "estimateMidGBP" in df.columns:
+        # lots export: the estimate at the SALE-DATE rate, converted by export_sales.py --lots
+        y = np.log(df["estimateMidGBP" if args.target == "estimate-mid" else "estimateLowGBPSaleDate"].astype(float))
+    else:
+        y = np.log(((low_t + high_t) / 2) if args.target == "estimate-mid" else low_t)
+    if True:
+        keep = y.notna() & np.isfinite(y)
+        if not keep.all():
+            print(f"target {args.target}: dropping {int((~keep).sum())} rows without that price")
+            df, feat, y = df[keep.values].reset_index(drop=True), feat[keep.values].reset_index(drop=True), y[keep].reset_index(drop=True)
     train = (df["saleDate"] < args.cut).values
+    if args.fit_all:
+        if args.kappa is None:
+            raise SystemExit("--fit-all needs --kappa (choose it with a cut build first)")
+        train = np.ones(len(df), dtype=bool)
+        print(f"fit-all: training on all {len(df)} rows through {df['saleDate'].max()[:10]}; kappa fixed at {args.kappa}")
     test = ~train
     fx = df["fxRateToGBP"].astype(float).where(df["fxRateToGBP"].astype(float) > 0)
     est = ((df["estimateLow"].astype(float) + df["estimateHigh"].astype(float)) / 2) / fx
@@ -284,14 +407,30 @@ def main():
 
     # 2. own fits per artist on deflated log price (attributes only), with per-level support
     own_beta, own_support, own_n, level = {}, {}, {}, {}
+    trimmed = {}
     for a, n in n_art.items():
         m = train & (df["artist"] == a).values
         own_n[a] = int(n)
         if n < MIN_OWN:
             continue
-        r = Ridge(alpha=ALPHA).fit(X[m], ydefl[m])
+        def fit(rows):
+            if args.loss == "huber":
+                return HuberRegressor(epsilon=args.huber_epsilon, alpha=args.alpha, max_iter=2000).fit(X[rows].values, ydefl[rows].values)
+            return Ridge(alpha=args.alpha).fit(X[rows], ydefl[rows])
+        r = fit(m)
+        if args.trim_mad > 0:
+            e = ydefl[m].values - r.predict(X[m].values if args.loss == "huber" else X[m])
+            dev = np.abs(e - np.median(e)); scale = 1.4826 * np.median(dev)
+            if scale > 0 and (dev > args.trim_mad * scale).any():
+                keep = m.copy(); keep[np.where(m)[0][dev > args.trim_mad * scale]] = False
+                trimmed[a] = int(m.sum() - keep.sum())
+                m = keep
+                r = fit(m)
         own_beta[a] = pd.Series(r.coef_, index=cols)
         own_support[a] = level_support(feat[m], cols)
+
+    if args.trim_mad > 0:
+        print(f"trimmed {sum(trimmed.values())} sales beyond {args.trim_mad} robust SDs across {len(trimmed)} artists")
 
     # 3. descriptors and neighbours (donors only). Descriptors need only MIN_DESC sales: an
     #    artist with 5 sales can be PLACED (price level, signed share, period) even though their
@@ -342,7 +481,11 @@ def main():
         out = pri.copy()
         for col in cols:
             if sup.get(col, 0) >= MIN_LEVEL_ROWS:
-                out[col] = (n * own[col] + kappa * pri[col]) / (n + kappa)
+                w = sup.get(col, 0) if args.shrink_by == "level" else n
+                out[col] = (w * own[col] + kappa * pri[col]) / (w + kappa)
+        if args.xl_cap > 0 and "area_log_xl" in out:
+            # the term is per unit of log area; x cap per doubling is log(cap) / log(2) per unit
+            out["area_log_xl"] = min(out["area_log_xl"], math.log(args.xl_cap) / math.log(2))
         return out
 
     def predict(a, beta, rows):
@@ -357,6 +500,7 @@ def main():
     print(hdr)
     total = {k: [] for k in KAPPAS}
     total_rows = 0
+    dumped = {}
     for lo, hi in bands:
         arts = [a for a in n_art.index if lo <= own_n[a] < hi and a in priors]
         rows_idx = test & df["artist"].isin(arts).values
@@ -383,14 +527,44 @@ def main():
         print(line)
         for k in KAPPAS:
             total[k].append((mae(yt, p_k[k])[0], int(rows_idx.sum())))
+            dumped.setdefault(k, []).append(pd.Series(p_k[k], index=df.index[rows_idx]))
         total_rows += int(rows_idx.sum())
-    best_k = min(KAPPAS, key=lambda k: sum(m * n for m, n in total[k]) / max(1, sum(n for _, n in total[k])))
+    best_k = args.kappa if args.kappa is not None else min(KAPPAS, key=lambda k: sum(m * n for m, n in total[k]) / max(1, sum(n for _, n in total[k])))
     print(f"\nkappa chosen on all test rows: {best_k}   (" + "  ".join(f"k={k}: {sum(m * n for m, n in total[k]) / max(1, sum(n for _, n in total[k])):.3f}" for k in KAPPAS) + ")")
+
+    if args.dump_test and not args.fit_all:
+        pred = pd.concat(dumped[best_k])
+        out = df.loc[pred.index, ["artist", "house", "saleDate", "hammerGBP", "editionSize"]].copy()
+        out["edition_band"] = feat.loc[pred.index, "edition_band"]
+        out["row"] = pred.index
+        out["sourceId"] = df.loc[pred.index, "sourceId"].values
+        out["y"] = y[pred.index]
+        out["logHammer"] = np.log(df.loc[pred.index, "hammerGBP"].astype(float).where(df.loc[pred.index, "hammerGBP"].astype(float) > 0)).values
+        out["unsold"] = feat.loc[pred.index, "unsold"].values
+        out["sourceHouse"] = df.loc[pred.index, "house"].values
+        if "unsold" in cols:
+            # The fair price is a SOLD lot's estimate: the same prediction with the unsold column at 0.
+            j = cols.index("unsold")
+            no_flag = pred.copy()
+            for a in out["artist"].unique():
+                rr = out.index[out["artist"] == a]
+                beta = shrunk(a, best_k)
+                no_flag.loc[rr] = pred.loc[rr] - beta["unsold"] * feat.loc[rr, "unsold"].values
+            out["predSoldScale"] = no_flag.values
+        out["pred"] = pred
+        os.makedirs(os.path.dirname(os.path.abspath(args.dump_test)), exist_ok=True)
+        out.to_csv(args.dump_test, index=False)
 
     # 5. write the priors database
     os.makedirs(args.out_dir, exist_ok=True)
     built_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-    db = {"version": "PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2", "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
+    version = ("PRICING-PRIORS-1.3" if args.with_citation else "PRICING-PRIORS-1.2") + ("" if args.size_terms == "both" else f"-{args.size_terms}")
+    version += ("" if args.reproduction == "none" else f"+{args.reproduction}") + ("" if args.edition_terms == "both" else f"+edition-{args.edition_terms}")
+    version += "" if args.attribution == "all" else f"+{args.attribution}"
+    version += "+object" if args.object_flag == "on" else ""
+    version += "" if args.target == "hammer" else f"+target-{args.target}" + ("+unsold-flag" if "unsold" in cols else "")
+    version += "+fit-all" if args.fit_all else ""
+    db = {"version": version, "fit_all": bool(args.fit_all), "last_sale_date": str(df["saleDate"].max())[:10], "built_at": built_at, "cut": args.cut, "min_year": args.min_year,
           "kappa": best_k, "min_own_sales": MIN_OWN, "min_descriptor_sales": MIN_DESC,
           "source_rows": source_rows, "model_rows": int(len(df)), "train_rows": int(train.sum()),
           "reference_levels": REFS, "elasticity_columns": cols, "year_effects": year_eff, "continuous_medians": med,
@@ -441,7 +615,8 @@ def main():
         for col in ["signature_hand", "edition_band_>300", "edition_band_<=30", "process_screenprint", "process_etching"] + BINARY:
             if col in e:
                 print("     " + show(col))
-        print(f"     area per doubling x{math.exp(e['area_log']['value'] * math.log(2)):.2f}   edition per doubling x{math.exp(e['edition_log']['value'] * math.log(2)):.2f}")
+        per_doubling = lambda col: f"x{math.exp(e[col]['value'] * math.log(2)):.2f}" if col in e else "n/a (no continuous term)"
+        print(f"     area per doubling {per_doubling('area_log')}   edition per doubling {per_doubling('edition_log')}")
 
 
 if __name__ == "__main__":

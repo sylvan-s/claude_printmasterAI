@@ -23,6 +23,19 @@
  *                        title: "Untitled (SF 314, Lembark 270)" strips to "Untitled", which
  *                        names nothing and must not meet the artist's generic "Untitled" node
  *   stripped_no_series — additionally ignoring a ", from <series>" suffix
+ *   article_title      — equal once a leading article is dropped on both sides: Roseberys
+ *                        catalogues "Clown et l'Harlequin", Forum and Swann "Le Clown et
+ *                        l'Harlequin" (A0793/305)
+ *
+ * A TITLE-LEVEL HIT IS WIDENED TO ITS SPELLING VARIANTS. The first level that answers wins, but
+ * the same print is often recorded under two spellings by different houses, and stopping at the
+ * first answer keeps only one of them: A0793/2 "Le Petit Équilibrist" matched Roseberys' and
+ * Bonhams' nodes exactly and never reached Swann's three "Le Petit Équilibriste" sales, so the
+ * lot priced with no same-work comps at all. After a title level resolves, works whose key is a
+ * one-slip typo variant or a leading-article variant of the resolved key are added — unless
+ * they carry a catalogue citation that contradicts the lot's or the matched works' (same
+ * catalogue, different number), which is how two different plates are told apart. Citation
+ * levels are never widened: a citation is already the identity.
  *
  * WHAT IS DELIBERATELY NOT STRIPPED, and why. `title_normalize.ts` exists for the title
  * EMBEDDING and removes series/portfolio designators and plate/state parentheticals so a
@@ -51,10 +64,13 @@ import { isTypoVariant } from "./typo_tolerance.js";
 import { foldAccents, normalizeTitleKey } from "./unaccent.js";
 import { isLowInformationTitle } from "./title_normalize.js";
 
-export type WorkIdentityBasis = "exact_title" | "citation" | "citation_and_title" | "stripped_title" | "stripped_no_series" | "typo_title";
+export type WorkIdentityBasis = "exact_title" | "citation" | "citation_and_title" | "stripped_title" | "stripped_no_series" | "article_title" | "typo_title";
 
 export interface WorkIdentity {
+  /** Every work id to READ evidence from: the matched works plus their spelling variants. */
   workIds: string[];
+  /** The ids the level itself matched, before spelling variants were added. The only ids a WRITE may use. */
+  strictWorkIds: string[];
   basis: WorkIdentityBasis | null;
   /** The catalogued name the lot resolved to (one per matched work id, deduped). */
   matchedNames: string[];
@@ -86,10 +102,11 @@ const NOT_A_CITATION_PREFIX = /^(pl|plate|planche|no|nos|number|state|etat|état
  * "(Mourlot 1217, Cramer Books 248)", "(Baer 377/II/B/a)". The prefix must start with a
  * letter and the item must carry a digit.
  */
+/** A poster catalogue cites a PAGE ("Czwiklitzer p.437"), so the number may carry "p." / "pp.". */
 /** "Prefix Number" — prefix starts with a letter (any script) and may contain . & ' / - and
  *  spaces ("Delteil/Stella", "Cramer Books", "F./S."); number is digits with an optional
  *  letter prefix/suffix and slash-separated state parts ("P3", "11bis", "377/II/B/a"). */
-const CITATION_ITEM = /^(\p{L}[\p{L}.&'’\/\-\s]{0,30}?)\s+([A-Za-z]?\d{1,5}[A-Za-z]{0,3}(?:\/[A-Za-z0-9]+)*)\s*$/u;
+const CITATION_ITEM = /^(\p{L}[\p{L}.&'’\/\-\s]{0,30}?)\s+((?:pp?\.\s?)?[A-Za-z]?\d{1,5}[A-Za-z]{0,3}(?:\/[A-Za-z0-9]+)*)\s*$/u;
 const BRACKETED = /[\[(]([^\[\]()]*)[\])]/g;
 
 function citationItems(inner: string): Citation[] {
@@ -149,6 +166,20 @@ export function titleIdentityKey(raw: string): string {
   s = s.replace(LEADING_ORDINAL, "").replace(LEADING_CAT_NUM, "");
   s = s.replace(/^["'‘’“”]+|["'‘’“”]+$/g, "");
   return normalizeTitleKey(s);
+}
+
+const LEADING_ARTICLE = /^(the|a|an|le|la|les|l|un|une|il|lo|gli|el|los|las|der|die|das)\s+/;
+
+/** Level-5 key: level 3 with a leading article removed. "" when there is none or nothing identifying is left. */
+export function titleIdentityKeyNoArticle(raw: string): string {
+  return articleless(titleIdentityKey(raw));
+}
+
+/** Drop a leading article from an identity key; "" when there is none or the rest names nothing. */
+export function articleless(key: string): string {
+  const without = key.replace(LEADING_ARTICLE, "");
+  if (without === key) return key;
+  return isIdentifyingTitle(without) ? without : "";
 }
 
 /** Level-4 key: level 3 with a trailing ", from <series>" removed. "" when nothing identifying is left. */
@@ -263,7 +294,7 @@ export async function resolveWorkIdentity(input: {
   const key = titleIdentityKey(title);
   const keyNoSeries = titleIdentityKeyNoSeries(title);
   const base: WorkIdentity = {
-    workIds: [], basis: null, matchedNames: [], ambiguousAt: null, ambiguousNames: [],
+    workIds: [], strictWorkIds: [], basis: null, matchedNames: [], ambiguousAt: null, ambiguousNames: [],
     candidatesConsidered: 0, queriedTitle: title, identityKey: key, citations,
   };
   if (!input.artistName?.trim()) return base;
@@ -288,9 +319,25 @@ export async function resolveWorkIdentity(input: {
     return ownTitles.some((t) => normalizeTitleKey(t!) === normalizeTitleKey(w.name)) && !others.some((t) => normalizeTitleKey(t) === normalizeTitleKey(w.name)) ? null : w.name;
   };
   const namesOf = (w: WorkRow) => [nameOf(w), ...w.aliases, ...sourceTitlesOf(w)].filter((t): t is string => !!t);
+  const TITLE_LEVELS: WorkIdentityBasis[] = ["exact_title", "stripped_title", "stripped_no_series", "article_title", "typo_title"];
+  const conflicts = (w: WorkRow, against: Citation[]) =>
+    w.citations.some((c) => against.some((x) => x.prefix === c.prefix && x.number !== c.number))
+    && !w.citations.some((c) => against.some((x) => x.prefix === c.prefix && x.number === c.number));
+  const widen = (ids: string[], names: string[]) => {
+    const matched = works.filter((w) => ids.includes(w.id));
+    const keys = new Set(matched.flatMap((w) => [w.name, ...w.aliases].map((t) => titleIdentityKey(t))).concat(key ? [key] : []));
+    const cited = [...citations, ...matched.flatMap((w) => w.citations)];
+    const variantOf = (k: string) => [...keys].some((m) => k === m || isTypoVariant(k, m) || (!!articleless(k) && articleless(k) === articleless(m)));
+    const extra = works.filter((w) => !ids.includes(w.id) && namesOf(w).some((t) => variantOf(titleIdentityKey(t))) && !conflicts(w, cited));
+    return { ids: [...ids, ...extra.map((w) => w.id)], names: [...new Set([...names, ...extra.map((w) => w.name)])] };
+  };
   const finish = (level: WorkIdentityBasis, d: ReturnType<typeof decide>): WorkIdentity | null => {
     if (!d) return null;
-    if (d.ok) return { ...base, workIds: d.ids, basis: level, matchedNames: d.names };
+    if (d.ok && TITLE_LEVELS.includes(level)) {
+      const wide = widen(d.ids, d.names);
+      return { ...base, workIds: wide.ids, strictWorkIds: d.ids, basis: level, matchedNames: wide.names };
+    }
+    if (d.ok) return { ...base, workIds: d.ids, strictWorkIds: d.ids, basis: level, matchedNames: d.names };
     return { ...base, ambiguousAt: level, ambiguousNames: d.names };
   };
 
@@ -323,7 +370,13 @@ export async function resolveWorkIdentity(input: {
     const r = finish("stripped_no_series", decide("stripped_no_series", works.filter((w) => namesOf(w).some((t) => sideKey(t) === keyNoSeries)), (w) => titleIdentityKey(w.name)));
     if (r) return r;
   }
-  // 5. LAST, and only after every exact level has missed: one typing slip in the title.
+  // 5. leading article dropped on both sides
+  const keyArticle = keyIdentifying ? articleless(key) : "";
+  if (keyArticle) {
+    const r = finish("article_title", decide("article_title", works.filter((w) => namesOf(w).some((t) => articleless(titleIdentityKey(t)) === keyArticle)), (w) => articleless(titleIdentityKey(w.name))));
+    if (r) return r;
+  }
+  // 6. LAST, and only after every exact level has missed: one typing slip in the title.
   //    A house's catalogue is typed by hand and a single wrong character ("Clegry Boia" for
   //    "Clegyr Boia", Roseberys A0793/67) otherwise costs a specialist web search to recover.
   //    isTypoVariant refuses anything where a plate/state designator differs, so series

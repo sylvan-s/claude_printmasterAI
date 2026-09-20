@@ -27,11 +27,48 @@ export const PROCESSES = ["linocut", "aquatint", "drypoint", "etching", "engravi
 
 const blobOf = (texts: (string | null | undefined)[]): string => texts.filter((t): t is string => typeof t === "string").join(" ").toLowerCase();
 
+/**
+ * train_price_model.PHOTOMECH_RE / POSTER_RE (2026-09-17). Offset prints and photolithographs are
+ * their own technique, "offset", unless a hand process is named first; a poster is the object,
+ * not a word in an inscription or a publisher's name.
+ */
+const PHOTOMECH_RE = /\boffset\b|photo-?lithograph|photo-?mechanical/;
+const POSTER_RE = new RegExp(
+  "(?:lithographic|offset|screenprint(?:ed)?|silkscreen|exhibition|film|travel|advertising|olympic)\\s+posters?\\b"
+  + "|\\bposters?\\s+(?:in colou?rs?|printed|for\\b|designed)|^\\s*posters?\\b|\\bposters?\\s*/\\s*lithograph"
+  + "|lithograph(?:ic)?\\s+posters?\\b|\\bfrom the (?:unsigned |unnumbered )?poster edition");
+
+/**
+ * The attribution is the artist's own work: no qualifier, the house's unqualified "certain", the
+ * graph's "direct", or "unknown". Anything else ("after", "manner of", "attributed to", "circle of",
+ * "school of", "follower of", "studio of") is priced with the model's per-artist "after" column and
+ * compared only with other such lots (build_priors.not_direct_mask, 2026-09-17).
+ */
+export function isDirectQualifier(q: string | null | undefined): boolean {
+  const t = (q ?? "").trim().toLowerCase();
+  return t === "" || t === "certain" || t === "direct" || t === "unknown";
+}
+
+/** train_price_model.INCISED_RE / OBJECT_RE, copied from the Python patterns verbatim (2026-09-17). */
+const INCISED_RE = new RegExp("incised (?:signature|initials|with (?:the )?(?:artist's )?(?:signature|initials))|(?:signature|initials) incised");
+const OBJECT_RE = new RegExp("(?:print|screenprint|serigraph|lithograph|gicl[e\u00e9]e|inkjet|pigment|multiple|relief|embroidery)\\b[^.;]{0,60}?(?<!laid )(?<!mounted )(?<!backed )(?<!lined )\\bon (?:two |three |four )?(?:cut |brushed |polished |anodi[sz]ed |powder[- ]coated |galvani[sz]ed )?(?:aluminium|aluminum|plexiglass?|perspex|acrylic (?:sheet|glass|block)|stainless steel|steel|metal|wood(?:en)? (?:panel|board|block)|plywood|mdf|glass|mirror|ceramic|porcelain|enamel|vinyl|canvas|felt|leather|silk|resin)\\b|^\\s*(?:porcelain|ceramic|enamel|bronze|cast resin|resin|painted wood|wooden block|vinyl|skateboard)\\b");
+
+/** train_price_model.is_object: printed or made ON a non-paper object or panel, or a cast / ceramic object. */
+export function isObject(text: string | null | undefined): boolean {
+  return typeof text === "string" && OBJECT_RE.test(text.toLowerCase());
+}
+
+/** train_price_model.is_poster */
+export function isPoster(text: string | null | undefined): boolean {
+  return typeof text === "string" && POSTER_RE.test(text.toLowerCase());
+}
+
 /** train_price_model.primary_process */
 export function primaryProcess(texts: (string | null | undefined)[]): string {
   const blob = blobOf(texts);
-  for (const p of PROCESSES) if (blob.includes(p)) return p;
-  return "other";
+  const first = PROCESSES.find((p) => blob.includes(p)) ?? "other";
+  if ((first === "lithograph" || first === "collotype" || first === "other") && PHOTOMECH_RE.test(blob)) return "offset";
+  return first;
 }
 
 /** train_price_model.signature_class */
@@ -40,6 +77,7 @@ export function signatureClass(signed: boolean | string | null | undefined, text
   if (/stamped signature|signature stamp|estate stamp/.test(t)) return "stamped";
   if (/signed in the plate|signed in the stone|plate[- ]signed|signed in the block/.test(t)) return "plate";
   if (/\bsigned\b/.test(t) && !/\bunsigned\b/.test(t)) return "hand";
+  if (INCISED_RE.test(t)) return "hand";   // an incised signature on Plexiglas / metal / resin (2026-09-17)
   if (/\binitial(l)?ed\b/.test(t)) return "initialled";
   if (signed === true || String(signed).toLowerCase() === "true") return "hand";
   return "unsigned";
@@ -86,19 +124,29 @@ export function proofClass(copyType: string | null | undefined, text: string | n
   if (/artist'?s proof|épreuve d'artiste|epreuve d'artiste|\bE\.?A\.?\b|\bA\.?P\.?\b/.test(raw)) return "artist_proof";
   if (/hors commerce|\bH\.?C\.?\b/.test(raw)) return "hors_commerce";
   if (/trial proof|épreuve d'essai|epreuve d'essai|bon à tirer|bon a tirer|\bB\.?A\.?T\.?\b/.test(raw)) return "trial_proof";
-  if (/\d+\s*\/\s*\d+/.test(t) || String(copyType ?? "").toLowerCase() === "numbered") return "numbered";
+  if (NUMBERED_RE.test(t) || String(copyType ?? "").toLowerCase() === "numbered") return "numbered";
   if (/from the edition of|edition of \d/.test(t)) return "edition_unnumbered";
   return "unknown";
 }
 
-/** train_price_model.edition_size — declared when positive, else "x/N", else "edition of N". */
+/**
+ * Edition wording, mirroring train_price_model.py (2026-09-17). A bare "n/N" is NOT an edition: in
+ * catalogue text it is almost always an inch fraction ("19 1/2 x 15 1/4in"), which gave 6,257
+ * training rows editions of 2/4/8/16. Only explicit wording counts, in this order.
+ */
+const NUMBERED_RE = /\b(?:numbered|no\.)\s*(?:in pencil\s*)?['"\u2018\u2019\u201c\u201d]?\d+\s*\/\s*(\d{1,3}(?:,\d{3})+|\d{1,5})\b(?!\s*(?:mm\b|cm\b|["\u201d]))/i;
+const EDITION_OF_RE = /\bedition of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,3}(?:,\d{3})+|\d{1,5})\b/i;
+const ONE_OF_RE = /\bone of\s+(?:approximately\s+|approx\.\s*|about\s+|circa\s+|c\.\s*|ca\.\s*)?(\d{1,3}(?:,\d{3})+|\d{1,5})\s+(?:impressions|copies|examples)\b/i;
+
+/** train_price_model.edition_size — declared when positive, else "numbered n/N", "edition of N", "one of N impressions". */
 export function editionSizeOf(declared: number | null | undefined, text: string | null | undefined): number | null {
   if (declared != null && Number.isFinite(declared) && declared > 0) return declared;
   const t = text ?? "";
-  let m = t.match(/\d+\s*\/\s*(\d{1,4})/);
-  if (m) return Number(m[1]);
-  m = t.match(/edition of (?:approximately |about )?(\d{1,5})/i);
-  if (m) return Number(m[1]);
+  for (const rx of [NUMBERED_RE, EDITION_OF_RE, ONE_OF_RE]) {
+    const m = t.match(rx);
+    const n = m ? Number(m[1].replace(/,/g, "")) : 0;   // "edition of 1,000" is 1000, not 1
+    if (n > 0) return n;
+  }
   return null;
 }
 
@@ -128,6 +176,8 @@ export function priceAttrsOfComparable(c: Pick<AuctionComparable, "techniques" |
     editionSize: editionSizeOf(c.editionSize, c.rawMedium),
     areaCm2: dims ? dims[0] * dims[1] : null,
     process: primaryProcess([...(c.techniques ?? []), c.rawMedium]),
+    poster: isPoster(c.rawMedium),
+    object: isObject(c.rawMedium),
   };
 }
 
@@ -159,5 +209,7 @@ export function priceAttrsOfLot(lot: {
     editionSize: editionSizeOf(lot.editionSize, lot.text),
     areaCm2: area,
     process: primaryProcess([...(lot.techniques ?? []), lot.text]),
+    poster: isPoster(lot.text),
+    object: isObject(lot.text),
   };
 }

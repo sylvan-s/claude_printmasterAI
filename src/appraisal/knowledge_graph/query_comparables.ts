@@ -80,6 +80,8 @@ export interface AuctionComparable {
   estimateLowGBP: number | null;
   estimateHighGBP: number | null;
   listingUrl: string | null;
+  /** "after X" / "manner of" / "attributed to" rather than the artist's own work. */
+  nonDirect?: boolean;
 }
 
 export interface ComparablesSummary {
@@ -134,6 +136,13 @@ export interface ComparablesParams {
   /** Exclude EVERY record of this sale. See queryWorkFacts.excludeSaleId for why sale + lot
    *  number is not sufficient on a preview lot, and why this is opt-in. */
   excludeSaleId?: string | null;
+  /**
+   * The lot's attribution class (2026-09-17). "direct": only the artist's own work, never "after X" /
+   * "manner of" / "attributed to" lots; "after": only those. Absent: no filter (older callers).
+   * A sale is non-direct when its ATTRIBUTED_TO qualifier is not "direct", or it has none and the
+   * listing URL says so; build_priors.not_direct_mask uses the same rule.
+   */
+  attribution?: "direct" | "after" | null;
   limit?: number;
 }
 
@@ -143,6 +152,9 @@ export interface ComparablesParams {
 // traversal attached the planner started from SourceRecord instead: measured 2026-09-13 at
 // 3.3-4.6 s per call against 24-80 ms from the index, for a 1-work artist and a 422-comp
 // artist alike.
+/** Listing URLs that name a non-direct attribution; build_priors.NON_DIRECT_URL_RE, as a Neo4j (Java) regex. */
+export const NON_DIRECT_URL_RE = "(?i).*(?:lot/\\d+/|/\\d+-)(?:after|manner-of|circle-of|attributed-to|follower-of|school-of)-.*";
+
 const QUERY = `
 MATCH (a:Artist)
 WHERE a.name IN $artistNames
@@ -159,12 +171,17 @@ WHERE src.sourceType = 'auction'
   AND ($excludeListingUrl IS NULL OR src.listingUrl IS NULL OR src.listingUrl <> $excludeListingUrl)
   AND ($excludeLotSaleId IS NULL OR NOT (src.saleId = $excludeLotSaleId AND src.lotNumber = $excludeLotNumber))
   AND ($excludeWholeSaleId IS NULL OR src.saleId IS NULL OR src.saleId <> $excludeWholeSaleId)
+OPTIONAL MATCH (src)-[att:ATTRIBUTED_TO]->(a)
+WITH cw, src, er, imp,
+     any(q IN collect(att.qualifier) WHERE q IS NOT NULL AND q <> 'direct')
+       OR (all(q IN collect(att.qualifier) WHERE q IS NULL) AND coalesce(src.listingUrl, '') =~ $nonDirectUrlRe) AS nonDirect
+WHERE $attribution IS NULL OR ($attribution = 'direct' AND NOT nonDirect) OR ($attribution = 'after' AND nonDirect)
 OPTIONAL MATCH (imp)-[:USES_TECHNIQUE]->(t:Technique)
-WITH cw, src, er, imp, collect(DISTINCT t.name) AS techniques
+WITH cw, src, er, imp, nonDirect, collect(DISTINCT t.name) AS techniques
 // Tier must be decided HERE, not after LIMIT. Ordering by saleDate alone and tiering in
 // TS would let a tier-1 same-work comp fall outside the LIMIT window whenever the artist
 // has enough recent sales — silently discarding the single most relevant comparable.
-WITH cw, src, er, imp, techniques,
+WITH cw, src, er, imp, techniques, nonDirect,
      CASE
        WHEN $conceptualWorkId IS NOT NULL AND cw.id = $conceptualWorkId THEN 0
        WHEN size($conceptualWorkIds) > 0 AND cw.id IN $conceptualWorkIds THEN 0
@@ -180,7 +197,7 @@ WITH cw, src, er, imp, techniques,
 // and drags the median toward whichever lots happen to be duplicated. Measured at ~4%
 // excess rows (120 rows for 115 distinct records on one artist) before this collapse.
 ORDER BY tierRank ASC
-WITH src, collect({
+WITH src, nonDirect, collect({
        tierRank: tierRank, workId: cw.id, workTitle: cw.name,
        editionSize: coalesce(er.declaredSize, er.editionSize), techniques: techniques, signed: imp.signed,
        rawMedium: imp.rawMedium, copyType: imp.copyType,
@@ -189,6 +206,7 @@ WITH src, collect({
 ORDER BY best.tierRank ASC, src.saleDate DESC
 LIMIT $limit
 RETURN best.tierRank AS tierRank,
+       nonDirect AS nonDirect,
        best.workId AS workId,
        best.workTitle AS workTitle,
        src.institutionName AS institutionName,
@@ -282,6 +300,8 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
       excludeLotSaleId: params.excludeSaleLot?.saleId ?? null,
       excludeLotNumber: params.excludeSaleLot ? neo4j.int(params.excludeSaleLot.lotNumber) : null,
       excludeWholeSaleId: params.excludeSaleId?.trim() || null,
+      attribution: params.attribution ?? null,
+      nonDirectUrlRe: NON_DIRECT_URL_RE,
       limit: neo4j.int(limit),
     });
 
@@ -313,6 +333,7 @@ export async function queryAuctionComparables(params: ComparablesParams): Promis
         estimateLowGBP: num(r.get("estimateLowGBP")),
         estimateHighGBP: num(r.get("estimateHighGBP")),
         listingUrl: r.get("listingUrl") ?? null,
+        nonDirect: r.get("nonDirect") === true,
       };
     });
 

@@ -1,0 +1,37 @@
+{
+ "version": "KM-POOL-SPLIT-1.0",
+ "plannedAt": "2026-09-19",
+ "note": "target names are the exact strings in the raw King & McGaw catalog and in each work's own km-cw- id; only the Artist edges are wrong, the work ids already carry the true name",
+ "rows": [
+  {
+   "work": "km-cw-eric_ravilious-cuckmere_haven_1939",
+   "from": "Eric",
+   "to": "Eric Ravilious"
+  },
+  {
+   "work": "km-cw-john_wilsher-b_b_king",
+   "from": "J. Howard Miller",
+   "to": "John Wilsher"
+  },
+  {
+   "work": "km-cw-john_wilsher-muddy_waters",
+   "from": "J. Howard Miller",
+   "to": "John Wilsher"
+  },
+  {
+   "work": "km-cw-john_wilsher-ray_charles",
+   "from": "J. Howard Miller",
+   "to": "John Wilsher"
+  },
+  {
+   "work": "km-cw-hans_holbein_the_younger-the_ambassadors",
+   "from": "After Hans Holbein the Younger",
+   "to": "Hans Holbein The Younger"
+  },
+  {
+   "work": "km-cw-hans_holbein_the_younger-a_lady_with_a_squirrel_and_a_starling_anne_lovell",
+   "from": "After Hans Holbein the Younger",
+   "to": "Hans Holbein The Younger"
+  }
+ ]
+}
