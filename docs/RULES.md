@@ -1,12 +1,68 @@
-# Parsing rule index
+# How we read source data
 
-One line per **rule family** — one question asked of free-form catalogue prose. The shape these
-follow, and why, is [ADR-0020](adr/0020-shared-parsing-rule-modules.md).
+The corpus of what we know about handling data from each source: what each one does that no
+other does, which rule reads it, and what has already gone wrong. The point is that this can be
+**interrogated** — by source or by question — and **applied consistently** when a new source or
+a new field arrives, instead of being rediscovered per ingest.
 
-Read this before adding a regex to an ingest. If the question already has a family, extend the
-family; do not add a fifth implementation of it.
+It is deliberately not a model-accuracy document. Most entries here are correctness, not
+precision: a rule that reads an inch fraction as an edition of 8 is wrong whether or not the
+model notices.
 
-## Families
+Three views of the same corpus:
+
+- **[By source](#by-source)** — start here when adding or debugging one source.
+- **[By rule family](#by-rule-family)** — start here when adding a rule. One family is one
+  question asked of catalogue prose; the shape they follow is
+  [ADR-0020](adr/0020-shared-parsing-rule-modules.md). If the question already has a family,
+  extend it; do not add another implementation of it.
+- **[Guards](#guards)** — the executable half. Each exists because of a specific silent defect.
+
+**Status: about a third built.** Two of six families have a shared module. The other four are
+still one implementation per source, which is the condition this corpus exists to end.
+
+## By source
+
+What each source does that the others do not. "Defects" are ones that reached the graph.
+
+| source | reads | house quirks and defects | guards |
+|---|---|---|---|
+| **Bonhams** (+ Skinner, same adapter) | `bonhams_parsing.py` → `bonhams_ingest.py` | API `gbp_*_estimate` holds the **sold price** post-sale, not the estimate (54,890 rows repaired). Artist field can **lead with a parenthetical** (`(n/a) Andy Warhol`), blanking the name and poisoning nationality/dates. Roman-numeral impression numbers. Suffixed edition numbers (`48/50A`, `14/250P`). | `check_bonhams_estimate_gbp.py`, `check_bonhams_name_parsing.py` |
+| **Swann** | `swann_parsing.py` → `swann_ingest.py`, **shares Bonhams' edition rule** | Sells drawings and unique works alongside prints. Aliased artist names created **shadow duplicate** Artist nodes (Joan Miró); the exact-first resolver picks them. Hammer is derived, not given. | — (resolver guard still open) |
+| **Roseberys** | TypeScript `benchmark/src/roseberys/parse.ts` → `roseberys_ingest.py` | Edition size comes from the **TS extract column**, not the Python rule. Nationality on its own line, title terminated with `;`, dimensions in **cm**. Multi-work lots. **Suspected height × width transposition — unconfirmed, blocks the dimensions family.** | `check_roseberys_estimate_gbp.py`, `check_roseberys_dimensions.py` (on `fix/ingest-dims-copytype`) |
+| **Forum** | TypeScript `benchmark/src/forum/parse.ts` → `forum_ingest.py` | Dimensions in **mm**, not cm. Read inch fractions as edition sizes (`25 1/2in` → 2), 1,442 priced sales mis-banded. **Sale dates missing on all 6,228 sold+priced rows**, so the comps query silently drops them. Edition text lives in `edition_note`, not `rawMedium`. | `check_forum_edition_fractions.py`, `check_forum_sale_dates.py` |
+| **King & McGaw** (retail) | `king_mcgaw_fetch.py` → `king_mcgaw_ingest.py` | Retail, not auction: **must stay out of price, edition and image evidence** (`originalVerified`, `limited_edition_poster`). Throttles at 8 workers and serves **degraded 200s**. Its ULAN assignments were wrong often enough to need an audit. | `check_poster_evidence_isolation.py` (on the KM branch) |
+| **Museums** (Met, BM, Tate, Navigart, Picasso Paris) | per-source ingests | No prices — reference and image evidence only. Navigart's `tirage` carries **bare fractions** (`/30`) with different semantics from auction edition text. Titles: merged works keep the **catalogue raisonné** title, not the museum's. | `check_conceptual_work_title_property.py` |
+
+### Cross-source rules
+
+These are not house concerns and must never be forked per source: Getty ULAN URL form
+(`check_ulan_url_canonical.py`), catalogue-prefix canonicalisation
+(`check_catalogue_prefix_aliases.py`), page-form citations (`check_page_form_citations.py`),
+honorifics and post-nominals (`src/shared/text_extraction.ts`), merges not being undone by a
+re-ingest (`check_merges_not_undone.py`).
+
+## Adding a new source
+
+The checklist this corpus exists to make possible. Work it in order.
+
+1. **Read [By source](#by-source) first.** Most "new" quirks are a quirk another house already
+   has. Pick the closest existing adapter and say in the module docstring which one and why.
+2. **Route every rule family through its shared module.** A new adapter must not define its own
+   `detect_copy_type` or edition regex. Where a family is still unformed, extend the closest
+   existing implementation rather than adding another.
+3. **Establish what the source means by each field before parsing it.** The Bonhams estimate bug
+   and the Navigart `tirage` fractions were both semantic, not syntactic: the regex worked, the
+   field did not mean what it looked like.
+4. **Add the source's cases to the family fixture corpora**, with the `why` filled in.
+5. **State the units and the field-of-record** in the module docstring — cm against mm, which
+   field holds the edition text, whether the price is hammer or premium-inclusive.
+6. **Write the guard when the rule is adopted, not after the incident.** Every guard listed here
+   exists because something broke first.
+7. **Add a row to [By source](#by-source).** An undocumented source is the state this corpus
+   exists to end.
+
+## By rule family
 
 | rule ID | question | Python | TS mirror | fixtures | guards |
 |---|---|---|---|---|---|
@@ -64,7 +120,10 @@ rules; indexing them is a separate job.
 
 ## Next steps
 
-Written 2026-09-20, at the end of the `EDITION-SIZE` work. Ordered by evidence, not appeal.
+Written 2026-09-20. **The objective is corpus coverage and interrogability, not model accuracy.**
+A family is "done" when one module holds the rule, a fixture corpus binds its mirrors, a guard
+defends it, and the source rows in [By source](#by-source) point at it — not when a gate score
+moves. Ordered by evidence, not appeal.
 
 ### Land what exists
 
@@ -76,6 +135,17 @@ Written 2026-09-20, at the end of the `EDITION-SIZE` work. Ordered by evidence, 
    fixture corpus, the applied graph repair and the rebuilt model. Note it carries a live
    calibration change (BLEND-2.4) whose weight shifts come from graph growth, not from the
    repair — see ADR-0020.
+
+### Close the corpus gaps
+
+These are the coverage holes, and they matter more than any single rule fix:
+
+- **Four of six families are still one implementation per source** — signature class, dimensions,
+  catalogue refs, artist qualifier. That is the condition this document exists to end.
+- **Only one family has a fixture corpus.** `tests/fixtures/edition_size.jsonl` is the only place
+  two languages are held to the same cases. Every family needs one.
+- **[By source](#by-source) is hand-maintained and will rot.** Nothing checks that an adapter's
+  row matches what it does. The cheapest fix is a test asserting every `*_ingest.py` has a row.
 
 ### Next rule families, in order
 
