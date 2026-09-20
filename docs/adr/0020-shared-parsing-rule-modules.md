@@ -151,10 +151,22 @@ is fewer downstream re-parses, not three synchronised regexes.
 
 Model-only, 999 impressions, 902 with no stored size. Unchanged by 1.1.
 
-### Not yet decided: the graph repair
+### The graph repair — script built, NOT applied
 
-1.1 changes what *new* ingests produce. The 348 stored values already in the graph are untouched.
-Moving them is a named repair script with its own measurement and its own decision.
+`knowledge_graph/repair_edition_size.py` (`EDITION-SIZE-REPAIR-1.0`), built to the
+`COPY-TYPE-BAT-REPAIR-1.0` pattern: same safety rule (a row changes only if its stored value is
+exactly what the 1.0 rule produced), same `*BeforeRepair` / `*RepairedAt` properties, same
+pre-write snapshot, same `--dry-run` / `--verify` interface.
+
+Dry-run 2026-09-20: **344 planned — 325 gain a size, 19 replace one, 270 of them sold.** One row
+was held back by the safety rule, its stored size having come from somewhere other than this
+rule. Scope is `bonhams-*` and `swann-*` only; Roseberys and Forum take their edition size from
+the TypeScript extract column, not from this rule. `EditionRun` is 1:1 with `Impression`
+(141,389 runs, all fan-out 1), so a write cannot reach another record.
+
+Not applied. `declaredSize` feeds `train_price_model.edition_band` and `price_attrs.ts`
+`editionSizeOf`, so applying it means re-export, rebuild priors, re-run the blend calibration,
+in that order — and that is a decision, not a consequence.
 
 ## What is deliberately excluded
 
