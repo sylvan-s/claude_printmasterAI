@@ -1021,6 +1021,14 @@ const STAGE2B_MAX_WEB_SEARCHES = 5;
  * This is a search filter, not a judgement about the houses: their records are the graph's
  * backbone. It exists so the five searches look where the graph cannot.
  */
+/** Fetches Stage 2b may spend opening pages its searches named. Small on purpose: a fetch costs
+ *  more context than a search result, and three is enough to read the one or two aggregator or
+ *  dealer pages a search turns up. */
+const STAGE2B_MAX_WEB_FETCHES = 3;
+/** A fetched page arrives whole. 6k tokens holds an artist price-guide table without letting a
+ *  long editorial page crowd out the rest of Stage 2b's context. */
+const STAGE2B_FETCH_CONTENT_TOKENS = 6000;
+
 export const ACKG_COVERED_SEARCH_DOMAINS = [
   "roseberys.co.uk",
   "bonhams.com",
@@ -1468,6 +1476,36 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       MultiStageAppraiser.COMPARABLES_TOOL,
       MultiStageAppraiser.EDITION_TOOL,
     ];
+    // WEB FETCH — the tool that makes an estimate-only comp reachable. A search snippet does not
+    // carry a pre-sale estimate or a sold/unsold outcome: probed 2026-09-20, the query that finds
+    // both Golding Young & Mawer offerings of Sorel's "Après la Moisson" returns neither, and the
+    // model correctly answers with nothing rather than inventing them. The figures are on the
+    // page, so the page has to be opened.
+    //
+    // web_fetch only opens URLs already in the conversation, so it can only follow what the
+    // searches found — which is exactly the scope wanted here.
+    //
+    // `web_fetch_20250910`, not the 2026 variant: the newer one is rejected outright on
+    // claude-haiku-4-5, which is Stage 2b's model on the attributed path (400, "not supported").
+    // The basic variant works on both Stage 2b models and needs no beta header. Measured the same
+    // day: MutualArt's artist page reads fine and carries the "Not Sold" outcomes, dealer pages
+    // read fine; Invaluable returns empty content to the fetcher, so its price guide stays out of
+    // reach whatever the prompt says.
+    // Gated on the ENDPOINT, not on which search tool is in use. The attributed path sets
+    // clientWebSearch, and a first attempt hung web_fetch off `!useClientSearch` — so the one
+    // path that most needs it (Haiku, thin artists, no same-work comps) never saw the tool, and
+    // a run that found nothing looked like a capability that did not work. A DashScope compat
+    // endpoint is the real exclusion: server-side tools are accepted there and silently not run.
+    if (!compatBaseUrl) {
+      tools.push({
+        type: "web_fetch_20250910",
+        name: "web_fetch",
+        max_uses: STAGE2B_MAX_WEB_FETCHES,
+        max_content_tokens: STAGE2B_FETCH_CONTENT_TOKENS,
+        blocked_domains: ACKG_COVERED_SEARCH_DOMAINS,
+        citations: { enabled: true },
+      } as any);
+    }
     if (useClientSearch) {
       resetWebSearchUsage();
       console.log(`[4-Stage] Stage 2b using CLIENT-side web_search (${compatBaseUrl ? "compat endpoint" : this.config.clientWebSearch ? "method config" : "forced by env"})`);

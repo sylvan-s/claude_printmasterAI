@@ -1254,6 +1254,13 @@ Expect to come back empty, and report that honestly rather than padding. The gra
     MOST HOUSE RESULT PAGES SHOW A PREMIUM-INCLUSIVE FIGURE WITHOUT LABELLING IT. If the page does not state the basis, the answer is "unknown". "unknown" is a correct, expected and useful answer — a comp honestly marked unknown is kept and used with care, whereas a comp wrongly marked "hammer" silently understates every valuation built on it by the premium, roughly 25-30%. Never guess to fill the field.
 - Leave any of these null when the source genuinely does not carry it. A null is a fact about the source; a fabricated URL, sale id or price is a corruption of the record.
 - Apply Fractional Lot Logic: if the print was sold in a group lot, calculate the individual fraction and record it in broaderLotPriceAdjustment (e.g. "1/4 fraction of total lot value £8,000 = £2,000").
+- OPEN THE PAGE WHEN THE SNIPPET IS NOT ENOUGH. A search result rarely shows the estimate or
+  whether the lot sold; those are on the page. When a search names an artist price-guide page
+  (MutualArt, artnet), a dealer's stock page, or a house's own result page, use web_fetch on
+  that URL and read the figures off it. You have at most 3 fetches — spend them on pages that
+  list several lots for this artist, which yield the most per fetch. A fetch that comes back
+  empty is a fact about that site, not a reason to guess: record what you could read and leave
+  the rest null.
 - If you cannot find verifiable comps after searching, set auctionComps to an empty array — do NOT fabricate results.
 
 STEP 8 — ATTRIBUTION CONFIDENCE SCORING
