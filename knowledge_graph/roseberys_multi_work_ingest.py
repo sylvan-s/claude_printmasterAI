@@ -24,6 +24,13 @@ Consumers must filter to whole_lot before any equal_split record with a PRICE la
 is step 1 of the plan and is NOT done yet. Unsold lots are safe to load ahead of it: both
 consumers require a price > 0, so an estimate-only record cannot reach them.
 
+A TITLE MAY COME FROM THE SHEET. When the catalogue leaves a work unnamed ("composition", or
+simply fewer titles than the count) the vision pass reads the pencil inscription in the lower
+margin, and a HIGH-confidence reading becomes the title — A0793 lot 31's fourth print is
+"TISSUES No3" on the sheet where the catalogue printed "composition". Such a title is stored
+with `Impression.titleSource = "image"` and the verbatim reading in `titleEvidence`, so it is
+never mistaken for a catalogued one.
+
 `signed` is dropped unless the catalogue attributed it to that work specifically: "one signed in
 pencil" over two sheets says nothing about WHICH, and a model asked for a per-work boolean will
 happily guess (qwen-plus did, on A0793 lot 20). The test is whether the work's evidence quote
@@ -298,6 +305,12 @@ def build_rows(record):
             "signed": bool(work["signed"]) if (per_work_evidence and work["signed"] is not None)
                       else None,
             "catalogueRefs": refs,
+            # Where the title came from. `image` means the catalogue left the work unnamed and the
+            # vision pass read the title off the sheet's own pencil inscription — a fact about the
+            # object, but a different kind of evidence from a catalogued title, so it is labelled
+            # and the verbatim reading is kept beside it.
+            "titleSource": work.get("title_source") or "catalogue",
+            "titleEvidence": work.get("title_evidence"),
             "listingUrl": record["url"],
             "imageUrl": urls[photo_idx] if photo_idx is not None and photo_idx < len(urls) else None,
             # money: this work's share, with the lot's own figures kept beside it
@@ -358,7 +371,9 @@ SET er.dateRange_year = row.dateYear,
 MERGE (cw)-[:PRINTED_AS]->(er)
 
 MERGE (imp:Impression {id: row.objectId})
-SET imp.sheetDimensions = row.sheetDimensions,
+SET imp.titleSource = row.titleSource,
+    imp.titleEvidence = row.titleEvidence,
+    imp.sheetDimensions = row.sheetDimensions,
     imp.imageDimensions = row.imageDimensions,
     imp.plateDimensions = row.plateDimensions,
     imp.rawMedium = row.rawMedium,

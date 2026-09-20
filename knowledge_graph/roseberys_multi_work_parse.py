@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Roseberys multi-work lot parser (pilot)
-Version: ROSEBERYS-MULTI-0.7
+Version: ROSEBERYS-MULTI-0.8
 
 Roseberys lots flagged `multi_work` by the extractor (benchmark/src/roseberys/parse.ts
 detectMultiWork) have been held out of the ACKG since 2026-08-24. The flag is a regex and is
@@ -39,7 +39,7 @@ import anthropic
 import requests
 from PIL import Image
 
-PARSER_VERSION = "ROSEBERYS-MULTI-0.7"
+PARSER_VERSION = "ROSEBERYS-MULTI-0.8"
 # 2026-09-19 pilot (40 hand-labelled lots): Opus 5 38/40 kinds, 0 harmful decisions, every
 # disputed photo match checked by eye was right (it reads pencil titles and edition numbers).
 # Haiku 4.5 27/40 with 8 harmful (over-uses identical_copies; "high" photo confidence was
@@ -62,8 +62,8 @@ PHOTO_LONG_EDGE = 900
 MAX_DECLARED = 12
 REQUEST_DELAY = 0.7   # courtesy throttle, same as the extractor
 
-LOT_KINDS = ["single_work", "single_work_with_ancillary", "multi_work", "identical_copies",
-             "complete_portfolio", "under_described"]
+LOT_KINDS = ["single_work", "single_work_with_ancillary", "multi_work", "multi_work_partial",
+             "identical_copies", "complete_portfolio", "under_described"]
 
 
 def _nullable(t):
@@ -130,8 +130,13 @@ VISION_SCHEMA = {
                 "photo_index": _nullable("integer"),
                 "confidence": {"type": "string", "enum": ["high", "medium", "low"]},
                 "reason": {"type": "string"},
+                "read_title": _nullable("string"),
+                "read_title_verbatim": _nullable("string"),
+                "read_title_confidence": {"type": "string",
+                                          "enum": ["high", "medium", "low", "none"]},
             },
-            "required": ["work_position", "photo_index", "confidence", "reason"],
+            "required": ["work_position", "photo_index", "confidence", "reason",
+                         "read_title", "read_title_verbatim", "read_title_confidence"],
             "additionalProperties": False}},
     },
     "required": ["photos", "assignments"],
@@ -153,6 +158,11 @@ lot_kind — pick exactly one:
   minimum a distinct title (or an explicit "Untitled" per work) for every work in the declared
   count. Titles may be listed with semicolons, in (i)/(ii) blocks, in brackets, or after "together
   with N other prints".
+- multi_work_partial: two or more DIFFERENT artworks where the entry names SOME but not all of
+  them — a placeholder standing in for a title ("composition", "another", "a further print"), or
+  fewer titles than the declared count. Return ONE entry per declared work, in catalogue order,
+  with title null for each unnamed one. Do not guess a title from a neighbour: the sheet itself
+  is read later, and a null here is what asks for that.
 - identical_copies: two or more impressions of the SAME work — same image, same colourway, same
   edition — e.g. "(2)" after a single poster title with "each offset lithograph". Different
   colourways ("in yellow and red"), different images in one series, or the two halves of a
@@ -170,10 +180,10 @@ lot_kind — pick exactly one:
   portfolio, 1964" must produce the SAME title, or the graph holds them as two works and
   neither is a comp for the other. An INCOMPLETE set, or an assortment gathered by the auctioneer
   ("four prints including..."), is NOT this — it is under_described.
-- under_described: several works, but the entry does not identify every one of them individually —
-  e.g. "the complete portfolio of eleven screenprints" with one portfolio title, "eight offset
-  lithographs" under a series name, "four prints including..." with fewer titles than works, or a
-  count with no titles. Say why in under_described_reason.
+- under_described: several works and the entry identifies NONE of them individually — "the
+  complete portfolio of eleven screenprints" under one portfolio title, "eight offset
+  lithographs" under a series name, a count with no titles at all. If it names some but not all,
+  that is multi_work_partial, not this. Say why in under_described_reason.
 
 declared_count: the number of works the entry says the lot contains — the trailing "(n)", or the
 count in the text ("five etchings", "a set of 4", "together with 4 other prints" = 5). Count
@@ -213,7 +223,20 @@ Then for EACH work, pick the one photo that best shows that work on its own (pho
 if no photo shows it on its own. Match on the title, medium, colour, subject and size described.
 confidence: high = the photo clearly matches this work's description and no other; medium = likely
 but the descriptions are too thin to be sure; low = a guess (for example you are relying only on
-the photo order). Do not give two works the same photo."""
+the photo order). Do not give two works the same photo.
+
+READING A TITLE OFF THE SHEET. Any work shown as "(title not given)" below was left unnamed by
+the catalogue. Printmakers usually inscribe the title in pencil in the lower margin, between the
+edition fraction on the left and the signature on the right. For those works only, look there
+and report what is actually written:
+  read_title_verbatim  exactly the characters you can see, e.g. "TISSUES No3"
+  read_title           the same as a title, tidied only in capitalisation, e.g. "Tissues No 3"
+  read_title_confidence  high = you can read the pencil and it is a title, not an edition or a
+                         dedication; medium = partly legible; low = a guess; none = nothing
+                         legible, which is the honest answer when the margin is cropped, the
+                         sheet is framed behind glass, or the inscription is illegible.
+Never supply a title from the subject of the picture, from another work in the lot, or from what
+the work "must" be called. An unreadable margin is a `none`, not an invitation to invent."""
 
 
 def lot_text(raw):
@@ -391,9 +414,29 @@ def validate(text, vision, n_photos):
         found = works[0]["copies"] if works else 0
     else:
         found = len(works)
+        # A work the catalogue left unnamed may still be identified by its own sheet: printmakers
+        # inscribe the title in the lower margin, and the vision pass reads it there (A0793 lot 31
+        # carries "TISSUES No3" in pencil where the catalogue printed only "composition"). Only a
+        # HIGH-confidence reading counts, and where it is taken the title's provenance is recorded
+        # as `image` so a reader can tell it from a catalogued one.
+        read = {}
+        if vision:
+            read = {a["work_position"]: a for a in vision["assignments"]}
+        for w in works:
+            if (w.get("title") or "").strip():
+                w.setdefault("title_source", "catalogue")
+                continue
+            got = read.get(w["position"]) or {}
+            if got.get("read_title") and got.get("read_title_confidence") == "high":
+                w["title"] = got["read_title"].strip()
+                w["title_source"] = "image"
+                w["title_evidence"] = got.get("read_title_verbatim") or got["read_title"]
+            else:
+                w["title_source"] = None
         missing_title = [w["position"] for w in works if not (w["title"] or "").strip()]
         if missing_title:
-            reasons.append(f"works without a title: {missing_title}")
+            reasons.append(
+                f"works the catalogue did not name and whose sheet could not be read: {missing_title}")
     if declared is None:
         reasons.append("no declared count")
     elif declared != found:
@@ -406,7 +449,7 @@ def validate(text, vision, n_photos):
         reasons.append("no photos")
     elif vision is None:
         reasons.append("vision pass missing")
-    elif kind == "multi_work":
+    elif kind in ("multi_work", "multi_work_partial"):
         by_pos = {a["work_position"]: a for a in vision["assignments"]}
         # A photo the model itself called a group shot (or an extra) shows more than this work,
         # so it cannot be the work's own image — seen in the 2026-09-19 comparison run.
@@ -436,7 +479,7 @@ def validate(text, vision, n_photos):
 def describe_works(works):
     lines = []
     for w in works:
-        bits = [w.get("title") or "(untitled)", w.get("medium"),
+        bits = [w.get("title") or "(title not given)", w.get("medium"),
                 f"{w['width_cm']} x {w['height_cm']}cm" if w.get("width_cm") else None,
                 f"{w['copies']} copies" if w.get("copies", 1) > 1 else None]
         lines.append(f"{w['position']}. " + "; ".join(b for b in bits if b))
@@ -460,7 +503,7 @@ def parse_lot(lot, caller, session, image_cache):
     urls = image_cache[key]
     out["photo_urls"] = urls
     vision = None
-    if text["lot_kind"] in ("multi_work", "identical_copies") and urls:
+    if text["lot_kind"] in ("multi_work", "multi_work_partial", "identical_copies") and urls:
         content = []
         for i, u in enumerate(urls[:MAX_PHOTOS]):
             content.append({"type": "text", "text": f"Photo {i}:"})
