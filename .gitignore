@@ -145,3 +145,6 @@ knowledge_graph/dupwork_*backup_*.json
 knowledge_graph/artist_splink_candidates_weights.html
 # King & McGaw retail-field repair snapshots (row-level graph dumps; never commit)
 knowledge_graph/km_retail_fields_repair_presnapshot_*.json
+
+# Work-merge backups (row-level graph dumps; never commit)
+knowledge_graph/dupwork_*.json

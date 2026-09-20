@@ -1006,6 +1006,30 @@ const MAX_INCOMPLETE_REPORT_RETRIES = 2;
 /** Hard cap on Stage 2b's web searches, matching the number its prompt asks for. */
 const STAGE2B_MAX_WEB_SEARCHES = 5;
 
+/**
+ * Houses the ACKG already ingests, excluded from Stage 2b's web search.
+ *
+ * Stage 2b has five searches. Spending them on records the graph already holds buys nothing:
+ * Stage 3a prices from the graph, the comps write-back then drops them as duplicates, and the
+ * stage reports "1 comp" while adding no evidence. Measured on A0793 lot 31 (four Agathe Sorel
+ * prints, 2026-09-20): every search came back with the same Roseberys sale already ingested, so
+ * all four works priced on the segment prior at a 35x range. The identical searches with these
+ * domains excluded returned SEVEN records from five houses the graph does not cover — Golding
+ * Young & Mawer, Bubb Kuyper, Ripley, RoGallery, Duran — including the lot's own "Après la
+ * Moisson" offered twice in 2014 at £50-80 and unsold both times, against a model median of £420.
+ *
+ * This is a search filter, not a judgement about the houses: their records are the graph's
+ * backbone. It exists so the five searches look where the graph cannot.
+ */
+export const ACKG_COVERED_SEARCH_DOMAINS = [
+  "roseberys.co.uk",
+  "bonhams.com",
+  "swanngalleries.com",
+  "forumauctions.co.uk",
+  "skinnerinc.com",
+  "skinner.com",
+];
+
 const STAGE3_COMPS_LIMIT = 40;
 /** Stage 2b reads comps to reason about, not to compute a median over, so it gets a
  *  tighter set than Stage 3's 40 — the rows ride along in every later turn of its loop. */
@@ -1434,7 +1458,12 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     const tools = [
       useClientSearch
         ? MultiStageAppraiser.WEB_SEARCH_TOOL
-        : { type: "web_search_20250305", name: "web_search", max_uses: STAGE2B_MAX_WEB_SEARCHES },
+        : {
+            type: "web_search_20250305",
+            name: "web_search",
+            max_uses: STAGE2B_MAX_WEB_SEARCHES,
+            blocked_domains: ACKG_COVERED_SEARCH_DOMAINS,
+          },
       MultiStageAppraiser.MUSEUM_LOOKUP_TOOL,
       MultiStageAppraiser.COMPARABLES_TOOL,
       MultiStageAppraiser.EDITION_TOOL,

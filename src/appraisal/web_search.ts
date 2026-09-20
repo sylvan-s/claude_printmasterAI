@@ -44,6 +44,18 @@ export interface WebSearchResponse {
 
 const TAVILY_URL = "https://api.tavily.com/search";
 
+/** Kept in step with ACKG_COVERED_SEARCH_DOMAINS in appraiser.ts — see the rationale there.
+ *  Both search paths must exclude the same houses, or a client-side run and a server-side run
+ *  are no longer comparable, which is the whole point of sharing the tool name. */
+const ACKG_COVERED_DOMAINS = [
+  "roseberys.co.uk",
+  "bonhams.com",
+  "swanngalleries.com",
+  "forumauctions.co.uk",
+  "skinnerinc.com",
+  "skinner.com",
+];
+
 /**
  * Results are capped and truncated before they reach the model. An untruncated search
  * response is several thousand tokens and rides along in every later turn of the tool loop —
@@ -87,6 +99,7 @@ export async function tavilySearch(
         // "advanced" costs more credits and returns better-extracted content; auction results
         // are often in tables and lists that a basic extract mangles.
         search_depth: opts.searchDepth ?? "advanced",
+        exclude_domains: ACKG_COVERED_DOMAINS,
         include_answer: false,   // the model does the synthesis; a provider answer would compete with it
         include_raw_content: false,
       }),
