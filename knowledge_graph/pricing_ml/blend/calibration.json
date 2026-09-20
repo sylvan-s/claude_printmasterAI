@@ -1,7 +1,7 @@
 {
-  "version": "BLEND-2.3",
-  "fittedAt": "2026-09-17T11:17:00.649Z",
-  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands+after-factor+object+target-estimate-mid+unsold-flag@2026-09-17T10:27:51+00:00, offline refit; pricing-model witness calibrated to house mid estimates, comps to hammers",
+  "version": "BLEND-2.4",
+  "fittedAt": "2026-09-20T13:07:10.202Z",
+  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands+after-factor+object+target-estimate-mid+unsold-flag@2026-09-20T13:05:00+00:00, offline refit; pricing-model witness calibrated to house mid estimates, comps to hammers",
   "witnesses": {
     "estimate": {
       "df": 5,
@@ -11,68 +11,89 @@
       "df": 5,
       "byKey": {
         "1": {
-          "bias": -0.060624621816435464,
-          "sigma": 0.47886332280454846,
-          "n": 659
+          "bias": -0.07410797215372167,
+          "sigma": 0.49767637451577285,
+          "n": 673
         },
         "2": {
-          "bias": -0.09040836890933246,
-          "sigma": 0.5087410728507177,
-          "n": 223
+          "bias": -0.07488723376609485,
+          "sigma": 0.48455810706573454,
+          "n": 241
         },
         "1|recent": {
-          "bias": -0.06453852113757108,
-          "sigma": 0.4598356967032729,
-          "n": 449
+          "bias": -0.07531369821650724,
+          "sigma": 0.48425886034506566,
+          "n": 455
         },
         "all": {
           "bias": -0.06453852113757108,
-          "sigma": 0.4692738312621751,
-          "n": 1237
+          "sigma": 0.482917249053802,
+          "n": 1327
         },
         "3+|recent": {
-          "bias": -0.034715395380770175,
-          "sigma": 0.4135596515669545,
-          "n": 325
+          "bias": -0.010006620408855582,
+          "sigma": 0.4501928813403151,
+          "n": 378
         },
         "3+": {
-          "bias": -0.030784634094411345,
-          "sigma": 0.4295425787200209,
-          "n": 355
+          "bias": -0.007368501845658848,
+          "sigma": 0.460535415405075,
+          "n": 413
         },
         "1|old": {
-          "bias": -0.03708920008120753,
-          "sigma": 0.49321355597567434,
-          "n": 210
+          "bias": -0.06204925986195686,
+          "sigma": 0.5428795529622776,
+          "n": 218
         },
         "2|recent": {
-          "bias": -0.07488723376609485,
-          "sigma": 0.4524384743302216,
-          "n": 173
+          "bias": -0.06413917302434369,
+          "sigma": 0.4329214565484685,
+          "n": 186
         },
         "2|old": {
-          "bias": -0.16347585116356456,
-          "sigma": 0.614034529350791,
-          "n": 50
+          "bias": -0.2281198707064469,
+          "sigma": 0.6443107482268347,
+          "n": 55
         },
         "3+|old": {
-          "bias": 0.09929070030547749,
-          "sigma": 0.6972745537254933,
-          "n": 30
+          "bias": 0.0332700762855751,
+          "sigma": 0.6496947487056309,
+          "n": 35
         }
       }
     },
     "same_suite": {
       "df": 5,
-      "byKey": {}
+      "byKey": {
+        "1": {
+          "bias": 0.0002437116439901743,
+          "sigma": 0.5304565313611069,
+          "n": 121
+        },
+        "2": {
+          "bias": -0.1094236616083677,
+          "sigma": 0.5918375407428069,
+          "n": 49
+        },
+        "all": {
+          "bias": 0.0008968648935270274,
+          "sigma": 0.5834775453406814,
+          "n": 234
+        },
+        "3+": {
+          "bias": 0.13191919552201892,
+          "sigma": 0.6844826668415851,
+          "n": 64
+        }
+      }
     },
     "same_artist_technique": {
       "df": 5,
       "byKey": {
         "all": {
-          "bias": -0.08091203446496564,
-          "sigma": 0.7192525784445922,
-          "n": 3415
+          "bias": -0.055826226044219496,
+          "sigma": 0.7401550472285077,
+          "n": 3607
         }
       }
     },
@@ -80,9 +101,9 @@
       "df": 5,
       "byKey": {
         "all": {
-          "bias": -0.3132231819946063,
-          "sigma": 0.9821630083946278,
-          "n": 1088
+          "bias": -0.13774517479223114,
+          "sigma": 0.9983721924386865,
+          "n": 2701
         }
       }
     },
@@ -90,24 +111,24 @@
       "df": 5,
       "byKey": {
         "prior": {
-          "bias": -0.24070764501229025,
-          "sigma": 0.48148879360053704,
-          "n": 433
+          "bias": -0.24060896956515165,
+          "sigma": 0.48032697136207186,
+          "n": 429
         },
         "all": {
-          "bias": -0.22743491225051038,
-          "sigma": 0.6719649131522313,
+          "bias": -0.2272083669792222,
+          "sigma": 0.6718060691043592,
           "n": 5094
         },
         "shrunk": {
-          "bias": -0.14009391009391958,
-          "sigma": 0.6130235325745241,
-          "n": 3994
+          "bias": -0.1428806028333094,
+          "sigma": 0.6129899392188903,
+          "n": 3995
         },
         "segment": {
-          "bias": -1.1411662943090661,
-          "sigma": 0.9588420751183605,
-          "n": 667
+          "bias": -1.1428371272405955,
+          "sigma": 0.9523773995075918,
+          "n": 670
         }
       }
     }
@@ -131,21 +152,22 @@
     "no_estimate": {
       "weights": {
         "estimate": 0,
-        "same_work": 2,
-        "same_suite": 1,
+        "same_work": 3,
+        "same_suite": 1.5,
         "same_artist_technique": 0.5,
         "same_artist": 0.25,
         "priors_model": 1
       },
-      "temperature": 1.5,
+      "temperature": 1.75,
       "fitLots": 5094,
-      "fitMaeLog": 0.6175486293303417,
-      "fitCoverage80": 0.8060463290145269,
+      "fitMaeLog": 0.624170161293836,
+      "fitCoverage80": 0.7923046721633294,
       "temperatureByTier": {
-        "same_work_3+": 1.75,
-        "same_work_1-2": 2.5,
+        "same_work_3+": 2.5,
+        "same_work_1-2": 3,
+        "same_suite": 1.75,
         "same_artist_technique": 1.5,
-        "same_artist": 1.3,
+        "same_artist": 1.5,
         "priors_model": 1.3
       }
     }
