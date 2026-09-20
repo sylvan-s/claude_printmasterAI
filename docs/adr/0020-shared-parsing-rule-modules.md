@@ -123,11 +123,29 @@ immediately before the fraction — and its trailing `\b` *loses* 15 rows, becau
 suffixed edition numbers auctioneers really write: `20/25"` in quotes, `14/250P`, `48/50A`,
 `8/9C`, `10/200in pen`.
 
-### Open: the trailing `\b` (next)
+### The trailing `\b` — measured 2026-09-20 and NOT adopted
 
-That same `\b` is in `train_price_model`, `price_attrs.ts` **and** `text_extraction.ts`, so three
-implementations — including the live Stage 3 pricing path — still lose those rows. Found while
-adopting 1.1, recorded in both fixture runners, not fixed there: separate divergence, own count.
+The `\b` is in `train_price_model`, `price_attrs.ts` and `text_extraction.ts`, so three
+implementations including the live Stage 3 pricing path lose the suffixed forms the ingest rule
+now reads. Two candidates were measured over all 89,451 auction rows: dropping the `\b`, and
+dropping it plus the quote characters from the dimension guard (the closing quote of
+`numbered "20/25"` is not an inch mark).
+
+The better candidate moves **15 rows, of which only 4 reach the model at all.** The model
+consults text only when the graph has no declared size, and for all 11 others the graph already
+stores exactly the value the fix would produce — because the ingest rule reads them. Of the 4
+real changes, 3 follow the family's documented precedence (`Edition of 160 ... numbered "25/100"`
+becomes 100). The fourth regresses: Swann's `numbered "200/4"` is a malformed transcription whose
+own catalogue note says "an edition of 200 is indicated", and the current `\b` accidentally
+recovers 200 by falling through to it.
+
+**Not adopted.** Changing the live pricing rule requires a retrain and a gate, and four rows —
+one of them a regression — do not justify that. The divergence is closed as measured rather than
+left open.
+
+The reason the impact is so small is worth recording: it is the ingest rule storing the value
+once that makes the downstream fallback almost never fire. The durable fix for this whole class
+is fewer downstream re-parses, not three synchronised regexes.
 
 ### Open: `one of N impressions` and the approximately/circa qualifiers
 

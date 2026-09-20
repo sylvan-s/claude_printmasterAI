@@ -34,7 +34,10 @@ DIVERGENT = {
     "DIVERGENCE-six-figure":                  {"ingest": 250000, "model": None},
 
     # The model rule's trailing \b rejects suffixed edition numbers that the ingest rule reads.
-    # Measured 2026-09-20 while adopting EDITION-SIZE-1.1; not fixed there, separate divergence.
+    # Measured over all 89,451 auction rows on 2026-09-20 and DELIBERATELY NOT FIXED: the better
+    # candidate moves 15 rows, only 4 of which reach the model (it consults text only when the
+    # graph has no size, and the ingest rule already stores the rest), and one of those 4 is a
+    # regression on a malformed "200/4" transcription. A retrain and a gate cost more. ADR-0020.
     "suffix-quoted-20-25":                    {"ingest": 25,     "model": None},
     "suffix-letter-50A":                      {"ingest": 50,     "model": None},
     "suffix-letter-250P":                     {"ingest": 250,    "model": None},
