@@ -32,7 +32,7 @@ import dotenv from "dotenv";
 dotenv.config();
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from "fs";
 import { dirname } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import { GoogleGenAI } from "@google/genai";
 import {
   appraiserConfigs, AttributedLotAppraiser, usageSummary, printUsageSummary, resetUsage,
@@ -435,4 +435,9 @@ async function runOne(rawLot: RawLot, auction: AuctionRef, args: Args) {
   console.log(`[Attributed lot] wrote ${outDir}/result.json and report.html`);
 }
 
-main().then(() => process.exit(0)).catch(async (err) => { console.error(err); await closeDriver().catch(() => {}); process.exit(1); });
+// Only when run as the entry point: claimFromRoseberys and the config here are imported by
+// tests/backtest/stage3a_sale_screen.ts, and an unguarded main() would run the whole appraisal
+// on import (and parse that caller's argv).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().then(() => process.exit(0)).catch(async (err) => { console.error(err); await closeDriver().catch(() => {}); process.exit(1); });
+}
