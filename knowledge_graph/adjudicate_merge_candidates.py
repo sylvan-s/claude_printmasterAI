@@ -48,6 +48,7 @@ Usage:
 import argparse
 import base64
 import csv
+import io
 import json
 import os
 import re
@@ -61,6 +62,12 @@ import anthropic
 
 DEFAULT_MODEL = "claude-opus-5"
 MAX_IMAGE_BYTES = 4_000_000
+# The API rejects an image whose longer side exceeds 8000px, and a 400 there reads as model
+# doubt in the output: the pair comes back UNCERTAIN with the error buried in `reasoning`,
+# indistinguishable from a model that looked and could not tell. Same failure the media-type
+# sniffing below was written for. Roseberys and Forum both serve some lot photos above the
+# limit. 2000px keeps every inscription this prompt asks about legible while cutting tokens.
+MAX_IMAGE_EDGE = 2000
 # The state descriptions that make this useful run long — #14's ran to ~600
 # characters. At 1200 the JSON truncated mid-object and two pairs came back as
 # UNCERTAIN with an empty reasoning field, which reads like model doubt and was not.
@@ -191,8 +198,27 @@ def fetch_image(url, cache):
     sniffed = _sniff_media_type(body)
     media = sniffed or (media if media in
                         ("image/jpeg", "image/png", "image/gif", "image/webp") else "image/jpeg")
+    body, media = _shrink_if_oversized(body, media)
     cache[url] = (media, base64.standard_b64encode(body).decode())
     return cache[url]
+
+
+def _shrink_if_oversized(body, media):
+    """Downscale past MAX_IMAGE_EDGE, re-encoding as JPEG. Returns the original bytes unchanged
+    when it already fits, or when Pillow cannot read them — an unreadable image should fail as
+    an unreachable one, not crash the run."""
+    try:
+        from PIL import Image
+        im = Image.open(io.BytesIO(body))
+        if max(im.size) <= MAX_IMAGE_EDGE:
+            return body, media
+        im = im.convert("RGB")
+        im.thumbnail((MAX_IMAGE_EDGE, MAX_IMAGE_EDGE))
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=88)
+        return buf.getvalue(), "image/jpeg"
+    except Exception:
+        return body, media
 
 
 def _sniff_media_type(body):
