@@ -97,6 +97,37 @@ function isUsableUrl(raw: unknown): boolean {
   }
 }
 
+/**
+ * CITATION-URL-1.0. Can a comp's URL show THIS sale? A link to an artist overview, a search, or
+ * a site's home page cannot: it exists, but the price is not on it. Found in the first Artsy A/B
+ * (2026-09-22): lot 389 cited artsy.net/artist/cindy-sherman for a GBP 2,000 Roseberys price and
+ * passed, because the check only asked whether a URL existed. Such a comp is treated as uncited.
+ *
+ * Deliberately a list of known non-result shapes rather than a whitelist of result shapes: an
+ * unfamiliar house's lot page must still count, and escalating on every site this list does not
+ * know would make the gate fire on honest research.
+ */
+export function isSpecificResultUrl(raw: unknown): boolean {
+  if (!isUsableUrl(raw)) return false;
+  const u = new URL(String(raw).trim());
+  const host = u.hostname.toLowerCase().replace(/^www\./, "");
+  const path = u.pathname.replace(/\/+$/, "").toLowerCase();
+  const segs = path.split("/").filter(Boolean);
+  if (!segs.length) return false;                                   // a home page
+  if (/(^|\/)search(\/|$)/.test(path) || ["q", "query", "keyword", "keywords", "search"].some((k) => u.searchParams.has(k))) return false;
+  if (/(^|\.)(google|bing|duckduckgo)\./.test(host)) return false;
+  if (host.endsWith("artsy.net")) return segs[0] === "auction-result" || segs[0] === "artwork" || (segs[0] === "auction" && segs.includes("artwork"));
+  if (host.endsWith("mutualart.com")) return segs[0] === "artwork";
+  if (host.endsWith("artnet.com") && segs[0] === "artists") {
+    // /artists/<name>, /artists/<name>/past-auction-results, /artists/<name>/biography
+    return segs.length >= 3 && !["past-auction-results", "auction-results", "biography", "artworks-for-sale"].includes(segs[2]);
+  }
+  if (host.endsWith("invaluable.com") && segs[0] === "artist") return false;
+  if (host.endsWith("wikipedia.org")) return false;
+  return true;
+}
+
+
 export function normalizePriceBasis(raw: unknown): CompPriceBasis {
   const v = text(raw).toLowerCase().replace(/[\s-]+/g, "_");
   if (v === "hammer") return "hammer";
@@ -107,7 +138,8 @@ export function normalizePriceBasis(raw: unknown): CompPriceBasis {
 export function assessComp(comp: Stage2bComp): CompAssessment {
   const reasons: string[] = [];
 
-  const urlKey = isUsableUrl(comp.listingUrl);
+  // An artist overview or search page is a URL but not a key: it cannot identify this sale.
+  const urlKey = isSpecificResultUrl(comp.listingUrl);
   // A sale id and a lot number only identify a sale alongside the house that ran it.
   const tripleKey = !!text(comp.auctionHouse) && !!text(comp.saleId) && !!text(comp.lotNumber);
   const keyKind = urlKey ? "listing_url" : tripleKey ? "house_sale_lot" : "none";
@@ -162,7 +194,7 @@ export function assessComp(comp: Stage2bComp): CompAssessment {
 export function partitionCitedComps(comps: unknown): { cited: Stage2bComp[]; uncited: Stage2bComp[] } {
   if (!Array.isArray(comps)) return { cited: [], uncited: [] };
   const cited: Stage2bComp[] = [], uncited: Stage2bComp[] = [];
-  for (const c of comps as Stage2bComp[]) (isUsableUrl(c?.listingUrl) ? cited : uncited).push(c);
+  for (const c of comps as Stage2bComp[]) (isSpecificResultUrl(c?.listingUrl) ? cited : uncited).push(c);
   return { cited, uncited };
 }
 
@@ -173,7 +205,7 @@ export function describeUncitedComps(uncited: Stage2bComp[]): string {
     .map((c) => `"${text(c.artworkTitle) || "untitled"}"${text(c.auctionHouse) ? ` (${text(c.auctionHouse)})` : ""}${typeof c.priceAmount === "number" ? ` at ${c.priceAmount}` : ""}`)
     .slice(0, 6)
     .join(", ");
-  return `${uncited.length} further web finding(s) were WITHHELD from you because they carry no citation URL: ${named}. ` +
+  return `${uncited.length} further web finding(s) were WITHHELD from you because they carry no URL that shows the sale: ${named}. ` +
     `A price with no page behind it is not a comparable, and a research step that produces several of them is itself a signal that its findings are thin — weigh the rest accordingly.`;
 }
 

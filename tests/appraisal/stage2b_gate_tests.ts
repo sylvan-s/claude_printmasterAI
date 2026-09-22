@@ -5,6 +5,7 @@
  *   npm run test:stage2b-gate
  */
 import { assessStage2bResearch, stage2bResearchFailed } from "../../src/appraisal/stage2b_gate";
+import { isSpecificResultUrl } from "../../src/appraisal/comp_storability";
 
 let passed = 0, failed = 0;
 function eq(label: string, got: unknown, want: unknown) {
@@ -65,6 +66,35 @@ console.log("silence is judged against whether there was a gap to close");
     { auctionComps: [{ artworkTitle: "Owl", priceAmount: 3584 }] },
     { searches: 0, graphSameWorkComps: 0, artsySameWorkComps: 1 });
   eq("an Artsy gap-closer does not excuse an uncited comp", artsyUncited.reasons, ["uncited_comp"]);
+}
+
+console.log("a URL must be able to show the sale (CITATION-URL-1.0)");
+{
+  // Verbatim from the first Artsy A/B, lot 389: an artist overview page cited for a price.
+  const g = assessStage2bResearch(
+    { auctionComps: [{ artworkTitle: "Three portraits", priceAmount: 2000, listingUrl: "https://www.artsy.net/artist/cindy-sherman" }] },
+    { searches: 5, graphSameWorkComps: 0 });
+  eq("an artist page is not a citation: escalates", g.reasons, ["uncited_comp"]);
+  for (const u of [
+    "https://www.artsy.net/artist/cindy-sherman/auction-results",
+    "https://www.mutualart.com/Artist/Cindy-Sherman/1A2B3C",
+    "https://www.artnet.com/artists/cindy-sherman/past-auction-results",
+    "https://www.artnet.com/artists/cindy-sherman/",
+    "https://www.google.com/search?q=cindy+sherman+three+portraits",
+    "https://www.bonhams.com/search/?query=sherman",
+    "https://www.christies.com/",
+    "https://en.wikipedia.org/wiki/Cindy_Sherman",
+  ]) ok(`not a result page: ${u}`, !isSpecificResultUrl(u));
+  for (const u of [
+    "https://www.artsy.net/auction-result/7377174",
+    "https://www.artsy.net/artwork/cindy-sherman-untitled-1",
+    "https://www.mutualart.com/Artwork/Three-portraits/9F8E7D",
+    "https://www.artnet.com/artists/cindy-sherman/three-portraits-a-abc123",
+    "https://www.bonhams.com/auction/32240/lot/12/cindy-sherman-three-portraits/",
+    "https://www.christies.com/en/lot/lot-6123456",
+    "https://www.roseberys.co.uk/bidding/A0785-prints-multiples-665/389-cindy-sherman",
+    "https://www.someregionalhouse.de/katalog/123/los/45",
+  ]) ok(`a result page: ${u}`, isSpecificResultUrl(u));
 }
 
 console.log("passes clean research");

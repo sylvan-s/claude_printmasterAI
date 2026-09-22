@@ -146,6 +146,64 @@ export function titleKey(raw: string): string {
   return normalizeTitleKey(normalizeTitleForEmbedding(raw));
 }
 
+// ---- same-work rule (ARTSY-SAME-WORK-1.1) ---------------------------------------------------
+//
+// 1.0 compared title keys alone, and the first A/B (2026-09-22) showed why that is not enough:
+// Juan Gris "Nature Morte (K.34)" peels to "nature morte", which matched 16 different Gris still
+// lifes as the same print. A false same_work is not harmless — it closes the research gap, which
+// silences the search nudge and the gate. So 1.1 adds two conditions, both exact:
+//   - CATALOGUE NUMBERS DECIDE WHEN BOTH SIDES HAVE THEM. "K.34" and "Kahnweiler 34" agree (same
+//     initial, same number); "Wiseman 10" and "Wiseman 46" do not, whatever the titles say.
+//   - A GENERIC TITLE NEEDS A MATCHING CATALOGUE NUMBER. "Nature morte", "Portrait", "Paysage"
+//     name a genre, not a print; without agreeing numbers such a row stays same_artist.
+
+/**
+ * Catalogue references in a title, as initial + number: "(K.34)" and "(Kahnweiler 34)" -> "k34";
+ * "(W. 28-30a; 60-62)" -> w28, w30a, w60, w62; "(Bloch 330, Baer 377/II/B/a)" -> b330, b377.
+ * Only parenthesised text is read, where house catalogues put refs; bare numbers in a title
+ * ("Party No. 10") are part of the title, not a reference.
+ */
+export function catalogueRefKeys(raw: string): Set<string> {
+  const out = new Set<string>();
+  const folded = (raw ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  for (const m of folded.matchAll(/\(([^()]*)\)/g)) {
+    const inner = m[1];
+    // A reference is a catalogue word/initial followed by its number, then any run of further
+    // numbers ("28-30a; 60-62") that belong to the same catalogue.
+    for (const ref of inner.matchAll(/([A-Za-z][A-Za-z]*)\.?\s*(\d+[a-z]?(?:\s*[-,;\/]\s*\d+[a-z]?)*)/g)) {
+      const initial = ref[1][0].toLowerCase();
+      if (/^(?:from|pl|plate|no|nr|ed|edition|state|vol|p|pp)$/i.test(ref[1])) continue;
+      for (const n of ref[2].matchAll(/\d+[a-z]?/g)) out.add(`${initial}${n[0].toLowerCase()}`);
+    }
+  }
+  return out;
+}
+
+/** Title keys that name a genre or subject rather than a print. Folded as titleKey folds. */
+export const GENERIC_TITLE_KEYS: ReadonlySet<string> = new Set([
+  "still life", "nature morte", "stillleben", "naturaleza muerta", "natura morta", "bodegon",
+  "portrait", "self portrait", "autoportrait", "autoritratto", "portrait of a woman", "portrait of a man",
+  "landscape", "paysage", "landschaft", "paesaggio", "paisaje", "seascape", "marine",
+  "head", "tete", "tete de femme", "head of a woman", "woman", "femme", "femmes", "women",
+  "nude", "nu", "nus", "female nude", "reclining nude", "seated nude", "standing nude", "nu couche",
+  "seated woman", "femme assise", "mother and child", "couple", "figure", "figures", "personnage",
+  "personnages", "composition", "abstraction", "abstract", "abstract composition", "study",
+  "flowers", "fleurs", "bouquet", "bouquet de fleurs", "vase of flowers", "vase de fleurs",
+  "horse", "horses", "cheval", "chevaux", "bird", "birds", "oiseau", "oiseaux", "fish", "poisson",
+  "cat", "chat", "dog", "chien", "face", "faces", "visage", "visages", "the sea", "la mer",
+  "sun", "soleil", "moon", "lune", "city", "ville", "street scene", "interior", "interieur",
+]);
+
+/** ARTSY-SAME-WORK-1.1: is this Artsy row the same print as the asked title? */
+export function isSameWork(askedTitle: string, rowTitle: string): boolean {
+  if (!askedTitle || isLowInformationTitle(askedTitle)) return false;
+  const core = titleKey(askedTitle);
+  if (!core || titleKey(rowTitle) !== core) return false;
+  const a = catalogueRefKeys(askedTitle), b = catalogueRefKeys(rowTitle);
+  if (a.size && b.size) return [...a].some((k) => b.has(k));
+  return !GENERIC_TITLE_KEYS.has(core);
+}
+
 export interface FilterOptions {
   /** Title of the work under appraisal, for the same_work tier. Low-information titles are ignored. */
   workTitle?: string | null;
@@ -175,7 +233,7 @@ export interface FilterOutcome {
 export function filterAndTier(raw: ArtsyResultRow[], opts: FilterOptions = {}): FilterOutcome {
   const out: FilterOutcome = { rows: [], droppedAckgHouse: 0, droppedDuplicate: 0, droppedOwnLot: 0, droppedAfterCutoff: 0, keptOrganizations: [] };
   const seen = new Set<string>();
-  const wanted = opts.workTitle && !isLowInformationTitle(opts.workTitle) ? titleKey(opts.workTitle) : null;
+  const asked = opts.workTitle ?? null;
   const excludeLot = opts.excludeLotNumber != null ? String(opts.excludeLotNumber).trim().toLowerCase() : null;
   const orgs = new Set<string>();
 
@@ -195,7 +253,7 @@ export function filterAndTier(raw: ArtsyResultRow[], opts: FilterOptions = {}): 
       out.droppedOwnLot++; continue;
     }
 
-    const tier: ArtsyTier = wanted && titleKey(r.title) === wanted ? "same_work" : "same_artist";
+    const tier: ArtsyTier = asked && isSameWork(asked, r.title) ? "same_work" : "same_artist";
     out.rows.push({ ...r, tier });
     if (r.organization) orgs.add(r.organization);
   }

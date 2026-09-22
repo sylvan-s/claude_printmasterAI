@@ -7,7 +7,7 @@
  */
 import {
   isAckgHouse, houseKeyTokens, filterAndTier, parseResultNode, titleKey, formatArtsyForModel,
-  foldArtistName, artsyResultUrl, type ArtsyResultRow,
+  foldArtistName, artsyResultUrl, isSameWork, catalogueRefKeys, type ArtsyResultRow,
 } from "../../src/appraisal/artsy_results";
 
 let passed = 0, failed = 0;
@@ -73,6 +73,29 @@ console.log("filterAndTier");
     { excludeHouse: "Phillips", excludeLotNumber: 46 });
   eq("the lot's own listing is dropped, the same lot number at another house is not",
     [own.rows.map((r) => r.organization), own.droppedOwnLot], [["Christie's"], 1]);
+}
+
+console.log("same-work rule (ARTSY-SAME-WORK-1.1)");
+{
+  // Verbatim from the first A/B: this title matched 16 different Gris still lifes under 1.0.
+  const gris = "Nature Morte (K.34)";
+  ok("genre title + the same catalogue number, differently written: same_work", isSameWork(gris, "Nature morte (Kahnweiler 34)"));
+  ok("genre title + a different catalogue number: not same_work", !isSameWork(gris, "Nature morte (Kahnweiler 37)"));
+  ok("genre title with no number on the row: not same_work", !isSameWork(gris, "Nature morte"));
+  ok("genre title with no number asked: not same_work", !isSameWork("Nature Morte", "Nature morte (K.34)"));
+  ok("distinctive title, no numbers either side: same_work", isSameWork("Horse and Rider IV", "Horse and Rider IV"));
+  ok("distinctive title, number only on one side: same_work", isSameWork("Horse and Rider IV (Wiseman 46)", "Horse and Rider IV"));
+  ok("distinctive title, conflicting numbers: not same_work", !isSameWork("Owl (Wiseman 10)", "Owl (Wiseman 46)"));
+  eq("refs: initial + number, ranges and lists expanded", [...catalogueRefKeys("Canterbury Tales (W. 28-30a; 60-62)")].sort(), ["w28", "w30a", "w60", "w62"]);
+  eq("refs: two catalogues", [...catalogueRefKeys("La Minotauromachie (Bloch 288, Baer 573)")].sort(), ["b288", "b573"]);
+  eq("a bare number in the title is not a reference", [...catalogueRefKeys("Party No. 10")], []);
+  eq("'from' and 'plate' are not catalogue names", [...catalogueRefKeys("Owl (plate 3, from Images)")], []);
+  const f = filterAndTier([
+    row({ title: "Nature morte (Kahnweiler 34)", organization: "Christie's" }),
+    row({ title: "Nature morte", organization: "Grisebach" }),
+    row({ title: "Nature morte (Kahnweiler 12)", organization: "Dorotheum" }),
+  ], { workTitle: gris });
+  eq("filterAndTier applies it: one same_work of three", f.rows.filter((r) => r.tier === "same_work").map((r) => r.organization), ["Christie's"]);
 }
 
 console.log("parseResultNode");

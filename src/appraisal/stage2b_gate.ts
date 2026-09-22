@@ -14,7 +14,8 @@
  * the same day. What does not become acceptable is an unverifiable claim, so that is what is
  * checked:
  *
- *   UNCITED COMP — a price with no page behind it. This is the measured fabrication signature:
+ *   UNCITED COMP — a price with no page behind it, or only a page that cannot show it (an artist
+ *     overview, a search, a home page — see isSpecificResultUrl). This is the measured fabrication signature:
  *     on the Cindy Sherman lot Haiku returned three comps with no URL and no stated basis, naming
  *     the artist's most famous series at small-print prices, and across three runs produced the
  *     same GBP 1,875 attached to three different titles. The specialist prompt already says a
@@ -42,7 +43,7 @@
  * Sonnet, so a gated run costs 0.04 + E x 0.157 against 0.157 always-Sonnet, and pays for itself
  * while the escalation rate E stays under about 75%. On the four measured lots E was 50%.
  */
-import type { Stage2bComp } from "./comp_storability.js";
+import { isSpecificResultUrl, type Stage2bComp } from "./comp_storability.js";
 
 export interface Stage2bResearchTelemetry {
   /** Web searches actually executed during the stage (webSearchUsage().searches). */
@@ -88,10 +89,10 @@ export function assessStage2bResearch(result: unknown, t: Stage2bResearchTelemet
   const r = (result ?? {}) as any;
 
   const comps: Stage2bComp[] = Array.isArray(r.auctionComps) ? r.auctionComps : [];
-  const uncited = comps.filter((c) => !usableUrl(c?.listingUrl));
+  const uncited = comps.filter((c) => !isSpecificResultUrl(c?.listingUrl));
   if (uncited.length) {
     reasons.push("uncited_comp");
-    notes.push(`${uncited.length} of ${comps.length} comp(s) carry no citation URL (${uncited.map((c) => `"${c?.artworkTitle ?? "untitled"}"${typeof c?.priceAmount === "number" ? ` @ ${c.priceAmount}` : ""}`).join(", ")})`);
+    notes.push(`${uncited.length} of ${comps.length} comp(s) carry no URL that shows the sale (${uncited.map((c) => `"${c?.artworkTitle ?? "untitled"}"${typeof c?.priceAmount === "number" ? ` @ ${c.priceAmount}` : ""}`).join(", ")})`);
   }
 
   const cr = r.catalogueRaisonne ?? {};

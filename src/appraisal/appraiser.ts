@@ -1341,15 +1341,16 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
       "at the ACKG's own houses (Bonhams, Skinner, Swann, Roseberys, Forum) are removed before you " +
       "see them, so nothing here duplicates query_ackg_comparables. Call it AFTER " +
       "query_ackg_comparables and BEFORE spending a web search on comps. It does NOT count against " +
-      "your web-search budget. Rows are prints only, tiered same_work (title matches exactly after " +
-      "catalogue refs are stripped) / same_artist, premium-inclusive, with GBP at the sale-date rate " +
+      "your web-search budget. Rows are prints only, tiered same_work / same_artist: same_work needs " +
+      "the exact title AND, where both carry one, the same catalogue number; a genre title " +
+      "(\"Nature morte\", \"Portrait\") is same_work only with a matching catalogue number, premium-inclusive, with GBP at the sale-date rate " +
       "and an artsy.net result URL to cite. Artist identity is exact-name only: a miss means Artsy " +
       "files the artist differently, not that the work never sold.",
     input_schema: {
       type: "object" as const,
       properties: {
         artistName: { type: "string" as const, description: "Candidate artist's full name, e.g. \"Elisabeth Frink\"." },
-        workTitle: { type: "string" as const, description: "Identified work title, for the same_work tier and a title-keyword search. Omit if unknown." },
+        workTitle: { type: "string" as const, description: "Identified work title, for the same_work tier and a title-keyword search. INCLUDE the catalogue raisonné number in parentheses when known, e.g. \"Nature Morte (K.34)\" — it is what separates this print from others with the same title. Omit if unknown." },
       },
       required: ["artistName"],
     },

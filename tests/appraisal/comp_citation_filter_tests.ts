@@ -63,7 +63,7 @@ console.log("describeUncitedComps — the omission is reported, never silent");
   const d = describeUncitedComps(haikuUncited);
   ok("it says how many were withheld", d.includes("2 further web finding(s) were WITHHELD"));
   ok("it names them, so the omission is auditable", d.includes("Untitled Film Still #96") && d.includes("Bonhams London") && d.includes("1875"));
-  ok("it says why", /no citation URL/.test(d));
+  ok("it says why", /no URL that shows the sale/.test(d));
   // A stage that found several figures it could not cite is telling you about its own quality.
   ok("it tells the valuation what to infer", /thin/.test(d) && /weigh the rest accordingly/.test(d));
   eq("nothing withheld, nothing said", describeUncitedComps([]), "");
