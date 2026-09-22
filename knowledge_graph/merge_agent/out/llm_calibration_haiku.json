@@ -1,0 +1,1401 @@
+{
+ "version": "MERGE-AGENT-P0-LLM-1.0",
+ "model": "claude-haiku-4-5",
+ "cost": 0.1761,
+ "tokens": [
+  117726,
+  11665
+ ],
+ "rows": [
+  {
+   "id": "g001",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Cecily Brown (born 1969, English painter active in NYC per ULAN) and Joan Brown (1938\u20131990) are different individuals with distinct birth years, nationalities, and artistic practices.",
+   "a": "Cecily Brown",
+   "b": "Joan Brown"
+  },
+  {
+   "id": "g002",
+   "stratum": "weak/clean",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "These are two different artists with different first names, nationalities (Mexican vs. Mexican-American), and active periods. Nicola L\u00f3pez is a well-documented contemporary artist born in 1975, while Armando L\u00f3pez is a Mexican artist with no recorded dates who created political broadsheet art.",
+   "a": "Armando L\u00f3pez",
+   "b": "Nicola L\u00f3pez"
+  },
+  {
+   "id": "g003",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Michael Potter (British, born 1951) with works documented in English auction houses, while Record B is Michel Potier (French surname form) with no birth date and works documented in French art databases. The different nationalities, name forms (English vs French), and distinct work titles suggest these are two different artists.",
+   "a": "Michael Potter",
+   "b": "Michel Potier"
+  },
+  {
+   "id": "g004",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records represent the same artist with identical name (Martin Lewis R.F.D., with R.F.D. being a post-nominal credential) from the same source (Swann), differing only in capitalization/punctuation conventions and having different work counts due to cataloging variations.",
+   "a": "Martin Lewis R. F. D",
+   "b": "Martin Lewis R.f.d"
+  },
+  {
+   "id": "g005",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Abram Games (1914-1996), a British graphic designer and poster artist, while Record B is Alexander James (born 1967), a different British artist. The birth years, names, and documented works (Games created advertising posters; James created what appears to be a different style of work) confirm these are two entirely different individuals.",
+   "a": "Abram Games",
+   "b": "Alexander James"
+  },
+  {
+   "id": "g006",
+   "stratum": "fuzzy/clean",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "Record B is identified as Alice Dalton Brown (born 1939, American painter) with ULAN confirmation, while Record A is Alice C. Browne with different initials and surname spelling, making them distinct individuals.",
+   "a": "Alice C. Browne",
+   "b": "Alice Dalton Brown"
+  },
+  {
+   "id": "g007",
+   "stratum": "subset/trap",
+   "human": "after",
+   "haiku": "same",
+   "reason": "Both records represent the same collaborative credit between Edgar Degas (the artist) and George W. Thornley (the reproductive engraver/printmaker), with the second record using a shortened form of Thornley's name. The slight variation in name spelling (full initials vs. no initials) is a common cataloguing convention difference.",
+   "a": "Edgar Degas And George W. Thornley",
+   "b": "Edgar Degas and George Thornley"
+  },
+  {
+   "id": "g008",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Joe Goode (1937\u20132025) was an established American sculptor and painter with extensive documentation and 34 works in the knowledge graph. Victor Gastelum (b. 1964) is a different artist with only 2 works. While both are credited with 'Line Drive,' this appears to be a cataloging error rather than evidence they are the same person, given their distinct birth years, different career profiles, and separate ULAN identifiers.",
+   "a": "Joe Goode",
+   "b": "Victor Gastelum"
+  },
+  {
+   "id": "g009",
+   "stratum": "subset/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A identifies a specific engraver (Henry Thomas Ryall) working after Charles Robert Leslie, while Record B credits a different engraver (A.L. Weise & Co.). These are two distinct printmaking credits with no shared individuals or works.",
+   "a": "Charles Robert Leslie engraved",
+   "b": "Engraved"
+  },
+  {
+   "id": "g010",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Jamie Wyeth (b. 1946) is the grandson of Newell Convers Wyeth (1882\u20131945), a well-known American illustrator. They are different people from different generations of the prominent Wyeth artistic family.",
+   "a": "Jamie Wyeth",
+   "b": "Newell Convers Wyeth"
+  },
+  {
+   "id": "g011",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Joyce Kozloff (b. 1942) and Nancy Spero (1926\u20132009) are two distinct American artists with different birth years, ULAN IDs, and separate bodies of work. The single shared work credit (Femfolio) likely reflects a collaborative publication or portfolio rather than identity confusion.",
+   "a": "Joyce Kozloff",
+   "b": "Nancy Spero"
+  },
+  {
+   "id": "g012",
+   "stratum": "subset/clean",
+   "human": "unsure",
+   "haiku": "same",
+   "reason": "Both records refer to Friedrich Wilhelm Karl Kuhnert (1865\u20131926), a German animal painter and printmaker, with the forenames in different order (Record A: Friedrich Wilhelm Karl; Record B: Wilhelm Friedrich). The dates, nationality, and period of the works are consistent with the same person.",
+   "a": "Friedrich Wilhelm Karl Kuhnert",
+   "b": "Wilhelm Friedrich Kuhnert"
+  },
+  {
+   "id": "g013",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Charles Lewis, a 19th-century reproductive engraver working after painter Thomas J Barker, while Record B is Cornelia Parker, a contemporary British sculptor and installation artist born in 1956. These are entirely different individuals from different time periods and artistic disciplines.",
+   "a": "Charles Lewis after Thomas J Barker",
+   "b": "Cornelia Parker"
+  },
+  {
+   "id": "g014",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Jeremy Deller is a British conceptual artist born in 1966, while Juergen Teller is a German photographer/artist born in 1964. These are two distinct individuals with different nationalities, birth years, and artistic practices.",
+   "a": "Jeremy Deller",
+   "b": "Juergen Teller"
+  },
+  {
+   "id": "g015",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two distinct individuals with different forenames (Alix vs Warren) and different nationalities/disciplines (Alix is unknown, Warren is identified as an American ceramicist, 1924-2018). The works listed are also completely different in type and subject matter.",
+   "a": "Alix Mackenzie",
+   "b": "Warren Mackenzie"
+  },
+  {
+   "id": "g016",
+   "stratum": "subset/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records appear to reference G\u00e9rard de Lairesse, the 17th-century Flemish/Dutch artist known for allegorical prints and drawings. Record B uses the abbreviated surname 'Lairesse' while Record A uses the full name 'G\u00e9rard de Lairesse'; the stylistically and thematically consistent works (allegorical subjects with Dutch/Flemish inscriptions) support this identification.",
+   "a": "G\u00e9rard de Lairesse",
+   "b": "Lairesse"
+  },
+  {
+   "id": "g017",
+   "stratum": "fuzzy/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records represent the same 16th-17th century Dutch engraver known for reproductive prints after Adam Elsheimer, with identical works listed (Tobias and the Angel, Ceres Seeking her Daughter) and consistent dates (1583-1648 for record B). The name variation (Hendrick vs Hendrik) is a common spelling difference for the same historical figure.",
+   "a": "Hendrick Goudt",
+   "b": "Hendrik Goudt"
+  },
+  {
+   "id": "g018",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Florentin Brigaud, a presumed artist/designer, while Record B credits Francisco Bartolozzi as an engraver working after P Rigaud (a designer). These are different individuals with no evidence of overlap in names or works.",
+   "a": "Florentin Brigaud",
+   "b": "Francisco Bartolozzi after P Rigaud"
+  },
+  {
+   "id": "g019",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Barbara Jones (1912\u20131978) was an English painter, illustrator, and designer, while Keith Richardson-Jones (born 1925) was an English painter and conceptual artist with a different surname and distinct career trajectory. These are two separate individuals.",
+   "a": "Barbara Jones",
+   "b": "Keith Richardson-Jones"
+  },
+  {
+   "id": "g020",
+   "stratum": "subset/clean",
+   "human": "unsure",
+   "haiku": "same",
+   "reason": "Both records share the identical surname and first name 'David Driskell,' with Record A providing the full middle name 'Clyde' and birth-death dates (1931\u20132020) that establish a single individual. The absence of dates in Record B is typical for incomplete catalogue records of the same person.",
+   "a": "David Clyde Driskell",
+   "b": "David Driskell"
+  },
+  {
+   "id": "g021",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two different individuals: Dillwyn Smith is a British artist born in 1958, while Vincent D. Smith (Vincent DaCosta Smith) was an American painter born in 1929/1930 and died in 2003. They have different nationalities, birth years, and documented artistic outputs.",
+   "a": "Dillwyn Smith",
+   "b": "Vincent D. Smith"
+  },
+  {
+   "id": "g022",
+   "stratum": "fuzzy/clean",
+   "human": "same",
+   "haiku": "different",
+   "reason": "Master Ag and Master Mr are distinct 15th/16th-century printmaker initials with different attributed works and no evidence of overlap or shared identity in the historical record.",
+   "a": "Master Ag",
+   "b": "Master Mr"
+  },
+  {
+   "id": "g023",
+   "stratum": "subset/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Francis Frith (1822\u20131898), a British photographer known for landscape photography. Record B credits Francis Holl as an engraver working 'after' William Powell Frith, a different artist; these are three distinct individuals across two different artistic practices (photography vs. printmaking/painting).",
+   "a": "Francis Frith",
+   "b": "Francis Holl after William Powell Frith"
+  },
+  {
+   "id": "g024",
+   "stratum": "fuzzy/clean",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "The names are distinctly different (Marlin vs Marin, with different first names John vs Jonier), and they appear in different sources (roseberys vs navigart14) with no evidence of shared identity or aliases.",
+   "a": "John Marlin",
+   "b": "Jonier Marin"
+  },
+  {
+   "id": "g025",
+   "stratum": "subset/clean",
+   "human": "collaboration",
+   "haiku": "different",
+   "reason": "Record A lists three distinct artists (D*Face, Phlegm, and Stik) as a single combined entry, while Record B is specifically Stik alone with birth year 1979, 55 documented works, and British nationality. Record A represents a collaborative or grouped credit, not the individual Stik.",
+   "a": "D*Face; Phlegm; Stik",
+   "b": "Stik"
+  },
+  {
+   "id": "g026",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "different",
+   "reason": "Record B is a collaboration between two British artists born in 1967, while Record A is a single artist with no dates or biographical information. The works are completely distinct and from different eras, indicating these are separate entities rather than the same person under different name forms.",
+   "a": "Jane Wilson",
+   "b": "Jane Wilson and Louise Wilson"
+  },
+  {
+   "id": "g027",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A credits David Byrne and Daniella Spencer as collaborators, while Record B credits David Hockney and Stephen Spender as collaborators. These are entirely different pairs of individuals with no overlapping names or evident connection.",
+   "a": "David Byrne Daniella Spencer",
+   "b": "David Hockney & Stephen Spender"
+  },
+  {
+   "id": "g028",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "collaboration",
+   "reason": "Record A is Edward Kienholz as a solo artist, while Record B is a joint credit crediting Edward and Nancy Kienholz together. Nancy Reddin Kienholz (1943\u20132019) was his wife and long-term artistic collaborator, so this is a collaboration case where one record includes both members and the other is a single member.",
+   "a": "Edward Kienholz",
+   "b": "Edward and Nancy Kienholz"
+  },
+  {
+   "id": "g029",
+   "stratum": "fuzzy/trap",
+   "human": "after",
+   "haiku": "different",
+   "reason": "These are two distinct printmakers working after Parmigianino: Antonio da Trento and Antonio Maria Zanetti (a Venetian engraver) are different historical figures, distinguished by their full names and different bodies of work.",
+   "a": "Antonio Da Trento (after Parmigianino)",
+   "b": "Antonio Maria Zanetti (after Parmigianino)"
+  },
+  {
+   "id": "g030",
+   "stratum": "subset/clean",
+   "human": "unsure",
+   "haiku": "same",
+   "reason": "Both are American artists named Alex MacLean with works documented by Bonhams. The 'S' initial and birth year 1947\u2013 in Record B, combined with the matching surname and nationality, strongly suggest these are the same person recorded under different name forms (Alex MacLean vs Alex S. MacLean).",
+   "a": "Alex MacLean",
+   "b": "Alex S. MacLean"
+  },
+  {
+   "id": "g031",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "unsure",
+   "reason": "Both records show the same birth year (1956) and Chinese nationality with identical pinyin romanization variations (Guang Yi vs Guangyi), and they share at least one work (Gillette). However, the ULAN entry for Record B lists birth year 1946 and describes the artist as Chinese-American, creating a discrepancy that prevents confident matching without additional verification.",
+   "a": "Wang Guang Yi",
+   "b": "Wang Guangyi"
+  },
+  {
+   "id": "g032",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two entirely different individuals: Jo Ann Callis is an American photographer born in 1940, while John Tallis was a British mapmaker and publisher (1815\u20131876). Their names, nationalities, time periods, and work types (photography vs. cartography/printmaking) are completely distinct.",
+   "a": "Jo Ann Callis",
+   "b": "John Tallis"
+  },
+  {
+   "id": "g033",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Francis Williams (1936\u20132003) was a Canadian artist with a documented birth and death year, while Herbert J. Williams has no dates and unknown nationality. The different middle initials (none vs. J.) and the complete absence of overlapping biographical information indicates these are two distinct individuals.",
+   "a": "Francis Williams",
+   "b": "Herbert J. Williams"
+  },
+  {
+   "id": "g034",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Christopher Le Brun, a British painter and sculptor born in 1951. The spelling variation (Le Brun vs LeBrun) and the presence of titles (PPRA, PRA) in Record A's aliases are consistent with how the same person may be recorded across different catalogues. The ULAN identifier, birth year, and source overlap (Bonhams) confirm this is the same individual.",
+   "a": "Christopher Le Brun",
+   "b": "Christopher LeBrun"
+  },
+  {
+   "id": "g035",
+   "stratum": "fuzzy/trap",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records are for Giacomo Manz\u00fa, the renowned Italian sculptor and printmaker (1908\u20131991). Record A lacks biographical details but is the same artist as Record B, which provides his dates and nationality. The works are from the same source (roseberys) and represent the same individual under consistent naming.",
+   "a": "Grouped with line 22. Giacomo Manz\u00fa",
+   "b": "grouped line 30Giacomo Manz\u00fa"
+  },
+  {
+   "id": "g036",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A (Brian Wall, born 1931) and Record B (Brian Yale, born 1936 per ULAN) are different individuals with different surnames and different birth years. The ULAN entry for Yale confirms he is a distinct British painter born in 1936.",
+   "a": "Brian Wall",
+   "b": "Brian Yale"
+  },
+  {
+   "id": "g037",
+   "stratum": "subset/clean",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "Record A is Edmond Aman-Jean (with full name AMAND Edmond Fran\u00e7ois Jean), a documented artist with a French surname. Record B is simply 'Jean' with nationality listed as 'Hans' (likely a data error for a first name), representing a different artist entirely with completely distinct works and no connecting aliases or biographical information.",
+   "a": "Edmond Aman-Jean",
+   "b": "Jean"
+  },
+  {
+   "id": "g038",
+   "stratum": "subset/clean",
+   "human": "same",
+   "haiku": "different",
+   "reason": "Samuel Alken (1810\u20131894) and Samuel Henry Alken are different individuals; the latter appears to be a designer whose work was reproduced by others, while the former is dated to the 19th century with distinct catalogue records and subject matter.",
+   "a": "Samuel Alken",
+   "b": "Samuel Henry Alken"
+  },
+  {
+   "id": "g039",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is 'H Overton and R Sayer', historical print publishers/engravers with no dates, while Record B is Herbert Bayer, a 20th-century Austrian-American designer and painter (1900-1985) with extensive documentation. These are entirely different individuals from different eras and fields.",
+   "a": "H Overton and R Sayer",
+   "b": "Herbert Bayer"
+  },
+  {
+   "id": "g040",
+   "stratum": "subset/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are clearly different individuals separated by birth dates 71 years apart (1879 vs 1808). Record A is Ren\u00e9 Vincent (1879\u20131936), a known French artist, while Record B is an earlier 19th-century artist with the forename Vincent and aliases suggesting Forest, Jacques, or Joseph as additional names.",
+   "a": "Ren\u00e9 Vincent",
+   "b": "Vincent"
+  },
+  {
+   "id": "g041",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Jusepe de Ribera, the Spanish Baroque painter and printmaker (c. 1588\u20131652), despite minor variations in capitalization and a discrepancy in birth/death dates typical of catalogue records from the period. The overlapping works, particularly the matching title 'Saint Jerome Hearing the Trumpet of the Last Judgment,' confirm they are the same artist.",
+   "a": "Jusepe De Ribera",
+   "b": "Jusepe de Ribera"
+  },
+  {
+   "id": "g042",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two distinct surnames (Merz vs Mura) with no evidence of shared identity, aliases, or cross-references between the records despite both appearing in the same source database.",
+   "a": "Albert Merz",
+   "b": "Albert Mura"
+  },
+  {
+   "id": "g043",
+   "stratum": "subset/trap",
+   "human": "unsure",
+   "haiku": "collaboration",
+   "reason": "Record A is a joint credit for Christopher Wool and Felix Gonzalez-Torres, while Record B is for Felix Gonzalez-Torres alone. This fits the collaboration pattern where one record is a joint credit that INCLUDES the other member.",
+   "a": "Christopher Wool and Felix Gonzalez-Torres",
+   "b": "Felix Gonzalez-Torres"
+  },
+  {
+   "id": "g044",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Pauline Bourges is a French-language artist (French name, French source, work titled 'Bords de l'Oise'), while Phil Borges is a contemporary photographer (born 1950) who documents geographic locations. These are clearly distinct individuals with different artistic practices and backgrounds.",
+   "a": "Pauline Bourges",
+   "b": "Phil Borges"
+  },
+  {
+   "id": "g045",
+   "stratum": "subset/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records represent Jean-Antoine Watteau (1684-1721), the famous French Rococo painter, with 'Antoine Watteau' being a shortened form of his full name 'Jean-Antoine Watteau.' The aliases confirm both refer to the same person, and both records come from the same source (navigart11).",
+   "a": "Antoine Watteau",
+   "b": "Jean-Antoine Watteau"
+  },
+  {
+   "id": "g046",
+   "stratum": "fuzzy/clean",
+   "human": "unsure",
+   "haiku": "unsure",
+   "reason": "Both records lack sufficient identifying information (no ULAN, Wikidata, or biographical details). While 'Nicasio' and 'Nicolas' are similar names, the birth year 1993 for Record A and the absence of dates for Record B, combined with different work titles and sources, make it impossible to determine whether these are variants of the same person or different individuals.",
+   "a": "Nicasio Fernandez",
+   "b": "Nicolas Fernandez"
+  },
+  {
+   "id": "g047",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two distinct artists with different first names, nationalities (American vs. British), birth years (1909 vs. 1933), and different bodies of work documented in different sources (Bonhams vs. Tate/Roseberys).",
+   "a": "Joe Jones",
+   "b": "Stanley Jones"
+  },
+  {
+   "id": "g048",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Bill Owens (b. 1938) and Laura Owens (b. 1970) are different individuals with a 32-year age gap and distinct bodies of work in different artistic media, with no evidence of professional collaboration.",
+   "a": "Bill Owens",
+   "b": "Laura Owens"
+  },
+  {
+   "id": "g049",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two distinct individuals with different forenames (Marc Constant Emile vs. Pierre) and different works attributed to each, despite sharing the surname Charpin. Without dates or biographical information, they cannot be confirmed as the same person, and the different names strongly suggest they are different artists.",
+   "a": "Marc Constant Emile Charpin",
+   "b": "Pierre Charpin"
+  },
+  {
+   "id": "g050",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two distinct individuals with different first names (Joanne vs John), different nationalities (American vs British), and different works. The shared surname Isaac(s) is insufficient to connect them.",
+   "a": "Joanne Isaac",
+   "b": "John Isaacs"
+  },
+  {
+   "id": "g051",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records are Jean-Jacques de Boissieu, a French painter, draftsman, and etcher (1736-1810) as confirmed by ULAN. Record A has complete biographical information while Record B has the same person recorded without dates but from a different source (Swann auction house).",
+   "a": "Jean-Jacques De Boissieu",
+   "b": "Jean-Jacques de Boissieu"
+  },
+  {
+   "id": "g052",
+   "stratum": "subset/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to the same French artist with the name Adolphe-Marie Beaufr\u00e8re (with minor spelling variations in the full name). Record A's dates (1876\u20131960) and nationality match the documented artist, and both records include works from similar Breton locations (Merrien/Merrieu), indicating they describe the same person under different name formulations.",
+   "a": "Adolphe Marie Timoth\u00e9 e Beaufr\u00e8re",
+   "b": "Adolphe-Marie Beaufr\u00e8re"
+  },
+  {
+   "id": "g053",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "unsure",
+   "reason": "Both records lack dates, ULAN, or Wikidata identifiers to confirm identity. While the names are very similar (differing only in quotation marks around \"le Lorraine\"), the distinct work titles listed suggest these may be different cataloguing records for the same artist or potentially different individuals, but cannot be definitively resolved without additional documentation.",
+   "a": "Ivan \"le Lorraine\" Albright",
+   "b": "Ivan le Lorraine Albright"
+  },
+  {
+   "id": "g054",
+   "stratum": "subset/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records credit Jeremy Mayes as the artist with no distinguishing dates or identifiers. Record B appears to be a single work entry that should be consolidated with Record A's broader artist record, as they represent the same individual artist with works in similar subject matter (landscapes, urban scenes).",
+   "a": "Jeremy Mayes",
+   "b": "a Canal 2 by Jeremy Mayes"
+  },
+  {
+   "id": "g055",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records show the same person (Jan Joris van Vliet) with identical spelling variants, overlapping works including the same Rembrandt reproduction, and consistent attribution as an engraver/printmaker working in the early 17th century. Record A's dates (1610\u20131635) fit the historical period of this known reproductive engraver.",
+   "a": "Jan Joris Van Vliet",
+   "b": "Jan Joris van Vliet"
+  },
+  {
+   "id": "g056",
+   "stratum": "fuzzy/clean",
+   "human": "same",
+   "haiku": "different",
+   "reason": "The records have different forenames (Jack vs John), different surnames (Baker vs Barker), and different known works. Without any dates for Record A, there is no evidence linking these as the same person.",
+   "a": "Jack Baker",
+   "b": "John Barker"
+  },
+  {
+   "id": "g057",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are clearly different individuals with different names (Joan Jonas vs Joe Jones), different birth years (1936 vs 1909), and different nationalities/professions. Joan Jonas is a living American video artist born in 1936, while Joe Jones was an American painter who lived 1909-1963.",
+   "a": "Joan Jonas",
+   "b": "Joe Jones"
+  },
+  {
+   "id": "g058",
+   "stratum": "subset/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is JR, a French street artist born in 1983 with extensive documented works and ULAN ID 500404197. Record B is James E. Lewis Jr., an American artist from 1923\u20131997, a completely different person from a different era and nationality.",
+   "a": "JR",
+   "b": "James E. Lewis Jr."
+  },
+  {
+   "id": "g059",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Charles S. Bell (1935\u20131995) was an American artist, while Vanessa Bell (1879\u20131961) was a well-known British painter and designer. The birth years, nationalities, and time periods are completely distinct.",
+   "a": "Charles S. Bell",
+   "b": "Vanessa Bell"
+  },
+  {
+   "id": "g060",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "collaboration",
+   "reason": "Both artists are credited with \"Femfolio,\" which appears to be a joint collaborative work. The records show different individuals (Faith Ringgold, born 1930, and Joyce Kozloff, born 1942) who share this one work in common, indicating a collaborative project rather than the same person or unrelated artists.",
+   "a": "Faith Ringgold",
+   "b": "Joyce Kozloff"
+  },
+  {
+   "id": "g061",
+   "stratum": "fuzzy/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records are American artists born in 1957 with nearly identical names (Siena vs Sienna, a common spelling variation). Record A's ULAN and Wikidata IDs confirm James Siena as a known contemporary artist, and the stylistic similarity of works (grid-based, recursive patterns) supports they are the same person with a misspelled surname in Record B.",
+   "a": "James Siena",
+   "b": "James Sienna"
+  },
+  {
+   "id": "g062",
+   "stratum": "fuzzy/trap",
+   "human": "unsure",
+   "haiku": "same",
+   "reason": "Both records are for Giacomo Manz\u00fa, the renowned Italian sculptor and printmaker (1908\u20131991). Record A provides his documented dates and nationality while Record B lacks this information, but the matching name and source (roseberys auction house) indicate they represent the same artist.",
+   "a": "Grouped line 30 Giacomo Manz\u00fa",
+   "b": "Grouped with line 22. Giacomo Manz\u00fa"
+  },
+  {
+   "id": "g063",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Romain de Tirtoff, known as Ert\u00e9, the famous Russian-born stage designer and artist. The birth and death dates (1892\u20131990) in Record B are consistent with the well-known artist Ert\u00e9, and the slight variations in naming format (with and without space before 'Erte') are common catalogue conventions for the same individual.",
+   "a": "Romain de Tirtoff (Ert\u00e9)",
+   "b": "Romain de Tirtoff Erte"
+  },
+  {
+   "id": "g064",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to the same Japanese printmaker with identical romanized names (Jun'ichiro/Junichiro Sekino). Record B provides dates (1914-1988) and Japanese nationality, and the overlapping work titles and artistic style (woodblock prints) confirm they are the same person recorded under variant name spellings.",
+   "a": "Jun'ichiro Sekino",
+   "b": "Junichiro Sekino"
+  },
+  {
+   "id": "g065",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "collaboration",
+   "reason": "Record B is a joint credit explicitly naming both Paul Eluard and Pablo Picasso together, while Record A is Pablo Picasso alone. This is a collaboration case where one record includes the other as part of a joint credit.",
+   "a": "Pablo Picasso",
+   "b": "Paul Eluard and Pablo Picasso"
+  },
+  {
+   "id": "g066",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two different people with different forenames (Frank vs Mark), different birth years (1927 vs 1953), and different works attributed to each. There is no evidence suggesting they are the same person or closely related professionally.",
+   "a": "Frank Rowland",
+   "b": "Mark Rowland"
+  },
+  {
+   "id": "g067",
+   "stratum": "strong/trap",
+   "human": "after",
+   "haiku": "same",
+   "reason": "Both records represent the same collaborative credit between Edgar Degas and George W. Thornley, differing only in punctuation (with/without period after 'W') and sourced from different auction houses (Swann vs. Bonhams). The names and collaboration structure are identical.",
+   "a": "Edgar Degas And George W. Thornley",
+   "b": "Edgar Degas and George W Thornley"
+  },
+  {
+   "id": "g068",
+   "stratum": "subset/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Valentine Prax, a French artist (1899\u20131981 per Record A). Record B's full name is Valentine Henriette Prax matching Record A exactly, with the same forename and surname. The stylistic consistency across works and French nationality support identity.",
+   "a": "Valentine Henriette Prax",
+   "b": "Valentine Prax"
+  },
+  {
+   "id": "g069",
+   "stratum": "subset/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Nicolas Chaperon (1612\u20131656), a French engraver and printmaker. Record B's attribution \"Raffaello - Nicolas Chaperon\" indicates Chaperon working after Raphael's designs, which is consistent with his known practice of reproductive engraving. The works and dates align with a single historical figure.",
+   "a": "Nicolas Chaperon",
+   "b": "Raffaello - Nicolas Chaperon"
+  },
+  {
+   "id": "g070",
+   "stratum": "fuzzy/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records share the same name (with a minor spelling variant: 'Waren' vs 'Warren') and similar work counts. Record B's ULAN entry confirms William Harry Warren Bicknell was an American etcher (1860\u20131947), and the spelling variation in Record A is a likely transcription error rather than evidence of a different person.",
+   "a": "William Harry Waren Bicknell",
+   "b": "William Harry Warren Bicknell"
+  },
+  {
+   "id": "g071",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Pierre-Paul Prud'hon (with variant hyphenation), a French Neoclassical painter and draughtsman. The differing work examples and sources reflect typical cataloguing variations across different databases and auction houses rather than distinct individuals.",
+   "a": "Pierre Paul Prud'Hon",
+   "b": "Pierre-Paul Prud'hon"
+  },
+  {
+   "id": "g072",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Charles Lewis, an engraver working after painter Thomas J Barker (a reproductive print relationship), while Record B is Cushman Parker (1881\u20131940), an American artist with entirely different works and dates. These are two distinct individuals with no connection.",
+   "a": "Charles Lewis after Thomas J Barker",
+   "b": "Cushman Parker"
+  },
+  {
+   "id": "g073",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "same",
+   "reason": "Both records credit Gould & Richter as a collaborative team on ornithological works (birds of Asia/Australia and hummingbirds), with the same sources and notation style. John Gould was a renowned 19th-century ornithological illustrator who regularly worked with H.C. Richter as a collaborator, and these abbreviated and full-name forms represent the same partnership.",
+   "a": "Gould & Richter",
+   "b": "John Gould & H.C. Richter"
+  },
+  {
+   "id": "g074",
+   "stratum": "fuzzy/trap",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records represent a collaboration between Camille Pissarro (1830\u20131903) and George W. Thornley, a lithographic reproductive artist. The date range 1857\u20131935 in Record A reflects the span of their collaborative works, while the aliases confirm Pissarro's individual dates. The slight naming variation ('George W. Thornley' vs 'George Thornley') is a common catalogue convention.",
+   "a": "Camille Pissarro & George W. Thornley",
+   "b": "Camille Pissarro and George Thornley"
+  },
+  {
+   "id": "g075",
+   "stratum": "subset/trap",
+   "human": "unsure",
+   "haiku": "after",
+   "reason": "Record A explicitly credits a reproductive printmaker working 'after' Hans Holbein the Younger, while Record B is Hans Holbein the Younger himself, the original designer. This is the canonical 'after' relationship in print cataloguing.",
+   "a": "After Hans Holbein the Younger",
+   "b": "Hans Holbein The Younger"
+  },
+  {
+   "id": "g076",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Cornelis Galle I (1576\u20131650) and Cornelis van Dalen I (1602\u20131665) are distinct individuals with different surnames, different birth/death dates, and no evidence of being the same person despite both being Flemish printmakers of the 17th century.",
+   "a": "Cornelis Galle I",
+   "b": "Cornelis van Dalen I"
+  },
+  {
+   "id": "g077",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Charles Lewis, a 19th-century reproductive engraver working after painter Thomas J Barker, while Record B is Charming Baker (Alan Baker), a contemporary British artist born in 1964 with a completely different body of work. These are entirely different individuals with no overlap in dates, nationality context, or artistic practice.",
+   "a": "Charles Lewis after Thomas J Barker",
+   "b": "Charming Baker"
+  },
+  {
+   "id": "g078",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two different American artists with distinct birth years (1894 vs 1948), different oeuvres, and no indication of family or professional relationship beyond sharing a surname.",
+   "a": "Doel Reed",
+   "b": "Eli Reed"
+  },
+  {
+   "id": "g079",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Brenda Miller, an American painter born in 1941 with ULAN confirmation. Record B is Faile, a collaborative duo with members Patrick McNeil and Patrick Miller, born in the 1970s. These are completely different artists with different birth years, nationalities, and artistic practices.",
+   "a": "Brenda Miller",
+   "b": "Faile aka Patrick McNeil and Patrick Miller"
+  },
+  {
+   "id": "g080",
+   "stratum": "fuzzy/clean",
+   "human": "unsure",
+   "haiku": "unsure",
+   "reason": "The names are similar but spelled differently (Chapron vs Chaperon), with A showing an after-Raphael reproductive work and B showing original compositions, but without dates or biographical information, it cannot be determined if these are variant spellings of the same artist or two different individuals with similar names.",
+   "a": "Nicholas Chapron",
+   "b": "Nicolas Chaperon"
+  },
+  {
+   "id": "g081",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records have identical works (Othello), the same source (Swann), and differ only in diacritical marks (Theodore vs Th\u00e9odore), which is a standard spelling variation for the French artist Th\u00e9odore Chass\u00e9riau.",
+   "a": "Theodore Chass\u00e9riau",
+   "b": "Th\u00e9odore Chass\u00e9riau"
+  },
+  {
+   "id": "g082",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two distinct individuals with different birth years (1920 vs 1953), different nationalities (British vs American), and different types of artistic output (a single work titled 'Zola' vs multiple still life paintings). The shared surname Cohen is insufficient to indicate identity.",
+   "a": "Alfred Cohen",
+   "b": "Bruce Cohen"
+  },
+  {
+   "id": "g083",
+   "stratum": "subset/clean",
+   "human": "different",
+   "haiku": "after",
+   "reason": "Record A explicitly states \"Nella maniera di Jacques Stella\" (in the manner of Jacques Stella), indicating it is an anonymous work created in the style of or after the designer Jacques Stella, who is the subject of Record B.",
+   "a": "Anonimo - Nella maniera di Jacques Stella",
+   "b": "Jacques Stella"
+  },
+  {
+   "id": "g084",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "collaboration",
+   "reason": "Record A credits Jake & Dinos Chapman and Nick Smith as a joint collaboration, while Record B is the individual artist Nick Smith who participated in that collaboration.",
+   "a": "Jake & Dinos Chapman and Nick Smith",
+   "b": "Nick Smith"
+  },
+  {
+   "id": "g085",
+   "stratum": "subset/trap",
+   "human": "after",
+   "haiku": "after",
+   "reason": "Record B explicitly credits Theodor de Bry as a reproductive engraver/printmaker working 'after' Hans Sebald Beham, the designer. This is a classic after relationship where one record represents the derivative printmaker and the other the original artist.",
+   "a": "Hans Sebald Beham",
+   "b": "Theodor de Bry (after Hans Sebald Beham)"
+  },
+  {
+   "id": "g086",
+   "stratum": "fuzzy/clean",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "Record A is Will Barnet (1911\u20132012), an established American painter and printmaker with extensive documentation (ULAN 500010278, multiple museum sources, 83 works). Record B is William Barnett (1919\u2013), with only one work recorded and no ULAN or Wikidata confirmation. The different birth years (12 years apart), different surnames (Barnet vs Barnett), and lack of any corroborating evidence suggest these are two different people.",
+   "a": "Will Barnet",
+   "b": "William Barnett"
+  },
+  {
+   "id": "g087",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Harry Callahan (1912\u20131999) was a renowned American photographer known for his work with Eleanor and Chicago street scenes, while Ryan Callahan (b. 1981) is a contemporary street artist. They are different people separated by birth date and artistic practice.",
+   "a": "Harry Callahan",
+   "b": "Ryan Callahan"
+  },
+  {
+   "id": "g088",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records are from Bonhams and share the same artist name (Roy De Forest/DeForest) with consistent work titles (\"Story of Flight II\" vs \"History of Flight\" suggesting related series). The name variation (space vs no space) is a common catalogue convention difference, and the 1930-2007 dates for Record A are consistent with an artist whose work appears in auction catalogues.",
+   "a": "Roy De Forest",
+   "b": "Roy DeForest"
+  },
+  {
+   "id": "g089",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two distinct artists with different first names, nationalities, and birth years: Alexis Smith (American, born 1949) and Richard Smith (British, 1931\u20132016). Their works and exhibition histories are completely separate.",
+   "a": "Alexis Smith",
+   "b": "Richard Smith"
+  },
+  {
+   "id": "g090",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Armand S\u00e9guin/Seguin, a French painter and engraver. The spelling variation (Seguin vs S\u00e9guin) is a common catalogue convention difference, and Record B's ULAN entry with confirmed dates (1869-1903) and description as painter and engraver matches the profile of Record A's work with etchings.",
+   "a": "Armand Seguin",
+   "b": "Armand S\u00e9guin"
+  },
+  {
+   "id": "g091",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record B is Lois Mailou Jones (1905\u20131998), a well-documented African-American painter with ULAN and Wikidata identifiers. Record A is Dennis Jones with no dates or identifying information, making them distinct individuals with no evidence of connection.",
+   "a": "Dennis Jones",
+   "b": "Lois Mailou Jones"
+  },
+  {
+   "id": "g092",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A credits Jake & Dinos Chapman (established British artist duo) with Nick Smith on a conceptual artwork with a wordplay title characteristic of their practice, while Record B is Mike Smith with photographic works of US locations. These are distinct artists with no indication of overlap.",
+   "a": "Jake & Dinos Chapman and Nick Smith",
+   "b": "Mike Smith"
+  },
+  {
+   "id": "g093",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Andrea B\u00fcttner (b. 1972, German) and Erich Buttner (1889\u20131936) are clearly different individuals separated by generation, with different first names, nationalities, and artistic practices (contemporary conceptual art vs. early 20th-century portraiture).",
+   "a": "Andrea B\u00fcttner",
+   "b": "Erich Buttner"
+  },
+  {
+   "id": "g094",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "collaboration",
+   "reason": "Record B is a joint credit pairing Yoshitomo Nara and Hiroshi Sugimoto, while Record A is Hiroshi Sugimoto alone. This is a collaboration credit that includes one of the individual artists from Record A.",
+   "a": "Hiroshi Sugimoto",
+   "b": "Yoshitomo Nara & Hiroshi Sugimoto"
+  },
+  {
+   "id": "g095",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "collaboration",
+   "reason": "Record B is a joint credit explicitly naming both Shepard Fairey and Sandra Chevrier, while Record A is Sandra Chevrier alone; this is a collaboration where one record includes the other as a member.",
+   "a": "Sandra Chevrier",
+   "b": "Shepard Fairey and Sandra Chevrier"
+  },
+  {
+   "id": "g096",
+   "stratum": "subset/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is a vague historical attribution ('Claude') likely referring to a historical artist, while Record B is Jeanne-Claude (1935\u20132009), a modern environmental artist known for collaborative wrapped projects with Christo. These are entirely different individuals from different eras with no connection.",
+   "a": "Claude",
+   "b": "Jeanne-Claude"
+  },
+  {
+   "id": "g097",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two distinct individuals with different birth years (1921 vs 1923), different death years (2005 vs 2022), different nationalities (British vs unknown), and different artistic outputs with no overlap in documented works or aliases.",
+   "a": "Frank Vernon Martin",
+   "b": "Knox Martin"
+  },
+  {
+   "id": "g098",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "after",
+   "reason": "Record A credits Augustus Pugin as an engraver working \"after\" Thomas Rowlandson, the original designer. This is a reproductive print relationship where Rowlandson (Record B) is the artist whose work was engraved by Pugin (Record A).",
+   "a": "Augustus Pugin after Thomas Rowlandson",
+   "b": "Thomas Rowlandson"
+  },
+  {
+   "id": "g099",
+   "stratum": "fuzzy/trap",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "Record A is an engraver or printmaker named Roberts working after a designer named Woodward, representing a reproductive print relationship. Record B is Roy Fairchild-Woodard, a contemporary British artist born in 1953, which is a completely different person and time period.",
+   "a": "Roberts after Woodward",
+   "b": "Roy Fairchild-Woodard"
+  },
+  {
+   "id": "g100",
+   "stratum": "strong/clean",
+   "human": "unsure",
+   "haiku": "collaboration",
+   "reason": "Record A explicitly identifies 'Andrew Power' as a joint credit for Sybil Andrews (1898\u20131992) and Cyril Power (1872\u20131951), while Record B lists the same pair as the artists. Both records refer to the same collaborative partnership between these two printmakers.",
+   "a": "Andrew Power",
+   "b": "Andrew-Power"
+  },
+  {
+   "id": "g101",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two different American artists with different birth years (1945 vs. 1938) and distinct bodies of work\u2014Lynn Davis is known for large-format photography of landscapes and architectural subjects, while Paul Davis is an illustrator/graphic artist who created work for theatrical productions like Three Penny Opera.",
+   "a": "Lynn Davis",
+   "b": "Paul Davis"
+  },
+  {
+   "id": "g102",
+   "stratum": "fuzzy/clean",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "Record A is Louis Legrand (1863\u20131951), a well-documented French painter and printmaker with 25 catalogued works and confirmed ULAN identity. Record B is Luc Legrand with no dates, no ULAN, and only 2 works; these are different individuals sharing only a common surname.",
+   "a": "Louis Legrand",
+   "b": "Luc Legrand"
+  },
+  {
+   "id": "g103",
+   "stratum": "fuzzy/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Michael Comte and Michel Comte are anglicized and French/original spellings of the same name. Michel Comte is a well-known Swiss photographer born in 1954 who has worked on celebrity and fashion photography, consistent with the works attributed to both records (portrait photography of notable subjects like Jeremy Irons and Helena Christensen).",
+   "a": "Michael Comte",
+   "b": "Michel Comte"
+  },
+  {
+   "id": "g104",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Alex Katz is a well-known American painter born in 1927 with extensive documentation and a substantial exhibition history. Mich\u00e8le Katz has no dates, no ULAN or Wikidata records, and appears in only one source with a different artistic profile, indicating two different artists who happen to share a surname.",
+   "a": "Alex Katz",
+   "b": "Mich\u00e8le Katz"
+  },
+  {
+   "id": "g105",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Denis Mitchell (1912\u20131993) was a British abstract artist, while Enid Mitchell (1890\u2013) was a different person born two decades earlier with no evident connection. The shared surname and limited biographical information do not establish they are the same person.",
+   "a": "Denis Mitchell",
+   "b": "Enid Mitchell"
+  },
+  {
+   "id": "g106",
+   "stratum": "subset/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records represent Giorgio Ghisi, the renowned 16th-century Italian engraver (1520-1582). Record B provides his full name with dates and nationality, while Record A is a simplified form of the same artist. The shared works (The Vision of Ezekiel, Venus-themed compositions, allegorical subjects) and consistent sourcing from auction houses confirm they are the same person.",
+   "a": "Giorgio Ghisi",
+   "b": "Giorgio Mantovano Ghisi"
+  },
+  {
+   "id": "g107",
+   "stratum": "subset/trap",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "The birth years differ significantly (1963 vs 1937, a 26-year gap), and Record A has the more specific name 'Chris Frazer Smith' while Record B is simply 'Chris Smith.' These appear to be two distinct British artists.",
+   "a": "Chris Frazer Smith",
+   "b": "Chris Smith"
+  },
+  {
+   "id": "g108",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "collaboration",
+   "reason": "Record B is a joint credit explicitly naming both Gus Bofa and Andr\u00e9 Dunoyer de Segonzac, while Record A is the individual artist Andr\u00e9 Dunoyer de Segonzac alone. This fits the collaboration category where one record is a joint credit that includes the other.",
+   "a": "Andr\u00e9 Dunoyer de Segonzac",
+   "b": "Gus Bofa and Andr\u00e9 Dunoyer de Segonzac"
+  },
+  {
+   "id": "g109",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records share the identical name (Chet La More/Chet la More), and Record B's single work 'Miners' appears in Record A's works list, strongly indicating they refer to the same American artist (1908\u20131980) documented in different catalogues.",
+   "a": "Chet La More",
+   "b": "Chet la More"
+  },
+  {
+   "id": "g110",
+   "stratum": "fuzzy/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records are British artists born in 1939 with identical birth years and nationality. Record B has extensive institutional documentation (ULAN, Wikidata, major museum sources) confirming Peter Phillips as an English painter (1939-2025), and the work titles in Record A (Doublebubblebrain, Pneumatics, Transorbital) are consistent with Phillips' Pop Art practice. The spelling variation 'Philips' vs 'Phillips' appears to be a cataloguing inconsistency for the same person.",
+   "a": "Peter Philips",
+   "b": "Peter Phillips"
+  },
+  {
+   "id": "g111",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Benito Quinquela Mart\u00edn, an Argentine artist (1890\u20131977) known for works like 'Inundacion en la Boca'. Record B is Fran\u00e7ois Martin, a different person with no date information and French works with titles like 'A la lisi\u00e8re de la savane'. These are distinct individuals with different nationalities and artistic outputs.",
+   "a": "Benito Quinquela Mart\u00edn",
+   "b": "Fran\u00e7ois Martin"
+  },
+  {
+   "id": "g112",
+   "stratum": "fuzzy/trap",
+   "human": "after",
+   "haiku": "same",
+   "reason": "Giovanni B. Ghisi and Giovanni Battista Scultori are the same person\u2014Ghisi is a shortened form of the surname Scultori, and both records credit the same reproductive engraver working after Giulio Romano with similar mythological subject matter from the same source catalogue.",
+   "a": "Giovanni B. Ghisi (after Giulio Romano)",
+   "b": "Giovanni Battista Scultori (after Giulio Romano)"
+  },
+  {
+   "id": "g113",
+   "stratum": "fuzzy/trap",
+   "human": "after",
+   "haiku": "different",
+   "reason": "These are two different engravers with different surnames (Walton vs Watson), each creating reproductive prints after Joshua Reynolds' paintings. While both worked in the same tradition of 18th-century reproductive engraving, they are distinct individuals.",
+   "a": "Thomas Walton after Joshua Reynolds",
+   "b": "Thomas Watson after Joshua Reynolds"
+  },
+  {
+   "id": "g114",
+   "stratum": "weak/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A (Lauren Ewing) and Record B (May Stevens, 1924\u20132019) are two different artists who both contributed to the work 'Femfolio,' likely as collaborators on a portfolio project rather than being the same person.",
+   "a": "Lauren Ewing",
+   "b": "May Stevens"
+  },
+  {
+   "id": "g115",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Peter Lax (born 1926) is an American mathematician of Hungarian birth documented in ULAN, while Peter Lik (born 1959) is an Australian photographer/artist known for landscape prints. Different people, different professions, and different birth years.",
+   "a": "Peter Lax",
+   "b": "Peter Lik"
+  },
+  {
+   "id": "g116",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "collaboration",
+   "reason": "Record A is a joint credit for John Lennon and Yoko Ono together, while Record B is a record for Yoko Ono alone; this is a collaboration relationship where the joint credit includes one of the individual members.",
+   "a": "John Lennon & Yoko Ono",
+   "b": "Yoko Ono"
+  },
+  {
+   "id": "g117",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records share identical birth and death years (1884\u20131963), the same surname with only a capitalization difference in the middle initial (McNulty vs Mcnulty), and overlap in works including 'In the Fifties (The Whirlpool)', indicating they represent the same person under variant name spellings from the same source (swann).",
+   "a": "William C. McNulty",
+   "b": "William C. Mcnulty"
+  },
+  {
+   "id": "g118",
+   "stratum": "subset/clean",
+   "human": "unsure",
+   "haiku": "same",
+   "reason": "Both records share the work 'Micah' and significant overlap in titles (Elijah, Matriarch, Jessica appear in B's list). Record B has documented dates (1918-1979) and ULAN/Wikidata identifiers for Charles Wilbert White, an American painter and printmaker; Record A's 'Charles White' with no dates is consistent with being the same person recorded under a shorter name form in earlier catalogues.",
+   "a": "Charles White",
+   "b": "Charles Wilbert White"
+  },
+  {
+   "id": "g119",
+   "stratum": "fuzzy/trap",
+   "human": "collaboration",
+   "haiku": "same",
+   "reason": "Both records represent the same publisher partnership: 'Robert Sayer and John Bennett' is the full form and 'R Sayer and J Bennett' is the abbreviated form of the same entity, a known 18th-century London publishing house.",
+   "a": "Publisher Robert Sayer and John Bennett",
+   "b": "Publisher: R Sayer and J Bennett"
+  },
+  {
+   "id": "g120",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "collaboration",
+   "reason": "Record B is a joint credit that includes John Lennon as one member, while Record A is the individual artist John Lennon alone. This is a collaboration relationship where one record combines two artists and the other is just one of them.",
+   "a": "John Lennon",
+   "b": "Yoko Ono & John Lennon"
+  },
+  {
+   "id": "g121",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Theo van Doesburg, the Dutch painter and writer (1883-1931). Record A has full biographical details and ULAN confirmation, while Record B lacks dates but is clearly the same individual based on the unique name and matching context (Dada/modernist works).",
+   "a": "Theo Van Doesburg",
+   "b": "Theo van Doesburg"
+  },
+  {
+   "id": "g122",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Gilbert and George is a famous British-Italian collaborative artist duo active from the 1960s onward, while Guy Georget was a separate individual (1911\u20131992) who created a single recorded work (an Air France poster). The names, dates, nationalities, and creative outputs are entirely distinct.",
+   "a": "Gilbert and George",
+   "b": "Guy Georget"
+  },
+  {
+   "id": "g123",
+   "stratum": "subset/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Orovida Camille Pissarro (1893\u20131968) was the daughter of Camille Pissarro (1830\u20131903), a different person with distinct birth and death dates and British rather than French nationality. She was also a printmaker but is a separate individual, not the same artist.",
+   "a": "Camille Pissarro",
+   "b": "Orovida Camille Pissarro"
+  },
+  {
+   "id": "g124",
+   "stratum": "weak/clean",
+   "human": "unsure",
+   "haiku": "collaboration",
+   "reason": "Both artists are credited for works in Femfolio, a portfolio that appears to be a collaborative project. Miriam Schapiro and Sylvia Sleigh were both prominent feminist artists who worked together on this joint work, making this a collaboration rather than the same person or entirely separate artists.",
+   "a": "Miriam Schapiro",
+   "b": "Sylvia Sleigh"
+  },
+  {
+   "id": "g125",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two distinct individuals with different birth years (1973 vs 1939), different forenames, and different works. They share only a common surname and British nationality.",
+   "a": "Gary Webb",
+   "b": "Mary Webb"
+  },
+  {
+   "id": "g126",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is a British collaborative duo (Peter Kennard and Cat Phillips, one born 1949 and one born 1972), while Record B is an American artist Richard Phillips born in 1962. These are entirely different entities with different nationalities, birth years, and no shared names or work.",
+   "a": "Kennard Phillips (Peter Kennard and Cat Phillips)",
+   "b": "Richard Phillips"
+  },
+  {
+   "id": "g127",
+   "stratum": "subset/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Edward Burne-Jones, the renowned Victorian artist and designer. Record B provides his full formal name (Sir Edward Coley, Bt Burne-Jones) with his baronetcy, which is the complete identification of the same person listed more simply in Record A.",
+   "a": "Edward Burne-Jones",
+   "b": "Sir Edward Coley, Bt Burne-Jones"
+  },
+  {
+   "id": "g128",
+   "stratum": "fuzzy/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is a single publisher 'J Carter' while Record B is a partnership 'Bowles and Carver' with no name overlap; these appear to be distinct publishing entities from catalogue records.",
+   "a": "Publisher: J Carter",
+   "b": "Publisher; Bowles and Carver"
+  },
+  {
+   "id": "g129",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Robert Parke Harrison (with a minor spacing variation in the name). Record B's birth year of 1968 and the nature of the works (conceptual photography/art pieces) are consistent with the contemporary artist Robert Parke Harrison, and Record A's single work 'The Waiting' fits within his known body of work.",
+   "a": "Robert Parke Harrison",
+   "b": "Robert ParkeHarrison"
+  },
+  {
+   "id": "g130",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Man Ray (1890\u20131976) and Rex Ray (1956\u20132015) are different people with different birth/death dates, different nationalities contexts, and different bodies of work. Rex Ray was born 66 years after Man Ray and worked in a different era.",
+   "a": "Man Ray",
+   "b": "Rex Ray"
+  },
+  {
+   "id": "g131",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records refer to Th\u00e9odore G\u00e9ricault (1791\u20131824), the famous French Romantic painter. Record A shows the variant spelling 'Gericault' (without the accent) and has minimal metadata, while Record B has the standard spelling with dates and more works listed. The matching name, shared source (Swann), and overlapping work titles confirm they are the same historical figure.",
+   "a": "Th\u00e9odore Gericault",
+   "b": "Th\u00e9odore G\u00e9ricault"
+  },
+  {
+   "id": "g132",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Aliye Berger (1903\u20131974) was a Turkish painter with confirmed ULAN documentation, while Art Werger (born 1955) is an American artist with no ULAN record. The different birth years, nationalities, and time periods clearly indicate these are two different individuals.",
+   "a": "Aliye Berger",
+   "b": "Art Werger"
+  },
+  {
+   "id": "g133",
+   "stratum": "fuzzy/clean",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "The surnames are distinctly different (Beaudin vs Beguin) and Record A has significantly more documented works (30 vs 1) across multiple sources, suggesting two separate artists rather than spelling variants of the same name.",
+   "a": "Andr\u00e9 Beaudin",
+   "b": "Andr\u00e9 Beguin"
+  },
+  {
+   "id": "g134",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Alan Reynolds (1926\u20132014), an English painter of the 20th century. Record B credits Thomas Walton as an engraver working after Joshua Reynolds, the 18th-century portrait painter. These are entirely different people and time periods.",
+   "a": "Alan Reynolds",
+   "b": "Thomas Walton after Joshua Reynolds"
+  },
+  {
+   "id": "g135",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Barbara Morgan (1900\u20131992) was an American photographer and modernist artist known for dance photography, while Bryan Organ (1935\u2013) is a British painter. They are different individuals with distinct nationalities, lifespans, and artistic practices.",
+   "a": "Barbara Morgan",
+   "b": "Bryan Organ"
+  },
+  {
+   "id": "g136",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two distinct individuals with different names (Antonio Segu\u00ed vs Armand S\u00e9guin), different nationalities (Antonio has unknown nationality, Armand is confirmed French), and vastly different dates (Armand documented 1869\u20131903, while Antonio's works include a dated 1966 piece). They represent different artists from different periods.",
+   "a": "Antonio Segu\u00ed",
+   "b": "Armand S\u00e9guin"
+  },
+  {
+   "id": "g137",
+   "stratum": "subset/clean",
+   "human": "unsure",
+   "haiku": "same",
+   "reason": "Percy Wyndham Lewis is the full name of the artist known as Wyndham Lewis, the pioneering Vorticist artist and editor of Blast magazine. The work attributions (an untitled print and the Blast periodical) are consistent with a single artist recorded under different name forms.",
+   "a": "Percy Wyndham Lewis",
+   "b": "Wyndham Lewis"
+  },
+  {
+   "id": "g138",
+   "stratum": "subset/clean",
+   "human": "unsure",
+   "haiku": "same",
+   "reason": "Both records feature the same artist with a shortened name form (Ivan Mikhailovich Shagin vs Ivan Shagin) and share auction sources (Bonhams appears in both) with Russian works, indicating these are two name variations of the same individual in catalogue records.",
+   "a": "Ivan Mikhailovich Shagin",
+   "b": "Ivan Shagin"
+  },
+  {
+   "id": "g139",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "August Sander (1876\u20131964) was a renowned German photographer known for his sociological photographic project documenting German society, while Ludwig Sander (1906\u20131975) was an American painter. Different nationalities, professions (photography vs. painting), and generations with no apparent connection.",
+   "a": "August Sander",
+   "b": "Ludwig Sander"
+  },
+  {
+   "id": "g140",
+   "stratum": "strong/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Both records show identical names (Wenzel von Olmutz/Olm\u00fctz\u2014a common spelling variation between German '\u00fc' and 'u'), the same work subject (St. Christopher), the same source (Swann), and no conflicting biographical information. The umlauted and non-umlauted versions refer to the same historical figure.",
+   "a": "Wenzel von Olmutz",
+   "b": "Wenzel von Olm\u00fctz"
+  },
+  {
+   "id": "g141",
+   "stratum": "subset/trap",
+   "human": "after",
+   "haiku": "after",
+   "reason": "Luca Ciamberlano is credited as an engraver/reproductive printmaker working 'after Agostino Carracci,' the designer. This is a classic reproductive print relationship where two different artists are involved in creating the work.",
+   "a": "Agostino Carracci",
+   "b": "Luca Ciamberlano (after Agostino Carracci)"
+  },
+  {
+   "id": "g142",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Harry Shunk (a photographer, 1924\u20132006) credited with Yves Klein, while Record B is Jochen Klein (a German painter, 1967\u20131997). These are two entirely different individuals with different birth/death dates, nationalities, and artistic practices.",
+   "a": "Harry Shunk & Yves Klein",
+   "b": "Jochen Klein"
+  },
+  {
+   "id": "g143",
+   "stratum": "weak/clean",
+   "human": "unsure",
+   "haiku": "unsure",
+   "reason": "Both records lack dates, nationality, and identifiers, making it impossible to confirm whether 'Ernest Laurent' and 'J E Laurent' are the same person or different individuals with similar names. The different subject matter of their works (French landscape vs. North African photography) provides no definitive evidence either way without additional biographical information.",
+   "a": "Ernest Laurent",
+   "b": "J E Laurent"
+  },
+  {
+   "id": "g144",
+   "stratum": "weak/clean",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "These are two distinct individuals with different forenames (Jacques vs Michel) and different work titles, with no evidence of family relation or collaboration between them. The shared surname Houplain and appearance in overlapping sources (navigart14) does not indicate they are the same person.",
+   "a": "Jacques Houplain",
+   "b": "Michel Houplain"
+  },
+  {
+   "id": "g145",
+   "stratum": "weak/clean",
+   "human": "same",
+   "haiku": "same",
+   "reason": "Drian was the pseudonym of Armand Vall\u00e9e, a French painter, designer, and illustrator (1884-1960). Both records credit the same work from Journal des Dames et des Modes, confirming they represent the same person under different name forms.",
+   "a": "Armand Vall\u00e9e",
+   "b": "Drian"
+  },
+  {
+   "id": "g146",
+   "stratum": "weak/trap",
+   "human": "different",
+   "haiku": "different",
+   "reason": "These are two different artists with different birth years (1928 vs. 1976), different nationalities (British vs. American), different artistic practices (painter vs. installation artist), and different ULAN identifiers.",
+   "a": "Jack Smith",
+   "b": "Josh Smith"
+  },
+  {
+   "id": "g147",
+   "stratum": "subset/trap",
+   "human": "collaboration",
+   "haiku": "collaboration",
+   "reason": "Record A is Cat Phillips as an individual artist, while Record B is a joint credit for the collaborative duo of Peter Kennard and Cat Phillips. Record B explicitly includes Cat Phillips as one of its members.",
+   "a": "Cat Phillips",
+   "b": "Kennard Phillips (Peter Kennard and Cat Phillips)"
+  },
+  {
+   "id": "g148",
+   "stratum": "fuzzy/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Mary Potter (1900\u20131981) was a British artist with works featuring landscape and still-life subjects, while Michel Potier is a different artist with French-language titles and no documented birth/death dates. The names are similar but refer to distinct individuals from different nationalities and artistic traditions.",
+   "a": "Mary Potter",
+   "b": "Michel Potier"
+  },
+  {
+   "id": "g149",
+   "stratum": "subset/clean",
+   "human": "different",
+   "haiku": "different",
+   "reason": "Record A is Loulou Picasso (alias DUPR\u00c9 Jean-Louis), a French artist with no documented connection to the famous painter. Record B refers to a work by Jacques Villon after Picasso (1875\u20131963), the well-known Spanish modernist; the aliases clarify this is a reproductive print rather than an original Picasso work. These are distinct entities.",
+   "a": "Loulou Picasso",
+   "b": "Picasso"
+  },
+  {
+   "id": "g150",
+   "stratum": "subset/clean",
+   "human": "unsure",
+   "haiku": "different",
+   "reason": "These are two different British artists with the same pseudonym 'Cyclops' but different birth years (1975 vs 1961) and different works, suggesting they are distinct individuals who both used the same artist name.",
+   "a": "Cyclops",
+   "b": "Lucas Price (Cyclops)"
+  }
+ ],
+ "identity": {
+  "weak/trap": {
+   "n": 17,
+   "committed": 17,
+   "agree": 17
+  },
+  "fuzzy/clean": {
+   "n": 21,
+   "committed": 21,
+   "agree": 19
+  },
+  "strong/clean": {
+   "n": 19,
+   "committed": 17,
+   "agree": 17,
+   "abstain": 2
+  },
+  "weak/clean": {
+   "n": 14,
+   "committed": 13,
+   "agree": 13,
+   "relation": 1
+  },
+  "subset/clean": {
+   "n": 13,
+   "committed": 12,
+   "agree": 11,
+   "relation": 1
+  },
+  "fuzzy/trap": {
+   "n": 16,
+   "committed": 16,
+   "agree": 16
+  },
+  "subset/trap": {
+   "n": 4,
+   "committed": 4,
+   "agree": 4
+  }
+ }
+}

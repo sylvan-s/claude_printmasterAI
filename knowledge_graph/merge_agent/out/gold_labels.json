@@ -30,7 +30,7 @@
   "stratum": "fuzzy/clean"
  },
  "g007": {
-  "label": "unsure",
+  "label": "after",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -110,7 +110,7 @@
   "stratum": "fuzzy/clean"
  },
  "g023": {
-  "label": "unsure",
+  "label": "different",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -120,12 +120,12 @@
   "stratum": "fuzzy/clean"
  },
  "g025": {
-  "label": "unsure",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/clean"
  },
  "g026": {
-  "label": "unsure",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -135,12 +135,12 @@
   "stratum": "fuzzy/trap"
  },
  "g028": {
-  "label": "same",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
  "g029": {
-  "label": "different",
+  "label": "after",
   "note": "",
   "stratum": "fuzzy/trap"
  },
@@ -320,7 +320,7 @@
   "stratum": "strong/clean"
  },
  "g065": {
-  "label": "unsure",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -330,7 +330,7 @@
   "stratum": "fuzzy/trap"
  },
  "g067": {
-  "label": "same",
+  "label": "after",
   "note": "",
   "stratum": "strong/trap"
  },
@@ -360,7 +360,7 @@
   "stratum": "fuzzy/trap"
  },
  "g073": {
-  "label": "same",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -370,7 +370,7 @@
   "stratum": "fuzzy/trap"
  },
  "g075": {
-  "label": "same",
+  "label": "unsure",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -415,12 +415,12 @@
   "stratum": "subset/clean"
  },
  "g084": {
-  "label": "unsure",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
  "g085": {
-  "label": "different",
+  "label": "after",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -465,12 +465,12 @@
   "stratum": "weak/trap"
  },
  "g094": {
-  "label": "unsure",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
  "g095": {
-  "label": "unsure",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -485,12 +485,12 @@
   "stratum": "weak/clean"
  },
  "g098": {
-  "label": "different",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
  "g099": {
-  "label": "different",
+  "label": "unsure",
   "note": "",
   "stratum": "fuzzy/trap"
  },
@@ -535,7 +535,7 @@
   "stratum": "subset/trap"
  },
  "g108": {
-  "label": "unsure",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -555,12 +555,12 @@
   "stratum": "weak/clean"
  },
  "g112": {
-  "label": "unsure",
+  "label": "after",
   "note": "",
   "stratum": "fuzzy/trap"
  },
  "g113": {
-  "label": "unsure",
+  "label": "after",
   "note": "",
   "stratum": "fuzzy/trap"
  },
@@ -575,7 +575,7 @@
   "stratum": "fuzzy/clean"
  },
  "g116": {
-  "label": "same",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -590,12 +590,12 @@
   "stratum": "subset/clean"
  },
  "g119": {
-  "label": "unsure",
+  "label": "collaboration",
   "note": "",
   "stratum": "fuzzy/trap"
  },
  "g120": {
-  "label": "same",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },
@@ -635,7 +635,7 @@
   "stratum": "subset/clean"
  },
  "g128": {
-  "label": "unsure",
+  "label": "different",
   "note": "",
   "stratum": "fuzzy/trap"
  },
@@ -700,12 +700,12 @@
   "stratum": "strong/clean"
  },
  "g141": {
-  "label": "different",
+  "label": "after",
   "note": "",
   "stratum": "subset/trap"
  },
  "g142": {
-  "label": "unsure",
+  "label": "different",
   "note": "",
   "stratum": "weak/trap"
  },
@@ -730,7 +730,7 @@
   "stratum": "weak/trap"
  },
  "g147": {
-  "label": "unsure",
+  "label": "collaboration",
   "note": "",
   "stratum": "subset/trap"
  },

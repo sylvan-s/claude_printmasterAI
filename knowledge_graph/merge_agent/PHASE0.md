@@ -67,7 +67,34 @@ or after names are queued for re-review. Relation-labelled pairs are a separate 
 from same/different precision and from LLM calibration. The graph fix is scoped in
 `docs/plans/2026-09-22-collaborations-and-after-attributions.md`.
 
-## 3. LLM calibration: waiting for the relation re-review
+### Relation re-review 2026-09-22
+Final labels: 38 same, 66 different, 14 collaboration, 7 after, 25 unsure.
+
+## 3. LLM calibration: run 2026-09-22 (`phase0_llm_calibration.py`, Haiku 4.5, $0.18)
+
+**Result: the gate fails as specified. The ways it fails are informative.**
+
+- **Identity pairs** (the person said same or different; 104 pairs): 97.0% agreement where Haiku
+  committed (97/100, 95% low 91.5%). It passes the point estimate in 5 of 7 strata. It fails
+  fuzzy/clean (90.5%, n=21) and subset/clean (91.7%, n=12).
+- **No stratum can be *certified* at 95% with n≈15-20.** The Wilson lower bounds run 51-82% even
+  at 100% agreement. Certifying a stratum at a 95% lower bound needs about 75 agreeing pairs.
+- **Same-precision is 73%** (33 of 45 Haiku `same`s). The 12 misses fall into three groups:
+  - **4 are a label-definition clash**, not model error: two spellings of *the same* composite
+    credit (Degas / Thornley ×2, Gould & Richter, Sayer & Bennett). Haiku says `same`, which is
+    right at node level; the person used the relation label because the entity is a composite.
+    **Rule needed:** composite vs the same composite = `same`, and the node is then decomposed.
+  - **7 are world-knowledge calls on pairs the person left unsure** (Wyndham Lewis, Charles
+    Wilbert White, Driskell, Shagin, Kuhnert, Alex S. MacLean, the Manzú lot artefact). They are
+    probably right but unverified from the page evidence.
+  - **1 is a confabulation:** "Ghisi is a shortened form of Scultori". They are two different
+    Mantuan families. So a world-knowledge claim must be corroborated, never trusted alone.
+- **Relations:** Haiku found 12 of 21 (11 exactly). 5 went to `same`, the four composite pairs
+  above plus Ghisi, and 4 went to `different`.
+- **3 pairs where the person said same and Haiku said different** are worth a second look:
+  Master Ag / Master Mr, Jack Baker / John Barker, and Samuel Alken / Samuel Henry Alken (the
+  Alken family is a father/son trap).
+
 
 Haiku 4.5 is run over the 150 pairs using the same evidence the page shows plus the trap list.
 Agreement is measured per stratum. The gate is ≥ 95% on every stratum it will label.
