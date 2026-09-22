@@ -1,6 +1,6 @@
 """
 PrintMasterAI — merge-review agent, Phase 1: records, features and the seed set.
-Version: MERGE-AGENT-P1-DATA-1.1
+Version: MERGE-AGENT-P1-DATA-1.2
 
 Design: docs/plans/2026-09-22-artist-merge-active-learning-agent.md, Phase 1. Run with the
 sklearn-1.6 venv (knowledge_graph/venv-embeddings/bin/python).
@@ -54,6 +54,7 @@ load_dotenv(os.path.expanduser("~/PycharmProjects/claude_printmasterAI/.env"))
 import pandas as pd  # noqa: E402
 import find_artist_merge_candidates as fam  # noqa: E402
 from identity_candidates import connect, session  # noqa: E402
+from nationality_vocab import parse as parse_nat  # noqa: E402
 from phase0_blocks import block_squashed, block_surname_edit1, name_rules, stripped  # noqa: E402
 
 KG_MAIN = os.path.expanduser("~/PycharmProjects/claude_printmasterAI/knowledge_graph")
@@ -228,9 +229,12 @@ def features(ra, rb, surname_count):
     wa, wb = ra.get("wikidata"), rb.get("wikidata")
     f["wikidata_same"] = float(bool(wa and wb and wa == wb))
     f["wikidata_conflict"] = float(bool(wa and wb and wa != wb))
-    xa, xb = (ra.get("nat") or "").lower(), (rb.get("nat") or "").lower()
-    f["nat_same"] = float(bool(xa and xb and (xa in xb or xb in xa)))
-    f["nat_conflict"] = float(bool(xa and xb and xa not in xb and xb not in xa))
+    # Controlled vocabulary (NATIONALITY-VOCAB-1.0): the raw field carries centuries, dates,
+    # names and roles; only recognised demonyms are compared, and dual nationalities overlap.
+    xa = set(parse_nat(ra.get("nat"))["nationalities"])
+    xb = set(parse_nat(rb.get("nat"))["nationalities"])
+    f["nat_same"] = float(bool(xa and xb and xa & xb))
+    f["nat_conflict"] = float(bool(xa and xb and not xa & xb))
     f["collab_either"] = float(bool(COLLAB.search(f" {a} ") or COLLAB.search(f" {b} ")))
     f["collab_one_sided"] = float(bool(COLLAB.search(f" {a} ")) != bool(COLLAB.search(f" {b} ")))
     f["attrib_either"] = float(bool(ATTRIB.search(a) or ATTRIB.search(b)))
