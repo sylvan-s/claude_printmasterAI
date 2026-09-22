@@ -1427,7 +1427,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     /** The lot's own sale date. Artsy results on or after it are dropped, so a backtest lot is
      *  never shown its own outcome — or a later resale — from a house the ACKG does not hold.
      *  Same cut-off, same strict "<", as the attributed-lot path's Stage 3 comps and work
-     *  facts (untilDate). NOTE: query_ackg_comparables in this loop does not apply it yet. */
+     *  facts (untilDate), and applied to query_ackg_comparables in this loop too. */
     untilDate?: string | null,
   ): Promise<any> {
     const compatBaseUrl = anthropicCompatBaseUrl(modelName);
@@ -1625,6 +1625,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
                 limit: STAGE2B_COMPS_LIMIT,
                 excludeListingUrl: excludedListing.listingUrl,
                 excludeSaleLot: excludedListing.saleLot,
+                // The lot's sale date, as Stage 3's comps on this path already use: a backtest
+                // lot must not read its own future. A live lot's date is ahead, so no change.
+                untilDate: untilDate ?? null,
               });
               content =
                 `${comps.summary.count} comparable(s). Summary: ${JSON.stringify(comps.summary)}\n` +
