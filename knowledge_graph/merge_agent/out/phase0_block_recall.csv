@@ -1,0 +1,284 @@
+absorbed,survivor,survivorNow,rule,decidedBy,backfilled,surnameLast,surnameAny,nameRules,splinkPool0912,imageScan,squashed,surnameEdit1,anyNameBlock,anyBlock
+Julian Treveyan,Julian Trevelyan,Julian Trevelyan,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,True,True,True
+Julian Otto Trevelyan,Julian Trevelyan,Julian Trevelyan,aliasShadowing,human,True,True,True,token_subset,True,False,False,False,True,True
+Sonia Delauney,Sonia Delaunay,Sonia Delaunay,humanPairs,human,True,False,False,typo,False,False,False,True,True,True
+Damien Hist,Damien Hirst,Damien Hirst,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,False,True,True
+Gyula Halasz Brassai,Brassaï,Brassaï,aliasShadowing,human,True,True,True,,True,False,False,False,True,True
+Brassai photograph: Untitled,Brassaï,Brassaï,humanPairs,human,True,False,True,,False,False,False,False,True,True
+Francis Picarbia,Francis Picabia,Francis Picabia,humanPairs,human,True,False,False,typo,False,False,False,True,True,True
+Frederick L Griggs,Frederick Landseer Griggs,Frederick Landseer Griggs,humanPairs,human,True,True,True,initialism,False,False,False,False,True,True
+Frederick L. Griggs,Frederick Landseer Griggs,Frederick Landseer Griggs,humanPairs,human,True,True,True,initialism,True,False,False,False,True,True
+Blair Rowlands Hughes-Stanton,Blair Hughes-Stanton,Blair Hughes-Stanton,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Gordon Grant,Gordon Hope Grant,Gordon Hope Grant,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+L.S. Lowry,Laurence Stephen Lowry,Laurence Stephen Lowry,humanPairs,human,True,True,True,initialism,False,False,False,False,True,True
+Le Corbusier,Le Corbusier (Charles-Edouard Jeanneret),Le Corbusier (Charles-Edouard Jeanneret),humanPairs,human,True,False,True,,True,False,False,False,True,True
+MayaHayuk,Maya Hayuk,Maya Hayuk,humanPairs,human,True,False,False,,False,False,True,False,True,True
+Marc Chaimowicz,Marc Camille Chaimowicz,Marc Camille Chaimowicz,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Bob & Roberta Smith,Bob and Roberta Smith (Patrick Brill),Bob and Roberta Smith (Patrick Brill),humanPairs,human,True,False,True,,True,False,False,False,True,True
+Bob and Roberta Smith [Patrick Brill RA],Bob and Roberta Smith (Patrick Brill),Bob and Roberta Smith (Patrick Brill),humanPairs,human,True,True,True,honorific,True,False,False,False,True,True
+Karl Schmidt-rottluff,Karl Schmidt-Rottluff,Karl Schmidt-Rottluff,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Wilfredo Lam,Wifredo Lam,Wifredo Lam,ulanCanonical,rule,True,True,True,typo,False,False,False,False,True,True
+Maria Helena Viera da Silva,Maria Helena Vieira da Silva,Maria Helena Vieira da Silva,nameTypoDatesAgree,rule,True,True,True,typo,False,False,False,False,True,True
+Roberto Sebastián Matta,Roberto Matta,Roberto Matta,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Zoran Antonio Music,Zoran Mušič,Zoran Mušič,reappearedName,human,False,True,True,token_subset,True,False,False,False,True,True
+Edward Ruscha,Ed Ruscha,Ed Ruscha,ulanCanonical,rule,True,True,True,,False,False,False,False,True,True
+Ceri Geraldus Richards,Ceri Richards,Ceri Richards,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Lucien Freud,Lucian Freud,Lucian Freud,ulanCanonical,rule,True,True,True,typo,False,False,False,False,True,True
+Francisco Zuñiga,Francisco Zúñiga,Francisco Zúñiga,humanPairs,human,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+William Joseph Kentridge,William Kentridge,William Kentridge,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Francis Edgar Dodd RA RWS NEAC,Francis Dodd,Francis Dodd,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Raoul Duffy,Raoul Dufy,Raoul Dufy,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,False,True,True
+Muirhead Bone HRWS HARIBA HRE LLB D Litt,Muirhead Bone,Muirhead Bone,humanPairs,human,True,False,True,,False,False,False,False,True,True
+Richard Wentworth CBE (British b.1947-) &,Richard Wentworth,Richard Wentworth,wrapperName,human,False,False,True,,True,False,False,False,True,True
+Richard Wentworth (British b.1947-) &,Richard Wentworth,Richard Wentworth,wrapperName,human,False,False,True,,True,False,False,False,True,True
+Sam Taylor-Wood,Sam Taylor-Johnson,Sam Taylor-Johnson,humanPairs,human,True,False,False,,False,False,False,False,False,False
+Pierre Tal-coat,Pierre Tal-Coat,Pierre Tal-Coat,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Attribuito a Remigio Cantagallina,Remigio Cantagallina,Remigio Cantagallina,humanPairs,human,True,True,True,,True,False,False,False,True,True
+"Giuseppe Vasi Disegno della Seconda Machina Monte Etna, acquaforte e bulino, su carta vergellata, dimensioni della lastra: 400 x 545 mm, [1767 circa]. In cornice.",Giuseppe Vasi,Giuseppe Vasi,humanPairs,human,True,False,True,,True,False,False,False,True,True
+"Giuseppe Vasi Disegno della prima Machina rappresentante una Deliziosa ornata di verdure, e fontane..., acquaforte e bulino su carta vergellata, dimensioni della lastra: 400 x 545 mm, 1752 circa]. In cornice.",Giuseppe Vasi,Giuseppe Vasi,humanPairs,human,True,False,True,,True,False,False,False,True,True
+Hassall,John Hassall,John Hassall,kmIdentityRepair,human,True,True,True,,False,False,False,False,True,True
+Paul Cesar Helleu,Paul César Helleu,Paul César Helleu,humanPairs,human,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Frantisek Kupka,František Kupka,František Kupka,nameNormalised,rule,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Kathe Kollwitz,Käthe Kollwitz,Käthe Kollwitz,nameNormalised,rule,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Johnny Friedlander,Johnny Friedlaender,Johnny Friedlaender,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,True,True,True
+Rembrandt,Rembrandt van Rijn,Rembrandt van Rijn,aliasShadowing,human,True,False,True,,False,False,False,False,True,True
+Peter Laszlo Peri,Peter Peri,Peter Peri,reappearedName,human,False,True,True,token_subset,True,False,False,False,True,True
+Stephen J. Powers,Stephen Powers,Stephen Powers,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Yoshimoto Nara,Yoshitomo Nara,Yoshitomo Nara,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Giovanni B. Piranesi,Giovanni Battista Piranesi,Giovanni Battista Piranesi,humanPairs,human,True,True,True,initialism,True,False,False,False,True,True
+Giovanni B.piranesi,Giovanni Battista Piranesi,Giovanni Battista Piranesi,aliasShadowing,human,True,True,True,initialism,True,False,False,False,True,True
+Giovanni Batista Piranesi,Giovanni Battista Piranesi,Giovanni Battista Piranesi,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Roger Yutaka Shimomura,Roger Shimomura,Roger Shimomura,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Jean-françois Millet,Jean-François Millet,Jean-François Millet,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+J J J Tissot,James Jacques Joseph Tissot,James Jacques Joseph Tissot,humanPairs,human,True,True,True,initialism,False,False,False,False,True,True
+James Jacques Tissot,James Jacques Joseph Tissot,James Jacques Joseph Tissot,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+Jean Arp,Jean (Hans) Arp,Jean (Hans) Arp,nameNormalised,rule,True,True,True,token_subset,True,False,False,False,True,True
+Almir Mavignier,Almir da Silva Mavignier,Almir da Silva Mavignier,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Louis Auguste Mathieu Legrand,Louis Legrand,Louis Legrand,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Maurits C. Escher,Maurits Cornelis Escher,Maurits Cornelis Escher,nameFuzzyImageCorroborated,rule,True,True,True,initialism,True,False,False,False,True,True
+Maurits Escher,Maurits Cornelis Escher,Maurits Cornelis Escher,humanPairs,human,True,True,True,token_subset,False,False,False,False,True,True
+M.C. Escher,Maurits Cornelis Escher,Maurits Cornelis Escher,humanPairs,human,True,True,True,initialism,False,False,False,False,True,True
+"Jacques Callot Vue du Louvre, da: Les Deux Grandes Vues de Paris, acquaforte, su carta vergata priva di filigrana. Dimensioni della lastra: 168 x 342 mm con sottile margine di 1-2 mm, [circa 1630].",Jacques Callot,Jacques Callot,humanPairs,human,True,False,True,,True,False,False,False,True,True
+Nicholas Party,Nicolas Party,Nicolas Party,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Werner Pawlock,Werner Pawlok,Werner Pawlok,humanPairs,human,True,False,False,typo,False,False,False,True,True,True
+Henri Fantin-latour,Henri Fantin-Latour,Henri Fantin-Latour,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+"MARCOUSSIS Louis (MARKUS Ludwik Kazimierz, dit)",Louis Marcoussis,Louis Marcoussis,reappearedName,human,False,False,True,,False,False,False,False,True,True
+Romare Howard Bearden,Romare Bearden,Romare Bearden,reappearedName,human,False,True,True,token_subset,True,False,False,False,True,True
+Anthony Alfred Caro,Anthony Caro,Anthony Caro,aliasShadowing,human,True,True,True,token_subset,True,False,False,False,True,True
+Antony Caro,Anthony Caro,Anthony Caro,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Georgio De Chirico,Giorgio de Chirico,Giorgio de Chirico,nameTypoDatesAgree,rule,True,True,True,typo,False,False,False,False,True,True
+Giorgio de Chirco,Giorgio de Chirico,Giorgio de Chirico,ulanCanonical,rule,True,False,False,typo,False,False,False,True,True,True
+Ethel Leontine Gabain RBA ROI SWA,Ethel Gabain,Ethel Gabain,humanPairs,human,True,False,True,,True,False,False,False,True,True
+John Baldesarri,John Baldessari,John Baldessari,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,False,True,True
+YinkaShonibare,Yinka Shonibare,Yinka Shonibare,humanPairs,human,True,False,False,,False,False,True,False,True,True
+James Abbott McNeil Whistler,James McNeill Whistler PRBA HRSA RSW,James Abbott McNeill Whistler,humanPairs,human,True,False,True,,False,False,False,False,True,True
+James A McNeil Whistler,James Abbott McNeill Whistler,James Abbott McNeill Whistler,humanPairs,human,True,True,True,,False,False,False,False,True,True
+Walter Richard Sickert,Walter Sickert,Walter Sickert,aliasShadowing,human,True,True,True,token_subset,True,False,False,False,True,True
+Walter Richard Sickert R.A,Walter Sickert,Walter Sickert,humanPairs,human,True,False,True,,True,False,False,False,True,True
+Mark Andrews Godwin,Mark Andrew Godwin,Mark Andrew Godwin,reappearedName,human,False,True,True,typo,True,False,False,False,True,True
+Salvador DaIí,Salvador Dalí,Salvador Dalí,humanPairs,human,True,False,False,typo,False,False,False,False,True,True
+Robert O. Lenkiewicz,Robert Lenkiewicz,Robert Lenkiewicz,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Roland Brooks Kitaj,Ronald Brooks Kitaj,Ronald Brooks Kitaj,nameTypoDatesAgree,rule,True,True,True,typo,False,False,False,False,True,True
+George Braque,Georges Braque,Georges Braque,nameTypoDatesAgree,rule,True,True,True,typo,True,False,False,False,True,True
+Joan Mirò,Joan Miró,Joan Miró,humanPairs,human,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Joan Miro,Joan Miró,Joan Miró,humanPairs,human,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Stanley W. Hayter,Stanley William Hayter,Stanley William Hayter,nameFuzzyImageCorroborated,rule,True,True,True,initialism,True,False,False,False,True,True
+Edwin John Victor Pasmore,Victor Pasmore,Victor Pasmore,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Lynne Chadwick,Lynn Chadwick,Lynn Chadwick,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Zao Wou-ki,Zao Wou-Ki,Zao Wou-Ki,humanPairs,human,True,True,False,honorific+normalized_equal,False,False,True,False,True,True
+Eduaordo Chillida,Eduardo Chillida,Eduardo Chillida,ulanCanonical,rule,True,True,True,typo,False,False,False,False,True,True
+Elizabeth Frink,Elisabeth Frink,Elisabeth Frink,nameTypoDatesAgree,rule,True,True,True,typo,False,False,False,False,True,True
+Max Beckman,Max Beckmann,Max Beckmann,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,True,True,True
+Peter Blake RDI,Peter Blake,Peter Blake,humanPairs,human,True,True,True,honorific,False,False,False,False,True,True
+Kasimir Sevenovitch Malevich,Kasimir Malevich,Kasimir Malevich,aliasShadowing,human,True,True,True,token_subset,True,False,False,False,True,True
+Kasimir Sevrinovitch Malevich,Kasimir Malevich,Kasimir Malevich,nameTypoDatesAgree,rule,True,True,True,token_subset,False,False,False,False,True,True
+Kasimir Severinovich Malevich,Kasimir Malevich,Kasimir Malevich,nameTypoDatesAgree,rule,True,True,True,token_subset,False,False,False,False,True,True
+Joseph Herman,Josef Herman,Josef Herman,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Auguste Renoir,Pierre-Auguste Renoir,Pierre-Auguste Renoir,ulanCanonical,rule,True,True,True,token_subset,False,False,False,False,True,True
+Pierre-auguste Renoir,Pierre-Auguste Renoir,Pierre-Auguste Renoir,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Marc Chagall . Charles Sorlier,Marc Chagall,Marc Chagall,nameFuzzyImageCorroborated,rule,True,False,True,,True,True,False,False,True,True
+TÀPIES Antoni,Antoni Tàpies,Antoni Tàpies,aliasShadowing,human,True,False,True,,True,False,False,False,True,True
+Jacques Villon Pablo Picasso,Jacques Villon,Jacques Villon,humanPairs,human,True,False,True,,True,True,False,False,True,True
+Théophile-Alexandre Steinlen,Théophile Alexandre Steinlen,Théophile Alexandre Steinlen,nameNormalised,rule,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Theophile Alexander Steinlen,Théophile Alexandre Steinlen,Théophile Alexandre Steinlen,reappearedName,human,False,True,True,typo,True,False,False,False,True,True
+Theophile-Alexandre Steinlen,Théophile Alexandre Steinlen,Théophile Alexandre Steinlen,aliasShadowing,human,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Tom Phillips CBA,Tom Phillips,Tom Phillips,humanPairs,human,True,False,True,,True,False,False,False,True,True
+John Sperling,Josh Sperling,Josh Sperling,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Ronald William Fordham Searle,Ronald Searle,Ronald Searle,humanPairs,human,True,True,True,,False,False,False,False,True,True
+John Byrne,John Patrick Byrne,John Patrick Byrne,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Christopher Mark Le Brun PPRA,Christopher Le Brun,Christopher Le Brun,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Anders Leonard Zorn,Anders Zorn,Anders Zorn,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Otto Henry Bacher,Otto Bacher,Otto Bacher,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+STIK and Thierry Noir,Thierry Noir and Stik,Thierry Noir and Stik,humanPairs,human,True,False,True,,False,False,False,False,True,True
+June Calypso,Juno Calypso,Juno Calypso,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+C.B Hoyo,CB Hoyo,CB Hoyo,humanPairs,human,True,True,True,,False,False,True,False,True,True
+Constantino Nivola,Costantino Nivola,Costantino Nivola,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Graham Sutherand,Graham Sutherland,Graham Sutherland,humanPairs,human,True,False,False,typo,False,False,False,True,True,True
+Graham SutherlandOM,Graham Sutherland,Graham Sutherland,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,False,True,True
+Graham Vivian Sutherland,Graham Sutherland,Graham Sutherland,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Edouard Manet,Édouard Manet,Édouard Manet,humanPairs,human,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Alexej von Jawlensky,Alexej Jawlensky,Alexej Jawlensky,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Peter Godfrey Coker,Peter Coker,Peter Coker,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+George Rouault,Georges Rouault,Georges Rouault,nameTypoDatesAgree,rule,True,True,True,typo,False,False,False,False,True,True
+Bernard Buffett,Bernard Buffet,Bernard Buffet,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,True,True,True
+Mortimer Menpes,Mortimer L. Menpes,Mortimer Luddington Menpes,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Rene Magritte,René Magritte,René Magritte,humanPairs,human,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Claire Leighton,Clare Leighton,Clare Leighton,aliasShadowing,human,True,True,True,typo,True,False,False,False,True,True
+Cat Phillips & Peter Kennard,Kennard Phillips (Peter Kennard and Cat Phillips),Kennard Phillips (Peter Kennard and Cat Phillips),humanPairs,human,True,False,True,,False,False,False,False,True,True
+Toulouse Lautrec,Henri de Toulouse-Lautrec,Henri de Toulouse-Lautrec,ulanCanonical,rule,True,True,True,,False,False,False,False,True,True
+Henri Toulouse-Lautrec,Henri de Toulouse-Lautrec,Henri de Toulouse-Lautrec,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+Henri Toulouse Lautrec,Henri de Toulouse-Lautrec,Henri de Toulouse-Lautrec,humanPairs,human,True,True,True,token_subset,False,False,False,False,True,True
+RTO Reg Butler,Reg Butler,Reg Butler,nameFuzzyImageCorroborated,rule,True,True,True,honorific+token_subset,False,False,False,False,True,True
+Dado,MIODRAG DJURIC called DADO,MIODRAG DJURIC called DADO,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Tsuguharu Foujita,Léonard Tsuguharu Foujita,Léonard Tsuguharu Foujita,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+Leonard Tsuguharu Foujita,Léonard Tsuguharu Foujita,Léonard Tsuguharu Foujita,nameNormalised,rule,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Anthony Gormley,Antony Gormley,Antony Gormley,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Auguste-louis Lepère,Auguste-Louis Lepère,Auguste-Louis Lepère,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Keith Joseph Michell,Keith Michell,Keith Michell,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Keith Vaughan,John Keith Vaughan,John Keith Vaughan,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,False,False,False,False,True,True
+Gilbert & George,Gilbert and George,Gilbert and George,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,False,False,False,False,True,True
+Tom Wesselman,Tom Wesselmann,Tom Wesselmann,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,True,True,True
+Tunyi Adenyi-Jones,Tunji Adeniyi-Jones,Tunji Adeniyi-Jones,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Frederick H. Evans,Frederick Henry Evans,Frederick Henry Evans,humanPairs,human,True,True,True,initialism,True,False,False,False,True,True
+Robert Rauchenberg,Robert Rauschenberg,Robert Rauschenberg,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,True,True,True
+Humphrey Spender,John Humphrey Spender,John Humphrey Spender,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,False,False,False,False,True,True
+Irwin D. Hoffman,Irwin David Hoffman,Irwin David Hoffman,humanPairs,human,True,True,True,initialism,True,False,False,False,True,True
+Gabor Peterdi,Gabor F. Peterdi,Gabor F. Peterdi,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Cecil Walter Hardy Beaton,Cecil Beaton,Cecil Beaton,reappearedName,human,False,True,True,,True,False,False,False,True,True
+Benton Spruance,Benton Murdoch Spruance,Benton Murdoch Spruance,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+Howard Norton Cook,Howard Cook,Howard Cook,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Keith Haring (American,Keith Haring,Keith Haring,humanPairs,human,True,False,True,,False,False,False,False,True,True
+Arthur B. Davies,Arthur Bowen Davies,Arthur Bowen Davies,humanPairs,human,True,True,True,initialism,True,False,False,False,True,True
+George Joji Miyasaki,George Miyasaki,George Miyasaki,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Peter Stroud,Peter Anthony Stroud,Peter Anthony Stroud,ulanCanonical,rule,True,True,True,token_subset,False,False,False,False,True,True
+Robert Arthur Goodnough,Robert Goodnough,Robert Goodnough,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Walter Henry Williams,Walter Williams,Walter Williams,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Frank Besedick,Frank Paul Besedick,Frank Paul Besedick,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Jolan Gross-Bettelheim,Jolan Gross Bettelheim,Jolan Gross Bettelheim,nameNormalised,rule,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Lawrence Kupferman,Lawrence Edward Kupferman,Lawrence Edward Kupferman,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Pierre Fernandez Arman,Arman,Arman,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Fernandez Arman,Arman,Arman,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Otto Wols,Wols,Wols,humanPairs,human,True,True,True,,True,False,False,False,True,True
+June Claire Wayne,June Wayne,June Wayne,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Pierre Courtin,Pierre Louis Maurice Courtin,Pierre Louis Maurice Courtin,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Richard John Haas,Richard Haas,Richard Haas,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Mihail Mikhailovich Chemiakin,Mihail Chemiakin,Mihail Chemiakin,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Garo Zareh Antreasian,Garo Antreasian,Garo Antreasian,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Robert Alan Bechtle,Robert Bechtle,Robert Bechtle,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Federico Castellon,Federico Castellón,Federico Castellón,reappearedName,human,False,True,True,honorific+normalized_equal,True,False,True,False,True,True
+George Ortman,George Earl Ortman,George Earl Ortman,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Eduardo Luigi Paolozzi KBE,Eduardo Paolozzi,Eduardo Paolozzi,humanPairs,human,True,True,True,,False,False,False,False,True,True
+Edouardo Poalozzi,Eduardo Paolozzi,Eduardo Paolozzi,humanPairs,human,True,False,False,,False,False,False,True,True,True
+Kenojuak Ashevak CC,Kenojuak Ashevak,Kenojuak Ashevak,humanPairs,human,True,False,True,,True,False,False,False,True,True
+Shiko Munakata,Shikō Munakata,Shikō Munakata,humanPairs,human,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Edgar Alfred Holloway RBA,Edgar Holloway,Edgar Holloway,humanPairs,human,True,True,True,,True,False,False,False,True,True
+John Wilson,John Woodrow Wilson,John Woodrow Wilson,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Hale Aspacio Woodruff,Hale Woodruff,Hale Woodruff,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+William Richard Crutchfield,William Crutchfield,William Crutchfield,reappearedName,human,False,True,True,token_subset,True,False,False,False,True,True
+Terence David La Noue,Terence La Noue,Terence La Noue,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Alan J. Shields,Alan Shields,Alan Shields,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Angela Bing Jansen,Angela Jansen,Angela Jansen,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Augustus John,Augustus Edwin John,Augustus Edwin John,aliasShadowing,human,True,True,True,token_subset,True,False,False,False,True,True
+Laura Sylvia Gosse RBA RE,Sylvia Gosse,Sylvia Gosse,nameFuzzyImageCorroborated,rule,True,True,True,,False,False,False,False,True,True
+Wassily Kandisky,Wassily Kandinsky,Wassily Kandinsky,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,True,True,True
+Storm Elvin Thorgerson,Storm Thorgerson,Storm Thorgerson,reappearedName,human,False,True,True,token_subset,True,False,False,False,True,True
+Gerald Kenneth Geerlings,Gerald Geerlings,Gerald Geerlings,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+William H. Bailey,William Bailey,William Bailey,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Shephard Fairey,Shepard Fairey (Obey),Shepard Fairey (Obey),nameTypoDatesAgree,rule,True,False,True,,False,False,False,False,True,True
+Brainwash (French b. 1966-) &,Mr Brainwash,Mr Brainwash,wrapperName,human,False,False,True,,True,True,False,False,True,True
+Mr Brainwash (French b. 1966-) &,Mr Brainwash,Mr Brainwash,wrapperName,human,False,False,True,,True,False,False,False,True,True
+Ralph Idris Steadman,Ralph Steadman,Ralph Steadman,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+David Young Cameron RE ROI RSA RWS RA RSW,David Young Cameron,David Young Cameron,humanPairs,human,True,True,True,honorific,True,False,False,False,True,True
+David Young Cameron R.A. R.S.A. R.W.S. R.S.W. R.E,David Young Cameron,David Young Cameron,humanPairs,human,True,False,True,,True,False,False,False,True,True
+William F Walcot,William Walcot RBA RE,William Walcot RBA RE,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Christopher Richard Wynne Nevinson,Christopher Richard Wynne Nevinson ARA,Christopher Richard Wynne Nevinson ARA,kmIdentityRepair,human,True,True,True,honorific,False,False,False,False,True,True
+C R W Nevinson,Christopher Richard Wynne Nevinson ARA,Christopher Richard Wynne Nevinson ARA,humanPairs,human,True,True,True,initialism,False,False,False,False,True,True
+Christopher R. W. Nevinson ARA,Christopher Richard Wynne Nevinson ARA,Christopher Richard Wynne Nevinson ARA,humanPairs,human,True,True,True,initialism,False,False,False,False,True,True
+Norbertine Bresslern-Roth,Norbertine von Bresslern-Roth,Norbertine von Bresslern-Roth,aliasShadowing,human,True,True,True,token_subset,True,False,False,False,True,True
+John Nash,John Northcote Nash,John Northcote Nash,aliasShadowing,human,True,True,True,token_subset,True,False,False,False,True,True
+John N. Nash,John Northcote Nash,John Northcote Nash,aliasShadowing,human,True,True,True,initialism,True,False,False,False,True,True
+Guillaume Corneille,Corneille,Corneille,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Bernard Leach Study for a Pot,Bernard Howell Leach,Bernard Howell Leach,humanPairs,human,True,False,True,,False,False,False,False,True,True
+Charles Joseph Hullmandel,Charles Hullmandel,Charles Hullmandel,kmIdentityRepair,human,True,True,True,token_subset,False,False,False,False,True,True
+Terence Cuneo,Terence Tenison Cuneo CVO RGI FGRA,Terence Tenison Cuneo CVO RGI FGRA,humanPairs,human,True,False,True,,True,False,False,False,True,True
+Connor Brothers (British b. 1968-) &,Connor Brothers,Connor Brothers,wrapperName,human,False,False,True,,True,False,False,False,True,True
+The Connor Brothers (British b. 1968-) &,Connor Brothers,Connor Brothers,wrapperName,human,False,False,True,,True,False,False,False,True,True
+Albert Belleroche,Albert de Belleroche,Albert de Belleroche,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+John Sloan Santa Fe Family etching;,John Sloan,John Sloan,humanPairs,human,True,False,True,,False,False,False,False,True,True
+Félix Buhot,Félix Hilaire Buhot,Félix Hilaire Buhot,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+Félix-Hilaire Buhot,Félix Hilaire Buhot,Félix Hilaire Buhot,reappearedName,human,False,True,True,honorific+normalized_equal,True,False,True,False,True,True
+George Wesley Bellows,George Bellows,George Bellows,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Eugene Smith,W. Eugene Smith,W. Eugene Smith,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Edna Boies hopkins,Edna Boies Hopkins,Edna Boies Hopkins,nameNormalised,rule,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Publisher: Dr Robert Thornton,Robert John Thornton,Robert John Thornton,humanPairs,human,True,True,True,,False,False,False,False,True,True
+Jean-Michel Basquiat and Andy Warhol,Andy Warhol and Jean-Michel Basquiat,Andy Warhol and Jean-Michel Basquiat,humanPairs,human,True,False,True,,False,False,False,False,True,True
+Bernd & Hilla Becher,Bernd and Hilla Becher,Bernd and Hilla Becher,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Norman Alfred Williams Lindsay,Norman Alfred Lindsay,Norman Lindsay,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Samuel L. Margolies,Samuel Margolies,Samuel Margolies,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+Jean-François Raffaëlli,Jean François Raffaëlli,Jean François Raffaëlli,reappearedName,human,False,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Frank Weston Benson,Frank W. Benson,Frank W. Benson,humanPairs,human,True,True,True,initialism,True,False,False,False,True,True
+Charles E. Burchfield,Charles Burchfield,Charles Burchfield,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+James Mcbey,James McBey,James McBey,reappearedName,human,False,True,True,honorific+normalized_equal,True,False,True,False,True,True
+\jean-émile Laboureur,Jean-Émile Laboureur,Jean Émile Laboureur,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Jean-Émile Laboureur,Jean Émile Laboureur,Jean Émile Laboureur,aliasShadowing,human,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Jean-Émile Labourer,Jean Émile Laboureur,Jean Émile Laboureur,nameTypoDatesAgree,rule,True,False,False,typo,False,False,False,True,True,True
+Privat Livemont,Henri Privat-Livemont,Henri Privat-Livemont,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+Sir Edward Coley Burne-Jones,Edward Coley Burne-Jones,Edward Coley Burne-Jones,kmIdentityRepair,human,True,True,True,honorific+token_subset,False,False,False,False,True,True
+Elling William Gollings,"Elling William ""Bill"" Gollings","Elling William ""Bill"" Gollings",humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Yoshitomo Nara and Hiroshi Sugito,Yoshitomo Nara & Hiroshi Sugimoto,Yoshitomo Nara & Hiroshi Sugimoto,humanPairs,human,True,False,False,,False,False,False,False,False,False
+Édouard Vuillard,Edouard Vuillard,Edouard Vuillard,humanPairs,human,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Emile Cardinaux,Emil Cardinaux,Emil Cardinaux,kmIdentityRepair,human,True,True,True,typo,False,False,False,False,True,True
+Stanton Macdonald-wright,Stanton Macdonald-Wright,Stanton Macdonald-Wright,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Frances Hodgkins,Frances Mary Hodgkins,Frances Mary Hodgkins,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Robert Polhill Bevan,Robert Bevan,Robert Bevan,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Jean-baptiste-camille Corot,Jean-Baptiste-Camille Corot,Jean-Baptiste-Camille Corot,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Walter J. Phillips,Walter Joseph Phillips,Walter Joseph Phillips,humanPairs,human,True,True,True,initialism,True,False,False,False,True,True
+Claude Gellée called Claude Lorrain,Claude Gellée called le Lorrain,Claude Gellée called le Lorrain,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Hendrik Goltzius,Hendrick Goltzius,Hendrick Goltzius,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Pieter Brueghel Elder,Pieter Bruegel Elder,Pieter Bruegel Elder,nameTypoDatesAgree,rule,True,True,True,typo,False,False,False,False,True,True
+Bertha Boynton Lum,Bertha Lum,Bertha Lum,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Pedro Joseph de Lemos,Pedro Joseph Lemos,Pedro Joseph Lemos,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Frances Gearhart,Frances Hammell Gearhart,Frances Hammell Gearhart,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+Émile-jean Sulpis,Émile-Jean Sulpis,Émile-Jean Sulpis,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+László Moholy-nagy,László Moholy-Nagy,László Moholy-Nagy,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Ker-xavier Roussel,Ker-Xavier Roussel,Ker-Xavier Roussel,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Sir Lawrence Alma-Tadema,Lawrence Alma-Tadema,Lawrence Alma-Tadema,kmIdentityRepair,human,True,True,True,honorific+token_subset,False,False,False,False,True,True
+Giovanni Antonio Canaletto,Antonio Canal called Canaletto,Antonio Canal called Canaletto,reappearedName,human,False,True,True,,True,False,False,False,True,True
+Antonio Canal known as Canaletto,Antonio Canal known as il Canaletto,Antonio Canal called Canaletto,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Antonio Canal known as il Canaletto,Antonio Canal called Canaletto,Antonio Canal called Canaletto,reappearedName,human,False,True,True,,True,False,False,False,True,True
+Antonio Canaletto,Antonio Canal called Canaletto,Antonio Canal called Canaletto,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Alexandre Archipenko,Alexander Archipenko,Alexander Archipenko,humanPairs,human,True,True,True,typo,False,False,False,False,True,True
+Probably Jules Pascin,Jules Pascin,Jules Pascin,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Félix Vallotton,Félix Edouard Vallotton,Félix Edouard Vallotton,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+Adolf Dehn,Adolf Arthur Dehn,Adolf Arthur Dehn,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Adriaen van Ostade,Adriaen Jansz. van Ostade,Adriaen Jansz. van Ostade,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+Doug and Mike Starn,Doug & Mike Starn,Doug & Mike Starn,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Hasui Kawase,Kawase Hasui,Kawase Hasui,kmIdentityRepair,human,True,False,True,,False,False,False,False,True,True
+Jean-honoré Fragonard,Jean-Honoré Fragonard,Jean-Honoré Fragonard,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Honore Daumier,Honoré Daumier,Honoré Daumier,reappearedName,human,False,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Edmond François Aman-jean,Edmond François Aman-Jean,Edmond François Aman-Jean,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Sir Edwin Henry Landseer,Edwin Henry Landseer,Edwin Henry Landseer,kmIdentityRepair,human,True,True,True,honorific+token_subset,False,False,False,False,True,True
+Paolo Caliari Veronese,Paolo Veronese,Paolo Veronese,kmIdentityRepair,human,True,True,True,token_subset,False,False,False,False,True,True
+Richard W. Rummell,Richard Rummell,Richard Rummell,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Pierre Joseph Celestin Redouté,Pierre-Joseph Redouté,Pierre-Joseph Redouté,kmIdentityRepair,human,True,True,True,token_subset,False,False,False,False,True,True
+Paul Gavarni,Hippolyte Guillaume Sulpice Chevalier dit Paul Gavarni,Hippolyte Guillaume Sulpice Chevalier dit Paul Gavarni,humanPairs,human,True,True,True,,True,False,False,False,True,True
+Gerard Audran,Gérard Audran,Gérard Audran,nameNormalised,rule,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Max Kurzweil,Maximilian Kurzweil,Maximilian Kurzweil,humanPairs,human,True,True,True,,False,False,False,False,True,True
+Jean-michel Moreau,Jean-Michel Moreau,Jean-Michel Moreau,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Giovanni Battista Tiepolo,Giovanni B. Tiepolo,Giovanni B. Tiepolo,humanPairs,human,True,True,True,initialism,True,False,False,False,True,True
+Giovanni D. Tiepolo,Giovanni Domenico Tiepolo,Giovanni Domenico Tiepolo,nameFuzzyImageCorroborated,rule,True,True,True,initialism,True,False,False,False,True,True
+Franz von Stuck,FRANZ VON STÜCK,FRANZ VON STÜCK,nameNormalised,rule,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Margaret Jordan Patterson,Margaret Patterson,Margaret Patterson,humanPairs,human,True,True,True,token_subset,True,False,False,False,True,True
+Margaret J. Patterson,Margaret Patterson,Margaret Patterson,nameFuzzyImageCorroborated,rule,True,True,True,token_subset,True,False,False,False,True,True
+William S. Rice,William Seltzer Rice,William Seltzer Rice,nameFuzzyImageCorroborated,rule,True,True,True,initialism,True,False,False,False,True,True
+Jean-auguste-dominique Ingres,Jean-Auguste-Dominique Ingres,Jean-Auguste-Dominique Ingres,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Charles François Daubigny,Charles-François Daubigny,Charles-François Daubigny,nameNormalised,rule,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Charles-françois Daubigny,Charles-François Daubigny,Charles-François Daubigny,humanPairs,human,True,True,True,honorific+normalized_equal,False,False,True,False,True,True
+Lucas Cranach Elder,Lucas Cranach,Lucas Cranach,humanPairs,human,True,False,True,,True,False,False,False,True,True
+Francisco Goya,Francisco José de Goya,Francisco José de Goya,reappearedName,human,False,True,True,,True,False,False,False,True,True
+Francisco de Goya,Francisco José de Goya y Lucientes,Francisco José de Goya,humanPairs,human,True,False,True,,False,False,False,False,True,True
+John McCrady,John Mccrady,John Mccrady,nameNormalised,rule,True,True,True,honorific+normalized_equal,True,False,True,False,True,True
+David A. Siqueiros,David Alfaro Siqueiros,David Alfaro Siqueiros,nameFuzzyImageCorroborated,rule,True,True,True,initialism,True,False,False,False,True,True
+Stefano della Bella,Stefano Della Bella,Stefano Della Bella,reappearedName,human,False,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Henri Edmond Cross,Henri-Edmond Cross,Henri-Edmond Cross,reappearedName,human,False,True,True,honorific+normalized_equal,True,False,True,False,True,True
+Vincent Van Gogh,Vincent van Gogh,Vincent van Gogh,reappearedName,human,False,True,True,honorific+normalized_equal,True,False,True,False,True,True

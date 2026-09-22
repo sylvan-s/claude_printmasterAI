@@ -1,0 +1,50 @@
+{
+ "squashedPairs": 39,
+ "surnameEdit1Pairs": 446,
+ "artists": 11636,
+ "allPairs": 67692430,
+ "surnameLastPairs": 7825,
+ "largestSurnameBlocks": [
+  [
+   "smith",
+   47
+  ],
+  [
+   "jones",
+   28
+  ],
+  [
+   "martin",
+   24
+  ],
+  [
+   "brown",
+   18
+  ],
+  [
+   "school",
+   15
+  ],
+  [
+   "wilson",
+   14
+  ],
+  [
+   "davis",
+   13
+  ],
+  [
+   "phillips",
+   13
+  ]
+ ],
+ "nameRulePairs": {
+  "normalized_equal": 28,
+  "honorific": 3,
+  "initialism": 44,
+  "typo": 387
+ },
+ "sharedWorkPairs": 902,
+ "sharedSourceRecordPairs": 903,
+ "aliasOverlapPairs": 0
+}
