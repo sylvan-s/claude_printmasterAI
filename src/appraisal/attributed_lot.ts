@@ -810,6 +810,8 @@ export interface AttributedLotReport {
   /** Gated Stage 2b (src/appraisal/stage2b_gate.ts): what the cheap model's research was judged
    *  on, and whether the stage was redone on a stronger one. Null when gating is off. */
   stage2bGate?: { escalate: boolean; reasons: string[]; detail: string; firstModel: string; escalatedTo: string | null } | null;
+  /** Whether Stage 2b researched comps (stage2b_comps_plan.ts). Null: Stage 2b skipped. */
+  stage2bCompsPlan?: { mode: "full" | "summary"; reason: string } | null;
   compsSummary: ComparablesResult["summary"] | null;
   sellThrough: WorkFacts["sellThrough"] | null;
   driftAnchor: number | null;

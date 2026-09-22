@@ -54,6 +54,9 @@ export interface Stage2bResearchTelemetry {
    *  Counts toward closing the gap just as a graph same_work record does — see SILENT ON A
    *  REAL GAP above. Optional so older callers read as zero. */
   artsySameWorkComps?: number;
+  /** False when stage2b_comps_plan.ts put the stage in summary mode: Stage 3a prices the lot, so
+   *  researching comps was not the task and silence on them is correct. Optional: default true. */
+  compsRequired?: boolean;
 }
 
 export type Stage2bGateReason =
@@ -101,7 +104,7 @@ export function assessStage2bResearch(result: unknown, t: Stage2bResearchTelemet
     notes.push(`catalogue raisonné "${cr.catalogueName.trim()}" asserted with no source URL`);
   }
 
-  if (t.searches === 0 && t.graphSameWorkComps === 0 && (t.artsySameWorkComps ?? 0) === 0) {
+  if (t.compsRequired !== false && t.searches === 0 && t.graphSameWorkComps === 0 && (t.artsySameWorkComps ?? 0) === 0) {
     reasons.push("no_search_despite_gap");
     notes.push("no web search was made, and neither the graph nor Artsy holds a same-work sale — the gap it was sent to close was not attempted");
   }
