@@ -1,6 +1,6 @@
 # Artist-merge review agent: iterative semi-supervised learning
 
-**Status:** design only, 2026-09-22. Nothing is built.
+**Status:** Phase 0 closed 2026-09-22 (see `knowledge_graph/merge_agent/PHASE0.md`). **Policy A adopted:** a world-knowledge `same` from the LLM must be ULAN-verified, or it goes to a person. Phase 1 has not started.
 
 ## Goal
 

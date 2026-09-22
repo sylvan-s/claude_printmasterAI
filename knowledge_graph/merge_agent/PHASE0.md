@@ -212,3 +212,33 @@ collaboration, 2 after, 22 unsure.
     person. g112 is now one of them: the verifier does not match the 3-word "Giovanni B. Ghisi"
     to the 4-word ULAN form.
   - Excluding ULAN-sourced labels: 34/34 (low 89.8%), 4 to a person.
+
+## Phase 0 closed 2026-09-22
+
+**Decision:** Policy A adopted (`ulan_verify.apply_policy`, POLICY-A-1.0). Haiku 4.5 with prompt
+LLM-1.2 is the labeller. A `same` based on world_knowledge must be ULAN-verified, or it becomes
+`unsure` and goes to a person.
+
+**What Phase 0 established:**
+- **Candidate pool:** the union of name blocks plus shared work, 9,404 pairs, with 99.3% recall
+  on 283 known merges. Name changes such as Taylor-Wood → Taylor-Johnson need a
+  ULAN/Wikidata alias block.
+- **Gold set:** 150 pairs. Final labels: 46 same, 68 different, 12 collaboration, 2 after, 22
+  unsure; 5 are ULAN-sourced, and figures are quoted without them.
+- **Labeller:** 98% agreement on identity pairs. Under Policy A, no false `same` on firm pairs
+  (34/34, 95% low 89.8%). About 4 true merges per 150 go to a person.
+- **Labelling rules:** the composite-credit rules 1-3, and the relation labels collaboration and
+  after, which route to decomposition, never to a merge.
+
+**Carried into Phase 1:**
+1. Training features for merged pairs must come from pre-merge snapshots such as
+   `artist_splink_triage.csv`; the live graph has lost them.
+2. The per-stratum 95% gate cannot be certified at n≈20. Phase 1 reports lower bounds and
+   grows the gold set where the agent leans on the LLM (subset/fuzzy).
+3. Haiku's self-reported `basis` is noisy. Watch name-form inferences labelled record_evidence
+   (Alex MacLean). Policy C (verify unless the names are equivalent) is the fallback if one
+   turns out wrong.
+4. **Logged, not fixed:**
+   - the misnamed survivor "Yoshitomo Nara & Hiroshi Sugimoto";
+   - the Manzú lot-grouping junk nodes;
+   - the 351 collaboration/after credit nodes, scoped separately.

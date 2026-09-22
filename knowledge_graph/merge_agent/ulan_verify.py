@@ -126,3 +126,24 @@ class UlanIndex:
                     if v and abs(int(v) - life[field]) > 2:
                         return "conflict", uid, f"{rec['name']} {field} {v} vs ULAN {pref}: {bio}"
         return "verified", uid, f"ULAN {uid} {pref}: {bio}"
+
+
+# ------------------------------------------------------------------ the adopted policy (Policy A)
+
+POLICY = "POLICY-A-1.0"   # adopted 2026-09-22, Phase 0 close (PHASE0.md, step 2)
+
+
+def apply_policy(label, basis, verdict):
+    """The merge agent's rule for an LLM label. A `same` resting on the model's own knowledge
+    stands only when ULAN verifies both name forms as one person; otherwise it becomes `unsure`
+    and goes to a person. Every other label passes through unchanged.
+
+    Chosen over verifying every `same`: on the Phase 0 gold set Policy A kept 34/34 correct
+    `same`s (excluding ULAN-sourced labels) and sent 4 true merges to a person, against 20 for
+    verify-all. It is insurance: with g112 settled, Haiku made no false `same` on the gold set;
+    the rule stands because a false merge costs far more than a review, and LLM confabulation
+    is a known failure here. Relax it only on Phase 1 evidence of zero confabulations over a
+    few hundred calls."""
+    if label == "same" and basis == "world_knowledge" and verdict != "verified":
+        return "unsure"
+    return label
