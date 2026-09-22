@@ -51,3 +51,44 @@ The gate needs gold precision ≥ 95% **and** a 95% Wilson lower bound ≥ 90%. 
 pairs, even zero errors needs ≥ 35 correct `same` calls, i.e. recall ≥ 85%. The model sits at
 34. So the gate is limited by gold size as much as by the model. The audit is the tougher
 measure, and it says the non-strong high band is about 88% right.
+
+## Rounds 3–5 (80 pairs each: 40 audit, 40 uncertain)
+
+**Stopping rule, set in advance:** stop when one round's audit is ≥ 95% and the last two rounds
+pooled have a 95% lower bound ≥ 90%, with a cap of four more rounds (about $0.50).
+
+| round | features | threshold | high-band audit | gold `same` calls correct (low) | gold recall | gold AUC |
+|---|---|---|---|---|---|---|
+| 3 | DATA-1.0 | 0.65 | 22/30 = 73% | 30/30 (88.6%) | 73% | 0.977 |
+| 4 | **DATA-1.1** | 0.82 | **33/33 = 100% (low 90%)** | 34/34 (89.8%) | 83% | 0.986 |
+| 5 | DATA-1.1 | 0.72 | 32/36 = 89% | 32/32 (89.3%) | 78% | 0.982 |
+
+**DATA-1.1 came out of the round-3 audit.** The model's real misses were trap words it didn't
+know:
+- Italian, French and German attribution terms ("Seguace di", "École de", "Umkreis");
+- "/" as a joint credit ("Edward Weston/Cole Weston");
+- generation markers ("Carl Wilhelm I Kolbe" vs "Carl Wilhelm Kolbe").
+
+The vocabulary was extended and a `generation_mismatch` feature added. The next round's audit
+was 33/33.
+
+**Stopped after round 5.** Rounds 4+5 pooled give 65/69 = 94.2% (low 86.4%). No sixth round,
+however clean, could lift the pooled lower bound to 90%. And the audit now has a **labeller noise
+floor**. Of round 5's four misses:
+- one is Haiku's own error (G. F. Watts called "after");
+- two are possible catalogue misspellings Haiku cannot settle (Delvaux ~ Devaux, Pater ~ Paret);
+- only one is a real model miss (Marcantonio Raimondi "after Raphael" vs "And Circle", a
+  composite relation).
+
+Policy A also parks true typo matches as `unsure` (Goltzius / "Golitzus", Kolbe), which keeps
+them out of both training and the audit.
+
+Total Phase 1 LLM spend: about $0.51. Labels gathered: 213 carried into round 5, plus round 5's own.
+
+## Where Phase 1 stands
+- **Gold:** no false `same` in any round since round 1 (34/34 at best). The gate fails only on
+  the lower bound, because 41 gold positives cap it just under 90%.
+- **Audit:** 89–100% per round once DATA-1.1 is in. Its remaining misses are mostly labeller noise.
+- **Certifying either measure needs human labels,** not more LLM rounds: grow the gold set
+  (subset/fuzzy), or have a person adjudicate the audit disagreements. The model is now limited
+  by the measurement, not the other way round.

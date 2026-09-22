@@ -1,6 +1,6 @@
 """
 PrintMasterAI — merge-review agent, Phase 1: records, features and the seed set.
-Version: MERGE-AGENT-P1-DATA-1.0
+Version: MERGE-AGENT-P1-DATA-1.1
 
 Design: docs/plans/2026-09-22-artist-merge-active-learning-agent.md, Phase 1. Run with the
 sklearn-1.6 venv (knowledge_graph/venv-embeddings/bin/python).
@@ -57,9 +57,18 @@ from identity_candidates import connect, session  # noqa: E402
 from phase0_blocks import block_squashed, block_surname_edit1, name_rules, stripped  # noqa: E402
 
 KG_MAIN = os.path.expanduser("~/PycharmProjects/claude_printmasterAI/knowledge_graph")
-COLLAB = re.compile(r"(\s&\s|\sand\s|\swith\s|\set\s|\s\+\s|;)", re.I)
+# DATA-1.1 (active-learning round 3 audit): the model scored "Seguace di Stefano della Bella" ~
+# "Stefano Della Bella" at 0.99 and "Edward Weston/Cole Weston" ~ "Edward Weston" at 1.00. The trap
+# vocabulary was English-only and knew no "/" credit; auction catalogues write all of these.
+COLLAB = re.compile(r"(\s&\s|\sand\s|\swith\s|\set\s|\s\+\s|;|\S/\S|\s/\s|\sund\s|\se\s)", re.I)
 ATTRIB = re.compile(r"\b(after|school of|follower of|workshop|manner of|circle of|studio of|"
-                    r"attributed to|d'apr[eè]s)\b", re.I)
+                    r"attributed to|d'apr[eè]s|nach|seguace di|scuola di|cerchia di|bottega|"
+                    r"maniera di|alla maniera|atelier|entourage de|suiveur de|[ée]cole de|"
+                    r"[ée]l[eè]ve de|umkreis|werkstatt|schule)\b", re.I)
+# Generation markers: "Carl Wilhelm I Kolbe" (the Elder) vs "Carl Wilhelm Kolbe". One side marked
+# and the other not, or the two marked differently, is the family trap in name form.
+GENERATION = re.compile(r"\b(i|ii|iii|iv|elder|younger|the elder|the younger|jr|sr|junior|senior|"
+                        r"le jeune|l'a[iî]n[ée]|p[eè]re|fils|d\.\s?[aä]\.|d\.\s?j\.)\b", re.I)
 JUNK = re.compile(r"\b(publisher|published|printed by|printer|grouped|lot)\b", re.I)
 
 
@@ -228,6 +237,9 @@ def features(ra, rb, surname_count):
     f["junk_either"] = float(bool(JUNK.search(a) or JUNK.search(b)))
     f["placeholder_either"] = float(fam._is_placeholder(ta) or fam._is_placeholder(tb))
     f["family_risk"] = float(f["surname_equal"] and f["born_conflict10"])
+    ga = {m.group(1).lower() for m in GENERATION.finditer(a)}
+    gb = {m.group(1).lower() for m in GENERATION.finditer(b)}
+    f["generation_mismatch"] = float(ga != gb)
     wks = sorted([ra.get("works") or 0, rb.get("works") or 0])
     f["works_min_log"] = math.log1p(wks[0])
     f["works_max_log"] = math.log1p(wks[1])
