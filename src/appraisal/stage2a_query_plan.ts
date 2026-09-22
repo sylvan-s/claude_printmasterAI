@@ -53,6 +53,7 @@ import type { AckgWorkMatch, AckgCandidate, DimMm } from "./knowledge_graph/inde
 import {
   techniqueFamily,
   dimsWithinTolerance,
+  dimsMatchEitherAxis,
   TAU_DIM_PLATE_PCT, TAU_DIM_PLATE_MM,
   TAU_DIM_IMAGE_PCT, TAU_DIM_IMAGE_MM,
   TAU_DIM_SHEET_PCT, TAU_DIM_SHEET_MM,
@@ -617,6 +618,76 @@ function modalDim(dims: DimMm[]): WH {
   return { width: best.d.w, height: best.d.h };
 }
 
+const ZERO_WH: WH = { width: 0, height: 0 };
+
+/**
+ * The one catalogued measurement of `kind` the tree should compare the object against.
+ *
+ * The graph's dimension slots are only as typed as the ingest that filled them, and the
+ * ingests file an UNLABELLED size as `sheetDimensions` (Forum's blank dim_kind, Bonhams, BM
+ * and Swann all fall back to sheet). Swann states the image — "445x450 mm; 17x18 inches, full
+ * margins" — so a sheet slot routinely holds image sizes next to real sheets. Measured on
+ * A0793/308 (Picasso, La Ronde de la Jeunesse, sheet 64.5 x 49.5 cm): the merged work carries
+ * sheet-slot values 44.5x45 (six Swann image sizes), 53.3x46.7, 48.3x45.8 (an image, from a
+ * record that states the sheet separately) and 64.8x49.7 / 64.2x49.4 (real sheets). The
+ * previous modal pick — over DISTINCT strings, so in effect the first one — chose the Swann
+ * image, and the tree read "dimensions materially larger" as later_edition and forced
+ * Scenario 2 on a correctly described print.
+ *
+ * So, in order:
+ *   1. If the object was measured on this kind and ANY catalogued record of it matches (the
+ *      tree's own tolerance, either axis), compare against the closest match. One record of
+ *      the same work measuring the same is corroboration; the non-matching rows cannot be
+ *      told apart from mis-typed ones.
+ *   2. Otherwise, if the records agree among themselves, that consensus is a real measurement
+ *      and a disagreement with it may stand as a contradiction.
+ *   3. If they disagree among themselves, the slot demonstrably mixes measurement kinds (one
+ *      work's sheets differ by trimming, not by 30%), and nothing in it can contradict the
+ *      object. Returned as the not-assessed sentinel — absence, not evidence against.
+ *
+ * Kind is taken from the slot and never re-parsed from the raw text: the dimensions rule
+ * family is deliberately unformed (docs/RULES.md), and a consumer-side kind parser would be
+ * another implementation of it. The consistency test needs no parser.
+ */
+export function catalogueDimForComparison(
+  dims: DimMm[],
+  kind: ObservedDims["kind"],
+  observed: ObservedDims | null,
+  trace: string[],
+): WH {
+  if (!dims.length) return ZERO_WH;
+  const [pct, mmFloor] = DIM_TOLERANCE[kind];
+
+  if (observed?.kind === kind) {
+    const obs = { w: observed.mm.width, h: observed.mm.height };
+    let best: { d: DimMm; relMax: number } | null = null;
+    for (const d of dims) {
+      const r = dimsMatchEitherAxis(obs, d, pct, mmFloor);
+      if (r.within && (!best || r.relMax < best.relMax)) best = { d, relMax: r.relMax };
+    }
+    if (best) {
+      if (dims.length > 1) {
+        trace.push(
+          `catalogued ${kind}: ${best.d.w}x${best.d.h}mm matches the object's ${obs.w}x${obs.h}mm — ` +
+            `chosen over ${dims.length - 1} other catalogued ${kind} value(s) for the same work`,
+        );
+      }
+      return { width: best.d.w, height: best.d.h };
+    }
+  }
+
+  const modal = modalDim(dims);
+  const ref = { w: modal.width, h: modal.height };
+  const consistent = dims.every((d) => dimsMatchEitherAxis(d, ref, pct, mmFloor).within);
+  if (consistent) return modal;
+  trace.push(
+    `catalogued ${kind} values disagree among themselves (${dims.map((d) => `${d.w}x${d.h}`).join(", ")}mm) — ` +
+      `the slot mixes measurement kinds (unlabelled sizes are ingested as sheet), so it is not assessed ` +
+      `rather than read as a contradiction`,
+  );
+  return ZERO_WH;
+}
+
 /**
  * Collapse un-merged re-ingests of the same work.
  *
@@ -798,9 +869,9 @@ async function runWorkQuery(
     backPropArtist: "",
     catalogueTechniques: best?.techniques ?? [],
     catalogueMediumRaw: best?.rawMediums?.[0] ?? "",
-    cataloguePlateMm: modalDim(best?.plateDimsMm ?? []),
-    catalogueImageMm: modalDim(best?.imageDimsMm ?? []),
-    catalogueSheetMm: modalDim(best?.sheetDimsMm ?? []),
+    cataloguePlateMm: catalogueDimForComparison(best?.plateDimsMm ?? [], "plate", plan.observedDims, trace),
+    catalogueImageMm: catalogueDimForComparison(best?.imageDimsMm ?? [], "image", plan.observedDims, trace),
+    catalogueSheetMm: catalogueDimForComparison(best?.sheetDimsMm ?? [], "sheet", plan.observedDims, trace),
     editionSizes: best?.editionSizes ?? [],
     rowsReturned,
     rowsAfterMerge: merged.length,
