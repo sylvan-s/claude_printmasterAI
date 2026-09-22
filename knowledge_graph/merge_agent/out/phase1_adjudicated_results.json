@@ -1,0 +1,19 @@
+{
+ "version": "MERGE-AGENT-P1-ADJ-SCORE-1.0",
+ "retrain": {
+  "LLM labels only": {
+   "tp": 31,
+   "n": 31,
+   "recall": 0.7560975609756098,
+   "gold_auc": 0.983142037302726,
+   "thr": 0.7353887360888585
+  },
+  "with human adjudication": {
+   "tp": 36,
+   "n": 36,
+   "recall": 0.8780487804878049,
+   "gold_auc": 0.9806312769010043,
+   "thr": 0.6774021625184187
+  }
+ }
+}

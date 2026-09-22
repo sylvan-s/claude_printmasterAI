@@ -1,0 +1,2561 @@
+[
+ {
+  "id": "adj01",
+  "a": {
+   "name": "Carl Wilhelm I Kolbe",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Carl Wilhelm I Kolbe"
+   ],
+   "works": 1,
+   "titles": [
+    "Pal\u00e4mons Eiche"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Carl Wilhelm Kolbe",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "CARL WILHELM KOLBE"
+   ],
+   "works": 1,
+   "titles": [
+    "Die Kuh im Schilfe"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj02",
+  "a": {
+   "name": "George Frederic Watts",
+   "born": 1817,
+   "died": 1904,
+   "nat": "British",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "George Frederic Watts, OM, RA"
+   ],
+   "works": 1,
+   "titles": [
+    "Self Portrait as a young man"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "British"
+  },
+  "b": {
+   "name": "George Frederick Watts",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "After George Frederick Watts"
+   ],
+   "works": 1,
+   "titles": [
+    "Orpheus and Eurydice"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj03",
+  "a": {
+   "name": "Howard Beach",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Howard Beach"
+   ],
+   "works": 1,
+   "titles": [
+    "The Sentinel"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Howard D. Beach",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Howard D. Beach"
+   ],
+   "works": 2,
+   "titles": [
+    "Surf",
+    "Long Island Sound"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj04",
+  "a": {
+   "name": "Paul Delvaux",
+   "born": 1897,
+   "died": 1994,
+   "nat": "Belgian",
+   "ulan": "http://vocab.getty.edu/ulan/500017335",
+   "wikidata": "http://www.wikidata.org/entity/Q164712",
+   "alts": [
+    "Paul Delvaux",
+    "DELVAUX Paul",
+    "PAUL DELVAUX"
+   ],
+   "works": 78,
+   "titles": [
+    "The Beach [Jacob 59]",
+    "Le Discours",
+    "Le Bout du Monde",
+    "Reflection",
+    "Buste de Femme III",
+    "Azal\u00e9e bleue"
+   ],
+   "houses": [
+    "roseberys",
+    "swann",
+    "navigart14",
+    "bonhams",
+    "forum"
+   ],
+   "ulanBio": "Delvaux, Paul: Belgian painter, draftsman, and engraver, 1897-1994",
+   "natRaw": "Belgian"
+  },
+  "b": {
+   "name": "Paul Devaux",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "DEVAUX Paul"
+   ],
+   "works": 1,
+   "titles": [
+    "Coins curieux et pittoresques du Bourbonnais"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj05",
+  "a": {
+   "name": "A. Heath",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "A. Heath"
+   ],
+   "works": 1,
+   "titles": [
+    "Lilies near the Window, and Flowers in a Blue Vase"
+   ],
+   "houses": [
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Adrian Heath",
+   "born": 1920,
+   "died": 1992,
+   "nat": "British",
+   "ulan": "http://vocab.getty.edu/ulan/500012112",
+   "wikidata": null,
+   "alts": [
+    "Adrian Heath",
+    "Heath, Adrian"
+   ],
+   "works": 13,
+   "titles": [
+    "Untitled",
+    "Orange, Black & White",
+    "Los Boliches",
+    "Study",
+    "Composition - Black and Yellow",
+    "Landsberg 2"
+   ],
+   "houses": [
+    "bonhams",
+    "forum",
+    "tate",
+    "roseberys"
+   ],
+   "ulanBio": "Heath, Adrian: British painter, 1920-1992",
+   "natRaw": "British"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj06",
+  "a": {
+   "name": "Hendrick Golitzus",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "HENDRICK GOLITZUS"
+   ],
+   "works": 1,
+   "titles": [
+    "The Adoration of the Shepherds"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Hendrick Goltzius",
+   "born": 1558,
+   "died": 1617,
+   "nat": "Dutch",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Hendrick Goltzius",
+    "Hendrik Goltzius",
+    "GOLTZIUS Hendrik",
+    "HENDRICK GOLTZIUS"
+   ],
+   "works": 45,
+   "titles": [
+    "Ceres",
+    "New Hollstein 150. Primo stato molto raro, prima dell'inserimento dell'indirizzo di Visscher.",
+    "The Visitation",
+    "Jan van Suren",
+    "Jan Nicquet",
+    "Pluto"
+   ],
+   "houses": [
+    "swann",
+    "forum",
+    "bonhams",
+    "navigart11"
+   ],
+   "ulanBio": null,
+   "natRaw": "Dutch"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj07",
+  "a": {
+   "name": "Jean-Baptiste Paret",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [],
+   "works": 1,
+   "titles": [
+    "Acad\u00e9mie d'apr\u00e8s nature"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Jean-Baptiste Pater",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "PATER Jean-Baptiste"
+   ],
+   "works": 1,
+   "titles": [
+    "Untitled (D.2020.0.14.6.52.E)"
+   ],
+   "houses": [
+    "navigart11"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj08",
+  "a": {
+   "name": "Marcantonio Raimondi (after Raphael)",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "MARCANTONIO RAIMONDI (AFTER RAPHAEL)"
+   ],
+   "works": 2,
+   "titles": [
+    "The Judgment of Paris",
+    "Galatea"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Marcantonio Raimondi And Circle (after Raphael)",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "MARCANTONIO RAIMONDI AND CIRCLE (AFTER RAPHAEL)"
+   ],
+   "works": 1,
+   "titles": [
+    "Joseph Interpreting his Dreams to his Brothers"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj09",
+  "a": {
+   "name": "Louis Favre",
+   "born": 1892,
+   "died": 1956,
+   "nat": "French",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Louis Favre",
+    "FAVRE Louis"
+   ],
+   "works": 7,
+   "titles": [
+    "Les baladins",
+    "La table",
+    "Les joueurs",
+    "Arlequin",
+    "T\u00eate de Christ",
+    "La fen\u00eatre"
+   ],
+   "houses": [
+    "navigart14",
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "French"
+  },
+  "b": {
+   "name": "Louis-Paul Favre",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "FAVRE Louis-Paul"
+   ],
+   "works": 4,
+   "titles": [
+    "La fen\u00eatre",
+    "La pendule",
+    "Baladins",
+    "Femme assise"
+   ],
+   "houses": [
+    "navigart18"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj10",
+  "a": {
+   "name": "John Rowlands",
+   "born": 1947,
+   "died": null,
+   "nat": "British",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "John Rowlands"
+   ],
+   "works": 5,
+   "titles": [
+    "Blondie",
+    "The Archer (David Bowie)",
+    "Mick and Keith",
+    "Bowie 16",
+    "David Bowie - The Archer"
+   ],
+   "houses": [
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": "British"
+  },
+  "b": {
+   "name": "Joihn Rowlands",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Joihn Rowlands"
+   ],
+   "works": 1,
+   "titles": [
+    "The Stones"
+   ],
+   "houses": [
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj11",
+  "a": {
+   "name": "Claude Gellee called le Lorraine",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Claude Gellee called le Lorraine"
+   ],
+   "works": 2,
+   "titles": [
+    "Le Soleil Levant",
+    "The Shipwreck (Le Naufrage)"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Claude Gell\u00e9e called le Lorrain",
+   "born": 1600,
+   "died": 1682,
+   "nat": "French",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Claude Gell\u00e9e, called le Lorrain",
+    "After Claude Gell\u00e9e, called Claude Lorrain",
+    "Claude Gell\u00e9e called Claude Lorrain",
+    "Claude Gell\u00e9e called le Lorrain"
+   ],
+   "works": 2,
+   "titles": [
+    "Landscape with Narcissus and Echo",
+    "Le Bouvier"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "French"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj12",
+  "a": {
+   "name": "Cedric Morris",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Cedric Morris"
+   ],
+   "works": 1,
+   "titles": [
+    "Gardeners Prefer Shell - You Can Be Sure Of Shell"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Cedrick Morris",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Cedrick Morris"
+   ],
+   "works": 1,
+   "titles": [
+    "Summer Shell on sale until next October"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj13",
+  "a": {
+   "name": "Theophile Steinlin",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Theophile Steinlin"
+   ],
+   "works": 2,
+   "titles": [
+    "Journ\u00e9e du Poilu",
+    "Helle"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Th\u00e9ophile Steinlen",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Theophile Steinlen",
+    "Th\u00e9ophile Steinlen",
+    "TH\u00c9OPHILE STEINLEN"
+   ],
+   "works": 27,
+   "titles": [
+    "Le Retour du Lavoir",
+    "Baigneuse en plein air",
+    "L'Averse",
+    "Exposition de l'\u0153vre dessin\u00e9 et peint de T. A. Steinlen",
+    "Deux Trottins",
+    "Petit Chat Siamois, assis"
+   ],
+   "houses": [
+    "bonhams",
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj14",
+  "a": {
+   "name": "James Allen",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "JAMES ALLEN"
+   ],
+   "works": 1,
+   "titles": [
+    "Teeming Ingots"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "James Edward Allen",
+   "born": 1894,
+   "died": 1964,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [],
+   "works": 2,
+   "titles": [
+    "The Coal Heavers",
+    "Iron Men"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj15",
+  "a": {
+   "name": "Edward Weston",
+   "born": 1886,
+   "died": 1958,
+   "nat": "American",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Edward Weston"
+   ],
+   "works": 78,
+   "titles": [
+    "Nautilus Shell (Half)",
+    "David McAlpin on the Balcony of The Museum of Modern Art, New York",
+    "Nude (Bertha, Glendale)",
+    "Nude (Charis, Santa Monica)",
+    "Portrait of Albert Bender",
+    "The Big Sur"
+   ],
+   "houses": [
+    "roseberys",
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "American"
+  },
+  "b": {
+   "name": "Edward Weston/Cole Weston",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Edward Weston/Cole Weston"
+   ],
+   "works": 1,
+   "titles": [
+    "Dunes, Oceano"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj16",
+  "a": {
+   "name": "Seguace di Stefano della Bella",
+   "born": 1610,
+   "died": 1664,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Seguace di Stefano della Bella"
+   ],
+   "works": 1,
+   "titles": [
+    "La caccia allo struzzo"
+   ],
+   "houses": [
+    "forum"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Stefano Della Bella",
+   "born": 1610,
+   "died": 1664,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "STEFANO DELLA BELLA",
+    "Stefano della Bella",
+    "Stefano Della Bella"
+   ],
+   "works": 21,
+   "titles": [
+    "Le temple de la Concorde et le Forum Romanum",
+    "La caccia allo struzzo, dalla serie: Cacce di diversi animali.",
+    "Castello St. Angelo",
+    "Le veritable plan et portrait de la Maison de Loreto (antiporta per: La Maison Miraculeuse de la Ste Vierge \u00e0 Loretto)",
+    "Due putti che giocano con una capra e La famiglia del Satiro, 1657, (2). Coppia di acqueforti su carte vergellate prive di filigrana. Dimensioni medie dei fogli mm 225x250. Superbe impressioni stampate con profonda inchiostrazione e forte chiaroscuro.",
+    "La caccia al cervo dalla serie: Cacce di vari animali. [1651-1657]."
+   ],
+   "houses": [
+    "forum",
+    "bonhams",
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj17",
+  "a": {
+   "name": "George De Feure",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "DE FEURE George (VAN SLUYTERS George, dit)"
+   ],
+   "works": 1,
+   "titles": [
+    "Retour"
+   ],
+   "houses": [
+    "navigart25"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Georges de Feure",
+   "born": 1868,
+   "died": 1943,
+   "nat": "Dutch",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Georges de Feure"
+   ],
+   "works": 5,
+   "titles": [
+    "Jeanne D'arc, Pl. 130",
+    "Paris-Almanach",
+    "Reading; Homme et Femme, 1897; c.",
+    "La Lo\u00efe Fuller dans sa Cr\u00e9ation Nouvelle Salom\u00e9",
+    "Les Montmartroises"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "Dutch"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj18",
+  "a": {
+   "name": "Remigio Cantagallina",
+   "born": 1582,
+   "died": 1656,
+   "nat": null,
+   "ulan": "http://vocab.getty.edu/ulan/500022555",
+   "wikidata": "http://www.wikidata.org/entity/Q1089033",
+   "alts": [
+    "Remigio Cantagallina",
+    "Remigio Cantagallina (1582-1656).",
+    "Remigio Cantagallina.",
+    "Attribuito a Remigio Cantagallina"
+   ],
+   "works": 21,
+   "titles": [
+    "Paesaggio italiano con figure, cavalli ed edifici.",
+    "Fortezza con figure in paesaggio pastorale",
+    "Castore e Poluce. 1608.",
+    "Jesus fatigatus ex itineresedebat sic supra fontem. [1609, ma tiratura tardo secentesca].",
+    "Veduta marina con tre pescatori.",
+    "Ego cibum habeo manducare, quem vos nescitis. [1609, ma tiratura tardo secentesca]"
+   ],
+   "houses": [
+    "forum"
+   ],
+   "ulanBio": "Cantagallina, Remigio: Italian etcher and draftsman, ca. 1582-1656",
+   "natRaw": null
+  },
+  "b": {
+   "name": "Seguace di Remigio Cantagallina",
+   "born": 1582,
+   "died": 1656,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Seguace di Remigio Cantagallina",
+    "Seguace di Remigio Cantagallina (1582-1656).",
+    "Seguace di Remigio Cantagallina."
+   ],
+   "works": 3,
+   "titles": [
+    "Due figure in piedi accanto ad un tronco d'albero.",
+    "Paesaggio con figure e albero.",
+    "Figure in paesaggio italiano con bosco."
+   ],
+   "houses": [
+    "forum"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj19",
+  "a": {
+   "name": "Henri Emilien Rousseau",
+   "born": 1875,
+   "died": 1933,
+   "nat": "French",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Henri Emilien Rousseau"
+   ],
+   "works": 1,
+   "titles": [
+    "La Guerre"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "French"
+  },
+  "b": {
+   "name": "Henri Rousseau",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": "http://vocab.getty.edu/ulan/500236513",
+   "wikidata": null,
+   "alts": [
+    "HENRI ROUSSEAU"
+   ],
+   "works": 7,
+   "titles": [
+    "The Snake Charmer, 1907",
+    "Detail from Suprised! (Tiger in a tropical storm)",
+    "Surprised! (Tiger in a Tropical Storm)",
+    "The Toll gate",
+    "La Guerre",
+    "La Chase du Tigre"
+   ],
+   "houses": [
+    "km",
+    "swann"
+   ],
+   "ulanBio": "Rousseau, Henri: French architect, contemporary",
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj20",
+  "a": {
+   "name": "Alfred Edel",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "EDEL Alfred"
+   ],
+   "works": 1,
+   "titles": [
+    "Les Bouteilles"
+   ],
+   "houses": [
+    "navigart25"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Alfredo Edel",
+   "born": 1856,
+   "died": 1912,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Alfredo Edel"
+   ],
+   "works": 1,
+   "titles": [
+    "Le Mage Op\u00e9ra"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj21",
+  "a": {
+   "name": "Hans Erni",
+   "born": 1909,
+   "died": 2015,
+   "nat": "Swiss",
+   "ulan": "http://vocab.getty.edu/ulan/500007927",
+   "wikidata": "http://www.wikidata.org/entity/Q667671",
+   "alts": [
+    "Hans Erni",
+    "ERNI Hans"
+   ],
+   "works": 12,
+   "titles": [
+    "Bacchus ivre",
+    "Daphn\u00e9 et Apollon",
+    "Couple discutant",
+    "Coq",
+    "Kibern\u00e8tes II",
+    "Spirale"
+   ],
+   "houses": [
+    "navigart20",
+    "navigart18",
+    "navigart15",
+    "navigart14",
+    "navigart11",
+    "bonhams",
+    "forum",
+    "roseberys"
+   ],
+   "ulanBio": "Erni, Hans: Swiss painter, illustrator, and printmaker, 1909-2015",
+   "natRaw": "Swiss"
+  },
+  "b": {
+   "name": "Hans Ernie",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Hans Ernie"
+   ],
+   "works": 1,
+   "titles": [
+    "Untitled (Doves)"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj22",
+  "a": {
+   "name": "William E. Walcot",
+   "born": null,
+   "died": null,
+   "nat": "American",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "William E. Walcot"
+   ],
+   "works": 1,
+   "titles": [
+    "Interior View of St. Peter's, Rome"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "American"
+  },
+  "b": {
+   "name": "William Walcot RBA RE",
+   "born": 1874,
+   "died": 1943,
+   "nat": "British",
+   "ulan": "http://vocab.getty.edu/ulan/500025383",
+   "wikidata": "http://www.wikidata.org/entity/Q4103082",
+   "alts": [
+    "William Walcot RBA RE",
+    "William Walcot RE",
+    "William F Walcot RBA RE",
+    "William Walcot RE Hon RIBA",
+    "William Walcot Hon RIBA",
+    "William F Walcot"
+   ],
+   "works": 15,
+   "titles": [
+    "\"Battery Park, New York\" from the \"New York Set\"",
+    "Babylon",
+    "Caesar in Egypt",
+    "L'Arc de Triomphe",
+    "\"House of Sallust\"",
+    "Untitled (A0213 lot 13)"
+   ],
+   "houses": [
+    "roseberys",
+    "bonhams"
+   ],
+   "ulanBio": "Walcot, William: English draftsman, printmaker, and architect, 1874-1943",
+   "natRaw": "British"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj23",
+  "a": {
+   "name": "Georges Dupire",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "DUPIRE Georges"
+   ],
+   "works": 1,
+   "titles": [
+    "Le Pont Royal"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Georges Dupr\u00e9",
+   "born": 1807,
+   "died": 1853,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "DUPR\u00c9 Georges"
+   ],
+   "works": 1,
+   "titles": [
+    "Portrait de Fabvier"
+   ],
+   "houses": [
+    "navigart24"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj24",
+  "a": {
+   "name": "Louis Touchagues",
+   "born": 1893,
+   "died": 1974,
+   "nat": "French",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Louis Touchagues"
+   ],
+   "works": 1,
+   "titles": [
+    "Poster for Grand Bal des Arts"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "French"
+  },
+  "b": {
+   "name": "Louis-Fran\u00e7ois Touchagues",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "TOUCHAGUES Louis-Fran\u00e7ois"
+   ],
+   "works": 1,
+   "titles": [
+    "(Sans titre)"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj25",
+  "a": {
+   "name": "Emile Richard Raimbault",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "RAIMBAULT Emile Richard"
+   ],
+   "works": 2,
+   "titles": [
+    "Hibou",
+    "Fleurs"
+   ],
+   "houses": [
+    "navigart20"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Richard Raimbault",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "RAIMBAULT Richard"
+   ],
+   "works": 1,
+   "titles": [
+    "Bouquet de fleurs"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj26",
+  "a": {
+   "name": "John Hill",
+   "born": 1770,
+   "died": 1850,
+   "nat": "British",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "John Hill"
+   ],
+   "works": 1,
+   "titles": [
+    "View near Sandy Hill, Pl. 7, from Hudson River Portfolio"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "British"
+  },
+  "b": {
+   "name": "John William Hill",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "After John William Hill"
+   ],
+   "works": 1,
+   "titles": [
+    "Boston"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj27",
+  "a": {
+   "name": "School of William Scott",
+   "born": 1913,
+   "died": 1989,
+   "nat": "British",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "School of William Scott CBE RA"
+   ],
+   "works": 1,
+   "titles": [
+    "Untitled Kitchen Compositions"
+   ],
+   "houses": [
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": "British"
+  },
+  "b": {
+   "name": "William Scott",
+   "born": 1913,
+   "died": 1989,
+   "nat": "British",
+   "ulan": "http://vocab.getty.edu/ulan/500391919",
+   "wikidata": "http://www.wikidata.org/entity/Q109646874",
+   "alts": [
+    "William Scott RA",
+    "William Scott",
+    "William Scott CBE RA",
+    "William Scott (1913-1989) .",
+    "Scott, William",
+    "William Scott R.A."
+   ],
+   "works": 121,
+   "titles": [
+    "Note: see Tate, London, museum number P06555 for example of the same",
+    "Odeon Suite II",
+    "Still Life with Lemon",
+    "Mingulay",
+    "Linear Pears",
+    "Lemon Pears"
+   ],
+   "houses": [
+    "forum",
+    "bonhams",
+    "roseberys",
+    "tate"
+   ],
+   "ulanBio": "Scott, William: artist, active 20th century",
+   "natRaw": "British"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj28",
+  "a": {
+   "name": "Johannes Wiericx",
+   "born": 1549,
+   "died": 1620,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "JOHANNES WIERICX"
+   ],
+   "works": 5,
+   "titles": [
+    "Untitled (swann-36a362bce6)",
+    "(after D\u00fcrer) Knight, Death and the Devil",
+    "Phillip II, King of Spain",
+    "AFTER D\u00dcRER Adam and Eve",
+    "AFTER D\u00dcRER Melencolia I"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Johannes Wierix",
+   "born": 1539,
+   "died": 1620,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Johannes Wierix"
+   ],
+   "works": 1,
+   "titles": [
+    "Melencolia I, after Albrecht D\u00fcrer"
+   ],
+   "houses": [
+    "forum"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj29",
+  "a": {
+   "name": "Arthur Briscoe RE RI",
+   "born": 1873,
+   "died": 1943,
+   "nat": "British",
+   "ulan": "http://vocab.getty.edu/ulan/500012273",
+   "wikidata": null,
+   "alts": [
+    "Arthur Briscoe RE RI",
+    "Arthur Briscoe"
+   ],
+   "works": 50,
+   "titles": [
+    "On the Mainyard",
+    "An Arrival",
+    "Casting her off",
+    "Dutch Eel boats",
+    "Donaldson South American liner at sea",
+    "The Fight"
+   ],
+   "houses": [
+    "bonhams",
+    "roseberys"
+   ],
+   "ulanBio": "Briscoe, Arthur: English painter, illustrator, and etcher, 1873-1943",
+   "natRaw": "British"
+  },
+  "b": {
+   "name": "Arthur Wardle RI",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "After Arthur Wardle, RI"
+   ],
+   "works": 1,
+   "titles": [
+    "England\u2019s Pride, Pressgang"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj30",
+  "a": {
+   "name": "John Raphael Smith",
+   "born": 1752,
+   "died": 1812,
+   "nat": "British",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "John Raphael Smith"
+   ],
+   "works": 2,
+   "titles": [
+    "No.7, The Corn Bin",
+    "What you will- Ce qui vous plaire"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "British"
+  },
+  "b": {
+   "name": "John Smith",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "John Smith"
+   ],
+   "works": 1,
+   "titles": [
+    "Miss Macaroni and her Gallant at a Print Shop"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj31",
+  "a": {
+   "name": "Milton H Green",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Milton H Green"
+   ],
+   "works": 1,
+   "titles": [
+    "Untitled (A0228 lot 51)"
+   ],
+   "houses": [
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Milton H. Greene",
+   "born": 1922,
+   "died": 1985,
+   "nat": "American",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Milton H. Greene"
+   ],
+   "works": 21,
+   "titles": [
+    "Marilyn Monroe in Bill Blass Gown, March 28",
+    "Marilyn Monroe with Lute",
+    "Marilyn Monroe, the Black Sitting",
+    "Marilyn Monroe with Pekingese Dog, March 28",
+    "Marilyn Monroe on the set of \"Bus Stop\"",
+    "Marlene Dietrich, c."
+   ],
+   "houses": [
+    "bonhams",
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": "American"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj32",
+  "a": {
+   "name": "Henri Lucien-Robert",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "LUCIEN-ROBERT Henri"
+   ],
+   "works": 2,
+   "titles": [
+    "Fillette accoud\u00e9e sur un fauteuil",
+    "Mme et Melle A.L.R."
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Henri-Louis Robert",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [],
+   "works": 1,
+   "titles": [
+    "Sisyphe roule incessamment une grosse roche"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj33",
+  "a": {
+   "name": "Warren B. Davis",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Warren B. Davis"
+   ],
+   "works": 1,
+   "titles": [
+    "Reclining Nude"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Warren Davis",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Warren Davis"
+   ],
+   "works": 2,
+   "titles": [
+    "(Figure Studies)",
+    "Figure Studies"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj34",
+  "a": {
+   "name": "Christo and Jeanne-Claude",
+   "born": 1935,
+   "died": 2020,
+   "nat": "American / Bulgarian",
+   "ulan": "http://vocab.getty.edu/ulan/500386392",
+   "wikidata": null,
+   "alts": [
+    "Christo and Jeanne-Claude",
+    "Christo (1935-2020) and Jeanne Claude",
+    "Christo and Jeanne Claude",
+    "Christo & Jeanne-Claude",
+    "Christo & Jeanne-Claude (born 1935; 1935-2009)",
+    "Christo & Jeanne-Claude (1935-2020 and 1935-2009)"
+   ],
+   "works": 172,
+   "titles": [
+    "The Gates, Central Park, New York",
+    "The Gates, Project for Central Park, VIII, New York City",
+    "Wrapped Reichstag, Project for Berlin",
+    "Valley Curtain, Grand Hogback, Rifle, Colorado, 1970-1972",
+    "The Umbrellas, Joint Project for Japan and USA",
+    "Wall of Oil Barrels - The Iron Curtain, Rue Visconti, Paris, 1961-62"
+   ],
+   "houses": [
+    "roseberys",
+    "bonhams",
+    "forum"
+   ],
+   "ulanBio": "Christo and Jeanne-Claude: artist, active 20th century",
+   "natRaw": "American/Bulgarian"
+  },
+  "b": {
+   "name": "Claude",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "CLAUDE"
+   ],
+   "works": 1,
+   "titles": [
+    "MONETand GEORGE W THORNLEY Falaises"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj35",
+  "a": {
+   "name": "Henry 'Harry' Mundy",
+   "born": 1919,
+   "died": 2019,
+   "nat": "British",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Henry 'Harry' Mundy"
+   ],
+   "works": 2,
+   "titles": [
+    "Untitled"
+   ],
+   "houses": [
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": "British"
+  },
+  "b": {
+   "name": "Henry Mundy",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Mundy, Henry"
+   ],
+   "works": 1,
+   "titles": [
+    "Untitled"
+   ],
+   "houses": [
+    "tate"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj36",
+  "a": {
+   "name": "T H Baynes",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "T H Baynes"
+   ],
+   "works": 1,
+   "titles": [
+    "View of the North Bank of the Thames, from Westminster Bridge to London Bridge"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "T M Baynes",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "T M Baynes"
+   ],
+   "works": 2,
+   "titles": [
+    "View of the North Bank of the Thames from Westminster",
+    "Canterbury Catch Club"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj37",
+  "a": {
+   "name": "Carmen Garcia",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Carmen Garcia (20th Century)"
+   ],
+   "works": 1,
+   "titles": [
+    "M\u00e9tro Ga\u00eete..."
+   ],
+   "houses": [
+    "forum"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Carmen Gracia",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "GRACIA Carmen"
+   ],
+   "works": 2,
+   "titles": [
+    "Maison close",
+    "Premier roi et premi\u00e8re reine"
+   ],
+   "houses": [
+    "navigart18"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj38",
+  "a": {
+   "name": "Charles Paine",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [],
+   "works": 1,
+   "titles": [
+    "Boat Race, 1923"
+   ],
+   "houses": [
+    "km"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Charles Pinet",
+   "born": 1867,
+   "died": 1932,
+   "nat": "French",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "PINET Charles"
+   ],
+   "works": 12,
+   "titles": [
+    "Maison des \u00e9tudiants",
+    "Le porche de Saint Maclou \u00e0 Rouen",
+    "Gargouilles de Notre-Dame de Paris",
+    "L'Ancien h\u00f4tel Colbert",
+    "Notre Dame de Paris et le Petit Pont",
+    "La Seine \u00e0 l'Institut, effet de neige la nuit"
+   ],
+   "houses": [
+    "navigart14",
+    "navigart24"
+   ],
+   "ulanBio": null,
+   "natRaw": "fran\u00e7aise"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj39",
+  "a": {
+   "name": "Jo Tilson",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Jo Tilson"
+   ],
+   "works": 2,
+   "titles": [
+    "Demeter's Search",
+    "Composition"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Joe Tilson",
+   "born": 1928,
+   "died": 2023,
+   "nat": "British",
+   "ulan": "http://vocab.getty.edu/ulan/500026599",
+   "wikidata": "https://www.wikidata.org/wiki/Q1363990",
+   "alts": [
+    "Joe Tilson RA",
+    "Joe Tilson",
+    "Tilson, Joe",
+    "Joe Tilson R.A.",
+    "Joe Tilson, R.A.",
+    "Joe Tilson R.A"
+   ],
+   "works": 263,
+   "titles": [
+    "Untitled (A0207 lot 8)",
+    "The Stones of Venice, Sant' Alpio Rio",
+    "Joe Tilson (1928-2023)",
+    "Postcard from Czechoslovakia, addressed to R.Smith",
+    "Q - Questions, from Fragment of an Oneiric Alphabet",
+    "Cut out and Se"
+   ],
+   "houses": [
+    "roseberys",
+    "forum",
+    "bonhams",
+    "tate",
+    "met"
+   ],
+   "ulanBio": "Tilson, Joe: English painter, sculptor, and engraver, 1928-2023",
+   "natRaw": "British"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj40",
+  "a": {
+   "name": "Adolphe Braun",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "ADOLPHE BRAUN"
+   ],
+   "works": 1,
+   "titles": [
+    "Le Mar\u00e9chal Joffre"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Adolphe Crauk",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [],
+   "works": 4,
+   "titles": [
+    "Int\u00e9rieur flamand",
+    "La Fileuse",
+    "La Vierge \u00e0 la pomme",
+    "Acad\u00e9mie d'apr\u00e8s nature"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj41",
+  "a": {
+   "name": "Georges Rousse",
+   "born": 1947,
+   "died": null,
+   "nat": "French",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Georges Rousse"
+   ],
+   "works": 1,
+   "titles": [
+    "Untitled (Hommes Volants, Lyon)"
+   ],
+   "houses": [
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": "French"
+  },
+  "b": {
+   "name": "Georges Rousseau",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "ROUSSEAU Georges"
+   ],
+   "works": 4,
+   "titles": [
+    "Jeune b\u00e9douine",
+    "Jardinier",
+    "Chopin",
+    "Le berger"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj42",
+  "a": {
+   "name": "Pierre Collin",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "COLLIN Pierre"
+   ],
+   "works": 6,
+   "titles": [
+    "Champs",
+    "Grange ouverte",
+    "Reflets",
+    "Int\u00e9rieur",
+    "Atelier \u00e0 Maurepas I",
+    "Les meules"
+   ],
+   "houses": [
+    "navigart20",
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Pierre Cottin",
+   "born": 1823,
+   "died": 1886,
+   "nat": "French",
+   "ulan": "http://vocab.getty.edu/ulan/500099680",
+   "wikidata": null,
+   "alts": [
+    "COTTIN Pierre"
+   ],
+   "works": 1,
+   "titles": [
+    "Basse-cour"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": "Cottin, Pierre: French painter, 1823-1886",
+   "natRaw": "fran\u00e7aise"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj43",
+  "a": {
+   "name": "David A. Siqueiros Iv",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "DAVID A. SIQUEIROS IV"
+   ],
+   "works": 1,
+   "titles": [
+    "De la Carpeta Canto General"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "David A. Siqueiros Ix",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "DAVID A. SIQUEIROS IX"
+   ],
+   "works": 1,
+   "titles": [
+    "De la Carpeta Canto General"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj44",
+  "a": {
+   "name": "Robert Dawson",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Robert Dawson"
+   ],
+   "works": 3,
+   "titles": [
+    "Overview of Million Dollar Homes, Blackhawk, from the \"Farewell, Promised Land\" Project",
+    "Model of Old Mission Dolores, San Francisco, California, from the \"Farewell, Promised Land\" Project",
+    "Lake Tahoe, California"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Robert Lawson",
+   "born": 1892,
+   "died": 1957,
+   "nat": "American",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Robert Lawson"
+   ],
+   "works": 1,
+   "titles": [
+    "We Fix Flats"
+   ],
+   "houses": [
+    "met"
+   ],
+   "ulanBio": null,
+   "natRaw": "American"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj45",
+  "a": {
+   "name": "Josef Koudelka",
+   "born": 1938,
+   "died": null,
+   "nat": "Czech",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Josef Koudelka"
+   ],
+   "works": 3,
+   "titles": [
+    "Portugal",
+    "Le Regard d'Ulysse, Greece",
+    "Spain"
+   ],
+   "houses": [
+    "bonhams",
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": "Czech"
+  },
+  "b": {
+   "name": "Joseph Koudelka",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Joseph Koudelka"
+   ],
+   "works": 1,
+   "titles": [
+    "Parade Scene, Paris, 1970s-1980s"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj46",
+  "a": {
+   "name": "George Tice",
+   "born": 1938,
+   "died": null,
+   "nat": "American",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "George Tice"
+   ],
+   "works": 25,
+   "titles": [
+    "\"Oak Tree, Holmdel, New Jersey\"",
+    "Fairmount High School, Indiana",
+    "Strand Theatre, Keyport, New Jersey",
+    "Shaker Interior, Sabbathday, Lake Maine",
+    "From the Chrysler Building, New York",
+    "Bodie, California"
+   ],
+   "houses": [
+    "bonhams",
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": "American"
+  },
+  "b": {
+   "name": "George Tute",
+   "born": 1933,
+   "died": null,
+   "nat": null,
+   "ulan": "http://vocab.getty.edu/ulan/500175731",
+   "wikidata": null,
+   "alts": [
+    "George Tute"
+   ],
+   "works": 1,
+   "titles": [
+    "Joggers"
+   ],
+   "houses": [
+    "forum"
+   ],
+   "ulanBio": "Tute, George: British artist, active 1987",
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj47",
+  "a": {
+   "name": "J\u00e9r\u00f4me Borel",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "BOREL J\u00e9r\u00f4me"
+   ],
+   "works": 1,
+   "titles": [
+    "R.A.S.II"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "J\u00e9r\u00f4me Poret",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "PORET J\u00e9r\u00f4me"
+   ],
+   "works": 1,
+   "titles": [
+    "White Noise n\u00b03 et n\u00b04"
+   ],
+   "houses": [
+    "navigart14"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj48",
+  "a": {
+   "name": "David Byrne",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "David Byrne"
+   ],
+   "works": 1,
+   "titles": [
+    "Track Lights on Wall, Antrepo, Istanbul Biennial"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "David Wynne",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "David Wynne OBE"
+   ],
+   "works": 1,
+   "titles": [
+    "Untitled (A0213 lot 168)"
+   ],
+   "houses": [
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj49",
+  "a": {
+   "name": "Mathis Z\u00fcndt",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "MATHIS Z\u00dcNDT"
+   ],
+   "works": 1,
+   "titles": [
+    "Perspective (Sphere)"
+   ],
+   "houses": [
+    "swann"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "Matthias Z\u00fcndt",
+   "born": 1498,
+   "died": 1572,
+   "nat": "German",
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Matthias Zundt",
+    "Matthias Z\u00fcndt"
+   ],
+   "works": 1,
+   "titles": [
+    "The Journey of the Captive Paumgartner to Nuremberg"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "German"
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj50",
+  "a": {
+   "name": "Grouped line 24. Giacomo Manz\u00fa",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Grouped line 24. Giacomo Manz\u00fa"
+   ],
+   "works": 1,
+   "titles": [
+    "Untitled (A0345 lot 62)"
+   ],
+   "houses": [
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "b": {
+   "name": "grouped line 28 Giacomo Manz\u00fa",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "grouped line 28 Giacomo Manz\u00fa"
+   ],
+   "works": 1,
+   "titles": [
+    "Untitled (A0345 lot 65)"
+   ],
+   "houses": [
+    "roseberys"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj51",
+  "a": {
+   "name": "Albert Irvin",
+   "born": 1922,
+   "died": 2015,
+   "nat": "British",
+   "ulan": "http://vocab.getty.edu/ulan/500001617",
+   "wikidata": null,
+   "alts": [
+    "Albert Irvin RA",
+    "Albert Irvin RA OBE",
+    "Albert Irvin",
+    "Albert Irvin OBE RA",
+    "Irvin, Albert",
+    "Albert Irvin R.A."
+   ],
+   "works": 94,
+   "titles": [
+    "Untitled (A0207 lot 154)",
+    "How alive are you willing to be?",
+    "'Nebraska IV'",
+    "Trinity I",
+    "Trinity II",
+    "Magdalen"
+   ],
+   "houses": [
+    "roseberys",
+    "bonhams",
+    "forum",
+    "tate"
+   ],
+   "ulanBio": "Irvin, Albert: English painter, 1922-2015",
+   "natRaw": "British"
+  },
+  "b": {
+   "name": "Andy Irvine",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "Andy Irvine"
+   ],
+   "works": 1,
+   "titles": [
+    "Cheetah Who Shops"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ },
+ {
+  "id": "adj52",
+  "a": {
+   "name": "Jean Louis B\u00e9rain",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "After Jean Louis B\u00e9rain"
+   ],
+   "works": 1,
+   "titles": [
+    "Group of Bookplates of Studies of Ornaments and Arabesques, 18th century"
+   ],
+   "houses": [
+    "bonhams"
+   ],
+   "ulanBio": null,
+   "natRaw": "the Elder"
+  },
+  "b": {
+   "name": "Jean-Victor Bertin",
+   "born": null,
+   "died": null,
+   "nat": null,
+   "ulan": null,
+   "wikidata": null,
+   "alts": [
+    "BERTIN Jean-Victor"
+   ],
+   "works": 1,
+   "titles": [
+    "Untitled (D.2020.0.14.6.19.E)"
+   ],
+   "houses": [
+    "navigart11"
+   ],
+   "ulanBio": null,
+   "natRaw": null
+  },
+  "sharedWorks": 0,
+  "sharedTitles": []
+ }
+]
