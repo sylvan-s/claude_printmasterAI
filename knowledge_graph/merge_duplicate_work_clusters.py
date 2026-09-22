@@ -1,6 +1,6 @@
 """
 PrintMasterAI — fold duplicate ConceptualWork clusters into one node.
-Version: DUPWORK-MERGE-1.0
+Version: DUPWORK-MERGE-1.1
 
 Consumes `find_duplicate_work_clusters.py --json` output and applies ADR-0017's naming
 contract. That script stays scan-only by design (its docstring and ADR-0017 both say so),
@@ -224,6 +224,24 @@ WITH DISTINCT surv, dup
 OPTIONAL MATCH (di:DigitalImage)-[:SHOWS]->(dup)
 FOREACH (x IN CASE WHEN di IS NULL THEN [] ELSE [di] END | MERGE (x)-[:SHOWS]->(surv))
 WITH DISTINCT surv, dup
+// POSSIBLE_SAME_AS (DUPWORK-MERGE-1.1): the dup's candidate edges become the survivor's; the
+// edge between the two goes with the DETACH DELETE; a rejection wins over an open edge to the
+// same third work. Without this the delete silently dropped them, rejections included.
+CALL {
+    WITH surv, dup
+    OPTIONAL MATCH (dup)-[r:POSSIBLE_SAME_AS]-(n:ConceptualWork)
+    WHERE n IS NULL OR elementId(n) <> elementId(surv)
+    FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END |
+        MERGE (surv)-[nr:POSSIBLE_SAME_AS]-(x)
+        ON CREATE SET nr += properties(r)
+        ON MATCH SET nr.decidedBy = CASE WHEN r.status = 'rejected' AND nr.status <> 'rejected'
+                                         THEN r.decidedBy ELSE nr.decidedBy END,
+                     nr.decisionNote = CASE WHEN r.status = 'rejected' AND nr.status <> 'rejected'
+                                            THEN r.decisionNote ELSE nr.decisionNote END,
+                     nr.status = CASE WHEN r.status = 'rejected' THEN 'rejected' ELSE nr.status END
+    )
+}
+WITH surv, dup
 // A SURVIVOR CAN ITSELF BE FOLDED LATER, and DETACH DELETE takes the inbound MERGED_INTO edge
 // with it — orphaning every earlier event that pointed here and breaking the documented lookup
 // `MATCH (e:MergeEvent {mergedFromId:$goneId})-[:MERGED_INTO]->(w)`. 34 such events existed on
@@ -252,6 +270,11 @@ SET ev.mergedFromId   = dup.id,
 MERGE (ev)-[:MERGED_INTO]->(surv)
 WITH DISTINCT dup
 DETACH DELETE dup
+"""
+
+REJECTED_PAIR_QUERY = """
+MATCH (:ConceptualWork {id: $a})-[p:POSSIBLE_SAME_AS {status: 'rejected'}]-(:ConceptualWork {id: $b})
+RETURN p.decidedBy AS by, p.decisionNote AS note
 """
 
 SET_NAME_QUERY = """
@@ -503,6 +526,13 @@ def run(session, clusters, apply_changes, backup_path=None, rule="exactTitleYear
         rows = [{"workId": d["workId"], "name": d["name"]} for d in p["members"]]
         stamped_total += session.run(STAMP_SOURCE_TITLE_QUERY, rows=rows).single()["stamped"]
         for dup in p["dups"]:
+            # A pair recorded as two different works is never folded, whatever rule proposed it.
+            rej = session.run(REJECTED_PAIR_QUERY, a=p["survivor"], b=dup).single()
+            if rej is not None:
+                print(f"        [REFUSED] {dup} — POSSIBLE_SAME_AS rejected by {rej['by']}: "
+                      f"{rej['note']}")
+                skipped += 1
+                continue
             counters = session.run(
                 MERGE_QUERY, survivorId=p["survivor"], dupId=dup,
                 rule=rule, ruleVersion=MERGE_RULES[rule],
