@@ -124,7 +124,14 @@ OPTIONAL MATCH (x)-[p:POSSIBLE_SAME_AS]-(y)
 WITH row, x, y, p,
      CASE WHEN x IS NULL OR y IS NULL THEN 'missingNode'
           WHEN x = y THEN 'alreadyMerged' ELSE 'write' END AS outcome
-RETURN outcome, p IS NULL AS created, count(*) AS n
+// Writes are counted per distinct node pair, not per row: two rows can name one pair once an
+// absorbed name resolves to its survivor (measured 2026-09-22: 134 rows became 132 edges).
+WITH outcome, p IS NULL AS created,
+     CASE WHEN outcome = 'write'
+          THEN CASE WHEN elementId(x) < elementId(y) THEN [elementId(x), elementId(y)]
+                    ELSE [elementId(y), elementId(x)] END
+          ELSE [row.a, row.b] END AS pair
+RETURN outcome, created, count(DISTINCT pair) AS n
 """
 
 
