@@ -98,3 +98,32 @@ Final labels: 38 same, 66 different, 14 collaboration, 7 after, 25 unsure.
 
 Haiku 4.5 is run over the 150 pairs using the same evidence the page shows plus the trap list.
 Agreement is measured per stratum. The gate is ≥ 95% on every stratum it will label.
+
+### Step 1 applied 2026-09-22: the composite rule
+
+**Rules** (on the labelling page and in the Haiku prompt, LLM-1.1):
+1. Two spellings of the **same** composite credit → `same`. The node is then decomposed.
+2. A composite vs one of its own parties → `collaboration` or `after`.
+3. Two composites that **differ** in a party (two engravers after one designer) → `different`.
+
+**Relabelled `same` under rule 1** (previous label kept on each document): g007, g067 (Degas /
+Thornley), g073 (Gould & Richter), g119 (Sayer & Bennett).
+
+**Re-scored, from the same Haiku run:**
+- Identity agreement goes from 97.0% (97/100) to 97.1% (101/104).
+- Same-precision goes from 73.3% to 82.2% overall. **Excluding pairs the person left unsure it
+  is 97.4% (37/38)**, and the one false `same` is Ghisi / Scultori.
+- If the two recommended corrections below are accepted: 99.0% (103/104, 95% low 94.8%). Only
+  subset/clean stays under 95% (11/12; the miss is Haiku calling the Samuel Alkens different).
+
+**Waiting on the person, whose labels these are:**
+- Recommended corrections: g022 Master AG / Master MR → different (distinct monogrammists);
+  g056 Jack Baker / John Barker → different (nothing links them). Keep g038 Samuel Alken /
+  Samuel Henry Alken as `same` (ULAN 500014677 is 1810–1894, the node's exact dates).
+- Rule 3 candidates, currently labelled `after`: g029 Antonio da Trento vs Antonio Maria
+  Zanetti (both after Parmigianino) and g112 Ghisi vs Scultori (both after Giulio Romano) are
+  different engravers, so `different`. For g113 Thomas Walton vs Thomas Watson (both after
+  Reynolds): Watson was a well-known mezzotinter after Reynolds, and "Walton" may be a
+  misspelling of him. That one is your call.
+- g098 Augustus Pugin after Thomas Rowlandson vs Thomas Rowlandson is labelled
+  `collaboration`; by the definitions it is `after`.

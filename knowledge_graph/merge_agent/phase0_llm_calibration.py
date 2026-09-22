@@ -1,6 +1,6 @@
 """
 PrintMasterAI — merge-review agent, Phase 0: calibrate the LLM labeller against the gold set.
-Version: MERGE-AGENT-P0-LLM-1.0
+Version: MERGE-AGENT-P0-LLM-1.1
 
 The design doc's Phase 0 gate: the LLM may label a stratum for the agent only if it agrees with
 the human gold labels at >= 95% on that stratum. Haiku 4.5 is the candidate (13/14 of Opus on the
@@ -48,11 +48,18 @@ Answer with exactly one label:
 spellings, name forms, or catalogue conventions.
 - different: two different people or entities.
 - collaboration: one record is a joint credit that INCLUDES the other (e.g. "Paul Eluard and Pablo \
-Picasso" vs "Pablo Picasso"), or both are joint credits sharing members. Neither same nor different.
+Picasso" vs "Pablo Picasso"). Neither same nor different.
 - after: one record credits a reproductive engraver/printmaker working AFTER a designer, and the \
 other record is that designer or that engraver (e.g. "Francis Holl after William Powell Frith" vs \
 "William Powell Frith"). Neither same nor different.
 - unsure: the evidence given cannot settle it.
+
+Composite credits (joint credits, "X after Y"):
+- two spellings of the SAME composite credit (e.g. "Edgar Degas And George W. Thornley" vs \
+"Edgar Degas and George Thornley") are `same`.
+- a composite vs one of its own parties is `collaboration` or `after`.
+- two composites that differ in a party (two different engravers after one designer) are \
+`different`.
 
 Known traps — do not call these `same`:
 - family members sharing a surname (father/son, grandparents, siblings), e.g. Alexander Calder vs \
@@ -220,7 +227,7 @@ def main():
             print(f"   [{r['stratum']}] human {r['human']}, Haiku {r['haiku']}: {r['a'][:36]!r} ~ {r['b'][:36]!r}"
                   f"\n        {r['reason'][:160]}")
 
-    json.dump({"version": "MERGE-AGENT-P0-LLM-1.0", "model": MODEL, "cost": round(cost, 4),
+    json.dump({"version": "MERGE-AGENT-P0-LLM-1.1", "model": MODEL, "cost": round(cost, 4),
                "tokens": [tin, tout], "rows": rows,
                "identity": {k: dict(v) for k, v in by.items()}},
               open(args.out, "w"), indent=1)

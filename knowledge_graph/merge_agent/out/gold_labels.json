@@ -30,8 +30,9 @@
   "stratum": "fuzzy/clean"
  },
  "g007": {
-  "label": "after",
-  "note": "",
+  "label": "same",
+  "note": "Composite rule (2026-09-22): two spellings of the same composite credit = same; the node is then decomposed.",
+  "previousLabel": "after",
   "stratum": "subset/trap"
  },
  "g008": {
@@ -330,8 +331,9 @@
   "stratum": "fuzzy/trap"
  },
  "g067": {
-  "label": "after",
-  "note": "",
+  "label": "same",
+  "note": "Composite rule (2026-09-22): two spellings of the same composite credit = same; the node is then decomposed.",
+  "previousLabel": "after",
   "stratum": "strong/trap"
  },
  "g068": {
@@ -360,8 +362,9 @@
   "stratum": "fuzzy/trap"
  },
  "g073": {
-  "label": "collaboration",
-  "note": "",
+  "label": "same",
+  "note": "Composite rule (2026-09-22): two spellings of the same composite credit = same; the node is then decomposed.",
+  "previousLabel": "collaboration",
   "stratum": "subset/trap"
  },
  "g074": {
@@ -590,8 +593,9 @@
   "stratum": "subset/clean"
  },
  "g119": {
-  "label": "collaboration",
-  "note": "",
+  "label": "same",
+  "note": "Composite rule (2026-09-22): two spellings of the same composite credit = same; the node is then decomposed.",
+  "previousLabel": "collaboration",
   "stratum": "fuzzy/trap"
  },
  "g120": {
