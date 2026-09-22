@@ -72,7 +72,7 @@ know:
 The vocabulary was extended and a `generation_mismatch` feature added. The next round's audit
 was 33/33.
 
-**Stopped after round 5.** Rounds 4+5 pooled give 65/69 = 94.2% (low 86.4%). No sixth round,
+**Stopped after round 5.** Rounds 4+5 pooled give 65/69 = 94.2% (low 86.0%). No sixth round,
 however clean, could lift the pooled lower bound to 90%. And the audit now has a **labeller noise
 floor**. Of round 5's four misses:
 - one is Haiku's own error (G. F. Watts called "after");
