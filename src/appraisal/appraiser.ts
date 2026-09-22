@@ -243,8 +243,10 @@ export interface AppraisalMethodConfig {
    *  The catalogue already states technique, signature, edition, dimensions and condition, and
    *  a vision model reading a catalogued image is a leakage surface. */
   skipVea?: boolean;
-  /** Stage 2b: use the CLIENT-side web_search tool (Tavily, traced and costed here) on every
-   *  endpoint, not only on compat endpoints. Same tool name, so the prompt is unchanged. */
+  /** Stage 2b web search. DEFAULT (unset or true): the CLIENT-side web_search tool (Tavily,
+   *  traced and costed here) on every endpoint. Set false to use Anthropic's server-side
+   *  web_search on Anthropic endpoints instead — the pre-2026-09-22 default, kept for A/B.
+   *  Same tool name either way, so the prompt is unchanged. */
   clientWebSearch?: boolean;
 }
 
@@ -1464,8 +1466,18 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     // and DashScope is the case in hand — it is accepted with a 200 and silently not run, so
     // the client-side tool is substituted and the search happens here. Same tool NAME either
     // way, so the prompt does not change and the two are directly comparable.
-    // FORCE_CLIENT_WEB_SEARCH=1 uses the client-side tool on Anthropic too, for A/B.
-    const useClientSearch = !!compatBaseUrl || process.env.FORCE_CLIENT_WEB_SEARCH === "1" || this.config.clientWebSearch === true;
+    //
+    // CLIENT-SIDE IS THE DEFAULT (2026-09-22) on every method, not only the attributed path.
+    // The server-side tool bills $10/1,000 searches on top of tokens, cannot be counted, so the
+    // in-loop nudge and the gate's search count read zero under it, and cannot be filtered for
+    // the lot's own listing (search_scope.ts). A method opts back out with clientWebSearch:
+    // false, or FORCE_SERVER_WEB_SEARCH=1 forces the server tool for an A/B. A compat endpoint
+    // always gets the client tool — the server one is silently ignored there.
+    // Without a Tavily key an Anthropic endpoint falls back to the server tool rather than run a
+    // search that can only return "not configured" — a deploy missing the key keeps researching.
+    const tavilyReady = !!process.env.TAVILY_API_KEY;
+    const useClientSearch = !!compatBaseUrl ||
+      (tavilyReady && process.env.FORCE_SERVER_WEB_SEARCH !== "1" && this.config.clientWebSearch !== false);
     const tools = [
       useClientSearch
         ? MultiStageAppraiser.WEB_SEARCH_TOOL
@@ -1480,9 +1492,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     resetArtsyUsage();
     if (useClientSearch) {
       resetWebSearchUsage();
-      console.log(`[4-Stage] Stage 2b using CLIENT-side web_search (${compatBaseUrl ? "compat endpoint" : this.config.clientWebSearch ? "method config" : "forced by env"})`);
+      console.log(`[4-Stage] Stage 2b using CLIENT-side web_search (${compatBaseUrl ? "compat endpoint" : this.config.clientWebSearch === true ? "method config" : "default"})`);
     } else {
-      console.log(`[4-Stage] Stage 2b using Anthropic SERVER-side web_search`);
+      console.log(`[4-Stage] Stage 2b using Anthropic SERVER-side web_search (${!tavilyReady ? "TAVILY_API_KEY not set" : process.env.FORCE_SERVER_WEB_SEARCH === "1" ? "forced by env" : "method opts out"})`);
     }
     const excludedListing = parseExcludedListing(testingExcludeSourceListing);
 
@@ -1554,7 +1566,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         // `searchesMade` counts CLIENT web_search calls. Under Anthropic's server-side tool the
         // search never passes through this loop, so the counter would read zero however much the
         // model searched, and the nudge would accuse a diligent model of silence. The
-        // attributed-lot path sets clientWebSearch, so this costs it nothing.
+        // client tool is the default on every method (2026-09-22), so this rarely costs anything.
         if (useClientSearch &&
             shouldNudgeForSearch({ researchGap: !!researchGap, artsySameWork, searchesMade, nudged, round, maxRounds: MAX_ROUNDS })) {
           nudged = true;
