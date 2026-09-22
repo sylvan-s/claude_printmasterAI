@@ -205,3 +205,10 @@ collaboration, 2 after, 22 unsure.
 - **Report the independent figure.** These four labels come from the same ULAN check the
   verifier uses. So quote Policy A **excluding** `labelSource: "ulan"` pairs: 34/34 (low 89.8%).
   Any future ULAN-sourced label gets the same treatment.
+
+- g112 Ghisi / Scultori → `same` (`labelSource: "ulan"`, 500008510). **Final:** 46 same, 68
+  different, 12 collaboration, 2 after, 22 unsure.
+  - Policy A: raw 43/43 on all labels. With the verifier, 38/38, and **5** true merges go to a
+    person. g112 is now one of them: the verifier does not match the 3-word "Giovanni B. Ghisi"
+    to the 4-word ULAN form.
+  - Excluding ULAN-sourced labels: 34/34 (low 89.8%), 4 to a person.

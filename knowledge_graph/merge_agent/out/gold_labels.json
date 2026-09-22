@@ -566,9 +566,10 @@
   "stratum": "weak/clean"
  },
  "g112": {
-  "label": "different",
-  "note": "Reviewer: rule 3, set on the assistant's recommendation (later found questionable: ULAN lists Ghisi as a variant of G. B. Scultori).",
-  "previousLabel": "after",
+  "label": "same",
+  "labelSource": "ulan",
+  "note": "Relabelled 2026-09-22 on ULAN evidence: 500008510 Scultori, Giovanni Battista lists 'Ghisi, Giovanni Battista (Mantovano)' among his name forms; he engraved after Giulio Romano.",
+  "previousLabel": "different",
   "stratum": "fuzzy/trap"
  },
  "g113": {
