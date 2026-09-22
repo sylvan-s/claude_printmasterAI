@@ -1,6 +1,6 @@
 # Identity clusters (`POSSIBLE_SAME_AS`) and Artist `MergeEvent` — scope
 
-**Status:** scoped 2026-09-22. **A1 + A2 built 2026-09-22** (code only, no graph writes; see the schema doc, § 11.1). A3, A4 and Part B are open. Every write step below
+**Status:** scoped 2026-09-22. **A1 + A2 built 2026-09-22** (code only, no graph writes; see the schema doc, § 11.1). **A3 applied 2026-09-22**: 271 backfilled events from 18 snapshots (0 conflicts; 4 unresolved, Canaletto still split three ways). Merges with no snapshot (2026-09-06 case-dedup, 2026-09-05 manual, 2026-09-10 Roseberys 40) remain unrecorded. A4 and Part B are open. Every write step below
 needs an explicit go-ahead.
 
 ## Why
