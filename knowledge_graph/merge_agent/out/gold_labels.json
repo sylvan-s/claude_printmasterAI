@@ -1,0 +1,752 @@
+{
+ "g001": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g002": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g003": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g004": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g005": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g006": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g007": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g008": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g009": {
+  "label": "different",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g010": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g011": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g012": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g013": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g014": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g015": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g016": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g017": {
+  "label": "same",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g018": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g019": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g020": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g021": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g022": {
+  "label": "same",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g023": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g024": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g025": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g026": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g027": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g028": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g029": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g030": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g031": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g032": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g033": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g034": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g035": {
+  "label": "same",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g036": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g037": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g038": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g039": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g040": {
+  "label": "different",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g041": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g042": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g043": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g044": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g045": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g046": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g047": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g048": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g049": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g050": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g051": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g052": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g053": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g054": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g055": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g056": {
+  "label": "same",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g057": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g058": {
+  "label": "different",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g059": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g060": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g061": {
+  "label": "same",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g062": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g063": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g064": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g065": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g066": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g067": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/trap"
+ },
+ "g068": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g069": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g070": {
+  "label": "same",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g071": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g072": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g073": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g074": {
+  "label": "same",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g075": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g076": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g077": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g078": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g079": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g080": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g081": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g082": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g083": {
+  "label": "different",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g084": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g085": {
+  "label": "different",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g086": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g087": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g088": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g089": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g090": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g091": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g092": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g093": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g094": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g095": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g096": {
+  "label": "different",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g097": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g098": {
+  "label": "different",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g099": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g100": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g101": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g102": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g103": {
+  "label": "same",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g104": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g105": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g106": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g107": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g108": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g109": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g110": {
+  "label": "same",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g111": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g112": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g113": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g114": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g115": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g116": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g117": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g118": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g119": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g120": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g121": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g122": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g123": {
+  "label": "different",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g124": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g125": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g126": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g127": {
+  "label": "same",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g128": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/trap"
+ },
+ "g129": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g130": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g131": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g132": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g133": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g134": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g135": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g136": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g137": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g138": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g139": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g140": {
+  "label": "same",
+  "note": "",
+  "stratum": "strong/clean"
+ },
+ "g141": {
+  "label": "different",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g142": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g143": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g144": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g145": {
+  "label": "same",
+  "note": "",
+  "stratum": "weak/clean"
+ },
+ "g146": {
+  "label": "different",
+  "note": "",
+  "stratum": "weak/trap"
+ },
+ "g147": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/trap"
+ },
+ "g148": {
+  "label": "different",
+  "note": "",
+  "stratum": "fuzzy/clean"
+ },
+ "g149": {
+  "label": "different",
+  "note": "",
+  "stratum": "subset/clean"
+ },
+ "g150": {
+  "label": "unsure",
+  "note": "",
+  "stratum": "subset/clean"
+ }
+}

@@ -58,7 +58,16 @@ jones (28) and martin (24).
 - Labelling page: https://claude.ai/artifact/P8SHHSbUVdGCYyig45QUwu. Labels are stored in its db
   at `labels/<gNNN>` as {label: same|different|unsure, note, at}.
 
-## 3. LLM calibration: blocked on the labels
+### Labels received 2026-09-22
+
+150/150 labelled: 44 same, 68 different, 38 unsure (`out/gold_labels.json`). 13 of the 26
+collaboration-name pairs were *unsure*. The pair is part-of, not same or different. So the page
+gained two relation labels, **Collaboration** and **After**, and the 41 pairs with collaboration
+or after names are queued for re-review. Relation-labelled pairs are a separate class, excluded
+from same/different precision and from LLM calibration. The graph fix is scoped in
+`docs/plans/2026-09-22-collaborations-and-after-attributions.md`.
+
+## 3. LLM calibration: waiting for the relation re-review
 
 Haiku 4.5 is run over the 150 pairs using the same evidence the page shows plus the trap list.
 Agreement is measured per stratum. The gate is ≥ 95% on every stratum it will label.
