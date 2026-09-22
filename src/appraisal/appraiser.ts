@@ -1309,14 +1309,16 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
   private static readonly COMPARABLES_TOOL = {
     name: "query_ackg_comparables",
     description:
-      "Realised auction prices from this project's own knowledge graph — 48,000+ dated, " +
-      "sold records from Bonhams (2003-2026), Roseberys London (2014-2026) and Skinner " +
-      "(2022-2026), premium-inclusive and converted to GBP at the sale-date ECB rate. " +
+      "Realised auction prices from this project's own knowledge graph — 65,000+ dated, " +
+      "priced records from Bonhams (2003-2026), Swann (2016-2026), Roseberys London " +
+      "(2014-2026), Forum Auctions (2017-2026) and Skinner (2022-2026), premium-inclusive " +
+      "and converted to GBP at the sale-date ECB rate. " +
       "PREFER THIS OVER web_search for comparables: these are structured verified records, " +
       "not search snippets, and Stage 3 values the work from this same corpus. Results are " +
       "tiered by exact match only, never similarity: same_work (the same print — strongest), " +
-      "same_artist_technique, same_artist. Coverage is uneven — 81% of artists in the graph " +
-      "have fewer than 3 priced records, and Forum Auctions is absent entirely — so an empty " +
+      "same_artist_technique, same_artist. Coverage is uneven — about 85% of artists in the " +
+      "graph have fewer than 3 priced records, and Christie's, Sotheby's and Phillips are not " +
+      "in it at all — so an empty " +
       "or thin result is a coverage fact and your cue to spend a web search, NOT evidence " +
       "that the work is unsaleable or low-value.",
     input_schema: {
@@ -3726,8 +3728,9 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
         `${JSON.stringify(ackgComps.comparables.map(compactComparableForValuation))}${webCompsBlock}`
       : `\n\nPRIMARY — ACKG REALISED AUCTION COMPARABLES: none. ` +
         `${ackgArtist ? `No dated, sold records for "${ackgArtist}" in the graph.` : "No artist was attributed, so the graph could not be queried."} ` +
-        `The ACKG's dated auction coverage is Bonhams (2003-2026), Roseberys London (2014-2026) ` +
-        `and Skinner (2022-2026); Forum Auctions is absent entirely. So an ` +
+        `The ACKG's dated auction coverage is Bonhams (2003-2026), Swann (2016-2026), Roseberys London ` +
+        `(2014-2026), Forum Auctions (2017-2026) and Skinner (2022-2026); Christie's, Sotheby's and ` +
+        `Phillips are not in it. So an ` +
         `absent comp set reflects that coverage gap — it is NOT evidence that the work is unsaleable ` +
         `or low-value. Fall back to the Stage 2b findings below.${webCompsBlock}`;
     // Backtest/eval-harness only — see AppraisalInput.testingExcludeSourceListing.

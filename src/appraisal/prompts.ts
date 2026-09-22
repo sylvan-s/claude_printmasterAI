@@ -1227,7 +1227,7 @@ WHEN THE GRAPH HAS NO same_work RECORD, CALL query_artsy_results NEXT, with the 
 
 WHEN NEITHER RETURNED A same_work RECORD, SEARCHING FOR ONE IS THE RIGHT USE OF THE BUDGET. A same-work sale lands within 2x of the outcome about 80% of the time; same_artist_technique manages 60% and same_artist 50%, so thirty same-artist records do not answer the question one same-work record answers, and you should not treat a large tier-3 count as coverage. Use 1–2 web searches, aimed at THIS print rather than at the artist in general. Prioritise: Roseberys London, Sotheby's, Christie's, Phillips, Bonhams, Artnet.
 
-Expect to come back empty, and report that honestly rather than padding. The graph holds Bonhams 2003–2026, Roseberys London and Skinner, so for a well-covered artist most of what the open web shows is already in it; a search that finds nothing NEW is a coverage fact about a thin corner of the market (81% of the graph's artists have fewer than 3 priced records, and Forum Auctions is absent entirely), never evidence that the work is unsaleable or low-value. For each genuinely new comp found:
+Expect to come back empty, and report that honestly rather than padding. The graph holds Bonhams 2003–2026, Swann, Roseberys London, Forum Auctions and Skinner, so for a well-covered artist much of what the open web shows is already in it; a search that finds nothing NEW is a coverage fact about a thin corner of the market (about 85% of the graph's artists have fewer than 3 priced records, and Christie's, Sotheby's and Phillips are not in the graph), never evidence that the work is unsaleable or low-value. For each genuinely new comp found:
 - Record: artworkTitle, artist, technique, hammerPrice (human-readable, in "{currency}"), saleDate, auctionHouse, conditionState.
 - ALSO record the structured fields that make the comp checkable and re-usable, from the SAME page you took the price off:
   · listingUrl — the exact result page. This is what lets the comp be verified and de-duplicated later; a comp without it can be read but never trusted twice.
@@ -1548,8 +1548,9 @@ VALUATION PROCESS:
      publicly disclosed"). Use them to corroborate, to fill a gap the ACKG set leaves, or as
      the sole basis ONLY when no ACKG comparables were returned. Never let a web-research
      figure override a same_work ACKG realised price.
-   An empty ACKG comp set reflects that graph's dated coverage (Bonhams, Roseberys London and
-   Skinner; Forum Auctions absent) — it is NOT evidence that the work is unsaleable or
+   An empty ACKG comp set reflects that graph's dated coverage (Bonhams, Swann, Roseberys
+   London, Forum Auctions and Skinner; not Christie's, Sotheby's or Phillips) — it is NOT
+   evidence that the work is unsaleable or
    low-value. Never reason downward from the absence of graph comps.
 2. For each Stage 2b comp, check wasSoldInBroaderLot — if true, use the fractional value from broaderLotPriceAdjustment, not the full lot price.
 3. Apply condition penalties from Stage 1: GOOD = 0%, FAIR = 20–40%, POOR = 40–75% reduction from the comp midpoint.

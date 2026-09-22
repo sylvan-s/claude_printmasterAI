@@ -473,7 +473,7 @@ export interface ASAAttributionResult {
     challengeNarrative: string | null;
   };
   /** Web-research comps. Stage 3 reads ACKG comps first (ADR-0016) and treats these as the
-   *  fallback for artists the graph does not cover — 81% of ACKG artists have fewer than 3
+   *  fallback for artists the graph does not cover — about 85% of ACKG artists have fewer than 3
    *  priced records, so that fallback is not rare. */
   auctionComps?: Stage2bComp[];
   /** Attached by the pipeline, not the model: how many of the comps above carry a key, a
