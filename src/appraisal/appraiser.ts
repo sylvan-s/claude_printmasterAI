@@ -56,6 +56,8 @@ import { assessStage2bResearch, stage2bResearchFailed, type Stage2bGateResult } 
 import { shouldNudgeForSearch, SEARCH_NUDGE_TEXT } from "./stage2b_nudge.js";
 import { sanitizeSearchQuery, filterExcludedResults, hasRef, type ExcludedListingRef } from "./search_scope.js";
 import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
+import { runArtsyTool, artsyUsage, resetArtsyUsage } from "./artsy_results.js";
+import { planStage2bComps, SUMMARY_MODE_ARTSY_CALLS, type Stage2bCompsPlan, type Stage2bCompsMode } from "./stage2b_comps_plan.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
 import type { StyleConsistencyEvidence } from "./two_pass_attribution";
 import { getImageEmbeddings } from "./embedding_client.js";
@@ -242,9 +244,15 @@ export interface AppraisalMethodConfig {
    *  The catalogue already states technique, signature, edition, dimensions and condition, and
    *  a vision model reading a catalogued image is a leakage surface. */
   skipVea?: boolean;
-  /** Stage 2b: use the CLIENT-side web_search tool (Tavily, traced and costed here) on every
-   *  endpoint, not only on compat endpoints. Same tool name, so the prompt is unchanged. */
+  /** Stage 2b web search. DEFAULT (unset or true): the CLIENT-side web_search tool (Tavily,
+   *  traced and costed here) on every endpoint. Set false to use Anthropic's server-side
+   *  web_search on Anthropic endpoints instead — the pre-2026-09-22 default, kept for A/B.
+   *  Same tool name either way, so the prompt is unchanged. */
   clientWebSearch?: boolean;
+  /** Attributed-lot path: write Stage 2b's gated comps to the graph as agent_research records
+   *  (write_research_comps.ts). Default true. Backtest harnesses set false so a test run never
+   *  writes to Neo4j — the first Artsy A/B wrote 5 rows that had to be reviewed by hand. */
+  writeResearchComps?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -1301,14 +1309,16 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
   private static readonly COMPARABLES_TOOL = {
     name: "query_ackg_comparables",
     description:
-      "Realised auction prices from this project's own knowledge graph — 48,000+ dated, " +
-      "sold records from Bonhams (2003-2026), Roseberys London (2014-2026) and Skinner " +
-      "(2022-2026), premium-inclusive and converted to GBP at the sale-date ECB rate. " +
+      "Realised auction prices from this project's own knowledge graph — 65,000+ dated, " +
+      "priced records from Bonhams (2003-2026), Swann (2016-2026), Roseberys London " +
+      "(2014-2026), Forum Auctions (2017-2026) and Skinner (2022-2026), premium-inclusive " +
+      "and converted to GBP at the sale-date ECB rate. " +
       "PREFER THIS OVER web_search for comparables: these are structured verified records, " +
       "not search snippets, and Stage 3 values the work from this same corpus. Results are " +
       "tiered by exact match only, never similarity: same_work (the same print — strongest), " +
-      "same_artist_technique, same_artist. Coverage is uneven — 81% of artists in the graph " +
-      "have fewer than 3 priced records, and Forum Auctions is absent entirely — so an empty " +
+      "same_artist_technique, same_artist. Coverage is uneven — about 85% of artists in the " +
+      "graph have fewer than 3 priced records, and Christie's, Sotheby's and Phillips are not " +
+      "in it at all — so an empty " +
       "or thin result is a coverage fact and your cue to spend a web search, NOT evidence " +
       "that the work is unsaleable or low-value.",
     input_schema: {
@@ -1318,6 +1328,36 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         workTitle: { type: "string" as const, description: "Identified work title, for the same_work tier. Omit if unknown; a generic title (\"Untitled\") is ignored." },
         technique: { type: "string" as const, description: "Technique for the same_artist_technique tier, e.g. \"Screenprint\"." },
         sinceDate: { type: "string" as const, description: "ISO lower bound on sale date, e.g. \"2015-01-01\". Defaults to 2015." },
+      },
+      required: ["artistName"],
+    },
+  };
+
+  /**
+   * Other houses' results from Artsy's auction database, with every house already in the ACKG
+   * removed in code (artsy_results.ts). Deliberately NOT web_search: it is a structured lookup at
+   * a few hundred tokens, so it sits outside the 5-search budget, and a same-print sale it
+   * returns closes the research gap for the nudge and the gate exactly as a graph one does.
+   * It still spends a round of the loop like any tool.
+   */
+  private static readonly ARTSY_RESULTS_TOOL = {
+    name: "query_artsy_results",
+    description:
+      "Realised auction prices from Artsy's price database for houses the knowledge graph does " +
+      "NOT hold — Christie's, Sotheby's, Phillips, Kornfeld, Artcurial, Dorotheum and others. Sales " +
+      "at the ACKG's own houses (Bonhams, Skinner, Swann, Roseberys, Forum) are removed before you " +
+      "see them, so nothing here duplicates query_ackg_comparables. Call it AFTER " +
+      "query_ackg_comparables and BEFORE spending a web search on comps. It does NOT count against " +
+      "your web-search budget. Rows are prints only, tiered same_work / same_artist: same_work needs " +
+      "the exact title AND, where both carry one, the same catalogue number; a genre title " +
+      "(\"Nature morte\", \"Portrait\") is same_work only with a matching catalogue number, premium-inclusive, with GBP at the sale-date rate " +
+      "and an artsy.net result URL to cite. Artist identity is exact-name only: a miss means Artsy " +
+      "files the artist differently, not that the work never sold.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        artistName: { type: "string" as const, description: "Candidate artist's full name, e.g. \"Elisabeth Frink\"." },
+        workTitle: { type: "string" as const, description: "Identified work title, for the same_work tier and a title-keyword search. INCLUDE the catalogue raisonné number in parentheses when known, e.g. \"Nature Morte (K.34)\" — it is what separates this print from others with the same title. Omit if unknown." },
       },
       required: ["artistName"],
     },
@@ -1394,6 +1434,14 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     /** True when the graph returned NO same-work sale for this lot, i.e. finding a comparable
      *  on the open web was the job. Drives the one in-loop nudge below; see it for why. */
     researchGap?: boolean,
+    /** The lot's own sale date. Artsy results on or after it are dropped, so a backtest lot is
+     *  never shown its own outcome — or a later resale — from a house the ACKG does not hold.
+     *  Same cut-off, same strict "<", as the attributed-lot path's Stage 3 comps and work
+     *  facts (untilDate), and applied to query_ackg_comparables in this loop too. */
+    untilDate?: string | null,
+    /** stage2b_comps_plan.ts. "summary": Stage 3a will price, so no query_ackg_comparables tool,
+     *  no comps nudge, and at most one Artsy call. Default "full" — the pre-rule behaviour. */
+    compsMode: Stage2bCompsMode = "full",
   ): Promise<any> {
     const compatBaseUrl = anthropicCompatBaseUrl(modelName);
     const apiKey = compatBaseUrl
@@ -1429,21 +1477,37 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     // and DashScope is the case in hand — it is accepted with a 200 and silently not run, so
     // the client-side tool is substituted and the search happens here. Same tool NAME either
     // way, so the prompt does not change and the two are directly comparable.
-    // FORCE_CLIENT_WEB_SEARCH=1 uses the client-side tool on Anthropic too, for A/B.
-    const useClientSearch = !!compatBaseUrl || process.env.FORCE_CLIENT_WEB_SEARCH === "1" || this.config.clientWebSearch === true;
+    //
+    // CLIENT-SIDE IS THE DEFAULT (2026-09-22) on every method, not only the attributed path.
+    // The server-side tool bills $10/1,000 searches on top of tokens, cannot be counted, so the
+    // in-loop nudge and the gate's search count read zero under it, and cannot be filtered for
+    // the lot's own listing (search_scope.ts). A method opts back out with clientWebSearch:
+    // false, or FORCE_SERVER_WEB_SEARCH=1 forces the server tool for an A/B. A compat endpoint
+    // always gets the client tool — the server one is silently ignored there.
+    // Without a Tavily key an Anthropic endpoint falls back to the server tool rather than run a
+    // search that can only return "not configured" — a deploy missing the key keeps researching.
+    const tavilyReady = !!process.env.TAVILY_API_KEY;
+    const useClientSearch = !!compatBaseUrl ||
+      (tavilyReady && process.env.FORCE_SERVER_WEB_SEARCH !== "1" && this.config.clientWebSearch !== false);
     const tools = [
       useClientSearch
         ? MultiStageAppraiser.WEB_SEARCH_TOOL
         : { type: "web_search_20250305", name: "web_search", max_uses: STAGE2B_MAX_WEB_SEARCHES },
       MultiStageAppraiser.MUSEUM_LOOKUP_TOOL,
-      MultiStageAppraiser.COMPARABLES_TOOL,
+      // Summary mode: the graph comps were already read in code and summarised in the user
+      // message; the full rows would only ride along in every turn of this loop.
+      ...(compsMode === "summary" ? [] : [MultiStageAppraiser.COMPARABLES_TOOL]),
+      // DISABLE_ARTSY_RESULTS=1 removes it, for the with/without A/B.
+      ...(process.env.DISABLE_ARTSY_RESULTS === "1" ? [] : [MultiStageAppraiser.ARTSY_RESULTS_TOOL]),
       MultiStageAppraiser.EDITION_TOOL,
     ];
+    // Reset per run, whatever the search mode: the gate reads artsyUsage().sameWork afterwards.
+    resetArtsyUsage();
     if (useClientSearch) {
       resetWebSearchUsage();
-      console.log(`[4-Stage] Stage 2b using CLIENT-side web_search (${compatBaseUrl ? "compat endpoint" : this.config.clientWebSearch ? "method config" : "forced by env"})`);
+      console.log(`[4-Stage] Stage 2b using CLIENT-side web_search (${compatBaseUrl ? "compat endpoint" : this.config.clientWebSearch === true ? "method config" : "default"})`);
     } else {
-      console.log(`[4-Stage] Stage 2b using Anthropic SERVER-side web_search`);
+      console.log(`[4-Stage] Stage 2b using Anthropic SERVER-side web_search (${!tavilyReady ? "TAVILY_API_KEY not set" : process.env.FORCE_SERVER_WEB_SEARCH === "1" ? "forced by env" : "method opts out"})`);
     }
     const excludedListing = parseExcludedListing(testingExcludeSourceListing);
 
@@ -1487,6 +1551,10 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     // Searches this run actually executed, and whether the one nudge below has been spent.
     let searchesMade = 0;
     let nudged = false;
+    // Same-print sales the Artsy tool has returned this run — they close the gap the nudge
+    // exists for, so a model that found the comparable there is not told to go web-searching.
+    let artsySameWork = 0;
+    let artsyCalls = 0;
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
       data = await post(messages, false);
@@ -1512,9 +1580,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         // `searchesMade` counts CLIENT web_search calls. Under Anthropic's server-side tool the
         // search never passes through this loop, so the counter would read zero however much the
         // model searched, and the nudge would accuse a diligent model of silence. The
-        // attributed-lot path sets clientWebSearch, so this costs it nothing.
+        // client tool is the default on every method (2026-09-22), so this rarely costs anything.
         if (useClientSearch &&
-            shouldNudgeForSearch({ researchGap: !!researchGap, searchesMade, nudged, round, maxRounds: MAX_ROUNDS })) {
+            shouldNudgeForSearch({ researchGap: !!researchGap && compsMode === "full", artsySameWork, searchesMade, nudged, round, maxRounds: MAX_ROUNDS })) {
           nudged = true;
           console.log("[4-Stage] Stage 2b: no web search yet and the graph holds no same-work sale — nudging once");
           messages.push({ role: "assistant", content: data.content });
@@ -1583,6 +1651,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
                 limit: STAGE2B_COMPS_LIMIT,
                 excludeListingUrl: excludedListing.listingUrl,
                 excludeSaleLot: excludedListing.saleLot,
+                // The lot's sale date, as Stage 3's comps on this path already use: a backtest
+                // lot must not read its own future. A live lot's date is ahead, so no change.
+                untilDate: untilDate ?? null,
               });
               content =
                 `${comps.summary.count} comparable(s). Summary: ${JSON.stringify(comps.summary)}\n` +
@@ -1594,6 +1665,31 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
               content = `ACKG comparables query failed: ${err.message}`;
             }
             return { type: "tool_result", tool_use_id: b.id, content };
+          }
+          if (b.name === "query_artsy_results") {
+            const asked = String(b.input?.artistName ?? "");
+            if (compsMode === "summary" && artsyCalls >= SUMMARY_MODE_ARTSY_CALLS) {
+              console.log(`[4-Stage] Stage 2b query_artsy_results "${asked}": refused — summary mode allows ${SUMMARY_MODE_ARTSY_CALLS} call`);
+              return { type: "tool_result", tool_use_id: b.id, content: `Not run: in COMPS MODE SUMMARY you have ${SUMMARY_MODE_ARTSY_CALLS} query_artsy_results call and it is spent. Stage 3 prices this lot from the graph; move on to attribution.` };
+            }
+            artsyCalls++;
+            let names = [asked];
+            try {
+              const useName = await canonicalArtistForQuery(asked, stage2aIdentity);
+              // Only the resolved identity's alternates, and only when the query is about that
+              // same artist (canonicalArtistForQuery decides) — never a different candidate's.
+              names = [useName.name, ...(useName.via === "stage2a" ? stage2aIdentity?.alternateNames ?? [] : []), asked];
+            } catch { /* fall back to the name as asked */ }
+            const r = await runArtsyTool({
+              artistNames: names,
+              workTitle: b.input?.workTitle ?? null,
+              excludeHouse: excludeRef?.house ?? null,
+              excludeLotNumber: excludeRef?.lotNumber ?? null,
+              untilDate: untilDate ?? null,
+            });
+            artsySameWork += r.sameWork;
+            console.log(`[4-Stage] Stage 2b query_artsy_results "${asked}": ${r.logLine}`);
+            return { type: "tool_result", tool_use_id: b.id, content: r.content };
           }
           if (b.name === "query_ackg_editions") {
             let content: string;
@@ -3193,6 +3289,10 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     /** True when the graph holds no same-work sale for this lot. Forwarded to the search loop,
      *  which uses it to nudge a silent cheap model once before the gate escalates the stage. */
     researchGap?: boolean,
+    /** The lot's sale date, forwarded to the Artsy tool's cut-off (callClaudeWithWebSearch). */
+    untilDate?: string | null,
+    /** Whether Stage 2b researches comps at all (stage2b_comps_plan.ts). Null: full, as before. */
+    compsPlan?: Stage2bCompsPlan | null,
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
@@ -3236,11 +3336,11 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
 
     const appraiserPhysicalBlock = buildAppraiserPhysicalBlock(appraiserInput, veaRan);
     const crBlock = formatCatalogueRaisonneBlock(await this.lookupCatalogueRaisonne(triage));
-    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(veaSlim)}${appraiserPhysicalBlock}${crBlock}${visualSearchBlock}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
+    const userText = `${notesBlock}TRIAGE OUTPUT (Stage 2a):\n${JSON.stringify(triage)}\n\nVISUAL EXTRACTION OUTPUT (Stage 1):\n${JSON.stringify(veaSlim)}${appraiserPhysicalBlock}${crBlock}${visualSearchBlock}${compsPlan?.userBlock ?? ""}\n\nConduct specialist attribution research per the injected specialist config and the triage routing above.`;
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
     const result: AttributionResearchResult = isClaude(stage2bModel) || anthropicCompatBaseUrl(stage2bModel)
-      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing, triage.artistAttribution?.artistIdentity ?? null, excludeRef ?? refFromExcludedListing(testingExcludeSourceListing), researchGap)
+      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing, triage.artistAttribution?.artistIdentity ?? null, excludeRef ?? refFromExcludedListing(testingExcludeSourceListing), researchGap, untilDate, compsPlan?.mode ?? "full")
       : await this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
     await this.persistCatalogueRaisonneFinding(result);
     // Phase 0 of the comps write-back is a measurement, not a feature: nothing is written,
@@ -3482,6 +3582,26 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
     }
   }
 
+  /**
+   * Decide before Stage 2b whether it needs to research comps (stage2b_comps_plan.ts), by running
+   * Stage 3a on the evidence available without it. Never throws: any failure plans "full".
+   */
+  protected async planCompsBeforeStage2b(input: Parameters<MultiStageAppraiser["buildValuationEvidence"]>[0]): Promise<Stage2bCompsPlan> {
+    if (process.env.STAGE2B_FULL_COMPS === "1") {
+      return { mode: "full", reason: "STAGE2B_FULL_COMPS=1 — full comps research forced", userBlock: "" };
+    }
+    if (!input.canonicalArtist && !input.claim?.artist) return planStage2bComps(null, null);
+    try {
+      const ev = await this.buildValuationEvidence(input);
+      const plan = planStage2bComps(ev, ev ? !!this.computeStage3a(ev) : null);
+      console.log(`[Stage 2b plan] ${plan.mode.toUpperCase()}: ${plan.reason}`);
+      return plan;
+    } catch (err: any) {
+      console.warn(`[Stage 2b plan] check failed, planning full comps research: ${err?.message ?? err}`);
+      return planStage2bComps(null, null);
+    }
+  }
+
   /** Stage 3a on the evidence. Never throws. */
   protected computeStage3a(ev: ValuationEvidence | null): Stage3aResult | null {
     if (!ev) return null;
@@ -3608,8 +3728,9 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
         `${JSON.stringify(ackgComps.comparables.map(compactComparableForValuation))}${webCompsBlock}`
       : `\n\nPRIMARY — ACKG REALISED AUCTION COMPARABLES: none. ` +
         `${ackgArtist ? `No dated, sold records for "${ackgArtist}" in the graph.` : "No artist was attributed, so the graph could not be queried."} ` +
-        `The ACKG's dated auction coverage is Bonhams (2003-2026), Roseberys London (2014-2026) ` +
-        `and Skinner (2022-2026); Forum Auctions is absent entirely. So an ` +
+        `The ACKG's dated auction coverage is Bonhams (2003-2026), Swann (2016-2026), Roseberys London ` +
+        `(2014-2026), Forum Auctions (2017-2026) and Skinner (2022-2026); Christie's, Sotheby's and ` +
+        `Phillips are not in it. So an ` +
         `absent comp set reflects that coverage gap — it is NOT evidence that the work is unsaleable ` +
         `or low-value. Fall back to the Stage 2b findings below.${webCompsBlock}`;
     // Backtest/eval-harness only — see AppraisalInput.testingExcludeSourceListing.
@@ -3908,7 +4029,13 @@ export class FourStageAppraiser extends MultiStageAppraiser {
     const t2b = Date.now();
     emit({ stage: "stage2b", status: "start", message: "Specialist attribution — cross-referencing catalogues raisonnés and auction archives…", percent: 44 });
     console.log(`[Timing] Stage 2b (Specialist) starting — model: ${stage2bModel}`);
-    const attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing);
+    const compsPlan = await this.planCompsBeforeStage2b({
+      appraisal: input, vea, attr: null, appraiserInput,
+      canonicalArtist: triageResult?.artistAttribution?.artistIdentity?.canonicalArtistName ?? null,
+      clipVector: stage1d?.clipQueryVector ?? null,
+    });
+    const attr = await this.runStage2bSpecialist(vea, triageResult, stage2bModel, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing,
+      undefined, undefined, undefined, compsPlan);
     console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
     emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
 
@@ -4153,6 +4280,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     let researchCompWrite: Awaited<ReturnType<typeof writeResearchComps>> | null = null;
     let stage2bGate: (Stage2bGateResult & { firstModel: string; escalatedTo: string | null }) | null = null;
     let stage2bModelUsed = stage2bModel;
+    let compsPlan: Stage2bCompsPlan | null = null;
     if (routing.stage2bSkipped) {
       emit({ stage: "stage2b", status: "done", message: "Specialist research skipped — catalogue attribution verified against the graph", percent: 80 });
       attr = synthesizeAttributionResult({ claim, canonicalArtist: canonical, verification, workFacts, triage: triageResult });
@@ -4164,12 +4292,17 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
       // The same condition the gate judges silence against (stage2b_gate.ts, SILENT ON A REAL
       // GAP), handed to the model's own loop so it can be told mid-run rather than replaced
       // afterwards. Zero same-work comps means finding a comparable WAS the task.
-      const researchGap = (comps?.summary.tierCounts.same_work ?? 0) === 0;
+      compsPlan = await this.planCompsBeforeStage2b({ appraisal: input, vea, attr: null, appraiserInput, canonicalArtist: canonical, claim, clipVector: stage1d?.clipQueryVector ?? null });
+      // In summary mode finding a comparable is not the task, so there is no gap to nudge about.
+      const researchGap = compsPlan.mode === "full" && (comps?.summary.tierCounts.same_work ?? 0) === 0;
       const run2b = (model: string) => this.runStage2bSpecialist(
         vea, triageResult, model, ai, input.userNotes, visualSearch ?? undefined, appraiserInput, input.testingExcludeSourceListing,
         // A production attributed lot has a listing too; the guard is not a testing feature.
         excludeRef,
         researchGap,
+        // Same cut-off the ACKG comps and work facts on this path already use.
+        claim.saleDate ?? null,
+        compsPlan,
       );
       // Gated Stage 2b: the cheap model first, redone on the stronger one when what came back
       // cannot be checked — or when nothing came back at all. See stage2b_gate.ts for what
@@ -4191,6 +4324,9 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
           : assessStage2bResearch(attr, {
               searches: webSearchUsage().searches,
               graphSameWorkComps: comps?.summary.tierCounts.same_work ?? 0,
+              artsySameWorkComps: artsyUsage().sameWork,
+              compsRequired: compsPlan?.mode !== "summary",
+              claimedArtist: claim.artist ?? null,
             });
         stage2bGate = { ...gate, firstModel: stage2bModel, escalatedTo: gate.escalate ? escalationModel : null };
         if (gate.escalate) {
@@ -4205,7 +4341,11 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
       // ADR-0007's comps slice: the realised prices Stage 2b just found are otherwise used
       // once and discarded. Write-back is deterministic post-processing, never a tool the
       // model chooses to call, and it cannot fail the lot.
-      researchCompWrite = await this.persistResearchComps(attr, canonical, work, claim);
+      if (this.config.writeResearchComps === false) {
+        console.log("[Attributed lot] comps write-back: OFF for this run (writeResearchComps: false)");
+      } else {
+        researchCompWrite = await this.persistResearchComps(attr, canonical, work, claim);
+      }
       console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
       emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
     }
@@ -4236,6 +4376,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
     const mid = claim.estimateLow && claim.estimateHigh ? (claim.estimateLow + claim.estimateHigh) / 2 : null;
     report.attributedLot = {
       claim, verification, routing, researchCompWrite, stage2bGate,
+      stage2bCompsPlan: compsPlan ? { mode: compsPlan.mode, reason: compsPlan.reason } : null,
       compsSummary: comps?.summary ?? null,
       sellThrough: workFacts?.sellThrough ?? null,
       driftAnchor: mid ? mid * ESTIMATE_DRIFT : null,

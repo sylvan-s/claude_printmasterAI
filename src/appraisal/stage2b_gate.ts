@@ -14,7 +14,8 @@
  * the same day. What does not become acceptable is an unverifiable claim, so that is what is
  * checked:
  *
- *   UNCITED COMP — a price with no page behind it. This is the measured fabrication signature:
+ *   UNCITED COMP — a price with no page behind it, or only a page that cannot show it (an artist
+ *     overview, a search, a home page — see isSpecificResultUrl). This is the measured fabrication signature:
  *     on the Cindy Sherman lot Haiku returned three comps with no URL and no stated basis, naming
  *     the artist's most famous series at small-print prices, and across three runs produced the
  *     same GBP 1,875 attached to three different titles. The specialist prompt already says a
@@ -24,7 +25,9 @@
  *     asserted with no source, which ADR-0007 Decision 3 already refuses to write to the graph.
  *   SILENT ON A REAL GAP — zero searches when the graph returned no same_work record. With a
  *     same_work record, zero searches is now correct. Without one, finding a comparable was the
- *     job, and not attempting it is not a finding.
+ *     job, and not attempting it is not a finding. A same-print sale from query_artsy_results
+ *     (2026-09-22) closes the gap the same way: the comparable WAS found, by the cheap route,
+ *     and it arrives with an artsy.net result URL, so the uncited-comp check still applies.
  *
  * A FOURTH reason is not a judgement about the output but the absence of one: the cheap attempt
  * THREW. Measured the first time this gate ran live — Haiku ended its turn on the Cindy Sherman
@@ -40,17 +43,28 @@
  * Sonnet, so a gated run costs 0.04 + E x 0.157 against 0.157 always-Sonnet, and pays for itself
  * while the escalation rate E stays under about 75%. On the four measured lots E was 50%.
  */
-import type { Stage2bComp } from "./comp_storability.js";
+import { isSpecificResultUrl, type Stage2bComp } from "./comp_storability.js";
 
 export interface Stage2bResearchTelemetry {
   /** Web searches actually executed during the stage (webSearchUsage().searches). */
   searches: number;
   /** same_work comps the graph returned for this lot, which decides whether silence is honest. */
   graphSameWorkComps: number;
+  /** Same-print sales query_artsy_results returned during the stage (artsyUsage().sameWork).
+   *  Counts toward closing the gap just as a graph same_work record does — see SILENT ON A
+   *  REAL GAP above. Optional so older callers read as zero. */
+  artsySameWorkComps?: number;
+  /** False when stage2b_comps_plan.ts put the stage in summary mode: Stage 3a prices the lot, so
+   *  researching comps was not the task and silence on them is correct. Optional: default true. */
+  compsRequired?: boolean;
+  /** The catalogue's own artist, when there is a catalogue claim. Lets the gate see a Stage 2b
+   *  conclusion that contradicts it. */
+  claimedArtist?: string | null;
 }
 
 export type Stage2bGateReason =
-  | "uncited_comp" | "uncited_catalogue_raisonne" | "no_search_despite_gap" | "research_failed";
+  | "uncited_comp" | "uncited_catalogue_raisonne" | "no_search_despite_gap" | "research_failed"
+  | "weak_attribution_without_search";
 
 export interface Stage2bGateResult {
   escalate: boolean;
@@ -65,6 +79,12 @@ const usableUrl = (raw: unknown): boolean => {
   try { const u = new URL(v); return (u.protocol === "http:" || u.protocol === "https:") && u.hostname.includes("."); }
   catch { return false; }
 };
+
+/** Attribution levels strong enough to stand without a search behind them. */
+const STRONG_LEVELS = new Set(["definitive", "probable"]);
+/** Surname fold: "Sir Eduardo Luigi Paolozzi" and "Eduardo Paolozzi" agree; accents ignored. */
+const surname = (n: string): string =>
+  n.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z\s-]/g, " ").trim().split(/\s+/).pop() ?? "";
 
 /** The cheap model threw rather than returning a report. Escalate on the strongest signal. */
 export function stage2bResearchFailed(err: unknown): Stage2bGateResult {
@@ -82,10 +102,10 @@ export function assessStage2bResearch(result: unknown, t: Stage2bResearchTelemet
   const r = (result ?? {}) as any;
 
   const comps: Stage2bComp[] = Array.isArray(r.auctionComps) ? r.auctionComps : [];
-  const uncited = comps.filter((c) => !usableUrl(c?.listingUrl));
+  const uncited = comps.filter((c) => !isSpecificResultUrl(c?.listingUrl));
   if (uncited.length) {
     reasons.push("uncited_comp");
-    notes.push(`${uncited.length} of ${comps.length} comp(s) carry no citation URL (${uncited.map((c) => `"${c?.artworkTitle ?? "untitled"}"${typeof c?.priceAmount === "number" ? ` @ ${c.priceAmount}` : ""}`).join(", ")})`);
+    notes.push(`${uncited.length} of ${comps.length} comp(s) carry no URL that shows the sale (${uncited.map((c) => `"${c?.artworkTitle ?? "untitled"}"${typeof c?.priceAmount === "number" ? ` @ ${c.priceAmount}` : ""}`).join(", ")})`);
   }
 
   const cr = r.catalogueRaisonne ?? {};
@@ -94,9 +114,28 @@ export function assessStage2bResearch(result: unknown, t: Stage2bResearchTelemet
     notes.push(`catalogue raisonné "${cr.catalogueName.trim()}" asserted with no source URL`);
   }
 
-  if (t.searches === 0 && t.graphSameWorkComps === 0) {
+  if (t.compsRequired !== false && t.searches === 0 && t.graphSameWorkComps === 0 && (t.artsySameWorkComps ?? 0) === 0) {
     reasons.push("no_search_despite_gap");
-    notes.push("no web search was made, and the graph holds no same-work sale — the gap it was sent to close was not attempted");
+    notes.push("no web search was made, and neither the graph nor Artsy holds a same-work sale — the gap it was sent to close was not attempted");
+  }
+
+  // WEAK ATTRIBUTION WITHOUT A SEARCH (2026-09-22). Summary mode (stage2b_comps_plan.ts) turned
+  // off the gap check above, and on the first summary-mode run lot 244 (Hirst, "The Magnificent
+  // Seven") made zero searches and returned "unattributed" — the same lot researched with searches
+  // concluded "definitive". Downgrading or contradicting an attribution is a claim like any other:
+  // it needs research behind it. Applies in both modes.
+  // Only judged when a conclusion was returned: a report without one is a schema failure the
+  // research_failed / re-ask paths deal with, not a claim about the artist.
+  if (t.searches === 0 && r.attributionConclusion && typeof r.attributionConclusion === "object") {
+    const concl = r.attributionConclusion;
+    const level = typeof concl.attributionLevel === "string" ? concl.attributionLevel.trim().toLowerCase() : "";
+    const artist = typeof concl.attributedArtist === "string" ? concl.attributedArtist.trim() : "";
+    const weak = !STRONG_LEVELS.has(level);
+    const contradicts = !!t.claimedArtist && !!artist && surname(artist) !== surname(t.claimedArtist);
+    if (weak || contradicts) {
+      reasons.push("weak_attribution_without_search");
+      notes.push(`no web search was made, yet the attribution is ${weak ? `"${level || "missing"}"` : ""}${weak && contradicts ? " and " : ""}${contradicts ? `"${artist}" against the catalogue's "${t.claimedArtist}"` : ""} — a downgrade or contradiction needs research behind it`);
+    }
   }
 
   return {

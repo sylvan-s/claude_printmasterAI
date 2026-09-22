@@ -17,6 +17,9 @@
  *   npm run backtest:attributed-lot -- --sale A0793 --screen                            # rank the WHOLE sale, NO model calls
  *   npm run backtest:attributed-lot -- --sale A0793 --lots 12,45,301 [--stage3-model qwen-plus]
  *
+ * Graph writes: OFF by default. Stage 2b's comps are written to Neo4j (agent_research) only with
+ * --write-comps. --out-suffix <s> keeps an A/B arm's output directories apart.
+ *
  * Stage 1a (VEA) and Stage 1b (Gemini) are OFF on the attributed method (see the config in
  * appraiser.ts): the catalogue states what they would read, and both can recognise a
  * catalogued image. --vea forces Stage 1a on for an A/B.
@@ -41,6 +44,8 @@ import {
 import { divergenceSignalUsable, ESTIMATE_DRIFT, type CatalogueAttribution } from "../../src/appraisal/attributed_lot";
 import { resolveArtistIdentity, resolveWorkIdentity, queryAuctionComparables, queryWorkFacts } from "../../src/appraisal/knowledge_graph/index.js";
 import { compareResults } from "./compare";
+import { webSearchUsage } from "../../src/appraisal/web_search";
+import { artsyUsage } from "../../src/appraisal/artsy_results";
 import { buildBacktestReport } from "./build_report";
 import { closeDriver } from "../../src/appraisal/knowledge_graph/index.js";
 import { resolveSaleRef, type AuctionRef } from "../../benchmark/src/roseberys/discover";
@@ -48,11 +53,21 @@ import { fetchAuctionLots, imageUrl, lotUrl, type RawLot } from "../../benchmark
 import { parseDescription, type ParsedLot } from "../../benchmark/src/roseberys/parse";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/** Stage 2b's own search and Artsy counts for the FINAL attempt (both reset per attempt, so an
+ *  escalated lot reports the stronger model's run), and whether the Artsy tool was offered. */
+function researchTelemetry() {
+  return {
+    webSearches: webSearchUsage().searches,
+    artsy: artsyUsage(),
+    artsyToolEnabled: process.env.DISABLE_ARTSY_RESULTS !== "1",
+  };
+}
 const DEFAULT_METHOD = "claude-4stage-attributed";
 
-interface Args { claimFile?: string; stage2bModel?: string; url?: string; sale?: string; lot?: string; lots: string[]; random: number; seed: number; dryRun: boolean; screen: boolean; concurrency: number; minRatio: number; method: string; vea: boolean; stage3Model?: string }
+interface Args { claimFile?: string; stage2bModel?: string; url?: string; sale?: string; lot?: string; lots: string[]; random: number; seed: number; dryRun: boolean; screen: boolean; concurrency: number; minRatio: number; method: string; vea: boolean; stage3Model?: string; outSuffix: string; writeComps: boolean }
 function parseArgs(argv: string[]): Args {
-  const a: Args = { method: DEFAULT_METHOD, vea: false, lots: [], random: 0, seed: 1, dryRun: false, screen: false, concurrency: 6, minRatio: 1.25 };
+  const a: Args = { method: DEFAULT_METHOD, vea: false, lots: [], random: 0, seed: 1, dryRun: false, screen: false, concurrency: 6, minRatio: 1.25, outSuffix: "", writeComps: false };
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i];
     if (x === "--claim") a.claimFile = argv[++i];
@@ -70,6 +85,10 @@ function parseArgs(argv: string[]): Args {
     else if (x === "--vea") a.vea = true;
     else if (x === "--stage3-model") a.stage3Model = argv[++i];
     else if (x === "--stage2b-model") a.stage2bModel = argv[++i];
+    // Appended to each lot's output directory, so an A/B arm never overwrites another run.
+    // Stage 2b's comps are written to Neo4j (agent_research) only with this flag.
+    else if (x === "--write-comps") a.writeComps = true;
+    else if (x === "--out-suffix") a.outSuffix = argv[++i].replace(/[^a-z0-9_-]+/gi, "");
     else { console.error(`Unrecognised argument: ${x}`); process.exit(1); }
   }
   if (a.url) {
@@ -252,6 +271,8 @@ async function runFromClaimFile(args: Args) {
     ...baseConfig, attributedLotPath: true, enableVisualSearch: false, enableEmbeddingMatch: true,
     skipVea: !args.vea, ...(args.stage3Model ? { stage3Model: args.stage3Model } : {}),
     ...(args.stage2bModel ? { stage2bModel: args.stage2bModel } : {}),
+    // A backtest never writes to the graph unless asked to.
+    writeResearchComps: args.writeComps,
   };
   const geminiKey = process.env.GEMINI_API_KEY;
   const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
@@ -277,13 +298,14 @@ async function runFromClaimFile(args: Args) {
     for (const a of r.adjustments ?? []) console.log(`[Reasoning]   ${a.direction} ${a.magnitude} — ${a.factor}: ${a.evidence}`);
     console.log(`[Reasoning] confidence: ${r.confidence}`);
   }
-  const lotId = `${(claim.house ?? "lot").replace(/[^a-z0-9]+/gi, "")}-${claim.saleId ?? "x"}-${claim.lotNumber ?? "x"}_attrpath${args.stage2bModel ? `_2b-${args.stage2bModel.replace(/[^a-z0-9]+/gi, "")}` : ""}`;
+  const lotId = `${(claim.house ?? "lot").replace(/[^a-z0-9]+/gi, "")}-${claim.saleId ?? "x"}-${claim.lotNumber ?? "x"}_attrpath${args.stage2bModel ? `_2b-${args.stage2bModel.replace(/[^a-z0-9]+/gi, "")}` : ""}${args.outSuffix ? `_${args.outSuffix}` : ""}`;
   const outDir = `${__dirname}/output/${slugify(lotId)}`;
   mkdirSync(outDir, { recursive: true });
   writeFileSync(`${outDir}/result.json`, JSON.stringify({
     lotId, lotUrl: claim.lotUrl, method: config.id, entryPath: "attributed-lot/claim-file",
     attributionProvided: true, catalogueAttribution: claim, tokenUsage: usage, elapsedSeconds: Number(elapsedS),
     stage1aVeaRun: !!args.vea, stage3Model: config.stage3Model ?? null, stage2bModel: config.stage2bModel ?? null,
+    research: researchTelemetry(),
     attributedLot: report.attributedLot, report,
     appraiserInputNotes: { inscribedMarksNotes: inscribedMarksNotes ?? null, provenanceNotes: provenanceNotes ?? null, conditionNotes: conditionNotes ?? null, catalogueNotes: catalogueNotes ?? null },
   }, null, 2));
@@ -382,6 +404,8 @@ async function runOne(rawLot: RawLot, auction: AuctionRef, args: Args) {
     skipVea: !args.vea,
     ...(args.stage3Model ? { stage3Model: args.stage3Model } : {}),
     ...(args.stage2bModel ? { stage2bModel: args.stage2bModel } : {}),
+    // A backtest never writes to the graph unless asked to.
+    writeResearchComps: args.writeComps,
   };
   const geminiKey = process.env.GEMINI_API_KEY;
   const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
@@ -417,13 +441,14 @@ async function runOne(rawLot: RawLot, auction: AuctionRef, args: Args) {
   }
 
   const comparison = compareResults(report, groundTruth, rawLot);
-  const lotId = `${auction.saleCode}-${rawLot.lot_number}_attrpath${args.stage3Model ? `_${args.stage3Model.replace(/[^a-z0-9]+/gi, "")}` : ""}${args.stage2bModel ? `_2b-${args.stage2bModel.replace(/[^a-z0-9]+/gi, "")}` : ""}`;
+  const lotId = `${auction.saleCode}-${rawLot.lot_number}_attrpath${args.stage3Model ? `_${args.stage3Model.replace(/[^a-z0-9]+/gi, "")}` : ""}${args.stage2bModel ? `_2b-${args.stage2bModel.replace(/[^a-z0-9]+/gi, "")}` : ""}${args.outSuffix ? `_${args.outSuffix}` : ""}`;
   const outDir = `${__dirname}/output/${slugify(lotId)}`;
   mkdirSync(outDir, { recursive: true });
   writeFileSync(`${outDir}/result.json`, JSON.stringify({
     lotId, sale: auction, lotUrl: lotUrl(rawLot), method: config.id, entryPath: "attributed-lot",
     attributionProvided: true, catalogueAttribution: claim, tokenUsage: usage, elapsedSeconds: Number(elapsedS),
     stage1aVeaRun: !!args.vea, stage3Model: config.stage3Model ?? null, stage2bModel: config.stage2bModel ?? null,
+    research: researchTelemetry(),
     attributedLot: report.attributedLot,
     report, groundTruth, rawLot: { ...rawLot, description: undefined }, rawLotDescriptionHtml: rawLot.description, comparison,
   }, null, 2));

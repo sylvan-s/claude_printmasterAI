@@ -5,6 +5,7 @@
  *   npm run test:stage2b-gate
  */
 import { assessStage2bResearch, stage2bResearchFailed } from "../../src/appraisal/stage2b_gate";
+import { isSpecificResultUrl } from "../../src/appraisal/comp_storability";
 
 let passed = 0, failed = 0;
 function eq(label: string, got: unknown, want: unknown) {
@@ -55,6 +56,60 @@ console.log("silence is judged against whether there was a gap to close");
   eq("no searches and no same-work sale: escalates", gap.reasons, ["no_search_despite_gap"]);
   const tried = assessStage2bResearch({ auctionComps: [] }, { searches: 1, graphSameWorkComps: 0 });
   ok("tried and found nothing: passes, because empty is an honest answer", !tried.escalate);
+  // query_artsy_results (2026-09-22): a same-print sale from Artsy closes the gap as a graph
+  // one does — the comparable was found by the cheap route, so no web search was owed.
+  const viaArtsy = assessStage2bResearch({ auctionComps: [] }, { searches: 0, graphSameWorkComps: 0, artsySameWorkComps: 1 });
+  ok("no searches, no graph sale, but Artsy had the same print: passes", !viaArtsy.escalate);
+  const artsyNothing = assessStage2bResearch({ auctionComps: [] }, { searches: 0, graphSameWorkComps: 0, artsySameWorkComps: 0 });
+  eq("Artsy called but no same-print sale anywhere, no search: still escalates", artsyNothing.reasons, ["no_search_despite_gap"]);
+  const artsyUncited = assessStage2bResearch(
+    { auctionComps: [{ artworkTitle: "Owl", priceAmount: 3584 }] },
+    { searches: 0, graphSameWorkComps: 0, artsySameWorkComps: 1 });
+  eq("an Artsy gap-closer does not excuse an uncited comp", artsyUncited.reasons, ["uncited_comp"]);
+}
+
+console.log("a URL must be able to show the sale (CITATION-URL-1.0)");
+{
+  // Verbatim from the first Artsy A/B, lot 389: an artist overview page cited for a price.
+  const g = assessStage2bResearch(
+    { auctionComps: [{ artworkTitle: "Three portraits", priceAmount: 2000, listingUrl: "https://www.artsy.net/artist/cindy-sherman" }] },
+    { searches: 5, graphSameWorkComps: 0 });
+  eq("an artist page is not a citation: escalates", g.reasons, ["uncited_comp"]);
+  for (const u of [
+    "https://www.artsy.net/artist/cindy-sherman/auction-results",
+    "https://www.mutualart.com/Artist/Cindy-Sherman/1A2B3C",
+    "https://www.artnet.com/artists/cindy-sherman/past-auction-results",
+    "https://www.artnet.com/artists/cindy-sherman/",
+    "https://www.google.com/search?q=cindy+sherman+three+portraits",
+    "https://www.bonhams.com/search/?query=sherman",
+    "https://www.christies.com/",
+    "https://en.wikipedia.org/wiki/Cindy_Sherman",
+  ]) ok(`not a result page: ${u}`, !isSpecificResultUrl(u));
+  for (const u of [
+    "https://www.artsy.net/auction-result/7377174",
+    "https://www.artsy.net/artwork/cindy-sherman-untitled-1",
+    "https://www.mutualart.com/Artwork/Three-portraits/9F8E7D",
+    "https://www.artnet.com/artists/cindy-sherman/three-portraits-a-abc123",
+    "https://www.bonhams.com/auction/32240/lot/12/cindy-sherman-three-portraits/",
+    "https://www.christies.com/en/lot/lot-6123456",
+    "https://www.roseberys.co.uk/bidding/A0785-prints-multiples-665/389-cindy-sherman",
+    "https://www.someregionalhouse.de/katalog/123/los/45",
+  ]) ok(`a result page: ${u}`, isSpecificResultUrl(u));
+}
+
+console.log("a weak or contradicting attribution needs a search behind it");
+{
+  const concl = (level: string, artist: string | null) => ({ auctionComps: [], attributionConclusion: { attributionLevel: level, attributedArtist: artist } });
+  const sum = { searches: 0, graphSameWorkComps: 0, compsRequired: false, claimedArtist: "Damien Hirst" };
+  // Verbatim shape from the first summary-mode run, lot 244.
+  eq("0 searches + 'unattributed': escalates (lot 244)", assessStage2bResearch(concl("unattributed", null), sum).reasons, ["weak_attribution_without_search"]);
+  eq("0 searches + 'possible': escalates", assessStage2bResearch(concl("possible", "Damien Hirst"), sum).reasons, ["weak_attribution_without_search"]);
+  eq("0 searches + a different artist: escalates", assessStage2bResearch(concl("probable", "Rachel Howard"), sum).reasons, ["weak_attribution_without_search"]);
+  ok("0 searches + 'probable' for the catalogue's artist: passes", !assessStage2bResearch(concl("probable", "Damien Hirst"), sum).escalate);
+  ok("honorifics and accents do not count as a contradiction",
+    !assessStage2bResearch(concl("definitive", "Eduardo Paolozzi"), { ...sum, claimedArtist: "Sir Eduardo Luigi Paolozzi" }).escalate &&
+    !assessStage2bResearch(concl("definitive", "Joan Miro"), { ...sum, claimedArtist: "Joan Miró" }).escalate);
+  ok("a weak level WITH a search behind it is a finding, not a failure", !assessStage2bResearch(concl("unattributed", null), { ...sum, searches: 2 }).escalate);
 }
 
 console.log("passes clean research");
