@@ -17,6 +17,9 @@
  *   npm run backtest:attributed-lot -- --sale A0793 --screen                            # rank the WHOLE sale, NO model calls
  *   npm run backtest:attributed-lot -- --sale A0793 --lots 12,45,301 [--stage3-model qwen-plus]
  *
+ * Graph writes: OFF by default. Stage 2b's comps are written to Neo4j (agent_research) only with
+ * --write-comps. --out-suffix <s> keeps an A/B arm's output directories apart.
+ *
  * Stage 1a (VEA) and Stage 1b (Gemini) are OFF on the attributed method (see the config in
  * appraiser.ts): the catalogue states what they would read, and both can recognise a
  * catalogued image. --vea forces Stage 1a on for an A/B.
@@ -62,9 +65,9 @@ function researchTelemetry() {
 }
 const DEFAULT_METHOD = "claude-4stage-attributed";
 
-interface Args { claimFile?: string; stage2bModel?: string; url?: string; sale?: string; lot?: string; lots: string[]; random: number; seed: number; dryRun: boolean; screen: boolean; concurrency: number; minRatio: number; method: string; vea: boolean; stage3Model?: string; outSuffix: string }
+interface Args { claimFile?: string; stage2bModel?: string; url?: string; sale?: string; lot?: string; lots: string[]; random: number; seed: number; dryRun: boolean; screen: boolean; concurrency: number; minRatio: number; method: string; vea: boolean; stage3Model?: string; outSuffix: string; writeComps: boolean }
 function parseArgs(argv: string[]): Args {
-  const a: Args = { method: DEFAULT_METHOD, vea: false, lots: [], random: 0, seed: 1, dryRun: false, screen: false, concurrency: 6, minRatio: 1.25, outSuffix: "" };
+  const a: Args = { method: DEFAULT_METHOD, vea: false, lots: [], random: 0, seed: 1, dryRun: false, screen: false, concurrency: 6, minRatio: 1.25, outSuffix: "", writeComps: false };
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i];
     if (x === "--claim") a.claimFile = argv[++i];
@@ -83,6 +86,8 @@ function parseArgs(argv: string[]): Args {
     else if (x === "--stage3-model") a.stage3Model = argv[++i];
     else if (x === "--stage2b-model") a.stage2bModel = argv[++i];
     // Appended to each lot's output directory, so an A/B arm never overwrites another run.
+    // Stage 2b's comps are written to Neo4j (agent_research) only with this flag.
+    else if (x === "--write-comps") a.writeComps = true;
     else if (x === "--out-suffix") a.outSuffix = argv[++i].replace(/[^a-z0-9_-]+/gi, "");
     else { console.error(`Unrecognised argument: ${x}`); process.exit(1); }
   }
@@ -266,6 +271,8 @@ async function runFromClaimFile(args: Args) {
     ...baseConfig, attributedLotPath: true, enableVisualSearch: false, enableEmbeddingMatch: true,
     skipVea: !args.vea, ...(args.stage3Model ? { stage3Model: args.stage3Model } : {}),
     ...(args.stage2bModel ? { stage2bModel: args.stage2bModel } : {}),
+    // A backtest never writes to the graph unless asked to.
+    writeResearchComps: args.writeComps,
   };
   const geminiKey = process.env.GEMINI_API_KEY;
   const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;
@@ -397,6 +404,8 @@ async function runOne(rawLot: RawLot, auction: AuctionRef, args: Args) {
     skipVea: !args.vea,
     ...(args.stage3Model ? { stage3Model: args.stage3Model } : {}),
     ...(args.stage2bModel ? { stage2bModel: args.stage2bModel } : {}),
+    // A backtest never writes to the graph unless asked to.
+    writeResearchComps: args.writeComps,
   };
   const geminiKey = process.env.GEMINI_API_KEY;
   const ai = geminiKey ? new GoogleGenAI({ apiKey: geminiKey }) : undefined;

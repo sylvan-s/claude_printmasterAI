@@ -249,6 +249,10 @@ export interface AppraisalMethodConfig {
    *  web_search on Anthropic endpoints instead — the pre-2026-09-22 default, kept for A/B.
    *  Same tool name either way, so the prompt is unchanged. */
   clientWebSearch?: boolean;
+  /** Attributed-lot path: write Stage 2b's gated comps to the graph as agent_research records
+   *  (write_research_comps.ts). Default true. Backtest harnesses set false so a test run never
+   *  writes to Neo4j — the first Artsy A/B wrote 5 rows that had to be reviewed by hand. */
+  writeResearchComps?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -4333,7 +4337,11 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
       // ADR-0007's comps slice: the realised prices Stage 2b just found are otherwise used
       // once and discarded. Write-back is deterministic post-processing, never a tool the
       // model chooses to call, and it cannot fail the lot.
-      researchCompWrite = await this.persistResearchComps(attr, canonical, work, claim);
+      if (this.config.writeResearchComps === false) {
+        console.log("[Attributed lot] comps write-back: OFF for this run (writeResearchComps: false)");
+      } else {
+        researchCompWrite = await this.persistResearchComps(attr, canonical, work, claim);
+      }
       console.log(`[Timing] Stage 2b (Specialist) done — ${((Date.now() - t2b) / 1000).toFixed(1)}s`);
       emit({ stage: "stage2b", status: "done", message: "Attribution and comparable sales research complete", percent: 80 });
     }
