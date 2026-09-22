@@ -92,3 +92,42 @@ Total Phase 1 LLM spend: about $0.51. Labels gathered: 213 carried into round 5,
 - **Certifying either measure needs human labels,** not more LLM rounds: grow the gold set
   (subset/fuzzy), or have a person adjudicate the audit disagreements. The model is now limited
   by the measurement, not the other way round.
+
+## Human adjudication of the audit disagreements (2026-09-22)
+52 pairs (`phase1_adjudication_set.py`) labelled on the "Merge Audit Adjudication" page, with the
+model score and LLM answer hidden. Result: 21 same, 9 different, 2 collaboration, 1 after, 19 unsure.
+
+**Audits re-scored with human truth** (`phase1_adjudicated.py`):
+
+| round | LLM-scored | human-scored | 95% low |
+|---|---|---|---|
+| 1 | 58% | 18/25 = 72% | 52% |
+| 2 | 88% | 25/27 = 93% | 77% |
+| 3 | 73% | 31/33 = 94% | 80% |
+| 4 | 100% | 38/39 = 97% | 87% |
+| 5 | 89% | **37/37 = 100%** | **90.6%** |
+| 4+5 pooled | — | **75/76 = 98.7%** | **92.9%** |
+
+**The audit stopping rule is met on human truth.** The LLM had understated the model: in rounds
+3 and 5 most of the "misses" were the labeller, not the model.
+
+**The labeller on the disputed pairs:**
+- **Its `different` is unreliable.** Of 21 LLM `different`s, the person agreed with 8 and said
+  same for 3 (Wiericx ~ Wierix, T H Baynes ~ T M Baynes, and the Cantagallina follower pair, see
+  below). 9 were unsure and 1 was a collaboration.
+- **Policy A's `unsure` hid 15 true `same`s.** That is the price of the insurance. It costs recall
+  only, never precision.
+
+**Retrained with the human labels** (weight 1.0, overriding the LLM's), features DATA-1.2:
+
+| training labels | gold `same` calls correct | 95% low | gold recall | gate |
+|---|---|---|---|---|
+| LLM only | 31/31 | 89.0% | 76% | fail |
+| **+ human adjudication** | **36/36** | **90.4%** | **88%** | **PASS** |
+
+**Phase 1 gate: PASSED.** Gold precision 100% with a lower bound ≥ 90%, and the audit pooled over
+the current model with a lower bound ≥ 90%. Both pass narrowly, because both samples are small.
+
+**To check:** adj-labelled `same` for "Remigio Cantagallina ~ Seguace di Remigio Cantagallina".
+"Seguace di" means "follower of", which the composite rules treat as a relation (`after`), not
+the same artist. It may be a mis-click.
