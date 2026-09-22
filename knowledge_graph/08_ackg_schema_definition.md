@@ -738,6 +738,65 @@ predates the latest `MergeEvent.at` or the latest SourceRecord price-data stamp
 dated auction rows differs from the run's `sourceRowCount`. Rebuild cadence: after every bulk
 ingest or artist-merge pass.
 
+## 13. Schema addition: `POSSIBLE_SAME_AS` (identity candidates held back, added 2026-09-22)
+
+Merging stays the identity decision this graph acts on. Every consumer reads one node as one
+thing: the price export, the priors, Stage 3 same-work comps and the ingest resolvers. What was
+missing was a durable record of the pairs a scan held back instead of merging, and of the pairs
+someone decided were *different*. Those lived in regenerable CSVs, so they could not be queried,
+and a reviewer's "not the same" was lost with the file.
+
+```
+(:Artist)-[:POSSIBLE_SAME_AS {
+    status,              # open | rejected
+    rule, ruleVersion,   # the scan that proposed it
+    score, scoreKind,    # its own number and what it measures (splinkMatchWeight, dinov2Cosine...)
+    evidence,            # one line
+    heldBecause,         # why it was not merged
+    nameA, nameB,        # the keys as proposed
+    proposedAt, lastSeenAt,
+    decidedBy, decidedAt, decisionNote   # set when rejected
+}]-(:Artist)
+```
+
+The same shape links two `ConceptualWork` nodes. An edge never crosses labels.
+
+**Rules:**
+
+- **One edge per unordered pair, read undirected.** It is written with an undirected `MERGE`,
+  so a re-run or a rename that reverses the order finds the same edge.
+- **`rejected` is kept, never deleted.** `merge_artists.merge_pair` and
+  `merge_duplicate_work_clusters.py` refuse to fold a rejected pair. A later scan refreshes an
+  open edge but never reopens a rejected one.
+- **Promoting is merging.** The `DETACH DELETE` takes the edge, and the MergeEvent's `evidence`
+  cites the edge's rule and score. There is no `promoted` status.
+- **A merge carries the absorbed node's other candidate edges to the survivor.** Where both had
+  an edge to the same third node, a rejection wins. This was added in ARTIST-MERGE-3.3 and
+  DUPWORK-MERGE-1.1; before it, the delete dropped them.
+- **Readers are opt-in.** Only files in `check_identity_candidates.ALLOWED` may name the edge,
+  and the price export, priors and comps are not among them.
+
+**Writer:** `identity_candidates.py`. The scans stay read-only. Each has an adapter over its
+existing output file:
+
+| source | label | loads |
+|---|---|---|
+| `band-b-held` (`merge_artists.py band-b --held-out`) | Artist | every B4 row as `open` |
+| `artist-image` (`find_artist_candidates_by_shared_image.py`) | Artist | `differentNames`/`nameVariant` as `open`; refusals as `rejected` (collaboration, collective, after-attribution, non-artist node, ULAN conflict, or a reviewer's note) |
+| `spelling-variant` (`find_spelling_variant_merges.py --json`) | ConceptualWork | the four held buckets as `open` |
+| `title-collisions` (`rank_title_collisions.py --pairs-out`) | ConceptualWork | unvetoed pairs at or above an explicit `--min-weight` |
+
+The poster candidates (`splink_poster_merge_candidates.csv`) are deliberately not loaded. All
+23.6k rows are `needsVision`, which means "not looked at", not "held".
+
+**Review:** `identity_candidates.py list` writes a review CSV. `decide` applies the `promote` /
+`reject` decisions, and each needs a note. A promoted pair is merged through the normal merge
+function.
+
+**Guard:** `check_identity_candidates.py`. It checks the allow-list, and that the graph has no
+mixed labels, no self-loops, one edge per pair, only valid statuses, and a reason on every
+rejection.
+
 ## Next steps
 
 Per doc 07 §5's roadmap, this doc completes step 2 ("define the ACKG schema and a minimal seed

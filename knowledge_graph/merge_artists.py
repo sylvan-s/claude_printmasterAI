@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Artist-node merging: the primitive, and the two passes that drive it.
-Version: ARTIST-MERGE-3.2
+Version: ARTIST-MERGE-3.3
 
 One file, three sections, two subcommands. Folded together from `artist_merge.py`,
 `canonicalise_ulan_and_merge.py` and `merge_artist_band_b.py`: only ever two callers shared
@@ -162,7 +162,7 @@ def stamp(now):
 # unlike every other type here, and (confirmed live) can appear on either side, so both
 # directions are transferred below.
 HANDLED_TYPES = {"CREATED", "MADE_MATRIX", "FROM_REGION", "ATTRIBUTED_TO", "CATALOGUES",
-                  "PRICE_NEIGHBOUR", "MERGED_INTO"}
+                  "PRICE_NEIGHBOUR", "MERGED_INTO", "POSSIBLE_SAME_AS"}
 
 MERGE_PAIR = """
 MATCH (canon:Artist {name: $canonName})
@@ -226,6 +226,24 @@ CALL {
         ON CREATE SET nr.weight = r.weight, nr.run = r.run
     )
 }
+// POSSIBLE_SAME_AS (ARTIST-MERGE-3.3): the dup's candidate edges become the survivor's, since
+// they are now one artist. The edge between the two is the one being promoted and goes with the
+// DETACH DELETE. Where the survivor already has an edge to the same third node, a rejection
+// wins: if either side was decided NOT to be X, the merged artist is not X either.
+CALL {
+    WITH canon, dup
+    OPTIONAL MATCH (dup)-[r:POSSIBLE_SAME_AS]-(n:Artist)
+    WHERE n IS NULL OR elementId(n) <> elementId(canon)
+    FOREACH (x IN CASE WHEN n IS NULL THEN [] ELSE [n] END |
+        MERGE (canon)-[nr:POSSIBLE_SAME_AS]-(x)
+        ON CREATE SET nr += properties(r)
+        ON MATCH SET nr.decidedBy = CASE WHEN r.status = 'rejected' AND nr.status <> 'rejected'
+                                         THEN r.decidedBy ELSE nr.decidedBy END,
+                     nr.decisionNote = CASE WHEN r.status = 'rejected' AND nr.status <> 'rejected'
+                                            THEN r.decisionNote ELSE nr.decisionNote END,
+                     nr.status = CASE WHEN r.status = 'rejected' THEN 'rejected' ELSE nr.status END
+    )
+}
 WITH canon, dup
 // Inherit any identity field the survivor lacks, so a merge never loses an identifier.
 SET canon.dateBorn_year   = coalesce(canon.dateBorn_year,   dup.dateBorn_year),
@@ -284,7 +302,7 @@ CREATE (ev)-[:MERGED_INTO]->(a)
 
 PROVENANCE_KEYS = ("rule", "ruleVersion", "decidedBy", "evidence")
 DECIDERS = {"rule", "model", "human"}
-VERSION = "ARTIST-MERGE-3.2"
+VERSION = "ARTIST-MERGE-3.3"
 
 
 def provenance(rule, decided_by, evidence, rule_version=VERSION, confidence=None):
@@ -315,12 +333,27 @@ REL_TYPES = "MATCH (dup:Artist {name: $dupName})-[r]-() RETURN DISTINCT type(r) 
 # qualifiers, three of them "after". CATALOGUES carried the same bug for its discovery
 # provenance. Types whose edges carry no properties today are asserted to stay that way, so a
 # property added later is refused here rather than silently dropped.
-PROPERTY_COPYING_TYPES = {"ATTRIBUTED_TO", "CATALOGUES", "PRICE_NEIGHBOUR"}
+PROPERTY_COPYING_TYPES = {"ATTRIBUTED_TO", "CATALOGUES", "PRICE_NEIGHBOUR", "POSSIBLE_SAME_AS"}
 REL_PROPERTIES = """
 MATCH (dup:Artist {name: $dupName})-[r]-()
 WHERE NOT type(r) IN $copied AND size(keys(r)) > 0
 RETURN DISTINCT type(r) AS t, keys(r) AS k
 """
+
+
+REJECTED_PAIR = """
+MATCH (a:Artist {name: $a})-[p:POSSIBLE_SAME_AS {status: 'rejected'}]-(b:Artist {name: $b})
+RETURN p.decidedBy AS by, p.decisionNote AS note
+"""
+
+
+def assert_not_rejected(sess, canon_name, dup_name):
+    """Refuse to fold a pair a person or rule has decided are two artists (POSSIBLE_SAME_AS
+    status 'rejected'). To merge one anyway, change the edge's status first, deliberately."""
+    r = sess.run(REJECTED_PAIR, a=canon_name, b=dup_name).single()
+    if r is not None:
+        raise RuntimeError(f"{dup_name!r} and {canon_name!r} are recorded as DIFFERENT artists "
+                           f"(POSSIBLE_SAME_AS rejected by {r['by']}: {r['note']}); not merging")
 
 
 def assert_transferable(sess, dup_name):
@@ -359,6 +392,7 @@ def merge_pair(sess, canon_name, dup_name, keep_name=None, *, provenance):
                          f"(missing {missing}, decidedBy {provenance.get('decidedBy')!r}): a "
                          f"fold that cannot say why it happened is not written")
     assert_transferable(sess, dup_name)
+    assert_not_rejected(sess, canon_name, dup_name)
     prov = {"confidence": None, **provenance}
     if sess.run(MERGE_PAIR, canonName=canon_name, dupName=dup_name, **prov).single() is None:
         return None
@@ -685,6 +719,7 @@ def cmd_pairs(a):
             # checks the execute path would fail on reports a plan that cannot happen.
             for r in rows:
                 assert_transferable(s, r["dup"])
+                assert_not_rejected(s, r["canon"], r["dup"])
                 print(f"   would fold {r['dup']!r} -> {r['canon']!r}"
                       + (f", renaming survivor to {r['keepName']!r}" if r.get("keepName") else ""))
             return
