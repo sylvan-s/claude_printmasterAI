@@ -106,8 +106,9 @@
   "stratum": "weak/trap"
  },
  "g022": {
-  "label": "same",
-  "note": "",
+  "label": "unsure",
+  "note": "Reviewer: titles and subjects very similar, but different monograms; unsure.",
+  "previousLabel": "same",
   "stratum": "fuzzy/clean"
  },
  "g023": {
@@ -276,8 +277,9 @@
   "stratum": "strong/clean"
  },
  "g056": {
-  "label": "same",
+  "label": "different",
   "note": "",
+  "previousLabel": "same",
   "stratum": "fuzzy/clean"
  },
  "g057": {
@@ -306,8 +308,9 @@
   "stratum": "fuzzy/clean"
  },
  "g062": {
-  "label": "unsure",
-  "note": "",
+  "label": "same",
+  "note": "Per reviewer: a parsing error; both are Giacomo Manz\u00fa after the lot-grouping junk text.",
+  "previousLabel": "unsure",
   "stratum": "fuzzy/trap"
  },
  "g063": {

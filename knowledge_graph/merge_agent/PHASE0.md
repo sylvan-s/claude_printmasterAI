@@ -127,3 +127,26 @@ Thornley), g073 (Gould & Richter), g119 (Sayer & Bennett).
   misspelling of him. That one is your call.
 - g098 Augustus Pugin after Thomas Rowlandson vs Thomas Rowlandson is labelled
   `collaboration`; by the definitions it is `after`.
+
+### Reviewer decisions 2026-09-22; final gold labels
+
+- g022 Master AG / Master MR → `unsure`. The titles and subjects are very similar, but the
+  monograms differ.
+- g056 Jack Baker / John Barker → `different`.
+- g038 Samuel Alken / Samuel Henry Alken stays `same`.
+- g062, the Manzú lot-grouping pair → `same`. It is a parsing error; both nodes are Giacomo Manzú
+  after junk text. The two junk-named nodes should eventually fold into the real Giacomo Manzú
+  node through the malformed-names repair path. Logged, not done.
+- Not changed by the reviewer: rule-3 candidates g029, g112 and g113 stay `after`; g098 stays
+  `collaboration`.
+
+**Final:** 41 same, 67 different, 12 collaboration, 5 after, 25 unsure.
+
+**Haiku, re-scored on the final labels (LLM-1.0 run):**
+- Identity agreement: 103/104 = 99.0% (95% low 94.8%). The only stratum below 95% is
+  subset/clean (11/12; the miss is the Alkens).
+- Same-precision on pairs the person didn't leave unsure: 38/39 = 97.4% (low 86.8%). The single
+  false `same` is g112 Ghisi / Scultori, a confabulation.
+- Haiku said `same` on 6 pairs the person left unsure. All six rest on name form plus world
+  knowledge, and none can be checked against the page evidence. That is step 2 (verified
+  world-knowledge claims).
