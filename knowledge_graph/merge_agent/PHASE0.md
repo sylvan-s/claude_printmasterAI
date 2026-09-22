@@ -150,3 +150,46 @@ Thornley), g073 (Gould & Richter), g119 (Sayer & Bennett).
 - Haiku said `same` on 6 pairs the person left unsure. All six rest on name form plus world
   knowledge, and none can be checked against the page evidence. That is step 2 (verified
   world-knowledge claims).
+
+### Reviewer changes, then re-score (2026-09-22)
+- Changes: g029 and g112 → `different` (rule 3), g113 → `unsure` (Walton / Watson may be a
+  misspelling). **Final:** 41 same, 69 different, 12 collaboration, 2 after, 26 unsure.
+- LLM-1.0 run re-scored: identity 104/106 = 98.1%.
+- **Correction on g112.** ULAN 500008510 (Giovanni Battista Scultori) lists "Ghisi, Giovanni
+  Battista (Mantovano)" among his name forms. So Haiku's Ghisi = Scultori call was probably
+  *right*, not the confabulation it was called earlier. The reviewer set `different` on that
+  mistaken advice; the recommendation is now `unsure`, or `same`.
+
+## Step 2: world-knowledge `same` verified against ULAN (2026-09-22)
+
+**`ulan_verify.py`** checks a pair against the 1.1M ULAN name forms using exact matches only:
+token bag after folding, plus the repo's positional initials rule. The engraver side of "after"
+credits and lot-grouping junk are stripped first, and life dates come from the ULAN bio.
+- Verdicts: verified / conflict / ambiguous / unverified.
+- On the disputed pairs: Kuhnert, Driskell, Charles White, Wyndham Lewis, Samuel Henry Alken and
+  Manzú are verified. MacLean, Shagin and Ghisi / Scultori are unverified: the 3-word
+  "Giovanni B. Ghisi" does not match the 4-word ULAN form, and the rule stays strict.
+
+**LLM-1.2 prompt.** Haiku must state `basis` (record_evidence / world_knowledge). Re-run over all
+150 pairs, $0.22.
+
+| Policy for a Haiku `same` | kept & correct on firmly-labelled pairs | true merges sent to a person |
+|---|---|---|
+| raw | 38/39 (97.4%) | 0 |
+| **A: world_knowledge must be ULAN-verified** | **34/34 (100%, 95% low 89.8%)** | 4 |
+| B: every `same` ULAN-verified | 18/18 | 20 |
+| C: names equivalent, else ULAN-verified | 25/25 | 13 |
+
+**Recommendation: Policy A.** It removes the only false `same` (g112) at the cost of 4 true
+merges going to a person (Comte, Giorgio Ghisi, Burne-Jones, Armand Vallée ~ Drian).
+
+**The self-reported `basis` is noisy in both directions:**
+- It says world_knowledge for trivial accent/case pairs (Géricault).
+- It says record_evidence for name-form inferences (Driskell; Alex MacLean ~ Alex S. MacLean,
+  which is unverified).
+
+Policy C closes that gap at a cost of 13 merges to a person. Revisit it when Phase 1 has more
+data. Identity agreement under A is 98/99 (99.0%); the only miss is subset/clean (the Alkens).
+
+**Still not certifiable:** 34 pairs gives a 95% lower bound of 89.8%. Showing a lower bound of
+≥95% needs roughly 73 consecutive correct `same`s.

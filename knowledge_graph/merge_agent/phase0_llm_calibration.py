@@ -1,6 +1,6 @@
 """
 PrintMasterAI — merge-review agent, Phase 0: calibrate the LLM labeller against the gold set.
-Version: MERGE-AGENT-P0-LLM-1.1
+Version: MERGE-AGENT-P0-LLM-1.2
 
 The design doc's Phase 0 gate: the LLM may label a stratum for the agent only if it agrees with
 the human gold labels at >= 95% on that stratum. Haiku 4.5 is the candidate (13/14 of Opus on the
@@ -68,8 +68,14 @@ Alexander Milne Calder; check birth years.
 - "after X", "school of X", "workshop of X", "circle of X", "follower of X" vs X.
 - publisher, printer or sale-note strings recorded as if they were artists.
 - a common surname with different forenames.
-Missing dates or ULAN ids are not evidence either way. Use the ULAN bio when present. Your own \
-knowledge of well-known artists is allowed, but say when you rely on it.
+Missing dates or ULAN ids are not evidence either way. Use the ULAN bio when present.
+
+`basis` says what your label rests on:
+- record_evidence: the records themselves settle it (the same ULAN id, matching dates, the same \
+name once spacing/accents/order/honorifics are ignored, works credited to both).
+- world_knowledge: you rely on what you know about the artist beyond these records (e.g. that \
+"Percy Wyndham Lewis" is the full name of "Wyndham Lewis"). This is allowed, but a \
+world_knowledge `same` is checked against the Getty ULAN before it is used, so say so honestly.
 
 Keep the reason to one or two sentences."""
 
@@ -77,9 +83,10 @@ SCHEMA = {
     "type": "object",
     "properties": {
         "label": {"type": "string", "enum": LABELS},
+        "basis": {"type": "string", "enum": ["record_evidence", "world_knowledge"]},
         "reason": {"type": "string"},
     },
-    "required": ["label", "reason"],
+    "required": ["label", "basis", "reason"],
     "additionalProperties": False,
 }
 
@@ -136,33 +143,8 @@ def wilson_low(k, n, z=1.96):
     return (p + z * z / (2 * n) - z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / d
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
-    ap.add_argument("--labels", required=True, help="directory holding labels/<gNNN>.json")
-    ap.add_argument("--gold", default=os.path.join(HERE, "out", "gold_sample.json"))
-    ap.add_argument("--out", default=os.path.join(HERE, "out", "llm_calibration_haiku.json"))
-    ap.add_argument("--workers", type=int, default=8)
-    args = ap.parse_args()
-
-    gold = {p["id"]: p for p in json.load(open(args.gold))["pairs"]}
-    human = {}
-    for f in glob.glob(os.path.join(args.labels, "labels", "*.json")) or glob.glob(os.path.join(args.labels, "*.json")):
-        d = json.load(open(f))
-        human[os.path.basename(f)[:-5]] = d.get("data", d)
-    ids = sorted(set(gold) & set(human))
-    print(f"{len(ids)} labelled pairs; human: {dict(Counter(human[i]['label'] for i in ids))}")
-
-    client = anthropic.Anthropic()
-    with ThreadPoolExecutor(args.workers) as ex:
-        res = dict(zip(ids, ex.map(lambda i: ask(client, gold[i]), ids)))
-    tin = sum(r["usage"][0] for r in res.values())
-    tout = sum(r["usage"][1] for r in res.values())
-    cost = tin / 1e6 * 1.0 + tout / 1e6 * 5.0
-    print(f"Haiku: {dict(Counter(r['label'] for r in res.values()))}; "
-          f"{tin:,} in / {tout:,} out tokens, ${cost:.3f}; "
-          f"failed {sum(bool(r.get('failed')) for r in res.values())}, "
-          f"refused {sum(bool(r.get('refused')) for r in res.values())}")
-
+def score(ids, gold, human, res):
+    """Print the three agreement views; return (rows, per-stratum identity counts)."""
     # ---------------------------------------------------------------- identity pairs (same/different)
     by = defaultdict(lambda: Counter())
     rows = []
@@ -227,7 +209,81 @@ def main():
             print(f"   [{r['stratum']}] human {r['human']}, Haiku {r['haiku']}: {r['a'][:36]!r} ~ {r['b'][:36]!r}"
                   f"\n        {r['reason'][:160]}")
 
-    json.dump({"version": "MERGE-AGENT-P0-LLM-1.1", "model": MODEL, "cost": round(cost, 4),
+    return rows, by
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
+    ap.add_argument("--labels", help="directory holding labels/<gNNN>.json (a live run)")
+    ap.add_argument("--gold", default=os.path.join(HERE, "out", "gold_sample.json"))
+    ap.add_argument("--out", default=os.path.join(HERE, "out", "llm_calibration_haiku_v12.json"))
+    ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--score-only", help="re-score a saved run (its json) against --labels-json")
+    ap.add_argument("--labels-json", default=os.path.join(HERE, "out", "gold_labels.json"))
+    args = ap.parse_args()
+
+    gold = {p["id"]: p for p in json.load(open(args.gold))["pairs"]}
+    if args.score_only:
+        human = json.load(open(args.labels_json))
+        saved = json.load(open(args.score_only))
+        res = {r["id"]: {"label": r["haiku"], "reason": r["reason"]} for r in saved["rows"]}
+        ids = sorted(set(res) & set(human))
+        print(f"re-scoring {os.path.basename(args.score_only)} ({saved['version']}) against "
+              f"{os.path.basename(args.labels_json)}: {dict(Counter(human[i]['label'] for i in ids))}")
+        score(ids, gold, human, res)
+        return
+    if args.labels:                       # raw page export: labels/<gNNN>.json
+        human = {}
+        for f in glob.glob(os.path.join(args.labels, "labels", "*.json")) or \
+                glob.glob(os.path.join(args.labels, "*.json")):
+            d = json.load(open(f))
+            human[os.path.basename(f)[:-5]] = d.get("data", d)
+    else:                                 # the synced gold labels (id -> {label, stratum, ...})
+        human = json.load(open(args.labels_json))
+    ids = sorted(set(gold) & set(human))
+    print(f"{len(ids)} labelled pairs; human: {dict(Counter(human[i]['label'] for i in ids))}")
+
+    client = anthropic.Anthropic()
+    with ThreadPoolExecutor(args.workers) as ex:
+        res = dict(zip(ids, ex.map(lambda i: ask(client, gold[i]), ids)))
+    tin = sum(r["usage"][0] for r in res.values())
+    tout = sum(r["usage"][1] for r in res.values())
+    cost = tin / 1e6 * 1.0 + tout / 1e6 * 5.0
+    print(f"Haiku: {dict(Counter(r['label'] for r in res.values()))}; "
+          f"{tin:,} in / {tout:,} out tokens, ${cost:.3f}; "
+          f"failed {sum(bool(r.get('failed')) for r in res.values())}, "
+          f"refused {sum(bool(r.get('refused')) for r in res.values())}")
+
+    from ulan_verify import UlanIndex
+    ix = UlanIndex()
+    for i in ids:
+        if res[i]["label"] == "same":
+            res[i]["ulan"] = list(ix.verify(gold[i]["a"], gold[i]["b"]))
+    ws = [i for i in ids if res[i]["label"] == "same" and res[i].get("basis") == "world_knowledge"]
+    print(f"\nHaiku `same`: {sum(res[i]['label'] == 'same' for i in ids)}, of which world_knowledge "
+          f"{len(ws)}; ULAN verdicts on those: {dict(Counter(res[i]['ulan'][0] for i in ws))}")
+
+    def policy(verify_all):
+        out = {}
+        for i in ids:
+            r = dict(res[i])
+            if r["label"] == "same" and (verify_all or r.get("basis") == "world_knowledge") \
+                    and r["ulan"][0] != "verified":
+                r["label"] = "unsure"
+            out[i] = r
+        return out
+
+    print("\n==================== RAW (Haiku as answered)")
+    rows, by = score(ids, gold, human, res)
+    print("\n==================== POLICY A: a world_knowledge `same` must be ULAN-verified, else unsure")
+    score(ids, gold, human, policy(False))
+    print("\n==================== POLICY B: every `same` must be ULAN-verified, else unsure")
+    score(ids, gold, human, policy(True))
+    for r in rows:
+        r["basis"] = res[r["id"]].get("basis")
+        r["ulan"] = res[r["id"]].get("ulan")
+
+    json.dump({"version": "MERGE-AGENT-P0-LLM-1.2", "model": MODEL, "cost": round(cost, 4),
                "tokens": [tin, tout], "rows": rows,
                "identity": {k: dict(v) for k, v in by.items()}},
               open(args.out, "w"), indent=1)

@@ -142,8 +142,9 @@
   "stratum": "subset/trap"
  },
  "g029": {
-  "label": "after",
-  "note": "",
+  "label": "different",
+  "note": "Reviewer: two engravers after Parmigianino (rule 3).",
+  "previousLabel": "after",
   "stratum": "fuzzy/trap"
  },
  "g030": {
@@ -561,13 +562,15 @@
   "stratum": "weak/clean"
  },
  "g112": {
-  "label": "after",
-  "note": "",
+  "label": "different",
+  "note": "Reviewer: rule 3, set on the assistant's recommendation (later found questionable: ULAN lists Ghisi as a variant of G. B. Scultori).",
+  "previousLabel": "after",
   "stratum": "fuzzy/trap"
  },
  "g113": {
-  "label": "after",
-  "note": "",
+  "label": "unsure",
+  "note": "Reviewer: could be a spelling mistake (Walton / Watson).",
+  "previousLabel": "after",
   "stratum": "fuzzy/trap"
  },
  "g114": {
