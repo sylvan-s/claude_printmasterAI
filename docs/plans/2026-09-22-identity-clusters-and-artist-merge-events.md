@@ -1,6 +1,6 @@
 # Identity clusters (`POSSIBLE_SAME_AS`) and Artist `MergeEvent` — scope
 
-**Status:** scoped 2026-09-22. **A1 + A2 built 2026-09-22** (code only, no graph writes; see the schema doc, § 11.1). **A3 applied 2026-09-22**: 271 backfilled events from 18 snapshots (0 conflicts; 4 unresolved, Canaletto still split three ways). Merges with no snapshot (2026-09-06 case-dedup, 2026-09-05 manual, 2026-09-10 Roseberys 40) remain unrecorded. A4 and Part B are open. Every write step below
+**Status:** scoped 2026-09-22. **A1 + A2 built 2026-09-22** (code only, no graph writes; see the schema doc, § 11.1). **A3 applied 2026-09-22**: 271 backfilled events from 18 snapshots (0 conflicts; 4 unresolved, Canaletto still split three ways). Merges with no snapshot (2026-09-06 case-dedup, 2026-09-05 manual, 2026-09-10 Roseberys 40) remain unrecorded. **A4 applied 2026-09-22**: 26 merges via `merge_artists.py pairs` (`artist_reappeared_names_pairs_2026-09-22.csv`): 17 same-person pairs, Van Gogh (the 9-work node carried ULAN 500337743, his uncle the art dealer; folded into the 500115588 node), Canaletto 3 -> 1, and 6 Roseberys multi-work-lot wrapper nodes into Mr Brainwash / Connor Brothers / Richard Wentworth. Bearden born 1914 -> 1911 (ULAN) and Peri 1971 -> 1899 (after his death) with superseded values kept; 'Sandy Sykes' removed from Janet Elizabeth Turner's aliases (two people, one shared Met work). Re-appeared-name count now 0. Part B is open. Every write step below
 needs an explicit go-ahead.
 
 ## Why
