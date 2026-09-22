@@ -65,7 +65,7 @@ console.log("filterAndTier");
   const exact = filterAndTier([row({ title: "Owl II" })], { workTitle: "Owl" });
   eq("near-miss titles are NOT same_work — exact identity only", exact.rows[0].tier, "same_artist");
 
-  const cut = filterAndTier([row({ saleDate: "2025-01-01" }), row({ saleDate: "2025-06-01" })], { beforeDate: "2025-06-01" });
+  const cut = filterAndTier([row({ saleDate: "2025-01-01" }), row({ saleDate: "2025-06-01" })], { untilDate: "2025-06-01" });
   eq("backtest cut-off drops the sale date itself and later", [cut.rows.length, cut.droppedAfterCutoff], [1, 1]);
 
   const own = filterAndTier(

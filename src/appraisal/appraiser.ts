@@ -1424,6 +1424,11 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     /** True when the graph returned NO same-work sale for this lot, i.e. finding a comparable
      *  on the open web was the job. Drives the one in-loop nudge below; see it for why. */
     researchGap?: boolean,
+    /** The lot's own sale date. Artsy results on or after it are dropped, so a backtest lot is
+     *  never shown its own outcome — or a later resale — from a house the ACKG does not hold.
+     *  Same cut-off, same strict "<", as the attributed-lot path's Stage 3 comps and work
+     *  facts (untilDate). NOTE: query_ackg_comparables in this loop does not apply it yet. */
+    untilDate?: string | null,
   ): Promise<any> {
     const compatBaseUrl = anthropicCompatBaseUrl(modelName);
     const apiKey = compatBaseUrl
@@ -1646,6 +1651,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
               workTitle: b.input?.workTitle ?? null,
               excludeHouse: excludeRef?.house ?? null,
               excludeLotNumber: excludeRef?.lotNumber ?? null,
+              untilDate: untilDate ?? null,
             });
             artsySameWork += r.sameWork;
             console.log(`[4-Stage] Stage 2b query_artsy_results "${asked}": ${r.logLine}`);
@@ -3249,6 +3255,8 @@ INSTRUCTION: Weigh this as evidence for your candidate shortlist and evidenceCor
     /** True when the graph holds no same-work sale for this lot. Forwarded to the search loop,
      *  which uses it to nudge a silent cheap model once before the gate escalates the stage. */
     researchGap?: boolean,
+    /** The lot's sale date, forwarded to the Artsy tool's cut-off (callClaudeWithWebSearch). */
+    untilDate?: string | null,
   ): Promise<AttributionResearchResult> {
     const specialistConfigKey = triage.routingDecision?.specialistConfig || "general_print_fallback";
     const specialistConfig = loadSpecialistConfig(specialistConfigKey);
@@ -3296,7 +3304,7 @@ INSTRUCTION: Treat the above as a starting hypothesis. Cross-reference against V
 
     console.log(`[4-Stage] Stage 2b model: "${stage2bModel}", isClaude=${isClaude(stage2bModel)}`);
     const result: AttributionResearchResult = isClaude(stage2bModel) || anthropicCompatBaseUrl(stage2bModel)
-      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing, triage.artistAttribution?.artistIdentity ?? null, excludeRef ?? refFromExcludedListing(testingExcludeSourceListing), researchGap)
+      ? await this.callClaudeWithWebSearch(stage2bModel, asaSystemPrompt, userText, 8192, testingExcludeSourceListing, triage.artistAttribution?.artistIdentity ?? null, excludeRef ?? refFromExcludedListing(testingExcludeSourceListing), researchGap, untilDate)
       : await this.callGemini(ai, stage2bModel, asaSystemPrompt, [{ text: userText }], SPECIALIST_ATTRIBUTION_SCHEMA, this.config.temperature || 0.15, true);
     await this.persistCatalogueRaisonneFinding(result);
     // Phase 0 of the comps write-back is a measurement, not a feature: nothing is written,
@@ -4226,6 +4234,8 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
         // A production attributed lot has a listing too; the guard is not a testing feature.
         excludeRef,
         researchGap,
+        // Same cut-off the ACKG comps and work facts on this path already use.
+        claim.saleDate ?? null,
       );
       // Gated Stage 2b: the cheap model first, redone on the stronger one when what came back
       // cannot be checked — or when nothing came back at all. See stage2b_gate.ts for what

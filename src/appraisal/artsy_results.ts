@@ -149,13 +149,13 @@ export function titleKey(raw: string): string {
 export interface FilterOptions {
   /** Title of the work under appraisal, for the same_work tier. Low-information titles are ignored. */
   workTitle?: string | null;
-  /** The lot's own listing: its house and lot number. A row matching both on the same sale
-   *  date as `ownSaleDate` is the lot itself and is dropped. */
+  /** The lot's own listing: its house and lot number. A row matching both is treated as the
+   *  lot itself and dropped (no sale code on Artsy rows to be more precise with). */
   excludeHouse?: string | null;
   excludeLotNumber?: string | number | null;
   /** Backtest cut-off: drop rows sold on or after this ISO date, so a pool lot never sees its
    *  own outcome or anything later. */
-  beforeDate?: string | null;
+  untilDate?: string | null;
 }
 
 export interface FilterOutcome {
@@ -189,7 +189,7 @@ export function filterAndTier(raw: ArtsyResultRow[], opts: FilterOptions = {}): 
     seen.add(dupKey); seen.add(`id:${r.id}`);
 
     if (isAckgHouse(r.organization)) { out.droppedAckgHouse++; continue; }
-    if (opts.beforeDate && r.saleDate && r.saleDate >= opts.beforeDate.slice(0, 10)) { out.droppedAfterCutoff++; continue; }
+    if (opts.untilDate && r.saleDate && r.saleDate >= opts.untilDate.slice(0, 10)) { out.droppedAfterCutoff++; continue; }
     if (opts.excludeHouse && excludeLot && r.lotNumber?.trim().toLowerCase() === excludeLot &&
         houseKeyTokens(opts.excludeHouse).every((t) => houseKeyTokens(r.organization ?? "").includes(t))) {
       out.droppedOwnLot++; continue;
@@ -301,7 +301,7 @@ export interface ArtsyToolInput {
   workTitle?: string | null;
   excludeHouse?: string | null;
   excludeLotNumber?: string | number | null;
-  beforeDate?: string | null;
+  untilDate?: string | null;
 }
 
 export interface ArtsyToolOutcome {
