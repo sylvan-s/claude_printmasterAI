@@ -193,3 +193,15 @@ data. Identity agreement under A is 98/99 (99.0%); the only miss is subset/clean
 
 **Still not certifiable:** 34 pairs gives a 95% lower bound of 89.8%. Showing a lower bound of
 ≥95% needs roughly 73 consecutive correct `same`s.
+
+### ULAN-sourced gold labels (2026-09-22)
+On the reviewer's instruction, four pairs previously `unsure` were relabelled `same` with
+`labelSource: "ulan"`: g012 Kuhnert (500030818), g020 Driskell (500077890), g118 Charles White
+(500115749) and g137 Wyndham Lewis (500025826). **Final:** 45 same, 69 different, 12
+collaboration, 2 after, 22 unsure.
+
+- Policy A on the final labels: 38/38 correct `same` on firmly labelled pairs (95% low 90.8%),
+  with 4 true merges sent to a person.
+- **Report the independent figure.** These four labels come from the same ULAN check the
+  verifier uses. So quote Policy A **excluding** `labelSource: "ulan"` pairs: 34/34 (low 89.8%).
+  Any future ULAN-sourced label gets the same treatment.

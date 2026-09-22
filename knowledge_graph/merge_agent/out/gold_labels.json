@@ -56,8 +56,10 @@
   "stratum": "weak/clean"
  },
  "g012": {
-  "label": "unsure",
-  "note": "",
+  "label": "same",
+  "labelSource": "ulan",
+  "note": "Relabelled 2026-09-22 on ULAN evidence: 500030818 Kuhnert, Wilhelm (1865-1926) carries both name forms.",
+  "previousLabel": "unsure",
   "stratum": "subset/clean"
  },
  "g013": {
@@ -96,8 +98,10 @@
   "stratum": "weak/clean"
  },
  "g020": {
-  "label": "unsure",
-  "note": "",
+  "label": "same",
+  "labelSource": "ulan",
+  "note": "Relabelled 2026-09-22 on ULAN evidence: 500077890 Driskell, David C. (1931-2020) carries both name forms.",
+  "previousLabel": "unsure",
   "stratum": "subset/clean"
  },
  "g021": {
@@ -594,8 +598,10 @@
   "stratum": "strong/clean"
  },
  "g118": {
-  "label": "unsure",
-  "note": "",
+  "label": "same",
+  "labelSource": "ulan",
+  "note": "Relabelled 2026-09-22 on ULAN evidence: 500115749 White, Charles (1918-1979) carries both name forms.",
+  "previousLabel": "unsure",
   "stratum": "subset/clean"
  },
  "g119": {
@@ -690,8 +696,10 @@
   "stratum": "fuzzy/clean"
  },
  "g137": {
-  "label": "unsure",
-  "note": "",
+  "label": "same",
+  "labelSource": "ulan",
+  "note": "Relabelled 2026-09-22 on ULAN evidence: 500025826 Lewis, Wyndham (1882-1957) carries both name forms.",
+  "previousLabel": "unsure",
   "stratum": "subset/clean"
  },
  "g138": {
