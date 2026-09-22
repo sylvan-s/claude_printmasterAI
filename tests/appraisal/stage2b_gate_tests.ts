@@ -97,6 +97,21 @@ console.log("a URL must be able to show the sale (CITATION-URL-1.0)");
   ]) ok(`a result page: ${u}`, isSpecificResultUrl(u));
 }
 
+console.log("a weak or contradicting attribution needs a search behind it");
+{
+  const concl = (level: string, artist: string | null) => ({ auctionComps: [], attributionConclusion: { attributionLevel: level, attributedArtist: artist } });
+  const sum = { searches: 0, graphSameWorkComps: 0, compsRequired: false, claimedArtist: "Damien Hirst" };
+  // Verbatim shape from the first summary-mode run, lot 244.
+  eq("0 searches + 'unattributed': escalates (lot 244)", assessStage2bResearch(concl("unattributed", null), sum).reasons, ["weak_attribution_without_search"]);
+  eq("0 searches + 'possible': escalates", assessStage2bResearch(concl("possible", "Damien Hirst"), sum).reasons, ["weak_attribution_without_search"]);
+  eq("0 searches + a different artist: escalates", assessStage2bResearch(concl("probable", "Rachel Howard"), sum).reasons, ["weak_attribution_without_search"]);
+  ok("0 searches + 'probable' for the catalogue's artist: passes", !assessStage2bResearch(concl("probable", "Damien Hirst"), sum).escalate);
+  ok("honorifics and accents do not count as a contradiction",
+    !assessStage2bResearch(concl("definitive", "Eduardo Paolozzi"), { ...sum, claimedArtist: "Sir Eduardo Luigi Paolozzi" }).escalate &&
+    !assessStage2bResearch(concl("definitive", "Joan Miro"), { ...sum, claimedArtist: "Joan Miró" }).escalate);
+  ok("a weak level WITH a search behind it is a finding, not a failure", !assessStage2bResearch(concl("unattributed", null), { ...sum, searches: 2 }).escalate);
+}
+
 console.log("passes clean research");
 {
   // The Sonnet arm on the same lots: every comp cited.

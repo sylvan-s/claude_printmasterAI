@@ -4323,6 +4323,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
               graphSameWorkComps: comps?.summary.tierCounts.same_work ?? 0,
               artsySameWorkComps: artsyUsage().sameWork,
               compsRequired: compsPlan?.mode !== "summary",
+              claimedArtist: claim.artist ?? null,
             });
         stage2bGate = { ...gate, firstModel: stage2bModel, escalatedTo: gate.escalate ? escalationModel : null };
         if (gate.escalate) {
