@@ -21,8 +21,10 @@ import {
   mergeDuplicateWorkRows,
   observedDimsFromClaim,
   breakTitleTieOnDimensions,
+  catalogueDimForComparison,
   TITLE_TIE_BAND,
 } from "../../src/appraisal/stage2a_query_plan";
+import { classifyImpression } from "../../src/appraisal/two_pass_attribution";
 import type { VisualExtractionResult, AppraiserInputResult } from "../../src/types";
 import type { AckgWorkMatch } from "../../src/appraisal/knowledge_graph/types";
 
@@ -414,6 +416,70 @@ test("the closest fitting sibling wins, not merely the first", () => {
     OBJ, tr,
   );
   assert.equal(out[0].workTitle, "VII");
+});
+
+// ── catalogued measurement chosen for the tree ───────────────────────────────
+console.log("\nCatalogued dimension for comparison (slot kinds are only as good as the ingest)");
+// A0793/308, Picasso "La Ronde de la Jeunesse" (Bloch 1114), lot sheet 64.5 x 49.5 cm. These are
+// the sheet-slot values the merged work actually carries in the graph (2026-09-22): six Swann
+// records state the IMAGE ("445x450 mm; 17x18 inches, full margins") and were ingested as sheet;
+// Bonhams 25381/143 states the sheet with (SH); Bonhams 28213/80 stored its image and dropped
+// the sheet it also states.
+const RONDE_SHEET_SLOT = [
+  { w: 445, h: 450 }, { w: 533, h: 467 }, { w: 648, h: 497 }, { w: 642, h: 494 },
+  { w: 483, h: 458 }, { w: 501.7, h: 450.9 }, { w: 647.7, h: 498.5 },
+];
+const RONDE_OBS = { kind: "sheet" as const, mm: { width: 645, height: 495 }, basis: "test" };
+const rondeImpression = (catalogueSheetMm: { width: number; height: number }) =>
+  classifyImpression({
+    observedTechniques: ["lithograph"],
+    observedTechniqueSource: "appraiser",
+    observedIsPhotomechanical: false,
+    catalogueTechniques: ["Lithograph"],
+    dimensions: {
+      observedSource: "appraiser",
+      workIsIntaglio: false,
+      observedSheetMm: { w: 645, h: 495 },
+      catalogueSheetMm: catalogueSheetMm.width ? { w: catalogueSheetMm.width, h: catalogueSheetMm.height } : null,
+    },
+  });
+
+test("A0793/308 regression: the old pick (the Swann image in the sheet slot) reads as later_edition", () => {
+  // Documents the failure this guards against — the tree itself is not what was wrong.
+  assert.equal(rondeImpression({ width: 445, height: 450 }).divergence, "later_edition");
+});
+test("A0793/308 regression: a same-work record measuring the same sheet is chosen, and the divergence clears", () => {
+  const tr: string[] = [];
+  const cat = catalogueDimForComparison(RONDE_SHEET_SLOT, "sheet", RONDE_OBS, tr);
+  assert.deepEqual(cat, { width: 648, height: 497 });
+  assert.ok(tr.some((t) => /matches the object/.test(t)));
+  const imp = rondeImpression(cat);
+  assert.equal(imp.divergence, "none");
+  assert.equal(imp.dimensionMatch, "true");
+});
+test("a mixed slot with no matching record is not assessed, never a contradiction", () => {
+  const tr: string[] = [];
+  const obs = { kind: "sheet" as const, mm: { width: 760, height: 560 }, basis: "test" };
+  const cat = catalogueDimForComparison(RONDE_SHEET_SLOT, "sheet", obs, tr);
+  assert.deepEqual(cat, { width: 0, height: 0 });
+  assert.ok(tr.some((t) => /disagree among themselves/.test(t)));
+  assert.equal(rondeImpression(cat).dimensionMatch, "UNASSESSABLE");
+});
+test("records that agree among themselves still contradict an object that measures differently", () => {
+  const tr: string[] = [];
+  const obs = { kind: "sheet" as const, mm: { width: 400, height: 300 }, basis: "test" };
+  const cat = catalogueDimForComparison([{ w: 560, h: 760 }, { w: 565, h: 765 }, { w: 560, h: 760 }], "sheet", obs, tr);
+  assert.deepEqual(cat, { width: 560, height: 760 });
+  assert.equal(tr.length, 0);
+});
+test("a slot of a kind the object was not measured on: consensus passes through, a mixed slot is withheld", () => {
+  const imgObs = { kind: "image" as const, mm: { width: 445, height: 450 }, basis: "test" };
+  assert.deepEqual(catalogueDimForComparison([{ w: 648, h: 497 }, { w: 642, h: 494 }], "sheet", imgObs, []), { width: 648, height: 497 });
+  assert.deepEqual(catalogueDimForComparison(RONDE_SHEET_SLOT, "sheet", imgObs, []), { width: 0, height: 0 });
+  assert.deepEqual(catalogueDimForComparison([], "plate", imgObs, []), { width: 0, height: 0 });
+});
+test("a single catalogued value is returned as it is, matching or not", () => {
+  assert.deepEqual(catalogueDimForComparison([{ w: 445, h: 450 }], "sheet", RONDE_OBS, []), { width: 445, height: 450 });
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
