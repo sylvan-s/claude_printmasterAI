@@ -110,7 +110,7 @@ from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
 from resolve_artist_identity import strip_honorifics
-from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, sanitize_id_part, resolve_merged_work_cypher
+from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, sanitize_id_part, resolve_merged_work_cypher, splice_artist_resolver
 from bonhams_parsing import (
     normalize_all_caps_name, detect_signed, extract_edition_size,
     extract_printer_publisher, extract_dimensions,
@@ -274,7 +274,7 @@ def map_record(record):
 LOAD_QUERY = """
 UNWIND $rows AS row
 
-MERGE (artist:Artist {name: row.artistName})
+MERGE (artist:Artist {name: RESOLVED_ARTIST_NAME(row.artistName)})
 SET artist.dateBorn_year = coalesce(row.artistBeginYear, artist.dateBorn_year),
     artist.dateBorn_precision = CASE WHEN row.artistBeginYear IS NOT NULL THEN "exact" ELSE artist.dateBorn_precision END,
     artist.dateDied_year = coalesce(row.artistEndYear, artist.dateDied_year),
@@ -365,6 +365,7 @@ FOREACH (_ IN CASE WHEN ref IS NOT NULL THEN [1] ELSE [] END |
   MERGE (ce)-[:DOCUMENTS]->(cw)
 )
 """
+LOAD_QUERY = splice_artist_resolver(LOAD_QUERY)
 
 
 def _write_chunk_with_retry(rows, retries=4, backoff_seconds=5.0):

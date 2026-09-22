@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Artist-node merging: the primitive, and the two passes that drive it.
-Version: ARTIST-MERGE-3.1
+Version: ARTIST-MERGE-3.2
 
 One file, three sections, two subcommands. Folded together from `artist_merge.py`,
 `canonicalise_ulan_and_merge.py` and `merge_artist_band_b.py`: only ever two callers shared
@@ -27,6 +27,26 @@ refuses to delete a node carrying a sixth rather than trusting the list to stay 
 That guard runs in Python because THIS INSTANCE HAS NO APOC: `apoc.util.validate`, the
 obvious way to assert it inside the write query, fails with Unknown function on the Oracle
 Cloud self-hosted CE.
+
+EVERY FOLD WRITES A `MergeEvent` (ARTIST-MERGE-3.2, 2026-09-22). Until then an Artist merge
+left no trace in the graph, which mattered for more than audit: every ingest keys on
+`MERGE (a:Artist {name: ...})`, so a merged-away name arriving in the next load was recreated
+as a fresh node and the merge was silently undone — the Artist twin of the ConceptualWork
+defect `check_merges_not_undone.py` was written for. The event is what the ingest-side
+resolver (`catalogue_matching.resolved_artist_name_cypher`) looks up. `alternateNames` cannot
+do that job: ingests also append raw display names to it, so an absorbed name and a mere
+display variant are indistinguishable there.
+
+Artist has NO STABLE ID — its key is `name`, which a keepName rename or a name repair changes —
+so `mergedFromId` holds the absorbed node's NAME, the survivor is reached by the MERGED_INTO
+edge and never by the event's `id`, and a keepName rename writes a second event
+(`rule: survivorRenamed`) so the survivor's old name resolves too. `mergedFromId` is shared
+with the ConceptualWork events on purpose: it already carries the index the resolver needs,
+and every lookup names the target label, so the two id spaces cannot answer for each other.
+
+`merge_pair` REQUIRES a `provenance` — rule, ruleVersion, decidedBy, evidence — so a caller
+cannot fold two artists without saying why. The event is written before the DETACH DELETE and
+in the same statement: a fold either leaves a record of itself or does not happen.
 
 =============================================================================
 SECTION 2 — `ulan-canon`: give Artist.ulanUrl one shape, merge what two shapes hid
@@ -142,7 +162,7 @@ def stamp(now):
 # unlike every other type here, and (confirmed live) can appear on either side, so both
 # directions are transferred below.
 HANDLED_TYPES = {"CREATED", "MADE_MATRIX", "FROM_REGION", "ATTRIBUTED_TO", "CATALOGUES",
-                  "PRICE_NEIGHBOUR"}
+                  "PRICE_NEIGHBOUR", "MERGED_INTO"}
 
 MERGE_PAIR = """
 MATCH (canon:Artist {name: $canonName})
@@ -216,9 +236,62 @@ SET canon.dateBorn_year   = coalesce(canon.dateBorn_year,   dup.dateBorn_year),
     canon.ulanUrl         = coalesce(canon.ulanUrl,         dup.ulanUrl),
     canon.wikidataUrl     = coalesce(canon.wikidataUrl,     dup.wikidataUrl)
 WITH canon, dup
+// A SURVIVOR CAN ITSELF BE FOLDED LATER, and DETACH DELETE takes the inbound MERGED_INTO edges
+// with it, orphaning every earlier event and breaking the resolver for exactly the names most
+// likely to come back. Carry them forward, as merge_duplicate_work_clusters.py does for works.
+// `id` is NOT rewritten; `repointedFrom` records the hop.
+CALL {
+    WITH canon, dup
+    OPTIONAL MATCH (prior:MergeEvent)-[:MERGED_INTO]->(dup)
+    FOREACH (x IN CASE WHEN prior IS NULL THEN [] ELSE [prior] END |
+        MERGE (x)-[:MERGED_INTO]->(canon)
+        SET x.repointedFrom = coalesce(x.repointedFrom, []) + dup.name)
+}
+WITH canon, dup
+CREATE (ev:MergeEvent {id: canon.name + ' <- ' + dup.name})
+SET ev.subject             = 'Artist',
+    ev.mergedFromId        = dup.name,
+    ev.mergedFromName      = dup.name,
+    ev.mergedFromUlan      = dup.ulanUrl,
+    ev.mergedFromWikidata  = dup.wikidataUrl,
+    ev.mergedFromBorn      = dup.dateBorn_year,
+    ev.mergedFromDied      = dup.dateDied_year,
+    ev.survivorNameAtMerge = canon.name,
+    ev.rule                = $rule,
+    ev.ruleVersion         = $ruleVersion,
+    ev.decidedBy           = $decidedBy,
+    ev.evidence            = $evidence,
+    ev.confidence          = $confidence,
+    ev.at                  = datetime()
+CREATE (ev)-[:MERGED_INTO]->(canon)
+WITH canon, dup
 DETACH DELETE dup
 RETURN canon.name AS survivor
 """
+
+# The survivor's OLD name is as likely to come back from a source as the absorbed one — it was a
+# live name until a moment ago — so a keepName rename records it as resolving to the same node.
+# It is a MergeEvent rather than a new label because it answers the same question with the same
+# lookup ("where does this name live now?"); `rule` says no node was deleted.
+RENAME_EVENT = """
+MATCH (a:Artist {name: $to})
+CREATE (ev:MergeEvent {id: $to + ' <- ' + $from})
+SET ev.subject = 'Artist', ev.mergedFromId = $from, ev.mergedFromName = $from,
+    ev.survivorNameAtMerge = $from, ev.rule = 'survivorRenamed', ev.ruleVersion = $ruleVersion,
+    ev.decidedBy = $decidedBy, ev.evidence = $evidence, ev.at = datetime()
+CREATE (ev)-[:MERGED_INTO]->(a)
+"""
+
+PROVENANCE_KEYS = ("rule", "ruleVersion", "decidedBy", "evidence")
+DECIDERS = {"rule", "model", "human"}
+VERSION = "ARTIST-MERGE-3.2"
+
+
+def provenance(rule, decided_by, evidence, rule_version=VERSION, confidence=None):
+    """The record every fold must carry. `rule_version` defaults to this file's, which is right
+    for the passes defined here; a caller elsewhere passes its own."""
+    return {"rule": rule, "ruleVersion": rule_version, "decidedBy": decided_by,
+            "evidence": evidence, "confidence": confidence}
 
 RENAME = "MATCH (a:Artist {name: $from}) SET a.name = $to RETURN a.name AS name"
 
@@ -266,7 +339,7 @@ def assert_transferable(sess, dup_name):
             f"{carrying}. Copy them in MERGE_PAIR before rerunning.")
 
 
-def merge_pair(sess, canon_name, dup_name, keep_name=None):
+def merge_pair(sess, canon_name, dup_name, keep_name=None, *, provenance):
     """Fold `dup_name` into `canon_name`, optionally renaming the survivor afterwards.
     Returns the survivor's name, or **None if the merge did not happen**.
 
@@ -280,11 +353,21 @@ def merge_pair(sess, canon_name, dup_name, keep_name=None):
 
     The rename is a separate statement and must follow the delete, or it collides with the
     `artist_name` uniqueness constraint when the wanted name is the one being absorbed."""
+    missing = [k for k in PROVENANCE_KEYS if not provenance.get(k)]
+    if missing or provenance["decidedBy"] not in DECIDERS:
+        raise ValueError(f"merge of {dup_name!r} into {canon_name!r} has no usable provenance "
+                         f"(missing {missing}, decidedBy {provenance.get('decidedBy')!r}): a "
+                         f"fold that cannot say why it happened is not written")
     assert_transferable(sess, dup_name)
-    if sess.run(MERGE_PAIR, canonName=canon_name, dupName=dup_name).single() is None:
+    prov = {"confidence": None, **provenance}
+    if sess.run(MERGE_PAIR, canonName=canon_name, dupName=dup_name, **prov).single() is None:
         return None
     if keep_name and keep_name != canon_name:
         sess.run(RENAME, **{"from": canon_name, "to": keep_name}).consume()
+        sess.run(RENAME_EVENT, **{"from": canon_name, "to": keep_name},
+                 ruleVersion=prov["ruleVersion"], decidedBy=prov["decidedBy"],
+                 evidence=f"survivor renamed to {keep_name!r} when {dup_name!r} was folded "
+                          f"into it ({prov['rule']})").consume()
     return keep_name or canon_name
 
 
@@ -376,7 +459,9 @@ def cmd_ulan_canon(a):
             print(f"         ulan {m['uid']}: keep '{m['canon']}' (w{wc})"
                   f"  <- absorb '{m['dup']}' (w{wd}){rn}")
             if 2 in phases and a.execute:
-                merge_pair(s, m["canon"], m["dup"], m["keepName"])
+                merge_pair(s, m["canon"], m["dup"], m["keepName"], provenance=provenance(
+                    "ulanCanonical", "rule",
+                    f"same ULAN id {m['uid']} held under two URL forms (/ulan/ and /page/ulan/)"))
 
         if 3 in phases:
             rest = ([dict(r) for r in s.run(SAFE_TO_CANON, prefix=CANON_PREFIX)]
@@ -417,6 +502,10 @@ EXACT = {"exact_norm", "same_token_bag"}
 # One or two characters different over a long name — NOT token containment, which is the
 # class the Calder trap belongs to and which keeps its DINOv2 gate unconditionally.
 TYPO_LEVELS = {"edit2", "jw094"}
+
+# MergeEvent.rule per merging tier. Keyed on the tier's leading code ("B3b" before "B3").
+BAND_B_RULES = {"B1": "nameNormalised", "B2": "nameNormalisedDateDispute",
+                "B3": "nameFuzzyImageCorroborated", "B3b": "nameTypoDatesAgree"}
 
 
 def name_level(a, b):
@@ -520,7 +609,12 @@ def cmd_band_b(a):
                 print(line)
                 continue
             try:
-                if merge_pair(s, canon, dup, keep) is None:
+                prov = provenance(
+                    BAND_B_RULES[r.tier[:3].strip()], "rule",
+                    f"splink band B, {r.tier}; name level {r.level}; "
+                    f"match weight {r.match_weight:.2f}"
+                    + ("" if pd.isna(r.dino_max) else f"; DINOv2 max {r.dino_max:.3f}"))
+                if merge_pair(s, canon, dup, keep, provenance=prov) is None:
                     # One side was consumed by an earlier pair in this same run — a cluster,
                     # not a failure. Re-run the pipeline; it will reappear as a new pair.
                     skipped.append((canon, dup))
@@ -600,7 +694,11 @@ def cmd_pairs(a):
         print(f"pre-snapshot -> {path}\n")
         merged = unmatched = 0
         for r in rows:
-            got = merge_pair(s, r["canon"], r["dup"], r.get("keepName") or None)
+            got = merge_pair(s, r["canon"], r["dup"], r.get("keepName") or None,
+                             provenance=provenance(
+                                 r.get("rule") or a.rule, "human",
+                                 r.get("evidence") or r.get("note")
+                                 or f"reviewed pair from {os.path.basename(a.pairs)}"))
             if got is None:
                 unmatched += 1
                 print(f"   no-op: {r['dup']!r} -> {r['canon']!r} (a side was already absorbed)")
@@ -629,7 +727,10 @@ def main():
             p.add_argument("--phase", type=int, choices=[1, 2, 3], action="append")
         elif name == "pairs":
             p.add_argument("--pairs", required=True,
-                           help="CSV with canon,dup[,keepName] — reviewed by a person")
+                           help="CSV with canon,dup[,keepName,rule,evidence] — reviewed by a person")
+            p.add_argument("--rule", default="humanPairs",
+                           help="MergeEvent.rule for rows with no `rule` column "
+                                "(e.g. aliasShadowing)")
         else:
             p.add_argument("--triage", required=True)
             p.add_argument("--records", required=True)

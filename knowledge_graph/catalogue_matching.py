@@ -229,3 +229,40 @@ FOREACH (_ IN CASE WHEN survivor IS NULL THEN [1] ELSE [] END |
          MERGE (:ConceptualWork {{id: {candidate}}}))
 WITH {keep}, coalesce(survivor.id, {candidate}) AS resolvedWorkId
 MATCH (cw:ConceptualWork {{id: resolvedWorkId}})"""
+
+
+def resolved_artist_name_cypher(name_expr):
+    """A Cypher EXPRESSION for the name of the Artist that `name_expr` belongs to NOW: the
+    survivor's current name if a MergeEvent records that name as folded away, else `name_expr`.
+
+    The Artist twin of `resolve_merged_work_cypher`, for the same defect. Every ingest keys on
+    `MERGE (a:Artist {name: ...})`, and an artist merge DETACH DELETEs the absorbed node, so the
+    next load carrying "Romare Howard Bearden" recreated the node merged into "Romare Bearden".
+    On 2026-09-22, 22 live Artists carried a name that another live Artist lists as an alias.
+
+    Exact lookup of a recorded decision, not similarity matching. `mergedFromId` holds the
+    absorbed NAME for Artist events (Artist has no stable id; see merge_artists.py), which puts
+    the lookup on the index the work resolver already depends on, and the pattern names
+    `:Artist` so a ConceptualWork event can never answer. The survivor is read through the
+    MERGED_INTO edge, so a later rename of it is followed for free, and merge_artists.merge_pair
+    re-points chained events onto the final survivor.
+
+    An expression rather than a clause, so it drops into a MERGE's property map anywhere,
+    including inside FOREACH, where bm_ingest's producer loop needs it and a WITH is illegal.
+    Row-preserving: no aggregation, so identical rows in a batch are not collapsed. Measured
+    2026-09-22: 5,000 lookups in 0.34 s, one db hit each (index seek, not a scan)."""
+    return (f"coalesce(head([(mergeEv_:MergeEvent {{mergedFromId: {name_expr}}})"
+            f"-[:MERGED_INTO]->(mergeSurvivor_:Artist) | mergeSurvivor_.name]), {name_expr})")
+
+
+# Ingest queries are plain strings full of Cypher braces, so they say where the resolver goes
+# with this marker instead of being rewritten as f-strings. check_merges_not_undone.py fails any
+# Artist MERGE keyed on name that does not use it.
+_ARTIST_NAME_MARKER = re.compile(r"RESOLVED_ARTIST_NAME\(([^()]+)\)")
+
+
+def splice_artist_resolver(query):
+    """Replace every `RESOLVED_ARTIST_NAME(<expr>)` in `query` with the resolver expression."""
+    out = _ARTIST_NAME_MARKER.sub(lambda m: resolved_artist_name_cypher(m.group(1).strip()), query)
+    assert "RESOLVED_ARTIST_NAME" not in out, "unspliced artist-name marker"
+    return out

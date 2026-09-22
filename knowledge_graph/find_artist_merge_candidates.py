@@ -1,7 +1,7 @@
 """
 PrintMasterAI — Artist-node merge-candidate detection: token-subset name matching,
 corroborated by DINOv2 image-embedding cross-similarity
-Version: ARTIST-MERGE-CANDIDATES-1.0
+Version: ARTIST-MERGE-CANDIDATES-1.1
 
 Complements the exact-normalization checks already run in this graph's history
 (honorific-stripping, ALL-CAPS case-folding) with a genuinely different, complementary
@@ -228,32 +228,10 @@ OPTIONAL MATCH (a)-[:CREATED]->(cw)
 RETURN a.name AS name, a.ulanUrl AS ulan, a.wikidataUrl AS wikidata, count(DISTINCT cw) AS works
 """
 
-MERGE_QUERY = """
-MATCH (dup:Artist {name: $dupName})
-MATCH (canon:Artist {name: $canonName})
-WITH canon, dup, coalesce(canon.alternateNames,[]) + coalesce(dup.alternateNames,[]) + [dup.name, canon.name] AS combined
-UNWIND combined AS x
-WITH canon, dup, collect(DISTINCT x) AS deduped
-SET canon.alternateNames = deduped
-WITH canon, dup
-OPTIONAL MATCH (dup)-[:CREATED]->(cw2:ConceptualWork)
-FOREACH (x IN CASE WHEN cw2 IS NULL THEN [] ELSE [cw2] END | MERGE (canon)-[:CREATED]->(x))
-WITH canon, dup
-OPTIONAL MATCH (dup)-[:FROM_REGION]->(reg:Region)
-FOREACH (x IN CASE WHEN reg IS NULL THEN [] ELSE [reg] END | MERGE (canon)-[:FROM_REGION]->(x))
-WITH canon, dup
-OPTIONAL MATCH (src:SourceRecord)-[:ATTRIBUTED_TO]->(dup)
-FOREACH (x IN CASE WHEN src IS NULL THEN [] ELSE [src] END | MERGE (x)-[:ATTRIBUTED_TO]->(canon))
-WITH dup
-DETACH DELETE dup
-"""
-
-
-RENAME_QUERY = """
-MATCH (a:Artist {name: $fromName})
-SET a.name = $toName
-RETURN a.name AS name
-"""
+# The merge itself is `merge_artists.merge_pair` (ARTIST-MERGE-3.2). This file's own
+# MERGE_QUERY was retired 2026-09-22: it moved only CREATED, FROM_REGION and ATTRIBUTED_TO, so
+# a fold silently dropped MADE_MATRIX, CATALOGUES, PRICE_NEIGHBOUR and ATTRIBUTED_TO.qualifier,
+# and it wrote no MergeEvent, so the ingests' merged-name resolver could not see what it did.
 
 
 def normalize(name):
@@ -709,8 +687,14 @@ def run_merge(session, threshold, dry_run=False, only_rules=None, exclude_names=
         if dry_run:
             print(f"[DRY RUN] merge {label}")
         else:
-            counters = session.run(MERGE_QUERY, dupName=dup, canonName=canon).consume().counters
-            if not counters.nodes_deleted:
+            # Imported here, not at the top: merge_artists imports pick_canonical from this file.
+            from merge_artists import merge_pair
+            got = merge_pair(session, canon, dup, display, provenance={
+                "rule": "nameRuleImageCorroborated",
+                "ruleVersion": "ARTIST-MERGE-CANDIDATES-1.1", "decidedBy": "rule",
+                "evidence": f"name rule {r['rule']}; DINOv2 max {r['maxSim']:.3f} "
+                            f"over {r['nA']}x{r['nB']} images"})
+            if got is None:
                 print(f"[SKIP] {dup!r} -> {canon!r} — one side no longer present in the graph")
                 skipped += 1
                 continue
@@ -723,9 +707,8 @@ def run_merge(session, threshold, dry_run=False, only_rules=None, exclude_names=
 
         if display != canon:
             if not dry_run:
-                # Artist.name is under a UNIQUENESS constraint, so this can only run once the
-                # dup node holding that string is actually gone — never inside MERGE_QUERY.
-                session.run(RENAME_QUERY, fromName=canon, toName=display).consume()
+                # merge_pair renamed it after the delete (Artist.name is under a UNIQUENESS
+                # constraint) and recorded the old name as resolving to the survivor.
                 print(f"[RENAMED] {canon!r} -> {display!r}")
             info[display] = info[canon]
             renamed += 1

@@ -64,7 +64,7 @@ import time
 import pandas as pd
 from neo4j import GraphDatabase
 
-from catalogue_matching import resolve_merged_work_cypher
+from catalogue_matching import resolve_merged_work_cypher, splice_artist_resolver
 
 def _require_env(name):
     value = os.environ.get(name)
@@ -328,10 +328,14 @@ CALL {
     UNION
     WITH creator
     WITH creator WHERE creator.ulanUrl IS NULL AND creator.wikidataUrl IS NULL
-    MERGE (a:Artist {name: creator.name})
+    MERGE (a:Artist {name: RESOLVED_ARTIST_NAME(creator.name)})
     RETURN a
   }
-  SET a.name = creator.name,
+  // A name-keyed match may have resolved to a merge survivor under a different name; writing
+  // creator.name back would rename the survivor to the name it absorbed. ULAN/Wikidata-keyed
+  // matches keep the Met's name, as before.
+  SET a.name = CASE WHEN creator.ulanUrl IS NULL AND creator.wikidataUrl IS NULL
+                    THEN a.name ELSE creator.name END,
       a.ulanUrl = coalesce(creator.ulanUrl, a.ulanUrl),
       a.wikidataUrl = coalesce(creator.wikidataUrl, a.wikidataUrl),
       a.nationality = coalesce(creator.nationality, a.nationality),
@@ -395,6 +399,7 @@ FOREACH (_ IN CASE WHEN genreName IS NOT NULL THEN [1] ELSE [] END |
   MERGE (imp)-[:CLASSIFIED_AS]->(g)
 )
 """
+LOAD_QUERY = splice_artist_resolver(LOAD_QUERY)
 
 
 def _load_csv():
@@ -474,7 +479,7 @@ def _resolve_creator_identities(df):
 
 RECONCILE_QUERY = """
 UNWIND $entries AS e
-OPTIONAL MATCH (byName:Artist {name: e.name})
+OPTIONAL MATCH (byName:Artist {name: RESOLVED_ARTIST_NAME(e.name)})
 OPTIONAL MATCH (ulanOwner:Artist {ulanUrl: e.ulanUrl}) WHERE e.ulanUrl IS NOT NULL
 OPTIONAL MATCH (wikiOwner:Artist {wikidataUrl: e.wikidataUrl}) WHERE e.wikidataUrl IS NOT NULL
 FOREACH (_ IN CASE
@@ -488,6 +493,7 @@ FOREACH (_ IN CASE
   SET byName.wikidataUrl = e.wikidataUrl
 )
 """
+RECONCILE_QUERY = splice_artist_resolver(RECONCILE_QUERY)
 
 
 def _reconcile_existing_artists():

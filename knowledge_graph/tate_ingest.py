@@ -66,7 +66,7 @@ import time
 import pandas as pd
 from neo4j import GraphDatabase
 
-from catalogue_matching import resolve_merged_work_cypher
+from catalogue_matching import resolve_merged_work_cypher, splice_artist_resolver
 from crosswalk_matching import extract_techniques, extract_papers
 from embed_titles_hook import embed_new_titles
 
@@ -235,7 +235,7 @@ WITH row
 CALL {
   WITH row
   UNWIND (CASE WHEN row.artistName IS NULL THEN [] ELSE [row.artistName] END) AS name
-  MERGE (a:Artist {name: name})
+  MERGE (a:Artist {name: RESOLVED_ARTIST_NAME(name)})
   SET a.dateBorn_year = coalesce(row.artistBeginYear, a.dateBorn_year),
       a.dateBorn_precision = CASE WHEN row.artistBeginYear IS NOT NULL THEN "exact" ELSE a.dateBorn_precision END,
       a.dateDied_year = coalesce(row.artistEndYear, a.dateDied_year),
@@ -312,6 +312,7 @@ FOREACH (_ IN CASE WHEN paper IS NOT NULL THEN [1] ELSE [] END |
   SET p.aatId = CASE WHEN paper.aatId IS NOT NULL THEN paper.aatId ELSE p.aatId END
 )
 """
+LOAD_QUERY = splice_artist_resolver(LOAD_QUERY)
 
 
 def _write_chunk_with_retry(rows, retries=4, backoff_seconds=5.0):

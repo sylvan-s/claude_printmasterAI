@@ -97,7 +97,7 @@ import time
 from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques
-from catalogue_matching import build_conceptual_work_id, resolve_merged_work_cypher
+from catalogue_matching import build_conceptual_work_id, resolve_merged_work_cypher, splice_artist_resolver
 from picasso_paris_ingest import (
     _clean, _fr_normalize, _FR_TECHNIQUES, _LITHO_MARKS, _LITHO_MATRICES, _PRINTER_RE,
     _SIGNATURE_RE, extract_edition, extract_matrix_material, extract_printer,
@@ -390,7 +390,7 @@ SET att.qualifier = CASE WHEN row.afterArtist THEN "after" ELSE "direct" END
 LOAD_QUERY_IMPRESSION = """
 UNWIND $rows AS row
 
-MERGE (artist:Artist {name: row.artistName})
+MERGE (artist:Artist {name: RESOLVED_ARTIST_NAME(row.artistName)})
 SET artist.ulanUrl = coalesce(artist.ulanUrl, row.artistUlanUrl),
     artist.identityConfidence = coalesce(artist.identityConfidence,
         CASE WHEN row.artistUlanUrl IS NOT NULL THEN "institutional" ELSE "unresolved" END),
@@ -461,11 +461,12 @@ FOREACH (_ IN CASE WHEN paper IS NOT NULL THEN [1] ELSE [] END |
 
 WITH DISTINCT row, artist, cw, target
 """ + _COMMON_TAIL
+LOAD_QUERY_IMPRESSION = splice_artist_resolver(LOAD_QUERY_IMPRESSION)
 
 LOAD_QUERY_MATRIX = """
 UNWIND $rows AS row
 
-MERGE (artist:Artist {name: row.artistName})
+MERGE (artist:Artist {name: RESOLVED_ARTIST_NAME(row.artistName)})
 SET artist.ulanUrl = coalesce(artist.ulanUrl, row.artistUlanUrl),
     artist.identityConfidence = coalesce(artist.identityConfidence,
         CASE WHEN row.artistUlanUrl IS NOT NULL THEN "institutional" ELSE "unresolved" END)
@@ -494,6 +495,7 @@ FOREACH (_ IN CASE WHEN row.stateId IS NOT NULL THEN [1] ELSE [] END |
 
 WITH row, artist, cw, mx AS target
 """ + _COMMON_TAIL
+LOAD_QUERY_MATRIX = splice_artist_resolver(LOAD_QUERY_MATRIX)
 
 
 def _write_chunk_with_retry(query, rows, institution, retries=4, backoff_seconds=5.0):

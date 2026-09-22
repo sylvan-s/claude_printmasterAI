@@ -50,7 +50,7 @@ from typing import Any, Dict, List, Optional
 # Ensure knowledge_graph directory is on python path for helper imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from catalogue_matching import build_conceptual_work_id, resolve_merged_work_cypher, sanitize_id_part, normalize_title
+from catalogue_matching import build_conceptual_work_id, resolve_merged_work_cypher, splice_artist_resolver, sanitize_id_part, normalize_title
 from resolve_artist_identity import resolve_artist
 
 try:
@@ -177,7 +177,7 @@ def cypher_ingest_batch(driver: Driver, batch: List[Dict[str, Any]]):
     
     merged_work_clause = resolve_merged_work_cypher("row.conceptual_work.id", ["row", "a"])
 
-    cypher_query = f"""
+    cypher_query = splice_artist_resolver(f"""
     UNWIND $batch AS row
 
     // 1. Safe Match / Merge Artist Node
@@ -185,7 +185,7 @@ def cypher_ingest_batch(driver: Driver, batch: List[Dict[str, Any]]):
       WITH row
       OPTIONAL MATCH (byUlan:Artist {{ulanUrl: row.artist.ulanUrl}}) WHERE row.artist.ulanUrl IS NOT NULL
       OPTIONAL MATCH (byWiki:Artist {{wikidataUrl: row.artist.wikidataUrl}}) WHERE row.artist.wikidataUrl IS NOT NULL
-      OPTIONAL MATCH (byName:Artist {{name: row.artist.name}})
+      OPTIONAL MATCH (byName:Artist {{name: RESOLVED_ARTIST_NAME(row.artist.name)}})
       WITH row, coalesce(byUlan, byWiki, byName) AS found
       CALL {{
         WITH row, found
@@ -204,7 +204,7 @@ def cypher_ingest_batch(driver: Driver, batch: List[Dict[str, Any]]):
         UNION
         WITH row, found
         WITH row, found WHERE found IS NULL AND row.artist.ulanUrl IS NULL AND row.artist.wikidataUrl IS NULL
-        MERGE (a3:Artist {{name: row.artist.name}})
+        MERGE (a3:Artist {{name: RESOLVED_ARTIST_NAME(row.artist.name)}})
         RETURN a3 AS a
       }}
       RETURN a
@@ -269,7 +269,7 @@ def cypher_ingest_batch(driver: Driver, batch: List[Dict[str, Any]]):
             img.license = row.digital_image.license
         MERGE (img)-[:SHOWS]->(cw)
     )
-    """""
+    """)
 
     with driver.session(database="neo4j") as session:
         session.run(cypher_query, batch=batch)
