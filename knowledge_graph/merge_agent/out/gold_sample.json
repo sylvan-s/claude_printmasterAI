@@ -1,0 +1,7461 @@
+{
+ "version": "MERGE-AGENT-P0-GOLD-1.0",
+ "seed": 20260922,
+ "poolSize": 9404,
+ "strata": {
+  "weak/clean": 5484,
+  "subset/clean": 258,
+  "weak/trap": 2536,
+  "strong/clean": 39,
+  "fuzzy/clean": 893,
+  "subset/trap": 131,
+  "fuzzy/trap": 62,
+  "strong/trap": 1
+ },
+ "pairs": [
+  {
+   "id": "g001",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Cecily Brown",
+    "born": 1969,
+    "died": null,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500122420",
+    "wikidata": "https://www.wikidata.org/wiki/Q458521",
+    "alts": [
+     "Cecily Brown"
+    ],
+    "works": 4,
+    "titles": [
+     "Boudoir",
+     "The Tribulations of St. Anthony",
+     "Study, after An Election by William Hogarth"
+    ],
+    "houses": [
+     "bonhams",
+     "forum"
+    ],
+    "ulanBio": "Brown, Cecily: English painter, born 1969, active in New York City"
+   },
+   "b": {
+    "name": "Joan Brown",
+    "born": 1938,
+    "died": 1990,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Joan Brown"
+    ],
+    "works": 1,
+    "titles": [
+     "Adolescent Cat"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g002",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Armando L\u00f3pez",
+    "born": null,
+    "died": null,
+    "nat": "Mexican",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Armando L\u00f3pez"
+    ],
+    "works": 1,
+    "titles": [
+     "Pages 1, 2, 7 and 8 of an eight page broadsheet 'Calaveras aftosas con medias naylon' (Hoof and Mouth Skeletons with Nylon Stockings) addressing imperialism with images of 'calaveras' accompanied by 'corridos' (ballads); on the first page, a calavera cow with foot and mouth disease in nylon stockings refering to the contamination of milk"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Nicola L\u00f3pez",
+    "born": 1975,
+    "died": null,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500294236",
+    "wikidata": "https://www.wikidata.org/wiki/Q59137256",
+    "alts": [
+     "Nicola L\u00f3pez"
+    ],
+    "works": 3,
+    "titles": [
+     "Phase Change 6",
+     "Earth",
+     "Scaffold City"
+    ],
+    "houses": [
+     "bonhams",
+     "met"
+    ],
+    "ulanBio": "L\u00f3pez, Nicola: Mexican-American installation artist and painter, born 1975"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g003",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Michael Potter",
+    "born": 1951,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Michael Potter"
+    ],
+    "works": 1,
+    "titles": [
+     "Breaking Away"
+    ],
+    "houses": [
+     "bonhams",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Michel Potier",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "POTIER Michel"
+    ],
+    "works": 5,
+    "titles": [
+     "Jeune fille",
+     "L'imposteur",
+     "Rendez-vous!",
+     "Multivitamine",
+     "Efflorescence"
+    ],
+    "houses": [
+     "navigart18",
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g004",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Martin Lewis R. F. D",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "MARTIN LEWIS R. F. D"
+    ],
+    "works": 1,
+    "titles": [
+     "Untitled (swann-5fe4c3ebca)"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Martin Lewis R.f.d",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "MARTIN LEWIS R.F.D"
+    ],
+    "works": 3,
+    "titles": [
+     "Untitled (swann-11d431198c)",
+     "Untitled (swann-eaf48778e3)",
+     "Untitled (swann-f2c4a49a4c)"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g005",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Abram Games",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500184250",
+    "wikidata": null,
+    "alts": [],
+    "works": 2,
+    "titles": [
+     "Trumans Beers",
+     "Guinness - 'G' Poster"
+    ],
+    "houses": [
+     "km"
+    ],
+    "ulanBio": "Games, Abram: British artist, 1914-1996"
+   },
+   "b": {
+    "name": "Alexander James",
+    "born": 1967,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Alexander James"
+    ],
+    "works": 1,
+    "titles": [
+     "Morpho Amathonte"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g006",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Alice C. Browne",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [],
+    "works": 1,
+    "titles": [
+     "Iris"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Alice Dalton Brown",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500084506",
+    "wikidata": null,
+    "alts": [],
+    "works": 9,
+    "titles": [
+     "Long Golden Day",
+     "After His Appearance",
+     "Blues Come Through",
+     "Amber Light",
+     "Patricks Porch",
+     "Nocturne"
+    ],
+    "houses": [
+     "km"
+    ],
+    "ulanBio": "Brown, Alice Dalton: American painter, born 1939"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g007",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Edgar Degas And George W. Thornley",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "EDGAR DEGAS AND GEORGE W. THORNLEY"
+    ],
+    "works": 2,
+    "titles": [
+     "Chez la modiste",
+     "Sur la Plage"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Edgar Degas and George Thornley",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [],
+    "works": 1,
+    "titles": [
+     "Le Chanson du chien"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g008",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Joe Goode",
+    "born": 1937,
+    "died": 2025,
+    "nat": "B. 1937",
+    "ulan": "http://vocab.getty.edu/ulan/500015487",
+    "wikidata": "https://www.wikidata.org/wiki/Q6210073",
+    "alts": [
+     "Joe Goode",
+     "JOE GOODE"
+    ],
+    "works": 34,
+    "titles": [
+     "Untitled",
+     "Untitled (2)",
+     "Gunshot Series, #306C",
+     "Gunshot Series, #305C",
+     "Gunshot Series, #308C",
+     "Gunshot Series"
+    ],
+    "houses": [
+     "met",
+     "bonhams"
+    ],
+    "ulanBio": "Goode, Joe: American sculptor and painter, 1937-2025"
+   },
+   "b": {
+    "name": "Victor Gastelum",
+    "born": 1964,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Victor Gastelum"
+    ],
+    "works": 2,
+    "titles": [
+     "Line Drive",
+     "Furies, from Line Drive"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 1,
+   "sharedTitles": [
+    "Line Drive"
+   ],
+   "openEdge": false
+  },
+  {
+   "id": "g009",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Charles Robert Leslie engraved",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "After Charles Robert Leslie engraved by Henry Thomas Ryall"
+    ],
+    "works": 1,
+    "titles": [
+     "The Christening of the Princess Royal in Buckingham Palace"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Engraved",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Engraved by A.L. Weise & Co."
+    ],
+    "works": 1,
+    "titles": [
+     "George Washington and His Family"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g010",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Jamie Wyeth",
+    "born": 1946,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Jamie Wyeth"
+    ],
+    "works": 3,
+    "titles": [
+     "La Boheme (Metropolitan Opera)",
+     "The Wicker Chair",
+     "Ted Kennedy, To Sail Against the Wind"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Newell Convers Wyeth",
+    "born": 1882,
+    "died": 1945,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Newell Convers Wyeth"
+    ],
+    "works": 1,
+    "titles": [
+     "Pittsburg in the Beginning/Pennsylvania Railroad"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g011",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Joyce Kozloff",
+    "born": 1942,
+    "died": null,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500005798",
+    "wikidata": "https://www.wikidata.org/wiki/Q6297552",
+    "alts": [
+     "Joyce Kozloff"
+    ],
+    "works": 3,
+    "titles": [
+     "Isleta",
+     "Femfolio",
+     "Maui: Sugar Plantation, from Femfolio"
+    ],
+    "houses": [
+     "bonhams",
+     "met"
+    ],
+    "ulanBio": "Kozloff, Joyce: American painter and printmaker, born 1942"
+   },
+   "b": {
+    "name": "Nancy Spero",
+    "born": 1926,
+    "died": 2009,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500060537",
+    "wikidata": "https://www.wikidata.org/wiki/Q2731236",
+    "alts": [
+     "Nancy Spero",
+     "SPERO Nancy"
+    ],
+    "works": 11,
+    "titles": [
+     "Explicit Explanation",
+     "Goddess II",
+     "Thou Shalt Not Kill, plate VI from the Ten Commandments Portfolio",
+     "Untitled (Female Icarus)",
+     "We Are Pro Choice",
+     "The Feminization of Poverty, from Concrete Crisis: Urban Images of the '80s"
+    ],
+    "houses": [
+     "navigart15",
+     "bonhams",
+     "met",
+     "roseberys"
+    ],
+    "ulanBio": "Spero, Nancy: American painter and collagist, 1926-2009"
+   },
+   "sharedWorks": 1,
+   "sharedTitles": [
+    "Femfolio"
+   ],
+   "openEdge": false
+  },
+  {
+   "id": "g012",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Friedrich Wilhelm Karl Kuhnert",
+    "born": 1865,
+    "died": 1926,
+    "nat": "German",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Friedrich Wilhelm Karl Kuhnert"
+    ],
+    "works": 1,
+    "titles": [
+     "G\u00e4msen Fliehen den Hang Hinauf"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Wilhelm Friedrich Kuhnert",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "After Wilhelm Friedrich Kuhnert"
+    ],
+    "works": 1,
+    "titles": [
+     "Elephants Moving Before A Veldt Fire"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g013",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Charles Lewis after Thomas J Barker",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Charles Lewis after Thomas J Barker"
+    ],
+    "works": 1,
+    "titles": [
+     "Nelson receiving the swords on board the San Josef, Feb 14"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Cornelia Parker",
+    "born": 1956,
+    "died": null,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500092643",
+    "wikidata": "http://www.wikidata.org/entity/Q441501",
+    "alts": [
+     "Cornelia Parker OBE RA",
+     "Cornelia Parker",
+     "Parker, Cornelia"
+    ],
+    "works": 11,
+    "titles": [
+     "A Feather from Freud's pillow, from 'The Freud Museum 10th Anniversary Portfolio'",
+     "Black Ice",
+     "Meteorite Lands on Baghdad, Louisiana",
+     "The Blue Room",
+     "Political Abstract (Doe & Bear)",
+     "Untitled (Decoy Pigeons)"
+    ],
+    "houses": [
+     "bonhams",
+     "forum",
+     "tate",
+     "roseberys"
+    ],
+    "ulanBio": "Parker, Cornelia: English sculptor and installation artist, born 1956"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g014",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Jeremy Deller",
+    "born": 1966,
+    "died": null,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500123744",
+    "wikidata": "http://www.wikidata.org/entity/Q953820",
+    "alts": [
+     "Jeremy Deller",
+     "Deller, Jeremy"
+    ],
+    "works": 13,
+    "titles": [
+     "A Good Day for Cyclists",
+     "Untitled Roxy Music",
+     "I Blame The Internet",
+     "Tax avoidance Kills",
+     "I love Patrick Caulfield, 2010",
+     "Strong and stable my arse"
+    ],
+    "houses": [
+     "roseberys",
+     "tate",
+     "forum",
+     "bonhams"
+    ],
+    "ulanBio": "Deller, Jeremy: English conceptual artist, born 1966"
+   },
+   "b": {
+    "name": "Juergen Teller",
+    "born": 1964,
+    "died": null,
+    "nat": "German",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Juergen Teller"
+    ],
+    "works": 2,
+    "titles": [
+     "Owl, Hydra",
+     "Swimming, Glemmingebro, Sweden"
+    ],
+    "houses": [
+     "bonhams",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g015",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Alix Mackenzie",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Mackenzie, Alix"
+    ],
+    "works": 3,
+    "titles": [
+     "Cornish Fields",
+     "Child and Bird",
+     "Gull on Porch"
+    ],
+    "houses": [
+     "tate"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Warren Mackenzie",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500524155",
+    "wikidata": "http://www.wikidata.org/entity/Q7970371",
+    "alts": [
+     "Mackenzie, Warren"
+    ],
+    "works": 3,
+    "titles": [
+     "Untitled"
+    ],
+    "houses": [
+     "tate"
+    ],
+    "ulanBio": "Mackenzie, Warren: American ceramicist, 1924-2018"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g016",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "G\u00e9rard de Lairesse",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "G\u00c9RARD DE LAIRESSE"
+    ],
+    "works": 1,
+    "titles": [
+     "Bacchus Squeezing Grapes into Wine"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Lairesse",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Lairesse"
+    ],
+    "works": 7,
+    "titles": [
+     "Corruptio unius generatio alterius. Des eenen druck, des anderen geluck",
+     "Dus maalt de schrik \u2018t geheim op Annaas eerbre kaken. Geen veinzen kan in noot opreghte min verzaken",
+     "Dus deerlyk sneuvelde Kartagoos koningin. Mes schrikke, en wachte zich voor d\u2019ongebonde min",
+     "Amantium irae amoris integratio est. Lieven mogen kyven, maer moeten Lieven blyven",
+     "Qui facile credit facile decipitur. Die licht geloost wort licht bedrogen",
+     "Verbode en Dartle Min ontvluchte nooit zyn straf. De Woede en Wanhoop rukt hem voor de tyt in\u2019t graf"
+    ],
+    "houses": [
+     "tate"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g017",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Hendrick Goudt",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "HENDRICK GOUDT"
+    ],
+    "works": 2,
+    "titles": [
+     "(after Elsheimer) Tobias and the Angel",
+     "(after Elsheimer) Ceres Seeking her Daughter"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Hendrik Goudt",
+    "born": 1583,
+    "died": 1648,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Hendrik Goudt"
+    ],
+    "works": 5,
+    "titles": [
+     "Tobias with the Angel, after Adam Elsheimer",
+     "Tobias and the Angel (The Large Plate)",
+     "Tobias carrying the fish, walking with the angel",
+     "Ceres Seeking her Daughter, after Adam Elsheimer",
+     "Tobias and the Angel"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g018",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Florentin Brigaud",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "BRIGAUD Florentin"
+    ],
+    "works": 1,
+    "titles": [
+     "Saint-Elme"
+    ],
+    "houses": [
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Francisco Bartolozzi after P Rigaud",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Francisco Bartolozzi after P Rigaud"
+    ],
+    "works": 1,
+    "titles": [
+     "The Three Favourite Aerial Travellers"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g019",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Barbara Jones",
+    "born": 1912,
+    "died": 1978,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500007147",
+    "wikidata": "http://www.wikidata.org/entity/Q4859034",
+    "alts": [
+     "Jones, Barbara",
+     "Barbara Jones"
+    ],
+    "works": 5,
+    "titles": [
+     "Fairgrou",
+     "The Aviary, Dropmore",
+     "Pineapple House, Stirling",
+     "Fairground"
+    ],
+    "houses": [
+     "bonhams",
+     "tate"
+    ],
+    "ulanBio": "Jones, Barbara: English painter, illustrator, and designer, 1912-1978"
+   },
+   "b": {
+    "name": "Keith Richardson-Jones",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500021379",
+    "wikidata": null,
+    "alts": [
+     "Richardson-Jones, Keith"
+    ],
+    "works": 2,
+    "titles": [
+     "Untitled"
+    ],
+    "houses": [
+     "tate"
+    ],
+    "ulanBio": "Richardson-Jones, Keith: English painter and conceptutal artist, born 1925"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g020",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "David Clyde Driskell",
+    "born": 1931,
+    "died": 2020,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "David Clyde Driskell"
+    ],
+    "works": 2,
+    "titles": [
+     "The Farmer and His Wife",
+     "Yoruba Couple"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "David Driskell",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "David Driskell"
+    ],
+    "works": 1,
+    "titles": [
+     "Round Still Life"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g021",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Dillwyn Smith",
+    "born": 1958,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Dillwyn Smith"
+    ],
+    "works": 1,
+    "titles": [
+     "Untitled"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Vincent D. Smith",
+    "born": 1929,
+    "died": 2003,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500121332",
+    "wikidata": "https://www.wikidata.org/wiki/Q21293102",
+    "alts": [
+     "Vincent D. Smith"
+    ],
+    "works": 4,
+    "titles": [
+     "Eight Etchings, 1965\u20131966",
+     "Jonkonnu Festival",
+     "The Triumph of B.L.S., from the portfolio \u00a6Impressions: Our World, Volume I\u00a6",
+     "A Moment Supreme"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": "Smith, Vincent DaCosta: American painter, 1930-2003"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g022",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Master Ag",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "MASTER AG"
+    ],
+    "works": 5,
+    "titles": [
+     "The Last Supper",
+     "Christ Entering Jerusalem",
+     "(after Schongauer) The Death of the Virgin",
+     "(after Schongauer) Three engravings",
+     "The Entombment"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Master Mr",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "MASTER MR"
+    ],
+    "works": 1,
+    "titles": [
+     "Christ on the Cross with Saints Catherine, Dominic and Jerome"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g023",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Francis Frith",
+    "born": 1822,
+    "died": 1898,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Francis Frith",
+     "(n/a) Francis Frith"
+    ],
+    "works": 1,
+    "titles": [
+     "Frith's Photo Pictures: English Lakes"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Francis Holl after William Powell Frith",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Francis Holl after William Powell Frith"
+    ],
+    "works": 1,
+    "titles": [
+     "The Railway Station"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g024",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "John Marlin",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "John Marlin"
+    ],
+    "works": 1,
+    "titles": [
+     "Abstract I"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Jonier Marin",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "MARIN Jonier"
+    ],
+    "works": 1,
+    "titles": [
+     "(Sans titre)"
+    ],
+    "houses": [
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g025",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "D*Face; Phlegm; Stik",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "D*Face; Phlegm; Stik"
+    ],
+    "works": 1,
+    "titles": [
+     "A collection"
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Stik",
+    "born": 1979,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Stik",
+     "STIK"
+    ],
+    "works": 55,
+    "titles": [
+     "\"Sleeping Baby (NHS Blue)\"",
+     "Three boys, Mrs Elizabeth Moody and her two sons Samuel and Thomas, Elizabeth and Mary Linley, Eliza and Mary Davidson, The Fall of Man",
+     "A standing figure",
+     "Stamp Print of Standing Figure",
+     "Stik (Blue Poster with Book)",
+     "Liberty (Blue)"
+    ],
+    "houses": [
+     "roseberys",
+     "bonhams",
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g026",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Jane Wilson",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Jane Wilson"
+    ],
+    "works": 1,
+    "titles": [
+     "March Shower"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Jane Wilson and Louise Wilson",
+    "born": 1967,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Jane and Louise Wilson",
+     "Jane Wilson and Louise Wilson RA",
+     "Jane Wilson and Louise Wilson"
+    ],
+    "works": 3,
+    "titles": [
+     "Stasi City (Paternoster)",
+     "Members Only",
+     "\"Members Only\" 1999"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g027",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "David Byrne Daniella Spencer",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "David Byrne, Daniella Spencer"
+    ],
+    "works": 1,
+    "titles": [
+     "IBM/Trust"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "David Hockney & Stephen Spender",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "David Hockney & Stephen Spender"
+    ],
+    "works": 1,
+    "titles": [
+     "Hockney's Alphabet"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g028",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Edward Kienholz",
+    "born": 1927,
+    "died": 1994,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Kienholz, Edward",
+     "Edward Kienholz"
+    ],
+    "works": 3,
+    "titles": [
+     "The Marriage Icon",
+     "The Portable War Memorial",
+     "Sawdy"
+    ],
+    "houses": [
+     "bonhams",
+     "tate"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Edward and Nancy Kienholz",
+    "born": 1927,
+    "died": 1994,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Edward and Nancy Kienholz"
+    ],
+    "works": 1,
+    "titles": [
+     "Bound Duck-Black"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g029",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Antonio Da Trento (after Parmigianino)",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "ANTONIO DA TRENTO (AFTER PARMIGIANINO)"
+    ],
+    "works": 2,
+    "titles": [
+     "Man Seated Viewed from behind (Narcissus at the Well)",
+     "Augustus and the Tibertine Sybil"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Antonio Maria Zanetti (after Parmigianino)",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "ANTONIO MARIA ZANETTI (AFTER PARMIGIANINO)"
+    ],
+    "works": 2,
+    "titles": [
+     "The Virgin and Child with Saint John the Baptist",
+     "The Virgin and Child with the Infant Saint John the Baptist and Saint John the Evangelist"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g030",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Alex MacLean",
+    "born": null,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Alex MacLean"
+    ],
+    "works": 1,
+    "titles": [
+     "Marsh Inlet, Bridgehampton, NY"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Alex S. MacLean",
+    "born": 1947,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Alex S. MacLean"
+    ],
+    "works": 2,
+    "titles": [
+     "Untitled (Aerial Landscape Scenes), late 1970s/early 1980s"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g031",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Wang Guang Yi",
+    "born": 1956,
+    "died": null,
+    "nat": "Chinese",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Wang Guang Yi"
+    ],
+    "works": 1,
+    "titles": [
+     "Gillette"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Wang Guangyi",
+    "born": 1956,
+    "died": null,
+    "nat": "Chinese",
+    "ulan": "http://vocab.getty.edu/ulan/500781563",
+    "wikidata": null,
+    "alts": [
+     "Wang Guangyi"
+    ],
+    "works": 17,
+    "titles": [
+     "\"HP Invent\" 2001",
+     "Gillette from the Great Criticism Series",
+     "Coca Cola (red) from the Great Criticism Series",
+     "Art News, from Rhythmical Dichotomy Portfolio",
+     "October Pop, from Rhythmical Dichotomy Portfolio",
+     "Art and Power, from Rhythmical Dichotomy Portfolio"
+    ],
+    "houses": [
+     "roseberys",
+     "forum",
+     "bonhams"
+    ],
+    "ulanBio": "Wang, Gongyi: Chinese-American painter, printmaker, born 1946"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g032",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Jo Ann Callis",
+    "born": 1940,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Jo Ann Callis"
+    ],
+    "works": 1,
+    "titles": [
+     "Draped Sheet, c."
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "John Tallis",
+    "born": 1815,
+    "died": 1876,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "John Tallis"
+    ],
+    "works": 1,
+    "titles": [
+     "Barkley's Iron Works, Ulston, c."
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g033",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Francis Williams",
+    "born": 1936,
+    "died": 2003,
+    "nat": "Canadian",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Francis Williams"
+    ],
+    "works": 1,
+    "titles": [
+     "Untitled"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Herbert J. Williams",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Herbert J. Williams"
+    ],
+    "works": 1,
+    "titles": [
+     "Skylon and the Festival of Britain"
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g034",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Christopher Le Brun",
+    "born": 1951,
+    "died": null,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500031676",
+    "wikidata": null,
+    "alts": [
+     "Sir Christopher Le Brun PPRA",
+     "Christopher Le Brun",
+     "Christopher Mark Le Brun PPRA",
+     "Christopher, PRA Le Brun",
+     "Christopher Le Brun P.R.A.",
+     "Christopher Le Brun P.R.A"
+    ],
+    "works": 68,
+    "titles": [
+     "[no title]",
+     "From the 'Seven Lithographs' series",
+     "Composition",
+     "Untitled A/25",
+     "Strand ST P 6",
+     "SL2 P65"
+    ],
+    "houses": [
+     "tate",
+     "roseberys",
+     "bonhams"
+    ],
+    "ulanBio": "Le Brun, Christopher: English painter, sculptor, and draftsman, born 1951"
+   },
+   "b": {
+    "name": "Christopher LeBrun",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Christopher LeBrun"
+    ],
+    "works": 2,
+    "titles": [
+     "Untitled"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g035",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Grouped with line 22. Giacomo Manz\u00fa",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Grouped with line 22. Giacomo Manz\u00fa"
+    ],
+    "works": 1,
+    "titles": [
+     "Untitled (A0345 lot 68)"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "grouped line 30Giacomo Manz\u00fa",
+    "born": 1908,
+    "died": 1991,
+    "nat": "Italian",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "grouped line 30Giacomo Manz\u00fa"
+    ],
+    "works": 1,
+    "titles": [
+     "Donna Sdraiata"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g036",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Brian Wall",
+    "born": 1931,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Brian Wall"
+    ],
+    "works": 1,
+    "titles": [
+     "Untitled"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Brian Yale",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500058390",
+    "wikidata": null,
+    "alts": [
+     "Yale, Brian"
+    ],
+    "works": 5,
+    "titles": [
+     "Nativity",
+     "Untitled",
+     "Plan of Progress",
+     "Monsters of the City 2",
+     "Monsters of the City 1"
+    ],
+    "houses": [
+     "tate"
+    ],
+    "ulanBio": "Yale, Brian: British painter, born 1936"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g037",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Edmond Aman-Jean",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "AMAN-JEAN Edmond (AMAND Edmond Fran\u00e7ois Jean, dit)"
+    ],
+    "works": 1,
+    "titles": [
+     "Sous les fleurs"
+    ],
+    "houses": [
+     "navigart25"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Jean",
+    "born": null,
+    "died": null,
+    "nat": "Hans",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Jean",
+     "JEAN"
+    ],
+    "works": 12,
+    "titles": [
+     "I, Rue Gabrielle",
+     "Oiseau-Chute",
+     "Untitled",
+     "Gris-Noir",
+     "Am\u00e9ga dans l'Om\u00e9ga",
+     "Plakat Basel"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g038",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Samuel Alken",
+    "born": 1810,
+    "died": 1894,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Samuel Alken"
+    ],
+    "works": 1,
+    "titles": [
+     "The Funeral Procession of Arthur, Duke of Wellington"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Samuel Henry Alken",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "After Samuel Henry Alken"
+    ],
+    "works": 1,
+    "titles": [
+     "Fox Hunting"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g039",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "H Overton and R Sayer",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "H Overton and R Sayer"
+    ],
+    "works": 1,
+    "titles": [
+     "Painting"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Herbert Bayer",
+    "born": 1900,
+    "died": 1985,
+    "nat": "German/American",
+    "ulan": "http://vocab.getty.edu/ulan/500009369",
+    "wikidata": "http://www.wikidata.org/entity/Q213637",
+    "alts": [
+     "Herbert Bayer",
+     "Bayer, Herbert",
+     "BAYER Herbert"
+    ],
+    "works": 26,
+    "titles": [
+     "Bones with the sea",
+     "Postkarte f\u00fcr die Bauhaus-Ausstellung (Carte postale pour l'exposition du Bauhaus)",
+     "Self-Portrait (Photomontage)",
+     "Untitled (Composition), C.",
+     "Birthday Party I",
+     "Yellow Centre"
+    ],
+    "houses": [
+     "bonhams",
+     "navigart15",
+     "roseberys",
+     "tate"
+    ],
+    "ulanBio": "Bayer, Herbert: Austrian designer and painter, 1900-1985, active in the United States"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g040",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Ren\u00e9 Vincent",
+    "born": 1879,
+    "died": 1936,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Ren\u00e9 Vincent",
+     "After Ren\u00e9 Vincent"
+    ],
+    "works": 2,
+    "titles": [
+     "Bugatti, 1930/later",
+     "Porto Ramos-Pinto"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Vincent",
+    "born": 1808,
+    "died": 1882,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "FOREST Vincent, Jacques, Joseph"
+    ],
+    "works": 1,
+    "titles": [
+     "Porte d'all\u00e9e de la maison n\u00b0 10 rue de Jussieu"
+    ],
+    "houses": [
+     "navigart11"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g041",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Jusepe De Ribera",
+    "born": 1591,
+    "died": 1652,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [],
+    "works": 1,
+    "titles": [
+     "Saint Jerome Hearing the Trumpet of the Last Judgment"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Jusepe de Ribera",
+    "born": 1588,
+    "died": 1656,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "JUSEPE DE RIBERA"
+    ],
+    "works": 6,
+    "titles": [
+     "Saint Jerome Hearing the Trumpet of the Last Judgement",
+     "St. Jerome in the Wilderness, Reading",
+     "The Drunken Silenus",
+     "Saint Jerome Hearing the Trumpet of the Last Judgment",
+     "The Martyrdom of St. Bartholomew",
+     "The Poet"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g042",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Albert Merz",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "MERZ Albert"
+    ],
+    "works": 10,
+    "titles": [
+     "(Sans titre)"
+    ],
+    "houses": [
+     "navigart31"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Albert Mura",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "MURA Albert"
+    ],
+    "works": 1,
+    "titles": [
+     "La Fuite en Egypte"
+    ],
+    "houses": [
+     "navigart25"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g043",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Christopher Wool and Felix Gonzalez-Torres",
+    "born": 1955,
+    "died": 1996,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Christopher Wool & Felix Gonzalez-Torres",
+     "Christopher Wool (b.1955) & Felix Gonzalez-Torres",
+     "Christopher Wool (b.1955) & Felix Gonzalez-Torres (1957-1996) ()",
+     "Christopher Wool (b. 1955) & Felix Gonzalez-Torres",
+     "Christopher Wool and Felix Gonzalez-Torres"
+    ],
+    "works": 3,
+    "titles": [
+     "The Show is Over, 1993",
+     "The show is over",
+     "Untitled (The Show is Over)"
+    ],
+    "houses": [
+     "roseberys",
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Felix Gonzalez-Torres",
+    "born": 1957,
+    "died": 1996,
+    "nat": "Cuban",
+    "ulan": "http://vocab.getty.edu/ulan/500114715",
+    "wikidata": "http://www.wikidata.org/entity/Q1288359",
+    "alts": [
+     "Felix Gonzalez-Torres",
+     "F\u00e9lix Gonz\u00e1lez-Torres",
+     "F\u00e9lix Gonz\u00e1lez-Torres (1957-1996) (Signed Exhibition Poster)",
+     "Felix Gonzalez Torres"
+    ],
+    "works": 12,
+    "titles": [
+     "Untitled (Oscar Wilde)",
+     "Untitled",
+     "Untitled (GF1990-002)",
+     "Untitled (The Show Is Over)",
+     "Camden Arts Centre Exhibition Poster for Symptoms of Interference, Conditions of Possibility at the Camden Arts Centre from 7 January - 6 March 1994 (Signed by F\u00e9lix Gonz\u00e1lez-Torres)",
+     "Untitled NRA"
+    ],
+    "houses": [
+     "bonhams",
+     "forum",
+     "roseberys"
+    ],
+    "ulanBio": "Gonzalez-Torres, Felix: American sculptor and photographer, 1958-1996"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g044",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Pauline Bourges",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "BOURGES Pauline"
+    ],
+    "works": 1,
+    "titles": [
+     "Bords de l'Oise"
+    ],
+    "houses": [
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Phil Borges",
+    "born": 1950,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Phil Borges"
+    ],
+    "works": 2,
+    "titles": [
+     "Yama, 8-Lhasa, Tibet",
+     "Bequim 8, Paralak, Pakistan"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g045",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Antoine Watteau",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "WATTEAU Antoine",
+     "WATTEAU Antoine (attribu\u00e9 \u00e0)"
+    ],
+    "works": 24,
+    "titles": [
+     "Femme vue de dos",
+     "Untitled (D.2020.0.14.5.53.E)",
+     "Untitled (D.2020.0.14.5.58.E)",
+     "Untitled (D.2020.0.14.5.48.E)",
+     "Untitled (D.2020.0.14.5.50.E)",
+     "Untitled (D.2020.0.14.5.54.E)"
+    ],
+    "houses": [
+     "navigart11"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Jean-Antoine Watteau",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "WATTEAU Jean-Antoine"
+    ],
+    "works": 5,
+    "titles": [
+     "Untitled (D.2020.0.14.5.6.E)",
+     "Untitled (D.2020.0.14.6.36.E)",
+     "Untitled (D.2020.0.14.6.55.E)",
+     "Untitled (D.2020.0.14.6.54.E)",
+     "Untitled (D.2020.0.14.5.42.E)"
+    ],
+    "houses": [
+     "navigart11"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g046",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Nicasio Fernandez",
+    "born": 1993,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Nicasio Fernandez"
+    ],
+    "works": 3,
+    "titles": [
+     "D.I.Y"
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Nicolas Fernandez",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "FERNANDEZ Nicolas"
+    ],
+    "works": 1,
+    "titles": [
+     "Sans titre"
+    ],
+    "houses": [
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g047",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Joe Jones",
+    "born": 1909,
+    "died": 1963,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Joe Jones"
+    ],
+    "works": 1,
+    "titles": [
+     "Boats on the Shore, c."
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Stanley Jones",
+    "born": 1933,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Stanley Jones MBE",
+     "Stanley Jones",
+     "Jones, Stanley"
+    ],
+    "works": 7,
+    "titles": [
+     "Madron",
+     "Porthmeor",
+     "Essex Landscape",
+     "Sheelin",
+     "Madron from Europaeische Graphik VII",
+     "(2) (unframed) (may be subject to Droit de Suite)"
+    ],
+    "houses": [
+     "tate",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g048",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Bill Owens",
+    "born": 1938,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Bill Owens"
+    ],
+    "works": 1,
+    "titles": [
+     "4th of July Block Party, from Suburbia, c."
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Laura Owens",
+    "born": 1970,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Laura Owens"
+    ],
+    "works": 3,
+    "titles": [
+     "Untitled",
+     "Untitled (2001)"
+    ],
+    "houses": [
+     "bonhams",
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g049",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Marc Constant Emile Charpin",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "CHARPIN Marc Constant Emile"
+    ],
+    "works": 1,
+    "titles": [
+     "Lisi\u00e8re du matin"
+    ],
+    "houses": [
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Pierre Charpin",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "CHARPIN Pierre"
+    ],
+    "works": 1,
+    "titles": [
+     "Sans titre"
+    ],
+    "houses": [
+     "navigart39"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g050",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Joanne Isaac",
+    "born": null,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Joanne Isaac"
+    ],
+    "works": 1,
+    "titles": [
+     "Pomme de Terre, c."
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "John Isaacs",
+    "born": 1968,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "John Isaacs"
+    ],
+    "works": 1,
+    "titles": [
+     "Impossible Dreams"
+    ],
+    "houses": [
+     "forum",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g051",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Jean-Jacques De Boissieu",
+    "born": 1736,
+    "died": 1810,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500026206",
+    "wikidata": null,
+    "alts": [
+     "BOISSIEU Jean-Jacques de",
+     "BOISSIEU Jean-Jacques de, VAN RUISDAEL Jacob Isaacsz"
+    ],
+    "works": 5,
+    "titles": [
+     "Vue du chemin de Fontainebleau \u00e0 Bourron",
+     "La chatte et son petit",
+     "Titre d'une suite de dix paysages",
+     "Le p\u00eacheur \u00e0 la ligne",
+     "Le joueur de Hautbois"
+    ],
+    "houses": [
+     "navigart24"
+    ],
+    "ulanBio": "Boissieu, Jean Jacques de: French painter, draftsman, and etcher, 1736-1810"
+   },
+   "b": {
+    "name": "Jean-Jacques de Boissieu",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "JEAN-JACQUES DE BOISSIEU"
+    ],
+    "works": 1,
+    "titles": [
+     "L'\u00c9crivain Public"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g052",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Adolphe Marie Timoth\u00e9 e Beaufr\u00e8re",
+    "born": 1876,
+    "died": 1960,
+    "nat": "French",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Adolphe Marie Timoth\u00e9 e Beaufr\u00e8re"
+    ],
+    "works": 1,
+    "titles": [
+     "La Ferme de Marie-Yvonne, Merrien"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Adolphe-Marie Beaufr\u00e8re",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "BEAUFR\u00c8RE Adolphe-Marie"
+    ],
+    "works": 46,
+    "titles": [
+     "Keramperchec (Finist\u00e8re)",
+     "L'heure de la rentr\u00e9e, Le Pouldu",
+     "(Sans titre)",
+     "Le Vallon devant les fermes",
+     "Rivi\u00e8re de Merrieu avec les bancs de sable",
+     "Paysage breton"
+    ],
+    "houses": [
+     "navigart14",
+     "navigart20",
+     "navigart18"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g053",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Ivan \"le Lorraine\" Albright",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "IVAN \"LE LORRAINE\" ALBRIGHT"
+    ],
+    "works": 3,
+    "titles": [
+     "Hail to the Pure",
+     "Fleeting Time Thou Hast Left Me Old",
+     "Self Portrait at 55 East Division Street"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Ivan le Lorraine Albright",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "IVAN LE LORRAINE ALBRIGHT"
+    ],
+    "works": 2,
+    "titles": [
+     "Show Case Doll",
+     "Woman in Fur Coat"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g054",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Jeremy Mayes",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [],
+    "works": 9,
+    "titles": [
+     "Canal Urban Lights",
+     "Forest Town",
+     "Suburban Hills",
+     "Page not found",
+     "Cottage under Autumn Canopy",
+     "Red and Yellow Trees"
+    ],
+    "houses": [
+     "km"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "a Canal 2 by Jeremy Mayes",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [],
+    "works": 1,
+    "titles": [
+     "Factories"
+    ],
+    "houses": [
+     "km"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g055",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Jan Joris Van Vliet",
+    "born": 1610,
+    "died": 1635,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [],
+    "works": 1,
+    "titles": [
+     "after Rembrandt, Lot and his Daughters"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Jan Joris van Vliet",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "JAN JORIS VAN VLIET"
+    ],
+    "works": 4,
+    "titles": [
+     "Figures",
+     "(after Rembrandt) Lot and his Daughters",
+     "Old Woman Reading",
+     "The Game of Cards"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g056",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Jack Baker",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Jack Baker"
+    ],
+    "works": 1,
+    "titles": [
+     "Flowers"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "John Barker",
+    "born": 1911,
+    "died": 1959,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "John Barker"
+    ],
+    "works": 1,
+    "titles": [
+     "Kew Gardens Cactus House"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g057",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Joan Jonas",
+    "born": 1936,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Joan Jonas"
+    ],
+    "works": 1,
+    "titles": [
+     "Hand printed shawl"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Joe Jones",
+    "born": 1909,
+    "died": 1963,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Joe Jones"
+    ],
+    "works": 1,
+    "titles": [
+     "Boats on the Shore, c."
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g058",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "JR",
+    "born": 1983,
+    "died": null,
+    "nat": "French",
+    "ulan": "http://vocab.getty.edu/ulan/500404197",
+    "wikidata": "http://www.wikidata.org/entity/Q1312565",
+    "alts": [
+     "JR"
+    ],
+    "works": 25,
+    "titles": [
+     "28 millim\u00e8tres, Portrait of a Generation, Ladj Ly",
+     "Trompe l'\u0153il, Les Falaises du Trocad\u00e9ro, 19 mai 2021, 19h57, Paris, France",
+     "Women are heroes, Pont-Louis Philippe, Paris",
+     "Migrants Walking New York City, New York, USA",
+     "Los Surcos de la Ciudad, Marino Saura Oton, Cartagena, Espagne, 2008 from The Wrinkles of the City",
+     "Charlie Chaplin revu par JR, The Kid, Charlie Chaplin & Jackie Coogan, USA, 1923, de jour Paris"
+    ],
+    "houses": [
+     "roseberys",
+     "bonhams",
+     "forum"
+    ],
+    "ulanBio": "JR: French street artist, born 1983"
+   },
+   "b": {
+    "name": "James E. Lewis Jr.",
+    "born": 1923,
+    "died": 1997,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": "https://www.wikidata.org/wiki/Q64006080",
+    "alts": [
+     "James E. Lewis Jr."
+    ],
+    "works": 2,
+    "titles": [
+     "Illegal Lovers",
+     "Bad Omen"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g059",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Charles S. Bell",
+    "born": 1935,
+    "died": 1995,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Charles S. Bell"
+    ],
+    "works": 1,
+    "titles": [
+     "Gumballs"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Vanessa Bell",
+    "born": 1879,
+    "died": 1961,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500008308",
+    "wikidata": null,
+    "alts": [
+     "Vanessa Bell"
+    ],
+    "works": 4,
+    "titles": [
+     "Virginia Woolf, 1912",
+     "Flowers and Studio, 1915",
+     "Girl Reading",
+     "Untitled (A0228 lot 109)"
+    ],
+    "houses": [
+     "km",
+     "roseberys"
+    ],
+    "ulanBio": "Bell, Vanessa: British painter and designer, 1879-1961"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g060",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Faith Ringgold",
+    "born": 1930,
+    "died": null,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500063866",
+    "wikidata": "https://www.wikidata.org/wiki/Q5431220",
+    "alts": [
+     "Faith Ringgold"
+    ],
+    "works": 6,
+    "titles": [
+     "Tar Beach 2, from Women on a Bridge Series",
+     "Here Come Moses",
+     "Femfolio",
+     "Coming to Jones Road under a Blood Red Sky #8, from Femfolio",
+     "Under a Blood Red Sky"
+    ],
+    "houses": [
+     "bonhams",
+     "met"
+    ],
+    "ulanBio": "Ringgold, Faith: American multimedia artist, 1930-2024"
+   },
+   "b": {
+    "name": "Joyce Kozloff",
+    "born": 1942,
+    "died": null,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500005798",
+    "wikidata": "https://www.wikidata.org/wiki/Q6297552",
+    "alts": [
+     "Joyce Kozloff"
+    ],
+    "works": 3,
+    "titles": [
+     "Isleta",
+     "Femfolio",
+     "Maui: Sugar Plantation, from Femfolio"
+    ],
+    "houses": [
+     "bonhams",
+     "met"
+    ],
+    "ulanBio": "Kozloff, Joyce: American painter and printmaker, born 1942"
+   },
+   "sharedWorks": 1,
+   "sharedTitles": [
+    "Femfolio"
+   ],
+   "openEdge": false
+  },
+  {
+   "id": "g061",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "James Siena",
+    "born": 1957,
+    "died": null,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500122621",
+    "wikidata": "https://www.wikidata.org/wiki/Q6143161",
+    "alts": [
+     "James Siena"
+    ],
+    "works": 19,
+    "titles": [
+     "Shaded Recursive Combs",
+     "Sagging Grid",
+     "Constant Window, from Nine Prints",
+     "Forty-Six Combs",
+     "Untitled (Holiday Print)",
+     "Upside Down Devil Variation"
+    ],
+    "houses": [
+     "bonhams",
+     "met"
+    ],
+    "ulanBio": "Siena, James: American painter and draftsman, born 1957"
+   },
+   "b": {
+    "name": "James Sienna",
+    "born": 1957,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "James Sienna"
+    ],
+    "works": 1,
+    "titles": [
+     "Shifted Lattice"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g062",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Grouped line 30 Giacomo Manz\u00fa",
+    "born": 1908,
+    "died": 1991,
+    "nat": "Italian",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Grouped line 30 Giacomo Manz\u00fa"
+    ],
+    "works": 1,
+    "titles": [
+     "Figura"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Grouped with line 22. Giacomo Manz\u00fa",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Grouped with line 22. Giacomo Manz\u00fa"
+    ],
+    "works": 1,
+    "titles": [
+     "Untitled (A0345 lot 68)"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g063",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Romain de Tirtoff (Ert\u00e9)",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Romain de Tirtoff (Ert\u00e9)"
+    ],
+    "works": 2,
+    "titles": [
+     "Untitled (A0207 lot 6)",
+     "Untitled (A0207 lot 5)"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Romain de Tirtoff Erte",
+    "born": 1892,
+    "died": 1990,
+    "nat": "Russian",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Romain de Tirtoff Erte"
+    ],
+    "works": 2,
+    "titles": [
+     "Number 2",
+     "Emerald Vase I (Black)"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g064",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Jun'ichiro Sekino",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Jun'ichiro Sekino"
+    ],
+    "works": 5,
+    "titles": [
+     "Gaka no Shonen (My Son)",
+     "My Daughter",
+     "Untitled (City Scene with Mt. Fuji), 1950s",
+     "Manjushage, 1972; Rooftops"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Junichiro Sekino",
+    "born": 1914,
+    "died": 1988,
+    "nat": "Japanese",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Junichiro Sekino"
+    ],
+    "works": 7,
+    "titles": [
+     "Sacre Coeur at Night, c.",
+     "(River Scene)",
+     "Siamese Cats",
+     "Siamese cats, c.",
+     "Iizaka (Anabara), c.",
+     "Shone, from Fifty-three Stations of the Tokaido, c."
+    ],
+    "houses": [
+     "bonhams",
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g065",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Pablo Picasso",
+    "born": 1881,
+    "died": 1973,
+    "nat": "Spanish",
+    "ulan": "http://vocab.getty.edu/ulan/500009666",
+    "wikidata": "https://www.wikidata.org/wiki/Q5593",
+    "alts": [
+     "Pablo Picasso",
+     "Pablo Picasso (1881-1973) ()",
+     "Pablo Picasso (Spanish, 1881-1973)",
+     "Pablo Picasso (Spanish, 1881-1973) ()",
+     "Pablo Picasso ()",
+     "Pablo Picasso (1881-1973)()"
+    ],
+    "works": 3438,
+    "titles": [
+     "Exposition Vallauris [Bloch 1300]",
+     "Congr\u00e8s des peuples pour la paix, 1952",
+     "Cent ans Picasso, 1981",
+     "Les Portraits Imaginaires",
+     "Profil de Femme",
+     "Series 347:327 (Deux Hommes et deux femmes nues)"
+    ],
+    "houses": [
+     "roseberys",
+     "km",
+     "swann",
+     "navigart5",
+     "navigart29",
+     "navigart25",
+     "navigart24",
+     "navigart18",
+     "navigart15",
+     "navigart14",
+     "navigart11",
+     "picasso_paris",
+     "bonhams",
+     "forum",
+     "tate",
+     "met"
+    ],
+    "ulanBio": "Picasso, Pablo: Spanish painter, sculptor, and printmaker, 1881-1973"
+   },
+   "b": {
+    "name": "Paul Eluard and Pablo Picasso",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Paul Eluard and Pablo Picasso"
+    ],
+    "works": 1,
+    "titles": [
+     "A Pablo Picasso"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g066",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Frank Rowland",
+    "born": 1927,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Frank Rowland"
+    ],
+    "works": 2,
+    "titles": [
+     "Crosstown Traffic",
+     "Race, c."
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Mark Rowland",
+    "born": 1953,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Mark Rowland"
+    ],
+    "works": 1,
+    "titles": [
+     "Gamut, c."
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g067",
+   "stratum": "strong/trap",
+   "a": {
+    "name": "Edgar Degas And George W. Thornley",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "EDGAR DEGAS AND GEORGE W. THORNLEY"
+    ],
+    "works": 2,
+    "titles": [
+     "Chez la modiste",
+     "Sur la Plage"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Edgar Degas and George W Thornley",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Edgar Degas and George W Thornley"
+    ],
+    "works": 1,
+    "titles": [
+     "Le Bain"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g068",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Valentine Henriette Prax",
+    "born": 1899,
+    "died": 1981,
+    "nat": "French",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Valentine Henriette Prax"
+    ],
+    "works": 1,
+    "titles": [
+     "Untitled (Couple with violin)"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Valentine Prax",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "PRAX Valentine"
+    ],
+    "works": 7,
+    "titles": [
+     "Nu f\u00e9minin au village",
+     "Sc\u00e8ne villageoise",
+     "Trois femmes au village",
+     "Deux femmes dans un paysage",
+     "Femmes et arlequins",
+     "Deux femmes au bain"
+    ],
+    "houses": [
+     "navigart21"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g069",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Nicolas Chaperon",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "CHAPERON Nicolas"
+    ],
+    "works": 2,
+    "titles": [
+     "Couple marchant avec deux enfants et une ch\u00e8vre",
+     "L'enfance de Bacchus"
+    ],
+    "houses": [
+     "navigart11"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Raffaello - Nicolas Chaperon",
+    "born": 1612,
+    "died": 1656,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Raffaello - Nicolas Chaperon"
+    ],
+    "works": 1,
+    "titles": [
+     "Sacrae Historiae Acta a Raphael Urbin in Vaticanis xystis ad picturae miraculum expressa"
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g070",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "William Harry Waren Bicknell",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "William Harry Waren Bicknell"
+    ],
+    "works": 2,
+    "titles": [
+     "Boats in the Surf",
+     "Beach at Cape Cod"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "William Harry Warren Bicknell",
+    "born": 1860,
+    "died": 1947,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500105394",
+    "wikidata": "https://www.wikidata.org/wiki/Q22002308",
+    "alts": [
+     "William Harry Warren Bicknell"
+    ],
+    "works": 2,
+    "titles": [
+     "Erasmus reading to Colet and More"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": "Bicknell, William Harry Warren: American etcher, 1860-1947"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g071",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Pierre Paul Prud'Hon",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "PRUD'HON Pierre Paul, BOILLY Jules"
+    ],
+    "works": 3,
+    "titles": [
+     "La po\u00e9sie et la richesse",
+     "Les saisons : l'automne et l'hiver",
+     "Thalie et Melpom\u00e8ne"
+    ],
+    "houses": [
+     "navigart24"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Pierre-Paul Prud'hon",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "PIERRE-PAUL PRUD'HON"
+    ],
+    "works": 2,
+    "titles": [
+     "Une Lecture",
+     "Phrosine et M\u00e9lidore"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g072",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Charles Lewis after Thomas J Barker",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Charles Lewis after Thomas J Barker"
+    ],
+    "works": 1,
+    "titles": [
+     "Nelson receiving the swords on board the San Josef, Feb 14"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Cushman Parker",
+    "born": 1881,
+    "died": 1940,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": "https://www.wikidata.org/wiki/Q94940731",
+    "alts": [
+     "Cushman Parker"
+    ],
+    "works": 1,
+    "titles": [
+     "Little Americans do your bit"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g073",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Gould & Richter",
+    "born": null,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Gould & Richter"
+    ],
+    "works": 2,
+    "titles": [
+     "5 Plates, from The Birds of Asia",
+     "Untitled from Birds of Australia"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "John Gould & H.C. Richter",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "John Gould & H.C. Richter"
+    ],
+    "works": 1,
+    "titles": [
+     "from A Monograph of the Trochilidae, or Family of Humming-birds"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g074",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Camille Pissarro & George W. Thornley",
+    "born": 1857,
+    "died": 1935,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Camille Pissarro (1830-1903) & George W. Thornley"
+    ],
+    "works": 1,
+    "titles": [
+     "Paysage \u00e0 Varengeville, from 25 Lithographies"
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Camille Pissarro and George Thornley",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [],
+    "works": 1,
+    "titles": [
+     "Le Vieux Quartier de Rouen"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g075",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "After Hans Holbein the Younger",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [],
+    "works": 1,
+    "titles": [
+     "King Henry VIII"
+    ],
+    "houses": [
+     "km"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Hans Holbein The Younger",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [],
+    "works": 2,
+    "titles": [
+     "A Lady with a Squirrel and a Starling (Anne Lovell?)",
+     "The Ambassadors"
+    ],
+    "houses": [
+     "km"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g076",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Cornelis Galle I",
+    "born": 1576,
+    "died": 1650,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "CORNELIS GALLE I"
+    ],
+    "works": 1,
+    "titles": [
+     "The Four Seasons"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Cornelis van Dalen I",
+    "born": 1602,
+    "died": 1665,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Cornelis van Dalen I"
+    ],
+    "works": 1,
+    "titles": [
+     "Allegory of the Vanitas (Sic Transit Gloria Mundi)"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g077",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Charles Lewis after Thomas J Barker",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Charles Lewis after Thomas J Barker"
+    ],
+    "works": 1,
+    "titles": [
+     "Nelson receiving the swords on board the San Josef, Feb 14"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Charming Baker",
+    "born": 1964,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Charming Baker",
+     "Charming Baker (Alan Baker)"
+    ],
+    "works": 38,
+    "titles": [
+     "A chick",
+     "The Only Thing I'm Sure Of Is That I'm Sure Of Nothing",
+     "Live Everyday Like Your Hair is on Fire",
+     "Study for a Portrait of an Unknown Woman",
+     "A Fall to Alms",
+     "Love Bird I, from 'Love Birds'"
+    ],
+    "houses": [
+     "roseberys",
+     "bonhams",
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g078",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Doel Reed",
+    "born": 1894,
+    "died": 1985,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Doel Reed",
+     "DOEL REED"
+    ],
+    "works": 6,
+    "titles": [
+     "Evening Music",
+     "Spring",
+     "(Landscape)",
+     "Figure with Landscape",
+     "Summer",
+     "Rest"
+    ],
+    "houses": [
+     "swann",
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Eli Reed",
+    "born": 1948,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Eli Reed"
+    ],
+    "works": 1,
+    "titles": [
+     "Kids on the Car, A Long Walk Home"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g079",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Brenda Miller",
+    "born": 1941,
+    "died": null,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500083892",
+    "wikidata": "https://www.wikidata.org/wiki/Q28948928",
+    "alts": [
+     "Brenda Miller"
+    ],
+    "works": 1,
+    "titles": [
+     "Strata"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": "Miller, Brenda: American painter, born 1941"
+   },
+   "b": {
+    "name": "Faile aka Patrick McNeil and Patrick Miller",
+    "born": 1976,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Faile aka Patrick McNeil (b.1975) and Patrick Miller"
+    ],
+    "works": 2,
+    "titles": [
+     "Love Mix (Phone Girl)",
+     "The Agony and Ecstasy"
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g080",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Nicholas Chapron",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "NICHOLAS CHAPRON"
+    ],
+    "works": 1,
+    "titles": [
+     "(after Raphael) Sacrae Historiae Acta"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Nicolas Chaperon",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "CHAPERON Nicolas"
+    ],
+    "works": 2,
+    "titles": [
+     "Couple marchant avec deux enfants et une ch\u00e8vre",
+     "L'enfance de Bacchus"
+    ],
+    "houses": [
+     "navigart11"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g081",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Theodore Chass\u00e9riau",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "THEODORE CHASS\u00c9RIAU"
+    ],
+    "works": 1,
+    "titles": [
+     "Othello"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Th\u00e9odore Chass\u00e9riau",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "TH\u00c9ODORE CHASS\u00c9RIAU"
+    ],
+    "works": 1,
+    "titles": [
+     "Othello"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g082",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Alfred Cohen",
+    "born": 1920,
+    "died": 2001,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Alfred Cohen"
+    ],
+    "works": 1,
+    "titles": [
+     "\"Zola\""
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Bruce Cohen",
+    "born": 1953,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Bruce Cohen"
+    ],
+    "works": 4,
+    "titles": [
+     "Untitled (Tulips and a Rose)",
+     "Untitled (Black and White Florals)",
+     "Interior with 3 Lemons",
+     "Untitled (Tulips & Glass of Wine)"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g083",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Anonimo - Nella maniera di Jacques Stella",
+    "born": 1596,
+    "died": 1657,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Anonimo - Nella maniera di Jacques Stella"
+    ],
+    "works": 1,
+    "titles": [
+     "Cammello e unicorno."
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Jacques Stella",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "STELLA Jacques"
+    ],
+    "works": 8,
+    "titles": [
+     "J\u00e9sus et les disciples d'Emma\u00fcs",
+     "Untitled (D.2020.0.14.1.8.E)",
+     "Saint personnage",
+     "Untitled (D.2020.0.14.2.27.E)",
+     "Vierge \u00e0 l'enfant avec Saint Jean-Baptiste et Sainte Elisabeth",
+     "Untitled (D.2020.0.14.2.38.E)"
+    ],
+    "houses": [
+     "navigart11"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g084",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Jake & Dinos Chapman and Nick Smith",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Jake & Dinos Chapman and Nick Smith"
+    ],
+    "works": 1,
+    "titles": [
+     "The Lisper Lisps, the Stutterer Stutters, the Dyslexic Disleksiks it, the Driver Drives over it"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Nick Smith",
+    "born": 1984,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Nick Smith"
+    ],
+    "works": 60,
+    "titles": [
+     "Banksy, Time Out",
+     "Afraid of a Lady",
+     "Nike Cortex",
+     "Radiant Baby",
+     "Psalm 63 - Heinz Ketchup, from Psalms",
+     "Love (Unique)"
+    ],
+    "houses": [
+     "forum",
+     "roseberys",
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g085",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Hans Sebald Beham",
+    "born": 1500,
+    "died": 1550,
+    "nat": "German",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Hans Sebald Beham",
+     "HANS SEBALD BEHAM"
+    ],
+    "works": 46,
+    "titles": [
+     "The Parable of the Prodigal Son",
+     "Fortune * Misfortune",
+     "Charitas",
+     "Hercules Battling the Centaurs",
+     "Eve Standing",
+     "Hercules Fighting Against the Trojans"
+    ],
+    "houses": [
+     "swann",
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Theodor de Bry (after Hans Sebald Beham)",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "THEODOR DE BRY (AFTER HANS SEBALD BEHAM)"
+    ],
+    "works": 1,
+    "titles": [
+     "The Fountain of Youth and a Bath House"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g086",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Will Barnet",
+    "born": 1911,
+    "died": 2012,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500010278",
+    "wikidata": "https://www.wikidata.org/wiki/Q1566998",
+    "alts": [
+     "Will Barnet",
+     "WILL BARNET"
+    ],
+    "works": 83,
+    "titles": [
+     "Rest",
+     "Tom",
+     "At the Seashore",
+     "Butcher's Son",
+     "Night",
+     "Miner''s Wife and Child"
+    ],
+    "houses": [
+     "met",
+     "swann",
+     "bonhams",
+     "roseberys",
+     "forum"
+    ],
+    "ulanBio": "Barnet, Will: American painter and printmaker, 1911-2012"
+   },
+   "b": {
+    "name": "William Barnett",
+    "born": 1919,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "William Barnett"
+    ],
+    "works": 1,
+    "titles": [
+     "Totem"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g087",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Harry Callahan",
+    "born": 1912,
+    "died": 1999,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Harry Callahan"
+    ],
+    "works": 21,
+    "titles": [
+     "Eleanor, Chicago",
+     "Eleanor (Silhouette)",
+     "Aix-en-Provence",
+     "Eleanor, Chicago, c.",
+     "Eleanor, Port Huron",
+     "Wabash Avenue, Chicago, Fall"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Ryan Callahan",
+    "born": 1981,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Ryan Callahan (RYCA)"
+    ],
+    "works": 1,
+    "titles": [
+     "I'm The King and She's My Queen"
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g088",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Roy De Forest",
+    "born": 1930,
+    "died": 2007,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Roy De Forest"
+    ],
+    "works": 14,
+    "titles": [
+     "Untitled (man at campfire with dog and horse)",
+     "Untitled (Yellow dog with cross), c.",
+     "Story of Flight II",
+     "Untitled, Pl. 4, from the portfolio 10 West Coast Artists",
+     "(Silver Dingo)",
+     "Untitled"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Roy DeForest",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Roy DeForest"
+    ],
+    "works": 1,
+    "titles": [
+     "History of Flight"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g089",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Alexis Smith",
+    "born": 1949,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Alexis Smith"
+    ],
+    "works": 3,
+    "titles": [
+     "Boy's Life",
+     "Montage of Disasters",
+     "Luck, be a lady tonite! #1"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Richard Smith",
+    "born": 1931,
+    "died": 2016,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500018299",
+    "wikidata": "https://www.wikidata.org/wiki/Q2150623",
+    "alts": [
+     "Richard Smith",
+     "Richard Smith CBE",
+     "Smith, Richard"
+    ],
+    "works": 139,
+    "titles": [
+     "Note: See Tate, London, reference: P01302, for example of the same",
+     "Espalier (Diptych)",
+     "Drawing Boards II",
+     "The Florentine Set",
+     "Drawing Boards I",
+     "Times Square Remembered 4"
+    ],
+    "houses": [
+     "roseberys",
+     "bonhams",
+     "forum",
+     "tate",
+     "met"
+    ],
+    "ulanBio": "Smith, Richard: English painter and printmaker, 1931-2016, active in the United States"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g090",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Armand Seguin",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "ARMAND SEGUIN"
+    ],
+    "works": 1,
+    "titles": [
+     "Collection of 24 etchings"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Armand S\u00e9guin",
+    "born": 1869,
+    "died": 1903,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500019502",
+    "wikidata": null,
+    "alts": [
+     "S\u00c9GUIN Armand"
+    ],
+    "works": 1,
+    "titles": [
+     "L'\u00e9glise Saint-Gervais et le pont Louis-Philippe"
+    ],
+    "houses": [
+     "navigart20"
+    ],
+    "ulanBio": "S\u00e9guin, Armand: French painter and engraver, 1869-1903"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g091",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Dennis Jones",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Dennis Jones"
+    ],
+    "works": 1,
+    "titles": [
+     "Untitled (A0250 lot 45)"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Lois Mailou Jones",
+    "born": 1905,
+    "died": 1998,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500034910",
+    "wikidata": "https://www.wikidata.org/wiki/Q3258676",
+    "alts": [
+     "Lois Mailou Jones"
+    ],
+    "works": 3,
+    "titles": [
+     "Untitled (Nude)",
+     "Les Clochards, Paris",
+     "Quarry on the Hudson"
+    ],
+    "houses": [
+     "bonhams",
+     "met"
+    ],
+    "ulanBio": "Jones, Lois: African-American painter, designer, and teacher, 1905-1998"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g092",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Jake & Dinos Chapman and Nick Smith",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Jake & Dinos Chapman and Nick Smith"
+    ],
+    "works": 1,
+    "titles": [
+     "The Lisper Lisps, the Stutterer Stutters, the Dyslexic Disleksiks it, the Driver Drives over it"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Mike Smith",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Mike Smith"
+    ],
+    "works": 5,
+    "titles": [
+     "Selected images, Virginia",
+     "Selected images, Tennessee",
+     "Gray, Tennessee",
+     "Chuckey, TN"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g093",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Andrea B\u00fcttner",
+    "born": 1972,
+    "died": null,
+    "nat": "German",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Andrea Buttner",
+     "Andrea B\u00fcttner"
+    ],
+    "works": 2,
+    "titles": [
+     "Untitled",
+     "All My Favourite Artists Had Problems with Alcohol"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Erich Buttner",
+    "born": 1889,
+    "died": 1936,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "BUTTNER Erich"
+    ],
+    "works": 1,
+    "titles": [
+     "Portrait de Nitsche-Neitzche"
+    ],
+    "houses": [
+     "navigart25"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g094",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Hiroshi Sugimoto",
+    "born": 1948,
+    "died": null,
+    "nat": "Japanese",
+    "ulan": "http://vocab.getty.edu/ulan/500036907",
+    "wikidata": "http://www.wikidata.org/entity/Q919236",
+    "alts": [
+     "Hiroshi Sugimoto",
+     "Hiroshi Sugimoto ()"
+    ],
+    "works": 37,
+    "titles": [
+     "South Bay Drive-In, San Diego, CA",
+     "South Pacific Ocean, Maraenui, #328, from 'Time Exposed Series'",
+     "Four plates, from Time Exposed",
+     "Palms, Michigan",
+     "Baltic Sea, R\u00fcgen",
+     "U.A. Walker, New York"
+    ],
+    "houses": [
+     "bonhams",
+     "roseberys",
+     "forum"
+    ],
+    "ulanBio": "Sugimoto, Hiroshi: Japanese photographer, born 1948, active in United States"
+   },
+   "b": {
+    "name": "Yoshitomo Nara & Hiroshi Sugimoto",
+    "born": 1959,
+    "died": null,
+    "nat": "Japanese",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Yoshitomo Nara & Hiroshi Sugimoto",
+     "Yoshitomo Nara and Hiroshi Sugito"
+    ],
+    "works": 3,
+    "titles": [
+     "Untitled"
+    ],
+    "houses": [
+     "roseberys",
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g095",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Sandra Chevrier",
+    "born": 1983,
+    "died": null,
+    "nat": "Canadian",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Sandra Chevrier"
+    ],
+    "works": 2,
+    "titles": [
+     "La cage quand le vent se met a tourner",
+     "La Cage, Je nai pas peur (DC Comics)"
+    ],
+    "houses": [
+     "forum",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Shepard Fairey and Sandra Chevrier",
+    "born": 1970,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Shepard Fairey and Sandra Chevrier"
+    ],
+    "works": 1,
+    "titles": [
+     "Beauty of Liberty and Equality"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g096",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Claude",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "CLAUDE"
+    ],
+    "works": 1,
+    "titles": [
+     "MONETand GEORGE W THORNLEY Falaises"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Jeanne-Claude",
+    "born": 1935,
+    "died": 2009,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500124601",
+    "wikidata": "https://www.wikidata.org/wiki/Q3351266",
+    "alts": [
+     "Jeanne-Claude"
+    ],
+    "works": 4,
+    "titles": [
+     "Wrapped Bottle and Cans Project",
+     "Wrapped Telephone, Project for L.M. Ericsson Model",
+     "Wrapped Roman Sculptures, Project for Die Glyptothek, M\u00fcnchen",
+     "Wrapped Building, Project for 1 Times Square, Allied Chemical Tower, New York"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": "Jeanne-Claude: French sculptor and environmental artist, 1935-2009, active in the United States"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g097",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Frank Vernon Martin",
+    "born": 1921,
+    "died": 2005,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Frank Vernon Martin"
+    ],
+    "works": 3,
+    "titles": [
+     "Sevres-Babylone, 1981; Montparnasse-Bienvenue",
+     "Erich von Stronheim, Ruby Keeler, and Ida Lupino",
+     "Biscayne"
+    ],
+    "houses": [
+     "bonhams",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Knox Martin",
+    "born": 1923,
+    "died": 2022,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Knox Martin"
+    ],
+    "works": 2,
+    "titles": [
+     "Alice in Wonderland: Two Etchings, c.",
+     "Flowers #4, c."
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g098",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Augustus Pugin after Thomas Rowlandson",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Augustus Pugin after Thomas Rowlandson"
+    ],
+    "works": 1,
+    "titles": [
+     "Christie's Auction Room"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Thomas Rowlandson",
+    "born": 1756,
+    "died": 1827,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500006930",
+    "wikidata": null,
+    "alts": [
+     "Rowlandson, Thomas",
+     "Thomas Rowlandson",
+     "After Thomas Rowlandson",
+     "THOMAS ROWLANDSON"
+    ],
+    "works": 26,
+    "titles": [
+     "Embarking from Brighthelmstone to Diepp",
+     "James Christie's Auction Rooms",
+     "Glorious Defeat of the Dutch Navy Octr 10 1797, by Admirals Lord Duncan and Sir Richard Onslow, with a View Drawn on the Spot of the Six Dutch Line of Battle Ships Captured and Brought into Yarmouth",
+     "A Two O\u2019Clock Ordinary",
+     "The Hanoverian Horse and British Lion",
+     "Rural sports of a cricket match extraordinary"
+    ],
+    "houses": [
+     "swann",
+     "tate",
+     "bonhams"
+    ],
+    "ulanBio": "Rowlandson, Thomas: English caricaturist and watercolorist, born 1756 or 1757, died 1827"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g099",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Roberts after Woodward",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Roberts after Woodward"
+    ],
+    "works": 1,
+    "titles": [
+     "A SAILOR sitting for his MINIATURE"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Roy Fairchild-Woodard",
+    "born": 1953,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Roy Fairchild-Woodard"
+    ],
+    "works": 2,
+    "titles": [
+     "Fan and Flowers",
+     "Untitled (A0378 lot 175)"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g100",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Andrew Power",
+    "born": 1900,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Andrew Power [Sybil Andrews, 1898\u20131992 and Cyril Power, 1872\u20131951]"
+    ],
+    "works": 1,
+    "titles": [
+     "Lord's, Oval"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Andrew-Power",
+    "born": null,
+    "died": null,
+    "nat": "Sybil Andrews & Cyril Power",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Andrew-Power"
+    ],
+    "works": 5,
+    "titles": [
+     "Aldershot Tattoo",
+     "To Hire a Bus or Coach",
+     "Football",
+     "Ice Skating"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g101",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Lynn Davis",
+    "born": 1945,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Lynn Davis"
+    ],
+    "works": 5,
+    "titles": [
+     "Dhow Sail, Lamu, Kenya",
+     "Michael Kessler, Dancer",
+     "Emin Minaret of Suleiman Mosque, Turpan, China",
+     "Buddha, Sukhothai, Thailand",
+     "Iceberg #11, Disko Bay, Greenland"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Paul Davis",
+    "born": 1938,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Paul Davis"
+    ],
+    "works": 1,
+    "titles": [
+     "Three Penny Opera"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g102",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Louis Legrand",
+    "born": 1863,
+    "died": 1951,
+    "nat": "French",
+    "ulan": "http://vocab.getty.edu/ulan/500022826",
+    "wikidata": null,
+    "alts": [
+     "Louis Legrand",
+     "LEGRAND Louis",
+     "LOUIS LEGRAND",
+     "Louis Auguste Mathieu Legrand"
+    ],
+    "works": 25,
+    "titles": [
+     "Louis Legrand Peintre et Graveur",
+     "Aux Folies, from Les Bars",
+     "Premi\u00e8re le\u00e7on, from Les Petites du Ballet",
+     "Devant la Glace, from Petites du Ballet",
+     "3e acte, sc\u00e8ne 8, 4e tableau de je na sais quoi, from Les Petites du Ballet",
+     "La Divine Parole"
+    ],
+    "houses": [
+     "roseberys",
+     "bonhams",
+     "navigart25",
+     "navigart14",
+     "swann"
+    ],
+    "ulanBio": "Legrand, Louis: French painter, printmaker, and draftsman, 1863-1951"
+   },
+   "b": {
+    "name": "Luc Legrand",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "LEGRAND Luc"
+    ],
+    "works": 2,
+    "titles": [
+     "De l'ouvrage des lapins et de celui du Temps",
+     "Bonjour M. Bresdin !"
+    ],
+    "houses": [
+     "navigart11"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g103",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Michael Comte",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Michael Comte"
+    ],
+    "works": 1,
+    "titles": [
+     "Jeremy Irons"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Michel Comte",
+    "born": 1954,
+    "died": null,
+    "nat": "Swiss",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Michel Comte"
+    ],
+    "works": 2,
+    "titles": [
+     "Beauty and Beast, L'Uomo Vogue",
+     "Helena Christensen VIII"
+    ],
+    "houses": [
+     "bonhams",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g104",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Alex Katz",
+    "born": 1927,
+    "died": null,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500022493",
+    "wikidata": "https://www.wikidata.org/wiki/Q919265",
+    "alts": [
+     "Alex Katz",
+     "Katz, Alex"
+    ],
+    "works": 162,
+    "titles": [
+     "Song",
+     "Sara, from Three Portraits",
+     "Dog at Duck Trap",
+     "Sarah",
+     "Double Portrait",
+     "Frozen Leopard a.k.a. Snow Leopard"
+    ],
+    "houses": [
+     "roseberys",
+     "bonhams",
+     "met",
+     "tate",
+     "forum"
+    ],
+    "ulanBio": "Katz, Alex: American painter and printmaker, born 1927"
+   },
+   "b": {
+    "name": "Mich\u00e8le Katz",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "KATZ Mich\u00e8le"
+    ],
+    "works": 20,
+    "titles": [
+     "Pied-Main",
+     "Quatre portraits : G. Chatain, M. Katz, F. Jolivet, M. Irar\u00e9gui",
+     "Dialogue de femme : Dialogue 8",
+     "Le sexe rend fou",
+     "Y a rien \u00e0 voir \u00e0 la t\u00e9l\u00e9",
+     "La broyeuse"
+    ],
+    "houses": [
+     "navigart18"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g105",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Denis Mitchell",
+    "born": 1912,
+    "died": 1993,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Denis Mitchell"
+    ],
+    "works": 1,
+    "titles": [
+     "Trewey"
+    ],
+    "houses": [
+     "bonhams",
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Enid Mitchell",
+    "born": 1890,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": "http://www.wikidata.org/entity/Q21458040",
+    "alts": [
+     "Enid Mitchell"
+    ],
+    "works": 1,
+    "titles": [
+     "At the fair"
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g106",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Giorgio Ghisi",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Giorgio Ghisi",
+     "GIORGIO GHISI"
+    ],
+    "works": 11,
+    "titles": [
+     "Venus and Adonis",
+     "Allegory of Life (The Dream of Raphael)",
+     "(after Bertani) The Vision of Ezekiel",
+     "(after Luca Penni) Apollo and the Muses",
+     "Venus and Vulcan at the Forge",
+     "Allegory of the Hunt"
+    ],
+    "houses": [
+     "swann",
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Giorgio Mantovano Ghisi",
+    "born": 1520,
+    "died": 1582,
+    "nat": "Italian",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Giorgio Mantovano Ghisi",
+     "After Giorgio Mantovano Ghisi"
+    ],
+    "works": 8,
+    "titles": [
+     "The Vision of Ezekiel",
+     "Venus and the Rose",
+     "The Death of Procris",
+     "Allegorical Figure Holding a Sphere",
+     "Sinon deceiving the Trojans",
+     "Hercules Resting from his Labours"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g107",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Chris Frazer Smith",
+    "born": 1963,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Chris Frazer Smith"
+    ],
+    "works": 1,
+    "titles": [
+     "Driving Range II"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Chris Smith",
+    "born": 1937,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Chris Smith"
+    ],
+    "works": 2,
+    "titles": [
+     "Ali versus The Beatles",
+     "Ali and the Beatles"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g108",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Andr\u00e9 Dunoyer de Segonzac",
+    "born": 1884,
+    "died": 1974,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "After Andr\u00e9 Dunoyer de Segonzac",
+     "Andr\u00e9 Dunoyer de Segonzac",
+     "DUNOYER DE SEGONZAC Andr\u00e9",
+     "ANDR\u00c9 DUNOYER DE SEGONZAC"
+    ],
+    "works": 28,
+    "titles": [
+     "Saint-Tropez",
+     "L'Appel du Clown by R\u00e9gis Gignoux",
+     "Nu au bord de la mer",
+     "Nature morte, 1950s",
+     "Untitled (Children In the Park)",
+     "Femme enlevant sa chemise"
+    ],
+    "houses": [
+     "navigart18",
+     "swann",
+     "navigart24",
+     "bonhams",
+     "navigart11",
+     "navigart14",
+     "navigart15"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Gus Bofa and Andr\u00e9 Dunoyer de Segonzac",
+    "born": 1884,
+    "died": 1974,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Gus Bofa (1883-1968) and Andr\u00e9 Dunoyer de Segonzac"
+    ],
+    "works": 1,
+    "titles": [
+     "Pierre Falk\u00e9: Notre Ami"
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g109",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Chet La More",
+    "born": 1908,
+    "died": 1980,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500465380",
+    "wikidata": "https://www.wikidata.org/wiki/Q56033508",
+    "alts": [
+     "Chet La More"
+    ],
+    "works": 11,
+    "titles": [
+     "Miner",
+     "Refugees",
+     "Civialians",
+     "Drawing Lesson",
+     "Miners",
+     "Coal Landscape"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Chet la More",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "CHET LA MORE"
+    ],
+    "works": 1,
+    "titles": [
+     "Miners"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g110",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Peter Philips",
+    "born": 1939,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Peter Philips"
+    ],
+    "works": 3,
+    "titles": [
+     "Doublebubblebrain",
+     "Pneumatics",
+     "Transorbital"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Peter Phillips",
+    "born": 1939,
+    "died": null,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500001509",
+    "wikidata": "https://www.wikidata.org/wiki/Q5482171",
+    "alts": [
+     "Peter Phillips",
+     "Phillips, Esq Peter",
+     "Esq Peter Phillips"
+    ],
+    "works": 53,
+    "titles": [
+     "Bird with engine",
+     "Custom Print III, from 11 Pop Artists Volume III",
+     "Pontiac",
+     "Untitled",
+     "Toyota",
+     "'Custom Print II'"
+    ],
+    "houses": [
+     "roseberys",
+     "bonhams",
+     "met",
+     "forum",
+     "tate"
+    ],
+    "ulanBio": "Phillips, Peter: English painter, 1939-2025"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g111",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Benito Quinquela Mart\u00edn",
+    "born": 1890,
+    "died": 1977,
+    "nat": "Argentinian",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Benito Quinquela Mart\u00edn"
+    ],
+    "works": 1,
+    "titles": [
+     "Inundacion en la Boca, Aguafuerte"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Fran\u00e7ois Martin",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "MARTIN Fran\u00e7ois"
+    ],
+    "works": 10,
+    "titles": [
+     "A la lisi\u00e8re de la savane III",
+     "A la lisi\u00e8re de la savane V",
+     "A la lisi\u00e8re de la savane IV",
+     "A la lisi\u00e8re de la savane II",
+     "Mozart, le n\u00e8gre et la dame II",
+     "Mozart, le n\u00e8gre et la dame I"
+    ],
+    "houses": [
+     "navigart43",
+     "navigart25",
+     "navigart20",
+     "navigart11"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g112",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Giovanni B. Ghisi (after Giulio Romano)",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "GIOVANNI B. GHISI (AFTER GIULIO ROMANO)"
+    ],
+    "works": 1,
+    "titles": [
+     "The Trojans Repelling the Greeks"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Giovanni Battista Scultori (after Giulio Romano)",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "GIOVANNI BATTISTA SCULTORI (AFTER GIULIO ROMANO)"
+    ],
+    "works": 1,
+    "titles": [
+     "Naval Battle between Trojans and Greeks"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g113",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Thomas Walton after Joshua Reynolds",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Thomas Walton after Joshua Reynolds"
+    ],
+    "works": 1,
+    "titles": [
+     "Lady Bampfylde"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Thomas Watson after Joshua Reynolds",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Thomas Watson after Joshua Reynolds"
+    ],
+    "works": 1,
+    "titles": [
+     "Fr. Bartolozzi RA"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g114",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Lauren Ewing",
+    "born": null,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Lauren Ewing"
+    ],
+    "works": 1,
+    "titles": [
+     "Femfolio"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "May Stevens",
+    "born": 1924,
+    "died": 2019,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500005241",
+    "wikidata": "https://www.wikidata.org/wiki/Q6796587",
+    "alts": [
+     "May Stevens"
+    ],
+    "works": 3,
+    "titles": [
+     "Femfolio",
+     "The Band Played On, from Femfolio",
+     "By the Light of the Silvery Moon"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": "Stevens, May: American painter and printmaker, 1924-2019"
+   },
+   "sharedWorks": 1,
+   "sharedTitles": [
+    "Femfolio"
+   ],
+   "openEdge": false
+  },
+  {
+   "id": "g115",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Peter Lax",
+    "born": 1926,
+    "died": null,
+    "nat": "American, born Hungary",
+    "ulan": "http://vocab.getty.edu/ulan/500524601",
+    "wikidata": "https://www.wikidata.org/wiki/Q323331",
+    "alts": [
+     "Peter Lax"
+    ],
+    "works": 1,
+    "titles": [
+     "Concinnitas"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": "Lax, Peter D.: American mathematician of Hungarian birth, born 1926"
+   },
+   "b": {
+    "name": "Peter Lik",
+    "born": 1959,
+    "died": null,
+    "nat": "Australian",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Peter Lik"
+    ],
+    "works": 6,
+    "titles": [
+     "Eternal Beauty",
+     "Antelope Canyon, Arizona",
+     "Sunflowers",
+     "Flat Iron",
+     "Tranquility",
+     "Pristine Waters"
+    ],
+    "houses": [
+     "roseberys",
+     "bonhams",
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g116",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "John Lennon & Yoko Ono",
+    "born": 1940,
+    "died": 1980,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "John Lennon MBE & Yoko Ono",
+     "John Lennon & Yoko Ono"
+    ],
+    "works": 1,
+    "titles": [
+     "Imagine John Yoko (Signed Collector's Edition)"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Yoko Ono",
+    "born": 1933,
+    "died": null,
+    "nat": "Japanese",
+    "ulan": "http://vocab.getty.edu/ulan/500115959",
+    "wikidata": "https://www.wikidata.org/wiki/Q117012",
+    "alts": [
+     "Yoko Ono",
+     "Ono, Yoko"
+    ],
+    "works": 3,
+    "titles": [
+     "Rain Dance",
+     "I Ching No. 14",
+     "I LOVE YOU EARTH"
+    ],
+    "houses": [
+     "bonhams",
+     "tate",
+     "roseberys"
+    ],
+    "ulanBio": "Ono, Yoko: Japanese-American conceptual artist, born 1933"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g117",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "William C. McNulty",
+    "born": 1884,
+    "died": 1963,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [],
+    "works": 1,
+    "titles": [
+     "In the Fifties (The Whirlpool)"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "William C. Mcnulty",
+    "born": 1884,
+    "died": 1963,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "WILLIAM C. MCNULTY"
+    ],
+    "works": 7,
+    "titles": [
+     "Towers in the Sun",
+     "Times Square",
+     "In the Fifties (The Whirlpool)",
+     "Fulton Market Docks",
+     "Roaring Forties"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g118",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Charles White",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Charles White",
+     "WHITE Charles, LINCOLN Lady",
+     "CHARLES WHITE"
+    ],
+    "works": 3,
+    "titles": [
+     "Missouri C",
+     "Go happy flowers fulfill the task designed",
+     "Micah"
+    ],
+    "houses": [
+     "swann",
+     "navigart19",
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Charles Wilbert White",
+    "born": 1918,
+    "died": 1979,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500115749",
+    "wikidata": "https://www.wikidata.org/wiki/Q5083521",
+    "alts": [
+     "Charles Wilbert White",
+     "CHARLES WILBERT WHITE"
+    ],
+    "works": 22,
+    "titles": [
+     "Micah",
+     "Young Woman (Head)",
+     "Harvest",
+     "Elijah",
+     "Matriarch",
+     "Jessica"
+    ],
+    "houses": [
+     "bonhams",
+     "met"
+    ],
+    "ulanBio": "White, Charles: American painter, printmaker, 1918-1979"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g119",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Publisher Robert Sayer and John Bennett",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Publisher Robert Sayer and John Bennett"
+    ],
+    "works": 1,
+    "titles": [
+     "What is this my son Tom"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Publisher: R Sayer and J Bennett",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Publisher: R Sayer and J Bennett"
+    ],
+    "works": 1,
+    "titles": [
+     "Old Wheat Sheaf in the Trap of Venus and Bacchus"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g120",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "John Lennon",
+    "born": 1940,
+    "died": 1980,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500106615",
+    "wikidata": null,
+    "alts": [
+     "John Lennon MBE",
+     "John Lennon",
+     "John Lennon (1940-1980) ."
+    ],
+    "works": 6,
+    "titles": [
+     "Yoko, pl. 5, from Bag One",
+     "#9 Dream",
+     "Ballad of John & Yoko",
+     "Bag one",
+     "Bag One",
+     "Menage a trois"
+    ],
+    "houses": [
+     "bonhams",
+     "forum",
+     "roseberys"
+    ],
+    "ulanBio": "Lennon, John: English musician, songwriter, and draftsman, 1940-1980"
+   },
+   "b": {
+    "name": "Yoko Ono & John Lennon",
+    "born": 1933,
+    "died": null,
+    "nat": "Japanese",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Yoko Ono & John Lennon MBE"
+    ],
+    "works": 2,
+    "titles": [
+     "Imagine John Yoko"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g121",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Theo Van Doesburg",
+    "born": 1883,
+    "died": 1931,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500007926",
+    "wikidata": null,
+    "alts": [
+     "VAN DOESBURG Theo (KUEPPER Christian Emil, dit)"
+    ],
+    "works": 3,
+    "titles": [
+     "Composition",
+     "(Sans titre)"
+    ],
+    "houses": [
+     "navigart15",
+     "navigart14",
+     "navigart11"
+    ],
+    "ulanBio": "Doesburg, Theo van: Dutch painter, writer, and author, 1883-1931"
+   },
+   "b": {
+    "name": "Theo van Doesburg",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "THEO VAN DOESBURG"
+    ],
+    "works": 1,
+    "titles": [
+     "and KURT SCHWITTERS Kleine Dada Soir\u00e9e"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g122",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Gilbert and George",
+    "born": 1943,
+    "died": null,
+    "nat": "Italian/British",
+    "ulan": "http://vocab.getty.edu/ulan/500055847",
+    "wikidata": "https://www.wikidata.org/wiki/Q684974",
+    "alts": [
+     "Gilbert & George",
+     "Gilbert & George RA",
+     "Gilbert & George (b.1943 and 1942)",
+     "Gilbert & George (b.1943 & 1942)",
+     "Gilbert & George (b.1943 & b.1942)",
+     "Gilbert and George"
+    ],
+    "works": 62,
+    "titles": [
+     "Untitled (A0228 lot 158)",
+     "Death After Life",
+     "The Singing Sculpture",
+     "First Blossom",
+     "Death after Life",
+     "Crush"
+    ],
+    "houses": [
+     "forum",
+     "bonhams",
+     "bm",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Guy Georget",
+    "born": 1911,
+    "died": 1992,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Guy Georget"
+    ],
+    "works": 1,
+    "titles": [
+     "Air France, French Riviera"
+    ],
+    "houses": [
+     "forum"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g123",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Camille Pissarro",
+    "born": 1830,
+    "died": 1903,
+    "nat": "French",
+    "ulan": "http://vocab.getty.edu/ulan/500001924",
+    "wikidata": null,
+    "alts": [
+     "Camille Pissarro",
+     "After Camille Pissarro",
+     "PISSARRO Camille (PISSARRO Camille Jacob, dit)",
+     "CAMILLE PISSARRO"
+    ],
+    "works": 140,
+    "titles": [
+     "Untitled (A0261 lot 155)",
+     "Dulwich College, London",
+     "Le Port pr\u00e8s la Douane, \u00e0 Rouen",
+     "and GEORGE W THORNLEY Petite Bonne Flamande",
+     "and GEORGE W THORNLEY L'Abri de la meule de foin",
+     "\u00c9glise et ferme d'Eragny * Mendiantes * Paysannes \u00e0 l'herbe * March\u00e9 de Gisors (rue Cappeville) * Baigneuses gardeus"
+    ],
+    "houses": [
+     "bonhams",
+     "km",
+     "swann",
+     "navigart19",
+     "navigart14",
+     "navigart25",
+     "roseberys",
+     "forum"
+    ],
+    "ulanBio": "Pissarro, Camille: French painter and printmaker, 1830-1903"
+   },
+   "b": {
+    "name": "Orovida Camille Pissarro",
+    "born": 1893,
+    "died": 1968,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Orovida Camille Pissarro"
+    ],
+    "works": 10,
+    "titles": [
+     "'The Scarf Game'",
+     "'Tiger'",
+     "'Peccays and Tiger Pranks' (Final state)",
+     "'The Spring Morning'",
+     "'Big Leopard'",
+     "'Tiger and a Python' (Trial proof)"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g124",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Miriam Schapiro",
+    "born": 1923,
+    "died": 2015,
+    "nat": "American, born Canada",
+    "ulan": "http://vocab.getty.edu/ulan/500028006",
+    "wikidata": "https://www.wikidata.org/wiki/Q542496",
+    "alts": [
+     "Miriam Schapiro"
+    ],
+    "works": 3,
+    "titles": [
+     "Curtain Call 2",
+     "Femfolio",
+     "Court Jester, from Femfolio"
+    ],
+    "houses": [
+     "bonhams",
+     "met"
+    ],
+    "ulanBio": "Schapiro, Miriam: American painter and printmaker, 1923-2015"
+   },
+   "b": {
+    "name": "Sylvia Sleigh",
+    "born": 1916,
+    "died": 2010,
+    "nat": "American, born Wales",
+    "ulan": "http://vocab.getty.edu/ulan/500087472",
+    "wikidata": "https://www.wikidata.org/wiki/Q289342",
+    "alts": [
+     "Sylvia Sleigh"
+    ],
+    "works": 2,
+    "titles": [
+     "Femfolio",
+     "Douglas John and Ms. Smith, from Femfolio"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": "Sleigh, Sylvia: Welsh painter and draftsman, ca. 1916-2010, active in the United States"
+   },
+   "sharedWorks": 1,
+   "sharedTitles": [
+    "Femfolio"
+   ],
+   "openEdge": false
+  },
+  {
+   "id": "g125",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Gary Webb",
+    "born": 1973,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Gary Webb"
+    ],
+    "works": 1,
+    "titles": [
+     "Matte Module"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Mary Webb",
+    "born": 1939,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Mary Webb"
+    ],
+    "works": 1,
+    "titles": [
+     "Red, White and Black"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g126",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Kennard Phillips (Peter Kennard and Cat Phillips)",
+    "born": 1949,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Kennard Phillips (Peter Kennard and Cat Phillips)",
+     "Cat Phillips (b.1972) & Peter Kennard",
+     "Cat Phillips & Peter Kennard"
+    ],
+    "works": 3,
+    "titles": [
+     "Photo Op",
+     "Study For a Head 7",
+     "Game of loans"
+    ],
+    "houses": [
+     "forum",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Richard Phillips",
+    "born": 1962,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Richard Phillips",
+     "After Richard Phillips"
+    ],
+    "works": 2,
+    "titles": [
+     "Spectrum",
+     "Anna"
+    ],
+    "houses": [
+     "bonhams",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g127",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Edward Burne-Jones",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "BURNE-JONES Edward"
+    ],
+    "works": 1,
+    "titles": [
+     "Beauty"
+    ],
+    "houses": [
+     "navigart25"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Sir Edward Coley, Bt Burne-Jones",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Burne-Jones, Sir Edward Coley, Bt"
+    ],
+    "works": 3,
+    "titles": [
+     "Summer Snow, engraved by the Dalziel Brothers",
+     "Sigurd the Crusader, engraved by the Dalziel Brothers",
+     "Parable of the Boiling Pot, engraved by the Dalziel Brothers"
+    ],
+    "houses": [
+     "tate"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g128",
+   "stratum": "fuzzy/trap",
+   "a": {
+    "name": "Publisher: J Carter",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Publisher: J Carter"
+    ],
+    "works": 1,
+    "titles": [
+     "A TRIP TO BRIGHTON"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Publisher; Bowles and Carver",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Publisher; Bowles and Carver"
+    ],
+    "works": 1,
+    "titles": [
+     "A Nettle Between Two Roses"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g129",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Robert Parke Harrison",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Robert Parke Harrison"
+    ],
+    "works": 1,
+    "titles": [
+     "The Waiting"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Robert ParkeHarrison",
+    "born": 1968,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Robert ParkeHarrison"
+    ],
+    "works": 5,
+    "titles": [
+     "The Book of Life",
+     "Consumption, Departure, Exhausted Globe, Patching the Sky",
+     "Tree Symphony",
+     "Tree Stories",
+     "Listening to the Earth"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g130",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Man Ray",
+    "born": 1890,
+    "died": 1976,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500015030",
+    "wikidata": null,
+    "alts": [
+     "Man Ray",
+     "After Man Ray",
+     "MAN RAY",
+     "MAN RAY (RADNITZKY Emmanuel, dit)"
+    ],
+    "works": 184,
+    "titles": [
+     "Autoportrait",
+     "De l'Origine des Esp\u00e8ces",
+     "L''Avventura",
+     "Pont Neuf",
+     "Le Pont bris\u00e9",
+     "Senza Titolo"
+    ],
+    "houses": [
+     "roseberys",
+     "swann",
+     "navigart25",
+     "navigart15",
+     "bonhams",
+     "tate",
+     "forum"
+    ],
+    "ulanBio": "Man Ray: American painter and photographer, 1890-1976"
+   },
+   "b": {
+    "name": "Rex Ray",
+    "born": 1956,
+    "died": 2015,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Rex Ray"
+    ],
+    "works": 1,
+    "titles": [
+     "David Bowie"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g131",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Th\u00e9odore Gericault",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "TH\u00c9ODORE GERICAULT"
+    ],
+    "works": 1,
+    "titles": [
+     "Retour de Russie"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Th\u00e9odore G\u00e9ricault",
+    "born": 1791,
+    "died": 1824,
+    "nat": "French",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Theodore Gericault",
+     "Th\u00e9odore G\u00e9ricault",
+     "TH\u00c9ODORE G\u00c9RICAULT"
+    ],
+    "works": 15,
+    "titles": [
+     "\u00c9tudes de Chevaux par G\u00e9ricault",
+     "Le Factionnaire Suisse au Louvre",
+     "A French Farrier",
+     "Mameluck D\u00e9fendant un Trompette Bless\u00e9",
+     "A Party of Life-Guards",
+     "Le Giaour"
+    ],
+    "houses": [
+     "swann",
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g132",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Aliye Berger",
+    "born": 1903,
+    "died": 1974,
+    "nat": "Turkish",
+    "ulan": "http://vocab.getty.edu/ulan/500524626",
+    "wikidata": "https://www.wikidata.org/wiki/Q12808445",
+    "alts": [
+     "Aliye Berger"
+    ],
+    "works": 2,
+    "titles": [
+     "Bolu Pazari",
+     "Untitled Dervishes"
+    ],
+    "houses": [
+     "forum",
+     "met"
+    ],
+    "ulanBio": "Berger, Aliye: Turkish painter, 1903-1974"
+   },
+   "b": {
+    "name": "Art Werger",
+    "born": 1955,
+    "died": null,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Art Werger"
+    ],
+    "works": 1,
+    "titles": [
+     "Group of Prints, 2001 (2); 2002"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g133",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Andr\u00e9 Beaudin",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "BEAUDIN Andr\u00e9"
+    ],
+    "works": 30,
+    "titles": [
+     "Sans titre",
+     "La villa",
+     "Arc-en-ciel",
+     "Feuille envol\u00e9e",
+     "Feuilles p\u00e2les",
+     "Composition"
+    ],
+    "houses": [
+     "navigart15",
+     "navigart18",
+     "navigart11",
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Andr\u00e9 Beguin",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "BEGUIN Andr\u00e9"
+    ],
+    "works": 1,
+    "titles": [
+     "Contre \u00e9chec"
+    ],
+    "houses": [
+     "navigart20"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g134",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Alan Reynolds",
+    "born": 1926,
+    "died": 2014,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500017770",
+    "wikidata": null,
+    "alts": [
+     "Alan Reynolds"
+    ],
+    "works": 2,
+    "titles": [
+     "Structure No. 2",
+     "Untitled (A0250 lot 236)"
+    ],
+    "houses": [
+     "forum",
+     "roseberys"
+    ],
+    "ulanBio": "Reynolds, Alan: English painter, 1926-2014"
+   },
+   "b": {
+    "name": "Thomas Walton after Joshua Reynolds",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Thomas Walton after Joshua Reynolds"
+    ],
+    "works": 1,
+    "titles": [
+     "Lady Bampfylde"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g135",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Barbara Morgan",
+    "born": 1900,
+    "died": 1992,
+    "nat": "American",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Barbara Morgan"
+    ],
+    "works": 15,
+    "titles": [
+     "Martha Graham-Frontier (Fear)",
+     "Amaryllis I",
+     "Martha Graham-Lamentation",
+     "Eric Hawkins as el Flagellante in Martha Graham's El Penitente",
+     "Martha Graham-Letter to the World (Swirl)",
+     "Spring on Madison Square, New York"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Bryan Organ",
+    "born": 1935,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Bryan Organ",
+     "Organ, Bryan"
+    ],
+    "works": 18,
+    "titles": [
+     "4. Cheetah",
+     "Lester Piggott",
+     "Geoff Lewis",
+     "Joe Mercer",
+     "Tony Murray",
+     "3. Lioness"
+    ],
+    "houses": [
+     "tate",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g136",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Antonio Segu\u00ed",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "SEGU\u00cd Antonio"
+    ],
+    "works": 7,
+    "titles": [
+     "Sans titre",
+     "Comme un hommage",
+     "Faites du sport",
+     "(Sans titre)",
+     "Voeux 1966"
+    ],
+    "houses": [
+     "navigart5",
+     "navigart43",
+     "navigart29",
+     "navigart14",
+     "navigart11"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Armand S\u00e9guin",
+    "born": 1869,
+    "died": 1903,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500019502",
+    "wikidata": null,
+    "alts": [
+     "S\u00c9GUIN Armand"
+    ],
+    "works": 1,
+    "titles": [
+     "L'\u00e9glise Saint-Gervais et le pont Louis-Philippe"
+    ],
+    "houses": [
+     "navigart20"
+    ],
+    "ulanBio": "S\u00e9guin, Armand: French painter and engraver, 1869-1903"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g137",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Percy Wyndham Lewis",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Percy Wyndham Lewis"
+    ],
+    "works": 1,
+    "titles": [
+     "Untitled (A0213 lot 225)"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Wyndham Lewis",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Wyndham Lewis"
+    ],
+    "works": 1,
+    "titles": [
+     "\"Blast\", no.1 (20 June 1914), edited by Wyndham Lewis; Vorticist periodical containing the Vorticist Manifesto, poems by..."
+    ],
+    "houses": [
+     "bm"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g138",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Ivan Mikhailovich Shagin",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Ivan Mikhailovich Shagin"
+    ],
+    "works": 6,
+    "titles": [
+     "Taking over the Reitstag",
+     "Untitled (A0261 lot 328)",
+     "Untitled (A0261 lot 329)",
+     "Untitled (A0261 lot 330)",
+     "Untitled (A0228 lot 306)",
+     "Untitled (A0228 lot 305)"
+    ],
+    "houses": [
+     "bonhams",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Ivan Shagin",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Ivan Shagin"
+    ],
+    "works": 1,
+    "titles": [
+     "Various Russian Images, 1397-1950's"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g139",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "August Sander",
+    "born": 1876,
+    "died": 1964,
+    "nat": "German",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "August Sander"
+    ],
+    "works": 10,
+    "titles": [
+     "Jungbauer (Young Farmer)",
+     "Young Farmers on Way to a Dance, Westerwald",
+     "The Wife of the Painter Peter Abelene, Cologne",
+     "The High School Graduate, K\u00f6ln",
+     "Jungbauern (Young Farmers), Westerwald, c.",
+     "M\u00e4dchen im Zirkuswagen (Girl in a Circus Caravan), K\u00f6ln"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Ludwig Sander",
+    "born": 1906,
+    "died": 1975,
+    "nat": "American",
+    "ulan": "http://vocab.getty.edu/ulan/500013748",
+    "wikidata": "https://www.wikidata.org/wiki/Q20089904",
+    "alts": [
+     "Ludwig Sander",
+     "Sander, Ludwig"
+    ],
+    "works": 5,
+    "titles": [
+     "Manitou; Chinook; Untitled, 1971 (2);",
+     "Mohican",
+     "Three Blues",
+     "Untitled",
+     "\"Mohican\" 1972"
+    ],
+    "houses": [
+     "bonhams",
+     "forum",
+     "tate",
+     "met",
+     "roseberys"
+    ],
+    "ulanBio": "Sander, Ludwig: American painter, 1906-1975"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g140",
+   "stratum": "strong/clean",
+   "a": {
+    "name": "Wenzel von Olmutz",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "WENZEL VON OLMUTZ"
+    ],
+    "works": 1,
+    "titles": [
+     "St. Christopher"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Wenzel von Olm\u00fctz",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "WENZEL VON OLM\u00dcTZ"
+    ],
+    "works": 1,
+    "titles": [
+     "St. Christopher"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g141",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Agostino Carracci",
+    "born": 1557,
+    "died": 1602,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Agostino Carracci",
+     "Agostino Carracci (1557-1602), .",
+     "Agostino Carracci,",
+     "AGOSTINO CARRACCI"
+    ],
+    "works": 17,
+    "titles": [
+     "Apollo and the Python",
+     "The Savior, the Virgin Mary and the Apostles",
+     "(after Veronese) The Mystic Marriage of Saint Catherine",
+     "The Crucifixion",
+     "A Satyr Whipping a Nymph",
+     "Omnia vincit Amor"
+    ],
+    "houses": [
+     "swann",
+     "forum",
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Luca Ciamberlano (after Agostino Carracci)",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "LUCA CIAMBERLANO (AFTER AGOSTINO CARRACCI)"
+    ],
+    "works": 1,
+    "titles": [
+     "Two Skulls (Nil certius morte nil incertius die mortis)"
+    ],
+    "houses": [
+     "swann"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g142",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Harry Shunk & Yves Klein",
+    "born": 1924,
+    "died": 2006,
+    "nat": "German",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Harry Shunk & Yves Klein"
+    ],
+    "works": 1,
+    "titles": [
+     "Leap into the Void"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Jochen Klein",
+    "born": 1967,
+    "died": 1997,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500116140",
+    "wikidata": null,
+    "alts": [
+     "Jochen Klein",
+     "Klein, Jochen"
+    ],
+    "works": 2,
+    "titles": [
+     "Untitled, from Cubitt Print Box",
+     "Untitled"
+    ],
+    "houses": [
+     "forum",
+     "tate"
+    ],
+    "ulanBio": "Klein, Jochen: German painter, 1967-1997"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g143",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Ernest Laurent",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "LAURENT Ernest"
+    ],
+    "works": 1,
+    "titles": [
+     "Soir d'octobre"
+    ],
+    "houses": [
+     "navigart25"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "J E Laurent",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "J E Laurent"
+    ],
+    "works": 1,
+    "titles": [
+     "Fes Maroc, La Capitale Musulmane"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g144",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Jacques Houplain",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "HOUPLAIN Jacques"
+    ],
+    "works": 33,
+    "titles": [
+     "Anc\u00eatre sauterelle",
+     "Ouverture du premier sceau",
+     "Microsmogamie en m\u00e9moire de caillou",
+     "Course de taureaux",
+     "Saint-Georges",
+     "La Falaise"
+    ],
+    "houses": [
+     "navigart18",
+     "navigart25",
+     "navigart24",
+     "navigart11",
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Michel Houplain",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "HOUPLAIN Michel"
+    ],
+    "works": 1,
+    "titles": [
+     "Le R\u00f4le du travail dans la transformation du singe en homme"
+    ],
+    "houses": [
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g145",
+   "stratum": "weak/clean",
+   "a": {
+    "name": "Armand Vall\u00e9e",
+    "born": 1884,
+    "died": 1960,
+    "nat": "French",
+    "ulan": "http://vocab.getty.edu/ulan/500094404",
+    "wikidata": null,
+    "alts": [
+     "Armand Vall\u00e9e"
+    ],
+    "works": 1,
+    "titles": [
+     "Journal des Dames et des Modes, No. 59 (10 January 1914)"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": "Vall\u00e9e, Armand: French painter, designer, and illustrator, contemporary"
+   },
+   "b": {
+    "name": "Drian",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Drian"
+    ],
+    "works": 1,
+    "titles": [
+     "Journal des Dames et des Modes, No. 59 (10 January 1914)"
+    ],
+    "houses": [
+     "met"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 1,
+   "sharedTitles": [
+    "Journal des Dames et des Modes, No. 59 (10 January 1914)"
+   ],
+   "openEdge": false
+  },
+  {
+   "id": "g146",
+   "stratum": "weak/trap",
+   "a": {
+    "name": "Jack Smith",
+    "born": 1928,
+    "died": 2011,
+    "nat": "British",
+    "ulan": "http://vocab.getty.edu/ulan/500009953",
+    "wikidata": null,
+    "alts": [
+     "Jack Smith",
+     "Smith, Jack",
+     "SMITH Jack"
+    ],
+    "works": 5,
+    "titles": [
+     "Sounds",
+     "Light and Nature Structure",
+     "Untitled",
+     "Angela",
+     "untitled"
+    ],
+    "houses": [
+     "navigart28",
+     "tate",
+     "roseberys"
+    ],
+    "ulanBio": "Smith, Jack: British painter, born 1928"
+   },
+   "b": {
+    "name": "Josh Smith",
+    "born": 1976,
+    "died": null,
+    "nat": null,
+    "ulan": "http://vocab.getty.edu/ulan/500333763",
+    "wikidata": "http://www.wikidata.org/entity/Q15454606",
+    "alts": [
+     "Josh Smith"
+    ],
+    "works": 2,
+    "titles": [
+     "Other Guy",
+     "Palm Tree"
+    ],
+    "houses": [
+     "bonhams",
+     "forum"
+    ],
+    "ulanBio": "Smith, Josh: American installation artist, born 1976"
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g147",
+   "stratum": "subset/trap",
+   "a": {
+    "name": "Cat Phillips",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Cat Phillips"
+    ],
+    "works": 1,
+    "titles": [
+     "Trapped"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Kennard Phillips (Peter Kennard and Cat Phillips)",
+    "born": 1949,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Kennard Phillips (Peter Kennard and Cat Phillips)",
+     "Cat Phillips (b.1972) & Peter Kennard",
+     "Cat Phillips & Peter Kennard"
+    ],
+    "works": 3,
+    "titles": [
+     "Photo Op",
+     "Study For a Head 7",
+     "Game of loans"
+    ],
+    "houses": [
+     "forum",
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g148",
+   "stratum": "fuzzy/clean",
+   "a": {
+    "name": "Mary Potter",
+    "born": 1900,
+    "died": 1981,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Mary Potter"
+    ],
+    "works": 2,
+    "titles": [
+     "The Thames at Chiswick",
+     "Lilly of the Valley in a Vase"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Michel Potier",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "POTIER Michel"
+    ],
+    "works": 5,
+    "titles": [
+     "Jeune fille",
+     "L'imposteur",
+     "Rendez-vous!",
+     "Multivitamine",
+     "Efflorescence"
+    ],
+    "houses": [
+     "navigart18",
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g149",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Loulou Picasso",
+    "born": null,
+    "died": null,
+    "nat": null,
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "PICASSO Loulou (DUPR\u00c9 Jean-Louis, dit)"
+    ],
+    "works": 1,
+    "titles": [
+     "Sans titre"
+    ],
+    "houses": [
+     "navigart14"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Picasso",
+    "born": 1875,
+    "died": 1963,
+    "nat": "French",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "After Picasso by Jacques Villon"
+    ],
+    "works": 1,
+    "titles": [
+     "Les Saltimbanques"
+    ],
+    "houses": [
+     "bonhams"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  },
+  {
+   "id": "g150",
+   "stratum": "subset/clean",
+   "a": {
+    "name": "Cyclops",
+    "born": 1975,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Cyclops"
+    ],
+    "works": 1,
+    "titles": [
+     "Charlie Brown, Good Grief"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "b": {
+    "name": "Lucas Price (Cyclops)",
+    "born": 1961,
+    "died": null,
+    "nat": "British",
+    "ulan": null,
+    "wikidata": null,
+    "alts": [
+     "Lucas Price (Cyclops)"
+    ],
+    "works": 1,
+    "titles": [
+     "Economy of Scale (Two)"
+    ],
+    "houses": [
+     "roseberys"
+    ],
+    "ulanBio": null
+   },
+   "sharedWorks": 0,
+   "sharedTitles": [],
+   "openEdge": false
+  }
+ ]
+}
