@@ -24,7 +24,9 @@
  *     asserted with no source, which ADR-0007 Decision 3 already refuses to write to the graph.
  *   SILENT ON A REAL GAP — zero searches when the graph returned no same_work record. With a
  *     same_work record, zero searches is now correct. Without one, finding a comparable was the
- *     job, and not attempting it is not a finding.
+ *     job, and not attempting it is not a finding. A same-print sale from query_artsy_results
+ *     (2026-09-22) closes the gap the same way: the comparable WAS found, by the cheap route,
+ *     and it arrives with an artsy.net result URL, so the uncited-comp check still applies.
  *
  * A FOURTH reason is not a judgement about the output but the absence of one: the cheap attempt
  * THREW. Measured the first time this gate ran live — Haiku ended its turn on the Cindy Sherman
@@ -47,6 +49,10 @@ export interface Stage2bResearchTelemetry {
   searches: number;
   /** same_work comps the graph returned for this lot, which decides whether silence is honest. */
   graphSameWorkComps: number;
+  /** Same-print sales query_artsy_results returned during the stage (artsyUsage().sameWork).
+   *  Counts toward closing the gap just as a graph same_work record does — see SILENT ON A
+   *  REAL GAP above. Optional so older callers read as zero. */
+  artsySameWorkComps?: number;
 }
 
 export type Stage2bGateReason =
@@ -94,9 +100,9 @@ export function assessStage2bResearch(result: unknown, t: Stage2bResearchTelemet
     notes.push(`catalogue raisonné "${cr.catalogueName.trim()}" asserted with no source URL`);
   }
 
-  if (t.searches === 0 && t.graphSameWorkComps === 0) {
+  if (t.searches === 0 && t.graphSameWorkComps === 0 && (t.artsySameWorkComps ?? 0) === 0) {
     reasons.push("no_search_despite_gap");
-    notes.push("no web search was made, and the graph holds no same-work sale — the gap it was sent to close was not attempted");
+    notes.push("no web search was made, and neither the graph nor Artsy holds a same-work sale — the gap it was sent to close was not attempted");
   }
 
   return {

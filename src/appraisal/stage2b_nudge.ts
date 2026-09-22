@@ -24,6 +24,11 @@
 export interface NudgeState {
   /** The graph returned no same-work sale, so finding a comparable was the task. */
   researchGap: boolean;
+  /** Same-print sales query_artsy_results has returned so far in this run. One closes the gap
+   *  exactly as a graph same_work record does: the comparable was found, by a cheaper route
+   *  than a web search, so telling the model to search for it would spend the budget the
+   *  Artsy tool exists to save. Optional so older callers read as zero. */
+  artsySameWork?: number;
   /** Web searches executed so far in this run. */
   searchesMade: number;
   /** Whether the single nudge has already been spent. */
@@ -35,13 +40,15 @@ export interface NudgeState {
 }
 
 /**
- * A nudge is warranted only when all four hold: there is a real gap, nothing was searched, the
+ * A nudge is warranted only when all four hold: there is a real gap (no same-work sale from the
+ * graph NOR from Artsy), nothing was searched, the
  * nudge is unspent, and a round remains to act on it. The last is what keeps the nudge from
  * being pointless — spending the final round telling a model to search leaves it no round in
  * which to search, and the stage would finalise identically while costing one extra turn.
  */
 export function shouldNudgeForSearch(s: NudgeState): boolean {
-  return s.researchGap && s.searchesMade === 0 && !s.nudged && s.round < s.maxRounds - 1;
+  const gapOpen = s.researchGap && (s.artsySameWork ?? 0) === 0;
+  return gapOpen && s.searchesMade === 0 && !s.nudged && s.round < s.maxRounds - 1;
 }
 
 /** The nudge itself. Names the gap, names the task, and forecloses inventing the answer. */

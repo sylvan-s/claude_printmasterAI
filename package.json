@@ -57,7 +57,8 @@
     "test:pool": "tsx tests/backtest/run_pool.ts",
     "show:pool": "tsx tests/backtest/show_pool.ts",
     "test:pool:triage": "tsx tests/backtest/run_pool_triage.ts",
-    "test:stage2b-nudge": "tsx tests/appraisal/stage2b_nudge_tests.ts"
+    "test:stage2b-nudge": "tsx tests/appraisal/stage2b_nudge_tests.ts",
+    "test:artsy-results": "tsx tests/appraisal/artsy_results_tests.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

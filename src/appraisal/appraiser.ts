@@ -56,6 +56,7 @@ import { assessStage2bResearch, stage2bResearchFailed, type Stage2bGateResult } 
 import { shouldNudgeForSearch, SEARCH_NUDGE_TEXT } from "./stage2b_nudge.js";
 import { sanitizeSearchQuery, filterExcludedResults, hasRef, type ExcludedListingRef } from "./search_scope.js";
 import { tavilySearch, formatSearchForModel, webSearchUsage, resetWebSearchUsage, MAX_RESULTS as SEARCH_MAX_RESULTS } from "./web_search.js";
+import { runArtsyTool, artsyUsage, resetArtsyUsage } from "./artsy_results.js";
 import type { AckgCandidate, AckgWorkMatch } from "./knowledge_graph/types.js";
 import type { StyleConsistencyEvidence } from "./two_pass_attribution";
 import { getImageEmbeddings } from "./embedding_client.js";
@@ -1323,6 +1324,35 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     },
   };
 
+  /**
+   * Other houses' results from Artsy's auction database, with every house already in the ACKG
+   * removed in code (artsy_results.ts). Deliberately NOT web_search: it is a structured lookup at
+   * a few hundred tokens, so it sits outside the 5-search budget, and a same-print sale it
+   * returns closes the research gap for the nudge and the gate exactly as a graph one does.
+   * It still spends a round of the loop like any tool.
+   */
+  private static readonly ARTSY_RESULTS_TOOL = {
+    name: "query_artsy_results",
+    description:
+      "Realised auction prices from Artsy's price database for houses the knowledge graph does " +
+      "NOT hold — Christie's, Sotheby's, Phillips, Kornfeld, Artcurial, Dorotheum and others. Sales " +
+      "at the ACKG's own houses (Bonhams, Skinner, Swann, Roseberys, Forum) are removed before you " +
+      "see them, so nothing here duplicates query_ackg_comparables. Call it AFTER " +
+      "query_ackg_comparables and BEFORE spending a web search on comps. It does NOT count against " +
+      "your web-search budget. Rows are prints only, tiered same_work (title matches exactly after " +
+      "catalogue refs are stripped) / same_artist, premium-inclusive, with GBP at the sale-date rate " +
+      "and an artsy.net result URL to cite. Artist identity is exact-name only: a miss means Artsy " +
+      "files the artist differently, not that the work never sold.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        artistName: { type: "string" as const, description: "Candidate artist's full name, e.g. \"Elisabeth Frink\"." },
+        workTitle: { type: "string" as const, description: "Identified work title, for the same_work tier and a title-keyword search. Omit if unknown." },
+      },
+      required: ["artistName"],
+    },
+  };
+
   private static readonly EDITION_TOOL = {
     name: "query_ackg_editions",
     description:
@@ -1437,8 +1467,12 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         : { type: "web_search_20250305", name: "web_search", max_uses: STAGE2B_MAX_WEB_SEARCHES },
       MultiStageAppraiser.MUSEUM_LOOKUP_TOOL,
       MultiStageAppraiser.COMPARABLES_TOOL,
+      // DISABLE_ARTSY_RESULTS=1 removes it, for the with/without A/B.
+      ...(process.env.DISABLE_ARTSY_RESULTS === "1" ? [] : [MultiStageAppraiser.ARTSY_RESULTS_TOOL]),
       MultiStageAppraiser.EDITION_TOOL,
     ];
+    // Reset per run, whatever the search mode: the gate reads artsyUsage().sameWork afterwards.
+    resetArtsyUsage();
     if (useClientSearch) {
       resetWebSearchUsage();
       console.log(`[4-Stage] Stage 2b using CLIENT-side web_search (${compatBaseUrl ? "compat endpoint" : this.config.clientWebSearch ? "method config" : "forced by env"})`);
@@ -1487,6 +1521,9 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
     // Searches this run actually executed, and whether the one nudge below has been spent.
     let searchesMade = 0;
     let nudged = false;
+    // Same-print sales the Artsy tool has returned this run — they close the gap the nudge
+    // exists for, so a model that found the comparable there is not told to go web-searching.
+    let artsySameWork = 0;
 
     for (let round = 0; round < MAX_ROUNDS; round++) {
       data = await post(messages, false);
@@ -1514,7 +1551,7 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
         // model searched, and the nudge would accuse a diligent model of silence. The
         // attributed-lot path sets clientWebSearch, so this costs it nothing.
         if (useClientSearch &&
-            shouldNudgeForSearch({ researchGap: !!researchGap, searchesMade, nudged, round, maxRounds: MAX_ROUNDS })) {
+            shouldNudgeForSearch({ researchGap: !!researchGap, artsySameWork, searchesMade, nudged, round, maxRounds: MAX_ROUNDS })) {
           nudged = true;
           console.log("[4-Stage] Stage 2b: no web search yet and the graph holds no same-work sale — nudging once");
           messages.push({ role: "assistant", content: data.content });
@@ -1594,6 +1631,25 @@ abstract class MultiStageAppraiser implements AppraisalMethod {
               content = `ACKG comparables query failed: ${err.message}`;
             }
             return { type: "tool_result", tool_use_id: b.id, content };
+          }
+          if (b.name === "query_artsy_results") {
+            const asked = String(b.input?.artistName ?? "");
+            let names = [asked];
+            try {
+              const useName = await canonicalArtistForQuery(asked, stage2aIdentity);
+              // Only the resolved identity's alternates, and only when the query is about that
+              // same artist (canonicalArtistForQuery decides) — never a different candidate's.
+              names = [useName.name, ...(useName.via === "stage2a" ? stage2aIdentity?.alternateNames ?? [] : []), asked];
+            } catch { /* fall back to the name as asked */ }
+            const r = await runArtsyTool({
+              artistNames: names,
+              workTitle: b.input?.workTitle ?? null,
+              excludeHouse: excludeRef?.house ?? null,
+              excludeLotNumber: excludeRef?.lotNumber ?? null,
+            });
+            artsySameWork += r.sameWork;
+            console.log(`[4-Stage] Stage 2b query_artsy_results "${asked}": ${r.logLine}`);
+            return { type: "tool_result", tool_use_id: b.id, content: r.content };
           }
           if (b.name === "query_ackg_editions") {
             let content: string;
@@ -4191,6 +4247,7 @@ export class AttributedLotAppraiser extends FourStageAppraiser {
           : assessStage2bResearch(attr, {
               searches: webSearchUsage().searches,
               graphSameWorkComps: comps?.summary.tierCounts.same_work ?? 0,
+              artsySameWorkComps: artsyUsage().sameWork,
             });
         stage2bGate = { ...gate, firstModel: stage2bModel, escalatedTo: gate.escalate ? escalationModel : null };
         if (gate.escalate) {

@@ -55,6 +55,16 @@ console.log("silence is judged against whether there was a gap to close");
   eq("no searches and no same-work sale: escalates", gap.reasons, ["no_search_despite_gap"]);
   const tried = assessStage2bResearch({ auctionComps: [] }, { searches: 1, graphSameWorkComps: 0 });
   ok("tried and found nothing: passes, because empty is an honest answer", !tried.escalate);
+  // query_artsy_results (2026-09-22): a same-print sale from Artsy closes the gap as a graph
+  // one does — the comparable was found by the cheap route, so no web search was owed.
+  const viaArtsy = assessStage2bResearch({ auctionComps: [] }, { searches: 0, graphSameWorkComps: 0, artsySameWorkComps: 1 });
+  ok("no searches, no graph sale, but Artsy had the same print: passes", !viaArtsy.escalate);
+  const artsyNothing = assessStage2bResearch({ auctionComps: [] }, { searches: 0, graphSameWorkComps: 0, artsySameWorkComps: 0 });
+  eq("Artsy called but no same-print sale anywhere, no search: still escalates", artsyNothing.reasons, ["no_search_despite_gap"]);
+  const artsyUncited = assessStage2bResearch(
+    { auctionComps: [{ artworkTitle: "Owl", priceAmount: 3584 }] },
+    { searches: 0, graphSameWorkComps: 0, artsySameWorkComps: 1 });
+  eq("an Artsy gap-closer does not excuse an uncited comp", artsyUncited.reasons, ["uncited_comp"]);
 }
 
 console.log("passes clean research");

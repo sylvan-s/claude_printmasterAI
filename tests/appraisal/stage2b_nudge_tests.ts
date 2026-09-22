@@ -68,6 +68,16 @@ check(
   /NO record of this work ever selling/.test(SEARCH_NUDGE_TEXT),
 );
 
+// --- Artsy closes the gap (2026-09-22) ------------------------------------
+check(
+  "silent when Artsy already returned a same-print sale — the comparable was found without a search",
+  !on({ artsySameWork: 1 }),
+);
+check(
+  "still fires when Artsy was called but returned no same-print sale",
+  on({ artsySameWork: 0 }),
+);
+
 // --- purity --------------------------------------------------------------
 const frozen: NudgeState = { researchGap: true, searchesMade: 0, nudged: false, round: 1, maxRounds: 4 };
 const snapshot = JSON.stringify(frozen);
