@@ -1,6 +1,6 @@
 """
 PrintMasterAI — merge Artist nodes that differ only by letter case
-Version: CASE-DEDUP-1.0
+Version: CASE-DEDUP-1.1
 
 Root cause: bonhams_ingest.py originally merged Artist by exact-string `name`, and
 Bonhams' own catalogue data formats some lots' artist names in ALL CAPS (a real
@@ -40,6 +40,11 @@ count, plus 1 if the name is not ALL CAPS. Ties keep whichever node Neo4j's own
 (unspecified) node-scan order returns first — harmless, since every candidate in a
 group is by definition the same real person.
 
+CASE-DEDUP-1.1 (2026-09-22): the fold is `merge_artists.merge_pair`, not the inlined Cypher
+this file used to carry. That query moved three of the six Artist relationship types, dropped
+ATTRIBUTED_TO.qualifier, and left no MergeEvent, so the ingests' merged-name resolver could not
+stop the next Bonhams load recreating the ALL-CAPS node it had just removed.
+
 Usage:
     python3 merge_case_duplicate_artists.py --dry-run   # count groups, no writes
     python3 merge_case_duplicate_artists.py             # execute
@@ -73,7 +78,7 @@ WHERE nodeCount > 1
 RETURN count(*) AS groups, sum(nodeCount) AS nodes
 """
 
-MERGE_ALL_QUERY = """
+PLAN_QUERY = """
 MATCH (a:Artist)
 WHERE NOT toLower(a.name) IN $skip
 OPTIONAL MATCH (a)-[:CREATED]->(cw)
@@ -83,28 +88,14 @@ WITH toLower(a.name) AS lowerName, a, works,
      + (CASE WHEN a.wikidataUrl IS NOT NULL THEN 100000 ELSE 0 END)
      + works * 10
      + (CASE WHEN a.name = toUpper(a.name) THEN 0 ELSE 1 END) AS score
-WITH lowerName, collect({node: a, score: score}) AS cands
+WITH lowerName, collect({name: a.name, score: score}) AS cands
 WHERE size(cands) > 1
-WITH lowerName, cands,
-     reduce(best = cands[0], c IN cands | CASE WHEN c.score > best.score THEN c ELSE best END) AS canonEntry
+WITH cands,
+     reduce(best = cands[0], c IN cands | CASE WHEN c.score > best.score THEN c ELSE best END) AS canon
 UNWIND cands AS c
-WITH canonEntry.node AS canon, c.node AS dup
+WITH canon.name AS canon, c.name AS dup
 WHERE canon <> dup
-WITH canon, dup, coalesce(canon.alternateNames,[]) + coalesce(dup.alternateNames,[]) + [dup.name] AS combined
-UNWIND combined AS x
-WITH canon, dup, collect(DISTINCT x) AS deduped
-SET canon.alternateNames = deduped
-WITH canon, dup
-OPTIONAL MATCH (dup)-[:CREATED]->(cw2:ConceptualWork)
-FOREACH (x IN CASE WHEN cw2 IS NULL THEN [] ELSE [cw2] END | MERGE (canon)-[:CREATED]->(x))
-WITH canon, dup
-OPTIONAL MATCH (dup)-[:FROM_REGION]->(reg:Region)
-FOREACH (x IN CASE WHEN reg IS NULL THEN [] ELSE [reg] END | MERGE (canon)-[:FROM_REGION]->(x))
-WITH canon, dup
-OPTIONAL MATCH (src:SourceRecord)-[:ATTRIBUTED_TO]->(dup)
-FOREACH (x IN CASE WHEN src IS NULL THEN [] ELSE [src] END | MERGE (x)-[:ATTRIBUTED_TO]->(canon))
-WITH dup
-DETACH DELETE dup
+RETURN canon, dup ORDER BY canon, dup
 """
 
 
@@ -117,10 +108,14 @@ def run(dry_run=False):
                 print(f"[PLAN] {result['groups']} duplicate groups, "
                       f"{result['nodes'] - result['groups']} nodes would be merged away.")
                 return
-            counters = session.run(MERGE_ALL_QUERY, skip=SKIP_GROUPS).consume().counters
-            print(f"[DONE] nodes_deleted={counters.nodes_deleted} "
-                  f"relationships_created={counters.relationships_created} "
-                  f"relationships_deleted={counters.relationships_deleted}")
+            from merge_artists import merge_pair
+            merged = 0
+            for r in session.run(PLAN_QUERY, skip=SKIP_GROUPS).data():
+                got = merge_pair(session, r["canon"], r["dup"], provenance={
+                    "rule": "caseFold", "ruleVersion": "CASE-DEDUP-1.1", "decidedBy": "rule",
+                    "evidence": f"names identical except for letter case: {r['dup']!r}"})
+                merged += got is not None
+            print(f"[DONE] {merged} duplicate node(s) merged away")
     finally:
         driver.close()
 

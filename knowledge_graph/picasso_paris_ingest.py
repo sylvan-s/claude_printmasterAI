@@ -105,7 +105,7 @@ import time
 from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques, extract_papers
-from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, resolve_merged_work_cypher
+from catalogue_matching import parse_catalogue_refs, genuine_refs, build_conceptual_work_id, resolve_merged_work_cypher, splice_artist_resolver
 from ulan_url import canonical_ulan_url
 
 
@@ -654,7 +654,7 @@ MERGE (ce)-[:DOCUMENTS]->(cw)
 LOAD_QUERY_IMPRESSION = """
 UNWIND $rows AS row
 
-MERGE (artist:Artist {name: row.artistName})
+MERGE (artist:Artist {name: RESOLVED_ARTIST_NAME(row.artistName)})
 SET artist.ulanUrl = coalesce(artist.ulanUrl, row.artistUlanUrl),
     artist.identityConfidence = coalesce(artist.identityConfidence,
         CASE WHEN row.artistUlanUrl IS NOT NULL THEN "institutional" ELSE "unresolved" END),
@@ -730,6 +730,7 @@ FOREACH (_ IN CASE WHEN paper IS NOT NULL THEN [1] ELSE [] END |
 
 WITH DISTINCT row, artist, cw, target
 """ + _COMMON_TAIL
+LOAD_QUERY_IMPRESSION = splice_artist_resolver(LOAD_QUERY_IMPRESSION)
 
 # The 187 plate accessions (module docstring point 4). Same routing bm_ingest.py added
 # for Trevelyan's cancelled zinc plate: a matrix is not printed, so it skips
@@ -737,7 +738,7 @@ WITH DISTINCT row, artist, cw, target
 LOAD_QUERY_MATRIX = """
 UNWIND $rows AS row
 
-MERGE (artist:Artist {name: row.artistName})
+MERGE (artist:Artist {name: RESOLVED_ARTIST_NAME(row.artistName)})
 SET artist.ulanUrl = coalesce(artist.ulanUrl, row.artistUlanUrl),
     artist.identityConfidence = coalesce(artist.identityConfidence,
         CASE WHEN row.artistUlanUrl IS NOT NULL THEN "institutional" ELSE "unresolved" END)
@@ -768,6 +769,7 @@ FOREACH (_ IN CASE WHEN row.stateId IS NOT NULL THEN [1] ELSE [] END |
 
 WITH row, artist, cw, mx AS target
 """ + _COMMON_TAIL
+LOAD_QUERY_MATRIX = splice_artist_resolver(LOAD_QUERY_MATRIX)
 
 
 def _write_chunk_with_retry(query, rows, retries=4, backoff_seconds=5.0):

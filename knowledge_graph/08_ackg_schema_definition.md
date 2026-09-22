@@ -113,7 +113,7 @@ rather than re-derived at every node:
 | `Publisher` | Identity | name — covers original publishers, print workshops, *and* historical restrike/estate publishers (Basan, Mariette) under one type |
 | `ConceptualWork` | Work | `dateCreated` (fuzzy date shape) |
 | `Matrix` | Work | material (copper/zinc/stone/block) |
-| `MergeEvent` | Provenance | `mergedFromId`, `rule`, `ruleVersion`, `decidedBy`, `evidence`, `confidence`, `at` (§ 11) |
+| `MergeEvent` | Provenance | `mergedFromId`, `rule`, `ruleVersion`, `decidedBy`, `evidence`, `confidence`, `at`; `-[:MERGED_INTO]->` a `ConceptualWork` or (`subject: 'Artist'`) an `Artist` (§ 11, § 11.1) |
 | `PricingModelRun` | Derived | one per `build_priors.py` build: `id`, `version`, `cut`, `kappa`, `elasticityColumns`, `referenceLevels`/`yearEffects`/`continuousMedians`/`segmentDefaults` (JSON strings), `rowCount`, `sourceRowCount`, `builtAt` (§ 12) |
 | `State` | Work | `traditionType` — tradition-agnostic: covers both Western plate-states and ukiyo-e printing generations; `stateNumber`, `displayLabel` (§ 10) |
 | `EditionRun` | Work | `declaredSize`, `dateRange` (fuzzy date shape) |
@@ -627,6 +627,70 @@ are gone and only the `--backup` JSON can rebuild them.
 This complements [ADR-0017](../docs/adr/0017-work-title-identity-principal-name-and-aliases.md)
 Decision 4 rather than duplicating it. That decision puts provenance of the **wording** on the
 assertion (`Impression.sourceTitle`); this records provenance of the **identity decision**.
+
+### 11.1 Artist merges (added 2026-09-22, ARTIST-MERGE-3.2)
+
+Until 2026-09-22 an Artist merge left no trace in the graph. That was a correctness hole, not just
+missing audit: every ingest keys on `MERGE (a:Artist {name: ...})`, so a merged-away name arriving in
+the next load was recreated as a fresh node. On that date 22 live Artists carried a name that
+another live Artist lists as an alias. They have not been triaged; some are undone merges, some
+alias pollution.
+
+```
+MergeEvent {
+  subject: 'Artist',
+  id,                   # "<survivorName> <- <absorbedName>" at fold time, never rewritten
+  mergedFromId,         # the absorbed node's NAME: Artist has no stable id
+  mergedFromName,       # the same
+  mergedFromUlan, mergedFromWikidata, mergedFromBorn, mergedFromDied,
+  survivorNameAtMerge,  # the survivor's name before any keepName rename
+  rule, ruleVersion, decidedBy, evidence, confidence, repointedFrom, at
+}
+MergeEvent -[:MERGED_INTO]-> Artist
+```
+
+- **Find the survivor by the edge, never by `id` or `survivorNameAtMerge`.** An Artist's key is
+  `name`, and a keepName rename or `ARTIST-NAME-REPAIR` changes it.
+- **`mergedFromId` is shared with the work events on purpose.** It already carries the
+  `mergeevent_mergedfromid` index, and every lookup names its target label, so a work id can
+  never answer for an artist name or the other way round.
+- **A keepName rename writes a second event** (`rule: survivorRenamed`, no node deleted). The
+  survivor's old name was live a moment earlier and is as likely to come back from a source.
+- **Written by `merge_artists.merge_pair` only**, in the fold's own statement before the
+  `DETACH DELETE`. `merge_pair` refuses to run without `rule`/`ruleVersion`/`decidedBy`/`evidence`.
+  `find_artist_merge_candidates.py` and `merge_case_duplicate_artists.py` now route through it.
+  Their own inlined queries moved 3 of the 6 Artist relationship types and were retired.
+
+| `rule` | writer |
+|---|---|
+| `ulanCanonical` | `merge_artists.py ulan-canon` |
+| `nameNormalised`, `nameNormalisedDateDispute`, `nameFuzzyImageCorroborated`, `nameTypoDatesAgree` | `merge_artists.py band-b` (B1, B2, B3, B3b) |
+| `humanPairs` (or the CSV's own `rule`, e.g. `aliasShadowing`) | `merge_artists.py pairs` |
+| `nameRuleImageCorroborated` | `find_artist_merge_candidates.py` |
+| `caseFold` | `merge_case_duplicate_artists.py` |
+| `kmIdentityRepair` | `repair_km_artist_identity.py merge` |
+| `survivorRenamed` | any of the above, when the survivor takes a new name |
+
+**Every ingest resolves through it.** An ingest writes `RESOLVED_ARTIST_NAME(<expr>)` where it used to
+key on a raw name, and `catalogue_matching.splice_artist_resolver` expands the marker to
+`catalogue_matching.resolved_artist_name_cypher`: the survivor's current name if a MergeEvent
+records `<expr>` as folded away, otherwise `<expr>` itself. It is an expression, so it works inside
+`FOREACH`. It does not aggregate, so rows are preserved. It is an index seek (measured 5,000
+lookups in 0.34 s). `check_merges_not_undone.py` fails on:
+
+- a name-keyed Artist `MERGE` without the marker;
+- a live Artist at a name an event records as absorbed into a different node;
+- an absorbed name resolving to two survivors;
+- an Artist event pointing at nothing.
+
+Exempt, with reasons in the guard: `fix_malformed_artist_names.py` and
+`repair_km_artist_identity.py`. Both create an Artist under a name a person chose in a reviewed
+plan and then MATCH it by that name.
+
+**Not yet done:** past Artist merges have no events. The Splink bands, alias-shadowing,
+case-dedup, ULAN and KM passes predate this. Until they are backfilled from the presnapshot JSONs,
+the resolver cannot protect those merges. See
+`docs/plans/2026-09-22-identity-clusters-and-artist-merge-events.md` (A3).
 
 ## 12. Schema addition: price elasticity priors (`PricingModelRun`, `Artist.price*`, `PRICE_NEIGHBOUR`)
 

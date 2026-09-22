@@ -201,7 +201,10 @@ def make_merge_ops(mod):
         for r in rows:
             if r["dupUlan"] and not r["canonUlan"]:
                 tx.run("MATCH (d:Artist {name: $n}) REMOVE d.ulanUrl", n=r["dup"]).consume()
-            if mod.merge_pair(tx, r["canon"], r["dup"]) is None:
+            prov = {"rule": "kmIdentityRepair", "ruleVersion": "KM-DUP-MERGE-1.0", "decidedBy": "human",
+                    "evidence": "King & McGaw-only node folded per the reviewed plan "
+                                "(docs/audits/2026-09-19-km-artist-ulan-audit.md)"}
+            if mod.merge_pair(tx, r["canon"], r["dup"], provenance=prov) is None:
                 raise RuntimeError(f"merge_pair was a no-op for {r}")
             if r["dupUlan"] and not r["canonUlan"]:
                 tx.run("MATCH (c:Artist {name: $n}) WHERE c.ulanUrl IS NULL "

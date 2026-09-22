@@ -184,7 +184,7 @@ import requests
 from neo4j import GraphDatabase
 
 from crosswalk_matching import extract_techniques
-from catalogue_matching import build_conceptual_work_id, resolve_merged_work_cypher
+from catalogue_matching import build_conceptual_work_id, resolve_merged_work_cypher, splice_artist_resolver
 from embed_titles_hook import embed_new_titles
 from ulan_url import canonical_ulan_url
 
@@ -720,7 +720,7 @@ FOREACH (_ IN CASE WHEN row.imageUrl IS NOT NULL THEN [1] ELSE [] END |
 WITH row, imp, cw, src
 UNWIND (CASE WHEN size(row.producers) = 0 THEN [null] ELSE row.producers END) AS producer
 FOREACH (_ IN CASE WHEN producer IS NOT NULL THEN [1] ELSE [] END |
-  MERGE (artist:Artist {name: producer.canonicalName})
+  MERGE (artist:Artist {name: RESOLVED_ARTIST_NAME(producer.canonicalName)})
   SET artist.ulanUrl = coalesce(artist.ulanUrl, producer.ulanUrl),
       artist.identityConfidence = coalesce(artist.identityConfidence,
           CASE WHEN producer.ulanUrl IS NOT NULL THEN "single_source" ELSE "unresolved" END),
@@ -733,7 +733,7 @@ FOREACH (_ IN CASE WHEN producer IS NOT NULL THEN [1] ELSE [] END |
   SET att.qualifier = producer.qualifier
 )
 FOREACH (_ IN CASE WHEN producer IS NOT NULL AND producer.qualifier = "direct" THEN [1] ELSE [] END |
-  MERGE (creator:Artist {name: producer.canonicalName})
+  MERGE (creator:Artist {name: RESOLVED_ARTIST_NAME(producer.canonicalName)})
   MERGE (creator)-[:CREATED]->(cw)
 )
 
@@ -763,6 +763,7 @@ SET ce.number = ref.entryNumber
 MERGE (cr)-[:CONTAINS]->(ce)
 MERGE (ce)-[:DOCUMENTS]->(cw)
 """
+LOAD_QUERY = splice_artist_resolver(LOAD_QUERY)
 
 # Matrix records (module docstring point 3) skip ConceptualWork/EditionRun/Impression
 # entirely — a plate is not an impression pulled from itself. Attribution still goes
@@ -796,7 +797,7 @@ FOREACH (_ IN CASE WHEN row.imageUrl IS NOT NULL THEN [1] ELSE [] END |
 WITH row, m, src
 UNWIND (CASE WHEN size(row.producers) = 0 THEN [null] ELSE row.producers END) AS producer
 FOREACH (_ IN CASE WHEN producer IS NOT NULL THEN [1] ELSE [] END |
-  MERGE (artist:Artist {name: producer.canonicalName})
+  MERGE (artist:Artist {name: RESOLVED_ARTIST_NAME(producer.canonicalName)})
   SET artist.ulanUrl = coalesce(artist.ulanUrl, producer.ulanUrl),
       artist.identityConfidence = coalesce(artist.identityConfidence,
           CASE WHEN producer.ulanUrl IS NOT NULL THEN "single_source" ELSE "unresolved" END),
@@ -809,10 +810,11 @@ FOREACH (_ IN CASE WHEN producer IS NOT NULL THEN [1] ELSE [] END |
   SET att.qualifier = producer.qualifier
 )
 FOREACH (_ IN CASE WHEN producer IS NOT NULL AND producer.qualifier = "direct" THEN [1] ELSE [] END |
-  MERGE (maker:Artist {name: producer.canonicalName})
+  MERGE (maker:Artist {name: RESOLVED_ARTIST_NAME(producer.canonicalName)})
   MERGE (maker)-[:MADE_MATRIX]->(m)
 )
 """
+LOAD_QUERY_MATRIX = splice_artist_resolver(LOAD_QUERY_MATRIX)
 
 
 def load_cache(path=PILOT_CACHE_PATH):
