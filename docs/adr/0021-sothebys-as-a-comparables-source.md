@@ -194,6 +194,42 @@ which equals the graph's "Rembrandt van Rijn". The 2,307 free-text hits include 
 Bugatti and "Circle of Rembrandt…", so loosening the match is not the answer — an alias table
 per ADR-0017 is.
 
+### Like-for-like price comparison (matched works only)
+
+Artist-median against artist-median compares different objects. This pairs a Sotheby's SOLD
+print-department lot against the graph's median realised price **for the same ConceptualWork**,
+converted to GBP at the sale date (ADR-0016 basis; HKD via its USD peg).
+
+| Artist | Paired lots | Sotheby's median | Graph median | Ratio | IQR | Sotheby's dearer |
+|---|---:|---:|---:|---:|---|---:|
+| Andy Warhol | 128 | £35,832 | £10,495 | **2.86** | 1.33–8.75 | 85% |
+| John Piper | 4 | £4,250 | £1,980 | 1.82 | 1.56–2.24 | 100% |
+| Marc Chagall | 40 | £6,642 | £4,518 | 1.56 | 0.95–2.18 | 73% |
+| David Hockney | 95 | £11,248 | £8,125 | 1.56 | 0.91–3.23 | 73% |
+| Joan Miró | 82 | £10,527 | £6,016 | 1.26 | 0.99–2.10 | 72% |
+| Pablo Picasso | 41 | £6,985 | £9,548 | **0.98** | 0.60–1.39 | 49% |
+| Salvador Dalí | 11 | £7,797 | £10,062 | **0.81** | 0.75–2.06 | 36% |
+| **All** | **402** | — | — | **1.62** | 0.97–3.47 | 73% |
+
+**The tier gap is not uniform — it is an artist-level effect.** On the same works Sotheby's is
+1.6x the existing corpus overall, but Picasso and Dalí come out at parity or below while Warhol
+is 2.9x. A single global house offset would misprice both ends; this argues for the offset being
+fitted per artist where data allows, exactly as the attribute multipliers already are.
+
+**Two limits on this number, both instructive:**
+
+- **Title equality cannot tell an edition from a unique work.** Before restricting pairs to
+  print departments, Warhol's "Self portrait" paired a £14.8m Sotheby's canvas against a £312
+  graph row. Fixed by department scoping — but it means ingest must carry the department, and
+  pairing logic must never rely on title alone.
+- **Nor can it tell a signed edition from a poster of the same image.** The surviving extremes
+  are all that shape: *The Scream (Green)* £448,000 vs £416, *Queen Elizabeth II* £327,600 vs
+  £546, *Mick Jagger 1975 (poster)* £115,531 vs £223. This is the unmodelled-reproductions
+  problem already recorded in the priors review, now visible across houses. Restricting to pairs
+  whose graph side rests on 2+ sales moves the medians only modestly (Warhol 2.86 -> 2.46,
+  Hockney 1.56 -> 1.43), so the effect is real, but the tails are not usable as comps without a
+  technique/signature class check.
+
 ### Recommendation
 
 The match rate is high enough to be worth doing for deep-corpus artists and too low to justify a

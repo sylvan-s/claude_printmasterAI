@@ -25,6 +25,7 @@ Usage:
 Needs NEO4J_* in the environment (set -a; source knowledge_graph/.env; set +a).
 """
 import argparse
+import bisect
 import json
 import os
 import re
@@ -86,11 +87,11 @@ def norm_artist(name):
     "Dame Elisabeth Frink, R.A." (83 lots), "ELISABETH FRINK" (13) and "Dame Elisabeth Frink" (2).
     Matching the raw string finds 13 of 98. Same closed rewrite set as the artist-merge rule.
     """
-    # Dots first: strip_honorifics only rstrips a trailing dot, so "R.A." survives it as
-    # "R.A" and never matches the post-nominal set ("ra"). Sotheby's writes the dotted form on
-    # 83 of 98 Frink lots, so skipping this drops three quarters of them. The shared helper has
-    # the same blind spot for every dotted post-nominal — flagged, not patched here.
-    n = strip_honorifics((name or "").replace(".", ""))
+    # The local dot-stripping workaround this pilot carried is gone: ARTIST-IDENTITY-RESOLVER-1.1
+    # fixed the blind spot in the shared helper itself. Pre-stripping dots here would now be
+    # actively wrong — it flattens leading initials onto honorifics ("D.R. Wakefield" -> "Wakefield"),
+    # which is exactly the regression the helper's positional guard exists to prevent.
+    n = strip_honorifics(name)
     n = unicodedata.normalize("NFKD", n).encode("ascii", "ignore").decode()
     return _PUNCT.sub(" ", n.lower()).strip()
 
@@ -116,6 +117,12 @@ def sothebys_lots(artist_name, max_pages=6):
         page += 1
         time.sleep(POLITE_DELAY_S)
     return out
+
+
+# Graph titles that are placeholders, not titles: the ingest names an untitled lot after its
+# own sale reference. Matching on these pairs unrelated objects, so they are excluded from
+# identity entirely rather than merely deprioritised.
+PLACEHOLDER_TITLE = re.compile(r"^untitled\s*\(a\d+\s*lot\s*\d+\)$|^untitled$|^\W*$", re.I)
 
 
 # ---------------------------------------------------------------- matching
@@ -173,6 +180,15 @@ ORDER BY pricedRows DESC
 LIMIT $limit
 """
 
+# Per-work prices for the SAME works, so matched titles can be compared like for like
+# rather than artist-median against artist-median (which compares different objects).
+WORK_PRICES = """
+MATCH (a:Artist {name: $name})-[:CREATED]->(w:ConceptualWork)
+      -[:PRINTED_AS]->(:EditionRun)-[:INCLUDES]->(:Impression)<-[:DOCUMENTS]-(s:SourceRecord)
+WHERE s.sold = true AND s.priceRealisedGBP > 0
+RETURN w.name AS work, collect(s.priceRealisedGBP) AS prices
+"""
+
 ARTIST_PROFILE = """
 MATCH (a:Artist {name: $name})
 OPTIONAL MATCH (a)-[:CREATED]->(w:ConceptualWork)
@@ -186,8 +202,47 @@ RETURN works,
 """
 
 
+# ---------------------------------------------------------------- FX (ADR-0016 basis)
+
+_FX_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fx_gbp_ecb.json")
+with open(_FX_PATH) as _fh:
+    _FX = json.load(_fh)["rates"]
+_FX_DAYS = sorted(_FX)
+
+
+def to_gbp(amount, currency, epoch_ms):
+    """Native -> GBP at the SALE DATE, nearest preceding ECB publication day (ADR-0016).
+
+    HKD is pegged to the USD (7.75-7.85 band) and is not in the ECB set, so it routes via USD
+    at 7.8 — accurate to about 0.6%. Currencies with no rate return None rather than a guess.
+    """
+    if amount is None or not currency:
+        return None
+    if currency == "GBP":
+        return float(amount)
+    if not epoch_ms:
+        return None
+    day = time.strftime("%Y-%m-%d", time.gmtime(epoch_ms / 1000))
+    i = bisect.bisect_right(_FX_DAYS, day) - 1
+    if i < 0:
+        return None
+    rates = _FX[_FX_DAYS[i]]
+    if currency == "HKD":
+        usd = rates.get("USD")
+        return round(float(amount) / (usd * 7.8), 2) if usd else None
+    rate = rates.get(currency)
+    return round(float(amount) / rate, 2) if rate else None
+
+
 def pct(n, d):
     return round(100.0 * n / d, 1) if d else 0.0
+
+
+def quartiles(xs):
+    xs = sorted(x for x in xs if x is not None)
+    if len(xs) < 4:
+        return [None, None]
+    return [round(xs[len(xs) // 4], 2), round(xs[(3 * len(xs)) // 4], 2)]
 
 
 def median(xs):
@@ -215,6 +270,7 @@ def main():
     )
     database = _require_env("NEO4J_DATABASE")
 
+    all_ratios = []
     report = {"generatedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "artists": []}
     totals = Counter()
 
@@ -227,10 +283,12 @@ def main():
 
         for name in names:
             prof = session.run(ARTIST_PROFILE, name=name).single()
+            work_prices = {r["work"]: r["prices"] for r in session.run(WORK_PRICES, name=name)}
             if prof is None:
                 print(f"  {name:28s} NOT IN GRAPH — skipped", flush=True)
                 continue
-            graph_titles = {norm_title(t): t for t in (prof["works"] or []) if t}
+            graph_titles = {norm_title(t): t for t in (prof["works"] or [])
+                            if t and not PLACEHOLDER_TITLE.match(t.strip())}
             graph_prices = [p for p in (prof["prices"] or []) if p]
 
             lots = sothebys_lots(name)
@@ -251,6 +309,7 @@ def main():
                     "price": l.get("salePrice"),
                     "ccy": l.get("estimateCurrency"),
                     "sale": l.get("saleNumber"),
+                    "gbp": to_gbp(l.get("salePrice"), l.get("estimateCurrency"), l.get("endDate")),
                 }
                 if key and key in graph_titles:
                     row["graphWork"] = graph_titles[key]
@@ -262,6 +321,27 @@ def main():
             print_matched = [r for r in matched if (r["dept"] or "") in PRINT_DEPTS]
             depts = Counter((l.get("departments") or [None])[0] for l in lots)
             ccys = Counter(l.get("estimateCurrency") for l in lots)
+
+            # Like-for-like: only works present on BOTH sides, compared per work.
+            # Print departments only. A Sotheby's PAINTING sharing a title with a print is not a
+            # comparable: "Self portrait" paired a £14.8m canvas against a £312 print before this
+            # filter. Title equality alone cannot tell a unique work from an edition.
+            paired = []
+            for r in matched:
+                if r["sold"] != "SOLD" or r["gbp"] is None:
+                    continue
+                if (r["dept"] or "") not in PRINT_DEPTS:
+                    continue
+                graph_for_work = [p for p in work_prices.get(r["graphWork"], []) if p]
+                if not graph_for_work:
+                    continue
+                paired.append({
+                    "work": r["graphWork"][:60],
+                    "sothebysGBP": r["gbp"],
+                    "graphMedianGBP": median(graph_for_work),
+                    "graphSales": len(graph_for_work),
+                    "ratio": round(r["gbp"] / median(graph_for_work), 2),
+                })
 
             entry = {
                 "artist": name,
@@ -293,6 +373,22 @@ def main():
                 "defects": {
                     "unsoldRowsCarryingAPrice": len(unsold_with_price),
                 },
+                "matchedPrices": {
+                    "pairedWorks": len({p["work"] for p in paired}),
+                    "pairedLots": len(paired),
+                    "sothebysMedianGBP": median([p["sothebysGBP"] for p in paired]),
+                    "graphMedianGBP": median([p["graphMedianGBP"] for p in paired]),
+                    "medianRatio": median([p["ratio"] for p in paired]),
+                    "ratioQuartiles": quartiles([p["ratio"] for p in paired]),
+                    # Pairs where the graph side rests on more than one sale: a single graph
+                    # sale can be a poster of the same image, which title equality cannot see.
+                    "pairsWithMultiGraphSales": sum(1 for p in paired if p["graphSales"] >= 2),
+                    "medianRatioMultiGraphSales": median(
+                        [p["ratio"] for p in paired if p["graphSales"] >= 2]),
+                    "sothebysDearerPct": pct(sum(1 for p in paired if p["ratio"] > 1), len(paired)),
+                    "top": sorted(paired, key=lambda p: -p["ratio"])[:4],
+                    "bottom": sorted(paired, key=lambda p: p["ratio"])[:4],
+                },
                 "sampleMatched": matched[:5],
                 "sampleUnmatched": unmatched[:10],
             }
@@ -301,11 +397,14 @@ def main():
             totals["sold"] += len(sold)
             totals["matched"] += len(matched)
             totals["unsoldWithPrice"] += len(unsold_with_price)
+            totals["pairedLots"] += len(paired)
+            all_ratios.extend(p["ratio"] for p in paired)
 
             print(
                 f"  {name[:26]:26s} sothebys {len(lots):5d} lots / {len(sold):5d} sold"
                 f" | exact-title match {len(matched):4d} ({entry['identity']['matchRatePct']:4.1f}%)"
-                f" | graph has {len(graph_titles):4d} works, {prof['pricedRows']:4d} priced rows",
+                f" | paired {len(paired):4d} lots, median ratio "
+                f"{entry['matchedPrices']['medianRatio'] if paired else '-'}",
                 flush=True,
             )
             time.sleep(POLITE_DELAY_S)
@@ -318,6 +417,10 @@ def main():
         "exactTitleMatches": totals["matched"],
         "matchRatePct": pct(totals["matched"], totals["lots"]),
         "unsoldRowsCarryingAPrice": totals["unsoldWithPrice"],
+        "pairedLots": totals["pairedLots"],
+        "medianRatioAcrossPairedLots": median(all_ratios),
+        "ratioQuartiles": quartiles(all_ratios),
+        "sothebysDearerPct": pct(sum(1 for r in all_ratios if r > 1), len(all_ratios)),
     }
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w") as fh:
