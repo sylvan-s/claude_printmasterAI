@@ -268,6 +268,65 @@ artists the corpus is strongest on.
 sample showed 4.3%). Any ingest missing that guard would import ~900 fictitious results from
 these 30 artists alone.
 
+### Artist-name scoping: SOTHEBYS-NAME-1.0 (2026-09-23)
+
+The first scan asked Sotheby's for each artist's canonical graph name and accepted a lot only
+when their `artistName` matched it. That lost most of the record for any artist Sotheby's
+catalogues under a different form. `knowledge_graph/sothebys_names.py` fixes the scoping by
+reusing the project's own tools rather than inventing matching:
+
+**Which names to ask for** (`query_forms`) — the graph name, plus names folded into it by a
+recorded Artist `MergeEvent` (`mergedFromName`), plus every variant ULAN holds for the artist's
+own `ulan_id`, read from the local mirror (ADR-0012). All exact lookups of recorded facts.
+Deduplicated on the shared `normalize`, capped at six forms, and a form that contributes
+nothing on its first page is not paged further.
+
+**How to read theirs** (`read_artist`) — Sotheby's strings carry shapes the shared normalisers
+never saw: cataloguing qualifiers (`After`, `Circle of`, `Attributed to`, `Follower of`,
+`Studio of`), `"... and Others"`, the Books & Manuscripts `"Picasso, Pablo -- Prosper Mérimée"`
+separator, and surname-first inversion. Qualifiers are **kept, not discarded** — "after" is a
+per-artist price factor excluded from direct comps (BLEND-1.10) and the merge rule is
+qualifier-preserving (ARTIST-MERGE-3.1) — and qualified or multi-artist lots are excluded from
+price pairing.
+
+**Whether it matches** (`match_rule`) — the merge scanner's own ladder in RULE_PRIORITY order:
+`normalized_equal` → `honorific` → `initialism`, plus `ulan_alias`. The `typo` and
+`token_subset` rules are deliberately **not** used: both carry a DINOv2 image floor in the
+scanner (token_subset needs 0.90), and that evidence does not exist against an external
+catalogue.
+
+Result across the same 30 artists:
+
+| | Before | After |
+|---|---:|---:|
+| Sotheby's lots found | 12,121 | **12,909** |
+| Print-department lots | 5,348 | **6,045** |
+| Exact-title matches | 2,037 | **2,175** |
+| Paired lots | 1,219 | **1,316** |
+
+Rule mix: normalized_equal 11,253, honorific 1,081, ulan_alias 575. Qualifiers seen: 90 "after",
+11 "follower", 8 "circle", 4 "workshop", 3 "attributed", 2 "school", 1 "studio". Flags: 87
+inverted, 48 collaboration, 40 "and Others".
+
+**Rembrandt is the case that proves the point: 2 lots to 578, and 1 paired lot to 95.** The
+graph calls him "Rembrandt van Rijn"; Sotheby's writes "Rembrandt Harmenszoon van Rijn" (44)
+and "Rembrandt Harmensz. van Rijn" (16). Both are ULAN variants of the same `ulan_id`, so the
+right query set was already in the project's own authority data.
+
+**Three defects found on the way, all in punctuation handling:**
+
+1. The merge scanner's `strip_honorifics` works on tokens from `normalize`, which has already
+   turned "R.A." into two single letters — so the post-nominal matches nothing. This is the
+   token-side twin of the raw-string defect ARTIST-IDENTITY-RESOLVER-1.1 fixed, and it is why
+   Lowry and Terry Frost scored zero (Sotheby's writes the dotted form on ~60% of their lots).
+   Handled locally in `_clean_tokens`; the shared scanner is another session's open item.
+2. Stacked post-nominals need repeated passes — "Henry Moore, O.M., C.H." needs two.
+3. The inversion rule fired on "David Hockney, R.A.", turning it into "R.A. David Hockney" and
+   costing 50 Hockney, 108 Piper and 78 Pasmore lots until `_is_postnominal` was added.
+
+Sixteen artists now clear 30% (was 18): the denominator grew faster than the numerator for
+Rembrandt, who drops from 100% of 2 lots to 24% of 527. The larger set is the honest one.
+
 ### Recommendation
 
 The match rate is high enough to be worth doing for deep-corpus artists and too low to justify a

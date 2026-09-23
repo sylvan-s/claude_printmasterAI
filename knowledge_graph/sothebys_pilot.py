@@ -38,7 +38,7 @@ from collections import Counter
 
 from neo4j import GraphDatabase
 
-from resolve_artist_identity import strip_honorifics
+from sothebys_names import query_forms, read_artist, match_rule
 
 ALGOLIA = (
     "https://o28sy4q7wu-dsn.algolia.net/1/indexes/bsp_dotcom_prod_en/query"
@@ -79,44 +79,51 @@ def algolia(params):
         return json.load(r)
 
 
-def norm_artist(name):
-    """Deterministic rewrite, not a similarity score: honorifics and post-nominals stripped with
-    the project's own `strip_honorifics`, then case and accents folded.
+def sothebys_lots(artist_name, forms, max_pages=6):
+    """Every Sotheby's lot that is this artist, asked for under each name form the project
+    already knows (SOTHEBYS-NAME-1.0 `query_forms`), deduplicated on objectID.
 
-    Sotheby's carries one artist under several display forms — Frink appears as
-    "Dame Elisabeth Frink, R.A." (83 lots), "ELISABETH FRINK" (13) and "Dame Elisabeth Frink" (2).
-    Matching the raw string finds 13 of 98. Same closed rewrite set as the artist-merge rule.
+    Sotheby's files an artist under whatever the cataloguer wrote. Asking only for the graph's
+    canonical name loses most of the record — "Rembrandt van Rijn" returns 2 lots while ULAN's
+    own variants for that same ulan_id are the forms Sotheby's actually uses. Each returned
+    artistName is read back through `read_artist` (qualifiers, "and Others", inverted surnames,
+    the Books & Manuscripts "--" separator) and accepted only if one of the project's own rules
+    matches: normalized_equal / honorific / initialism / ulan_alias.
     """
-    # The local dot-stripping workaround this pilot carried is gone: ARTIST-IDENTITY-RESOLVER-1.1
-    # fixed the blind spot in the shared helper itself. Pre-stripping dots here would now be
-    # actively wrong — it flattens leading initials onto honorifics ("D.R. Wakefield" -> "Wakefield"),
-    # which is exactly the regression the helper's positional guard exists to prevent.
-    n = strip_honorifics(name)
-    n = unicodedata.normalize("NFKD", n).encode("ascii", "ignore").decode()
-    return _PUNCT.sub(" ", n.lower()).strip()
-
-
-def sothebys_lots(artist_name, max_pages=6):
-    """Every Sotheby's lot whose artistName is this artist, after honorific normalisation.
-
-    artistName is not a filterable attribute (filters=artistName:"..." returns 0 while the same
-    name as free text returns hundreds), so the name goes in the query and the match is applied
-    here. Free text alone is not enough: `sorel` returns 90 lots, all Sorel Etrog.
-    """
-    target = norm_artist(artist_name)
-    out, page = [], 0
-    while page < max_pages:
-        res = algolia(
-            f"query={urllib.parse.quote(artist_name)}&hitsPerPage={PAGE_SIZE}"
-            f"&page={page}&filters=type:Lot"
-        )
-        hits = res.get("hits", [])
-        out += [h for h in hits if norm_artist(h.get("artistName")) == target]
-        if page + 1 >= res.get("nbPages", 0) or not hits:
-            break
-        page += 1
+    out, rules, quals, flagged = {}, Counter(), Counter(), Counter()
+    for form in forms:
+        page, new_from_form = 0, 0
+        while page < max_pages:
+            res = algolia(
+                f"query={urllib.parse.quote(form)}&hitsPerPage={PAGE_SIZE}"
+                f"&page={page}&filters=type:Lot"
+            )
+            hits = res.get("hits", [])
+            for h in hits:
+                oid = h.get("objectID")
+                if not oid or oid in out:
+                    continue
+                clean, qualifier, flags = read_artist(h.get("artistName"))
+                rule = match_rule(clean, artist_name, extra_forms=forms)
+                if not rule:
+                    continue
+                h["_rule"], h["_qualifier"], h["_flags"] = rule, qualifier, flags
+                out[oid] = h
+                new_from_form += 1
+                rules[rule] += 1
+                quals[qualifier or "direct"] += 1
+                for f in flags:
+                    flagged[f] += 1
+            # An alias that contributes nothing on its first page is a form Sotheby's does not
+            # use; paging it further costs requests for no reach.
+            if page == 0 and new_from_form == 0 and form != forms[0]:
+                break
+            if page + 1 >= res.get("nbPages", 0) or not hits:
+                break
+            page += 1
+            time.sleep(POLITE_DELAY_S)
         time.sleep(POLITE_DELAY_S)
-    return out
+    return list(out.values()), dict(rules), dict(quals), dict(flagged)
 
 
 # Graph titles that are placeholders, not titles: the ingest names an untitled lot after its
@@ -191,11 +198,13 @@ RETURN w.name AS work, collect(s.priceRealisedGBP) AS prices
 
 ARTIST_PROFILE = """
 MATCH (a:Artist {name: $name})
+OPTIONAL MATCH (m:MergeEvent {subject: 'Artist'})-[:MERGED_INTO]->(a)
 OPTIONAL MATCH (a)-[:CREATED]->(w:ConceptualWork)
-WITH a, collect(DISTINCT w.name) AS works
+WITH a, m, collect(DISTINCT w.name) AS works
 OPTIONAL MATCH (a)<-[:ATTRIBUTED_TO]-(s:SourceRecord)
 WHERE s.sold = true AND s.priceRealisedGBP > 0
-RETURN works,
+RETURN works, a.ulanUrl AS ulanUrl,
+       [x IN collect(DISTINCT m.mergedFromName) WHERE x IS NOT NULL] AS aliases,
        count(s) AS pricedRows,
        collect(s.priceRealisedGBP) AS prices,
        collect(DISTINCT s.institutionName) AS houses
@@ -305,7 +314,8 @@ def main():
                             if t and not PLACEHOLDER_TITLE.match(t.strip())}
             graph_prices = [p for p in (prof["prices"] or []) if p]
 
-            lots = sothebys_lots(name)
+            forms = query_forms(name, prof["ulanUrl"], prof["aliases"] or [])
+            lots, rules, quals, flagged = sothebys_lots(name, forms)
             sold = [l for l in lots if l.get("soldStatus") == "SOLD"]
             priced = [l for l in sold if l.get("salePrice")]
             unsold_with_price = [l for l in lots
@@ -323,6 +333,9 @@ def main():
                     "price": l.get("salePrice"),
                     "ccy": l.get("estimateCurrency"),
                     "sale": l.get("saleNumber"),
+                    "qualifier": l.get("_qualifier"),
+                    "flags": l.get("_flags"),
+                    "rule": l.get("_rule"),
                     "gbp": to_gbp(l.get("salePrice"), l.get("estimateCurrency"), l.get("endDate")),
                 }
                 if key and key in graph_titles:
@@ -346,6 +359,8 @@ def main():
                     continue
                 if (r["dept"] or "") not in PRINT_DEPTS:
                     continue
+                if r["qualifier"] or "and_others" in (r["flags"] or []):
+                    continue  # "after"/"circle" and multi-artist lots are not this work
                 graph_for_work = [p for p in work_prices.get(r["graphWork"], []) if p]
                 if not graph_for_work:
                     continue
@@ -374,6 +389,8 @@ def main():
                     "departments": dict(depts),
                     "currencies": dict(ccys),
                 },
+                "names": {"queryForms": forms, "matchRules": rules,
+                          "qualifiers": quals, "flags": flagged},
                 "identity": {
                     "exactTitleMatches": len(matched),
                     "matchRatePct": pct(len(matched), len(lots)),
@@ -417,7 +434,7 @@ def main():
             print(
                 f"  {name[:26]:26s} sothebys {len(lots):5d} lots / {len(sold):5d} sold"
                 f" | exact-title match {len(matched):4d} ({entry['identity']['matchRatePct']:4.1f}%)"
-                f" | paired {len(paired):4d} lots, median ratio "
+                f" | forms {len(forms)} | paired {len(paired):4d} lots, median ratio "
                 f"{entry['matchedPrices']['medianRatio'] if paired else '-'}",
                 flush=True,
             )
