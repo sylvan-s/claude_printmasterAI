@@ -222,7 +222,21 @@ def to_gbp(amount, currency, epoch_ms):
         return float(amount)
     if not epoch_ms:
         return None
-    day = time.strftime("%Y-%m-%d", time.gmtime(epoch_ms / 1000))
+    # endDate is usually epoch ms but arrives as a string on some rows (and occasionally as an
+    # ISO date) — coerce rather than crash, and skip the row if it is neither.
+    if isinstance(epoch_ms, str):
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}.*", epoch_ms):
+            day = epoch_ms[:10]
+            epoch_ms = None
+        elif epoch_ms.strip().isdigit():
+            epoch_ms = int(epoch_ms)
+            day = None
+        else:
+            return None
+    else:
+        day = None
+    if day is None:
+        day = time.strftime("%Y-%m-%d", time.gmtime(epoch_ms / 1000))
     i = bisect.bisect_right(_FX_DAYS, day) - 1
     if i < 0:
         return None

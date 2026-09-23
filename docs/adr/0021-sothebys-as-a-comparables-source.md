@@ -230,6 +230,44 @@ fitted per artist where data allows, exactly as the attribute multipliers alread
   Hockney 1.56 -> 1.43), so the effect is real, but the tails are not usable as comps without a
   technique/signature class check.
 
+### Wider scan: top 30 graph artists (2026-09-23)
+
+Scanned the 30 artists with the most priced rows in the graph. **12,121 Sotheby's lots, 10,034
+sold.** Eighteen clear 30% print-title match; the ten largest by print-department volume:
+
+| # | Artist | Print lots | Match | Paired | Ratio | IQR | Dearer |
+|---|---|---:|---:|---:|---:|---|---:|
+| 1 | Henri de Toulouse-Lautrec | 460 | 46.7% | 141 | 1.29 | 0.89–1.94 | 68% |
+| 2 | David Hockney | 450 | 31.3% | 95 | 1.56 | 0.91–3.23 | 73% |
+| 3 | Banksy | 385 | 54.5% | 161 | **1.03** | 0.69–1.68 | 50% |
+| 4 | Andy Warhol | 371 | 66.0% | 128 | **2.86** | 1.33–8.75 | 85% |
+| 5 | Pablo Picasso | 364 | 31.9% | 41 | 0.98 | 0.60–1.39 | 49% |
+| 6 | Roy Lichtenstein | 347 | 43.5% | 106 | 2.08 | 1.32–3.37 | 86% |
+| 7 | Joan Miró | 321 | 38.3% | 82 | 1.26 | 0.99–2.10 | 72% |
+| 8 | Damien Hirst | 289 | 43.9% | 74 | 1.35 | 0.96–2.30 | 68% |
+| 9 | Henri Matisse | 232 | 35.8% | 36 | 1.13 | 0.80–1.76 | 58% |
+| 10 | Georges Braque | 191 | 30.9% | 32 | 1.49 | 1.08–2.04 | 75% |
+
+**Top-10 total: 5,375 Sotheby's lots, 4,470 sold, 3,410 in print departments, 1,470 exact-title
+matches, 896 paired lots over 459 works.** Those artists hold 8,442 priced rows in the graph
+today, so this is roughly a 50% uplift on their evidence base.
+
+**The house premium is an artist attribute, not a house constant.** Median of the ten artist
+ratios is 1.32, but the spread runs Banksy 1.03 and Picasso 0.98 against Warhol 2.86 and
+Lichtenstein 2.08. Banksy at parity is the informative case: a market that trades identically
+wherever it is sold. A single Sotheby's offset would be wrong for eight of these ten.
+
+**Match rate tracks how the artist is catalogued, not how well known they are.** Warhol 66%,
+Banksy 55% and Toulouse-Lautrec 47% all have stable, numbered title conventions. Four artists
+score **zero**: Lowry (300 lots), Alexander Calder (568), Terry Frost (290) and James Gillray.
+Lowry and Frost are British names the graph holds densely, so zero is a title-form failure, not
+an absence — worth a look before scoping the ingest, since they are exactly the mid-market
+artists the corpus is strongest on.
+
+**The unsold-with-a-price defect is worse at scale: 889 rows, 7.3% of 12,121** (the 8-artist
+sample showed 4.3%). Any ingest missing that guard would import ~900 fictitious results from
+these 30 artists alone.
+
 ### Recommendation
 
 The match rate is high enough to be worth doing for deep-corpus artists and too low to justify a
