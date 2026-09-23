@@ -186,35 +186,14 @@ def read_artist(raw):
 # ---------------------------------------------------------------- C. does it match?
 
 def _clean_tokens(name):
-    """Project `strip_honorifics`, plus the split-post-nominal case it cannot see.
+    """Tokens with honorifics and post-nominals removed.
 
-    The merge scanner's copy works on tokens from `normalize`, which has already turned
-    punctuation into spaces — so "Laurence Stephen Lowry, R.A." arrives as
-    ['laurence','stephen','lowry','r','a'] and the post-nominal is two single letters that
-    match nothing in HONORIFICS. That is the token-side twin of the defect
-    ARTIST-IDENTITY-RESOLVER-1.1 fixed on the raw-string side, and it is the whole reason
-    Lowry and Terry Frost scored zero: Sotheby's writes the dotted form on 61 of 100 Lowry
-    lots and 57 of 100 Frost lots.
-
-    Rejoins trailing single-letter runs and drops them when the join is a known post-nominal
-    ("r"+"a" -> "ra", "r"+"w"+"s" -> "rws"). Never reduces a name below two tokens, matching
-    the guard in the shared helper. Local to this module: the shared scanner is another
-    session's open item and is not edited from here.
+    Thin wrapper now: the dotted-post-nominal handling this module carried locally moved
+    into the shared helper as ARTIST-IDENTITY-RESOLVER-1.2, where the merge scanner gets it
+    too. Kept as a named seam so the Sotheby's path has one place to diverge if their
+    catalogue ever needs something the scanner should not have.
     """
-    toks = strip_honorifics(tokens(name))
-    # Repeat until stable: catalogues stack them — "Henry Moore, O.M., C.H." arrives as
-    # [henry, moore, o, m, c, h] and needs two passes ("ch", then "om"). Stopping after one
-    # left ["henry","moore","o","m"] and cost 13 Moore lots on the first run.
-    changed = True
-    while changed:
-        changed = False
-        for k in (3, 2):
-            if len(toks) > 2 + k - 1 and all(len(t) == 1 for t in toks[-k:]):
-                if "".join(toks[-k:]) in HONORIFICS:
-                    toks = toks[:-k]
-                    changed = True
-                    break
-    return toks
+    return strip_honorifics(tokens(name))
 
 
 def _initialism_match(a_toks, b_toks):

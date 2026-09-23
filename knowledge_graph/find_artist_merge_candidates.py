@@ -249,11 +249,55 @@ def tokens(name):
     return normalize(name).split()
 
 
+def _segments_into_honorifics(run):
+    """True when this run of single letters is entirely made of known post-nominals.
+
+    `normalize` strips punctuation, so "R.A." reaches here as ["r","a"] and
+    "O.M., C.H." as ["o","m","c","h"]. Segmented left to right, longest first:
+    ["o","m","c","h"] -> "om" + "ch", both members, so the whole run is post-nominal.
+    A run that does not segment cleanly is left alone — "r","a" beside a real initial
+    must not be guessed at.
+    """
+    if not run:
+        return True
+    for size in (4, 3, 2):
+        if len(run) >= size and "".join(run[:size]) in HONORIFICS:
+            if _segments_into_honorifics(run[size:]):
+                return True
+    return False
+
+
+def _drop_dotted_postnominals(out):
+    """ARTIST-IDENTITY-RESOLVER-1.2 (token side).
+
+    This function sees tokens from `normalize`, where punctuation is already gone, so a
+    dotted post-nominal arrives as single letters that match nothing in HONORIFICS —
+    "Laurence Stephen Lowry, R.A." -> ["laurence","stephen","lowry","r","a"]. That is the
+    token-side twin of the raw-string defect ARTIST-IDENTITY-RESOLVER-1.1 fixed in
+    resolve_artist_identity.strip_honorifics, and British auction catalogues write the
+    dotted form constantly: Sotheby's uses it on ~60% of their Lowry and Terry Frost lots,
+    which scored a 0% name match until this was handled.
+
+    Only a TRAILING run is considered, and never one starting at token 0: leading initials
+    are real name content ("d","r","wakefield" must stay), which is the same positional
+    guard 1.1 relies on. Interior dotted runs ("Henry O.M. C.H. Moore") are left alone —
+    rare, and not worth the ambiguity.
+    """
+    i = len(out)
+    while i > 0 and len(out[i - 1]) == 1:
+        i -= 1
+    run = out[i:]
+    if i == 0 or len(run) < 2 or i < 2:
+        return out
+    return out[:i] if _segments_into_honorifics(run) else out
+
+
 def strip_honorifics(toks):
     """Drop post-nominals/titles, auction-cataloguing prefixes and trailing life-date
     noise, but never reduce a name below two tokens — "Sir Frank Short" -> "frank short",
     "RTO Jonas Wood" -> "jonas wood", "Christo" stays "christo"."""
     out = [t for t in toks if t not in HONORIFICS and t not in CATALOGUING_PREFIXES]
+    out = _drop_dotted_postnominals(out)
     while len(out) > 2 and (out[-1].isdigit() or out[-1] in _YEARISH):
         out = out[:-1]
     if len(out) < 2:
