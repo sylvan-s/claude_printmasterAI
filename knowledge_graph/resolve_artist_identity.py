@@ -1,6 +1,6 @@
 """
 PrintMasterAI — Artist identity reconciliation against ULAN
-Version: ARTIST-IDENTITY-RESOLVER-1.0
+Version: ARTIST-IDENTITY-RESOLVER-1.1
 
 Implements the plan worked through with the user: Artist nodes should be keyed by a
 canonical authority identifier (ulanUrl, falling back to wikidataUrl, falling back to
@@ -53,25 +53,56 @@ _POSTNOMINAL_SUFFIXES = {
     # Added after finding these caused real Artist-node fragmentation in the Roseberys
     # bulk data (L.S. Lowry split across "RA RBA LG NS" variants that weren't stripped):
     "rba", "lg", "ns", "om", "fba", "prba", "rp", "hrsa", "rsw", "aria", "ari", "rp.",
+    # Added by ARTIST-IDENTITY-RESOLVER-1.1 from find_artist_merge_candidates.HONORIFICS,
+    # which had drifted ahead of this set. Confirmed real in this graph, not guessed:
+    # "Elizabeth Blackadder O.B.E. R.A. R.S.A. R.S.W. R.W.A" (1 work) sat beside
+    # "Elizabeth Blackadder" (65 works) as a separate Artist node, and "rwa" being absent
+    # here is what kept the two apart even once the dots were handled.
+    "ara", "arsa", "cvo", "dlitt", "dphil", "gbe", "hrsw", "kbe", "kcvo", "neac",
+    "ppra", "pra", "prsa", "ps", "rbs", "rdi", "rgi", "rwa",
 }
 # tokens that are only honorific when NOT at the very start (mid-name post-nominals
 # appear comma-separated, e.g. "Henry, OM, CH Moore")
 _ANYWHERE = _POSTNOMINAL_SUFFIXES | {"the"}
 
 
+def _bare(token):
+    """A token with ALL dots removed, for membership tests only — never for output.
+    British auction catalogues punctuate post-nominals ("Dame Elisabeth Frink, R.A.")
+    and the previous `rstrip(".")` only removed the trailing one, leaving "r.a", which
+    matches nothing in _POSTNOMINAL_SUFFIXES. Measured cost of that blind spot: matching
+    Sotheby's artist names against this graph found 25 Frink lots instead of 304."""
+    return token.lower().replace(".", "")
+
+
 def strip_honorifics(name):
     """Remove honorific prefixes/suffixes from a display name — including comma-separated
     ones interspersed mid-string ("Henry, OM, CH Moore" -> "Henry Moore", "Roy Lichtenstein,"
-    -> "Roy Lichtenstein")."""
+    -> "Roy Lichtenstein") and dotted forms ("Julian Trevelyan, R.A." -> "Julian Trevelyan").
+
+    Dots are only collapsed for tokens that are NOT in first position. That asymmetry is
+    load-bearing, not tidiness: a leading dotted token is initials, never a post-nominal,
+    and collapsing its dots misreads real names. Confirmed against all 11,636 Artist nodes
+    — the naive `replace(".", "")` everywhere turns "D.R. Wakefield" into "Wakefield" (its
+    initials normalize to the "dr" honorific) and puts "R.E."/"C.H."-style initials at the
+    same risk. With the positional guard, the same sweep changes 6 names and breaks none.
+    """
     raw = (name or "").replace(",", " ")
     tokens = [t for t in raw.split() if t]
     # drop any post-nominal token wherever it sits (they are never real name content)
-    kept = [t for t in tokens if t.lower().rstrip(".") not in _ANYWHERE]
-    # then strip a leading honorific
+    def _is_postnominal(i, t):
+        # first token: trailing dot only, so initials keep their dots and stay
+        return (_bare(t) if i > 0 else t.lower().rstrip(".")) in _ANYWHERE
+
+    kept = [t for i, t in enumerate(tokens) if not _is_postnominal(i, t)]
+    # then strip a leading honorific. Trailing dot only ("Dr." -> "dr"), so that an
+    # initials cluster like "D.R." is left alone.
     while kept and kept[0].lower().rstrip(".") in _HONORIFIC_PREFIXES:
         kept.pop(0)
     out = " ".join(kept).strip()
-    return out or name.strip()
+    # `name or ""` because the guarded read above tolerates None but this fallback did
+    # not — strip_honorifics(None) raised AttributeError in 1.0.
+    return out or (name or "").strip()
 
 
 def _sparql_query(query, retries=5, backoff_seconds=10.0):
