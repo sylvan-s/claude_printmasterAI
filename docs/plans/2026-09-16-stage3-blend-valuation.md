@@ -1190,3 +1190,29 @@ level are dropped. 3,375 backtest shifts, median x0.71 (p10 x0.31, p90 x2.02). W
 lots with only similar-artist comps improve at weight 1 (0.632 -> 0.587). Lots with NO comps (242 of
 1,495 gate lots, hammer MAE 0.93) are the worst bucket. User direction: they should use Stage 2b's
 web comparables (not started).
+
+### 2026-09-24: model rebuilt on the A0793 results (BLEND-2.4)
+
+The Roseberys 23 September sale (A0793) is in the graph and comp-eligible, so the pricing model was
+rebuilt: 90,877 lots (was 90,549), 1,429 artists (1,425), last sale 2026-09-23 (2026-08-12). Both
+builds were remade to the recipe — `priors_stage3a` with `--fit-all --kappa 60`, the backtest-cut
+`priors_stage3a_gate` without `--fit-all` — and `column_means.json` regenerated for each.
+
+**Blend gate, same 2,497 test lots, priors-only difference** (out of sample, no-estimate regime):
+blend MAE(log) 0.777 -> **0.725**, geo bias x1.43 -> x1.34, within 2x 58% -> 61%, CRPS 0.574 -> 0.534,
+coverage 63% -> 65%. Same-work evidence roughly doubled (lots with 3+ same-work comps 101 -> 218;
+lots on the priors model alone 159 -> 121), and the priors witness alone improved most
+(in-sample MAE 0.819 -> 0.563). The with-estimate regime is unchanged (0.288 -> 0.289).
+
+The phase-1 gate still FAILS, on coverage in both builds (63% / 65% vs the 75-85% band) and now also
+on MAE, because the *best single witness* baseline improved more than the blend did (0.803 -> 0.721 vs
+0.777 -> 0.725). That is the known effect of the priors witness at weight 2.0 in the no-estimate
+regime: "blend without the priors witness" scores 0.709. Adopted anyway — every absolute measure
+improved — with the no-estimate priors weight left as the open question.
+
+**Calibration BLEND-2.4** (`refit_blend_calibration.ts --version BLEND-2.4 --comps select5`): the
+temporal gate is a tie with BLEND-2.3 (hammer MAE 0.601 = 0.601, vs mid estimate 0.538 vs 0.537,
+coverage 79% / 83%), and the production fit lands on the same weights (same_work 2, same_suite 1,
+same_artist_technique 0.5, same_artist 0.25, priors_model 1) with fit MAE 0.617 and coverage 82%
+(was 81%). `select5_comps.jsonl` is unchanged, so its recorded similar-artist `artistLevelShift`
+values still come from the 17 September model; re-record them when that tier is next revisited.

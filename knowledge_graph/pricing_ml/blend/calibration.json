@@ -1,7 +1,7 @@
 {
-  "version": "BLEND-2.3",
-  "fittedAt": "2026-09-17T11:17:00.649Z",
-  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands+after-factor+object+target-estimate-mid+unsold-flag@2026-09-17T10:27:51+00:00, offline refit; pricing-model witness calibrated to house mid estimates, comps to hammers",
+  "version": "BLEND-2.4",
+  "fittedAt": "2026-09-24T07:55:53.690Z",
+  "fittedOn": "all 5094 sold lots (forum, roseberys, bonhams), priors PRICING-PRIORS-1.2-shape-bands+xl+offset+poster+edition-bands+after-factor+object+target-estimate-mid+unsold-flag@2026-09-24T07:18:11+00:00, offline refit; pricing-model witness calibrated to house mid estimates, comps to hammers",
   "witnesses": {
     "estimate": {
       "df": 5,
@@ -90,24 +90,24 @@
       "df": 5,
       "byKey": {
         "prior": {
-          "bias": -0.24070764501229025,
-          "sigma": 0.48148879360053704,
-          "n": 433
+          "bias": -0.2369766988435993,
+          "sigma": 0.47126460198411363,
+          "n": 429
         },
         "all": {
-          "bias": -0.22743491225051038,
-          "sigma": 0.6719649131522313,
+          "bias": -0.22660831494707034,
+          "sigma": 0.6711092480249132,
           "n": 5094
         },
         "shrunk": {
-          "bias": -0.14009391009391958,
-          "sigma": 0.6130235325745241,
-          "n": 3994
+          "bias": -0.14349547266966578,
+          "sigma": 0.6133165972008173,
+          "n": 3999
         },
         "segment": {
-          "bias": -1.1411662943090661,
-          "sigma": 0.9588420751183605,
-          "n": 667
+          "bias": -1.1470400009385915,
+          "sigma": 0.949096340905983,
+          "n": 666
         }
       }
     }
@@ -139,14 +139,14 @@
       },
       "temperature": 1.5,
       "fitLots": 5094,
-      "fitMaeLog": 0.6175486293303417,
-      "fitCoverage80": 0.8060463290145269,
+      "fitMaeLog": 0.6169685346471314,
+      "fitCoverage80": 0.817824892029839,
       "temperatureByTier": {
         "same_work_3+": 1.75,
         "same_work_1-2": 2.5,
         "same_artist_technique": 1.5,
-        "same_artist": 1.3,
-        "priors_model": 1.3
+        "same_artist": 1.5,
+        "priors_model": 1.5
       }
     }
   },
